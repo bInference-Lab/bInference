@@ -276,9 +276,12 @@ describe("binference start, status, health and logs end to end", () => {
     machine.signals.emit("SIGINT", "SIGINT");
     await engine.exit;
 
-    const logs = await run(machine, ["logs", "--lines", "2"]);
+    // A busy machine may log the config watch falling back to a timer between the two (decision
+    // 0396), so only the engine's own lines are read here.
+    const logs = await run(machine, ["logs", "--lines", "5"]);
     expect(logs.code).toBe(0);
-    expect(logs.stdout.split("\n").filter((line) => line !== "")).toStrictEqual([
+    const engineLines = logs.stdout.split("\n").filter((line) => line.includes(" engine engine."));
+    expect(engineLines.slice(-2)).toStrictEqual([
       "2027-01-15T08:00:00.000Z info  engine engine.ready",
       "2027-01-15T08:00:00.000Z info  engine engine.stopping",
     ]);

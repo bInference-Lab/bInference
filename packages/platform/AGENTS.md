@@ -15,6 +15,9 @@ The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
   runs it. A Windows adapter's test runs only on Windows (`describe.runIf`); a POSIX one skips
   Windows (`describe.skipIf`). CI runs all three OSes on each push to `master`, after the merge, so
   a change to one OS's path runs its tests on that OS before the merge.
+- `watchFile` hears a file through the OS's file events; when they fail, as when a machine runs
+  out of file watches, it reads the file again, tries the events again after 0.5, 2 and 5 seconds,
+  then checks the file every 100 milliseconds (decision 0396).
 - Child processes go through `runCommand` (execa, an argument array, no shell, a time limit).
 - `src/outbound/` holds the connection pools of the engine's and the agent runtime's outbound
   HTTP adapters (decision 0347), the one place here that imports undici, exported alone as

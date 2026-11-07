@@ -1,6 +1,13 @@
-import { type FSWatcher, realpathSync, watch } from "node:fs";
+import {
+  type FSWatcher,
+  realpathSync,
+  type StatsListener,
+  unwatchFile,
+  watch,
+  watchFile as pollFile,
+} from "node:fs";
 import { basename, dirname } from "node:path";
-import { BinferenceError } from "@binference/core";
+import { BinferenceError, type Clock } from "@binference/core";
 
 /** A watch on one file, until it is closed. */
 export interface FileWatch {
@@ -12,9 +19,39 @@ export interface FileWatch {
 export interface WatchFileOptions {
   /** Called on each change to the file: a write, a rename over it, its removal or its return. */
   readonly onChange: () => void;
-  /** Called once if the folder's watch stops by itself, such as when the folder is removed. */
+  /** Called once if the watch stops for good: the timer could not check the file either. */
   readonly onError: (error: BinferenceError) => void;
+  /**
+   * Called when the OS's file events failed: `retrying` while the watch is made again after a
+   * wait, `poll` once it checks the file on a timer instead (decision 0396).
+   */
+  readonly onDegraded?: (state: "retrying" | "poll", error: BinferenceError) => void;
+  /** Times the waits between attempts; the process's own clock when absent. */
+  readonly clock?: Clock;
+  /** The OS's watch, which a test replaces to make it fail. */
+  readonly nativeWatch?: typeof watch;
 }
+
+/** The waits before each new attempt at the OS's file events, then the timer takes over. */
+const retryDelaysMs: readonly number[] = [500, 2_000, 5_000];
+/** How often the timer checks the file once the OS's file events failed. */
+const pollIntervalMs = 100;
+
+const systemClock: Clock = {
+  now: () => Date.now(),
+  sleep: async (delayMs, signal) =>
+    new Promise((resolve, reject) => {
+      const timer = setTimeout(resolve, delayMs);
+      signal.addEventListener(
+        "abort",
+        () => {
+          clearTimeout(timer);
+          reject(signal.reason);
+        },
+        { once: true },
+      );
+    }),
+};
 
 function watchFailed(path: string, cause: Error | undefined): BinferenceError {
   return new BinferenceError({
@@ -25,17 +62,15 @@ function watchFailed(path: string, cause: Error | undefined): BinferenceError {
   });
 }
 
-/** The watch on the file itself, armed again on the new file once one replaces it. */
-interface FileWatcher {
-  /** Watches what the path names now; a missing file waits for the folder to see it back. */
-  arm(): void;
-  isArmed(): boolean;
+/** The OS's watch of the file and its folder, closed as one. */
+interface EventWatch {
   close(): void;
 }
 
 // The file's own watch is live as soon as it returns; a rename ends it on the old file, so it is
-// armed again on whatever the path names now.
-function createFileWatcher(path: string, onChange: () => void): FileWatcher {
+// armed again on whatever the path names now. A file watch that fails ends; the folder's arms it
+// again at the next change.
+function createFileWatcher(path: string, native: typeof watch, onChange: () => void) {
   const state: { current: FSWatcher | undefined; isClosed: boolean } = {
     current: undefined,
     isClosed: false,
@@ -47,13 +82,12 @@ function createFileWatcher(path: string, onChange: () => void): FileWatcher {
       return;
     }
     try {
-      const watcher = watch(path, { persistent: false }, (event) => {
+      const watcher = native(path, { persistent: false }, (event) => {
         if (event === "rename") {
           arm();
         }
         onChange();
       });
-      // A file watch that fails ends; the folder's watch arms it again at the next change.
       watcher.on("error", () => {
         watcher.close();
         if (state.current === watcher) {
@@ -65,29 +99,74 @@ function createFileWatcher(path: string, onChange: () => void): FileWatcher {
       state.current = undefined;
     }
   };
+  const close = (): void => {
+    state.isClosed = true;
+    state.current?.close();
+  };
+  return { arm, isArmed: () => state.current !== undefined, close };
+}
+
+// Watches the file through its folder and itself; `onFailed` hears the folder's watch fail.
+function watchEvents(
+  path: string,
+  options: WatchFileOptions,
+  onFailed: (error: BinferenceError) => void,
+): EventWatch {
+  const native = options.nativeWatch ?? watch;
+  const file = createFileWatcher(path, native, options.onChange);
+  const name = basename(path);
+  // macOS names a folder's events by its real path, so a folder reached through a link, such as
+  // the temporary folder, is watched where it is.
+  const folder = native(realpathSync(dirname(path)), { persistent: false }, (_event, changed) => {
+    if (changed === null || changed === name) {
+      if (!file.isArmed()) {
+        file.arm();
+      }
+      options.onChange();
+    }
+  });
+  folder.on("error", (error) => {
+    folder.close();
+    file.close();
+    onFailed(watchFailed(path, error));
+  });
+  file.arm();
   return {
-    arm,
-    isArmed: () => state.current !== undefined,
     close: () => {
-      state.isClosed = true;
-      state.current?.close();
+      file.close();
+      folder.close();
     },
   };
 }
 
-function watchFolder(path: string, onFileEvent: () => void): FSWatcher {
-  const name = basename(path);
+// Checks the file on a timer: a change of its size, time or node is a change, a rename over it
+// too, since the path is checked each time.
+function watchByPolling(path: string, onChange: () => void): EventWatch {
+  const listener: StatsListener = (now, before) => {
+    if (now.mtimeMs !== before.mtimeMs || now.size !== before.size || now.ino !== before.ino) {
+      onChange();
+    }
+  };
+  pollFile(path, { persistent: false, interval: pollIntervalMs }, listener);
+  return { close: () => unwatchFile(path, listener) };
+}
+
+function isMissingFolder(cause: Error | undefined): boolean {
+  return cause !== undefined && "code" in cause && cause.code === "ENOENT";
+}
+
+// Waits, then makes the watch again; a watch closed meanwhile is left closed.
+async function startAfter(
+  clock: Clock,
+  wait: { readonly delayMs: number; readonly signal: AbortSignal },
+  start: () => void,
+): Promise<void> {
   try {
-    // macOS names a folder's events by its real path, so a folder reached through a link, such
-    // as the temporary folder, is watched where it is.
-    return watch(realpathSync(dirname(path)), { persistent: false }, (_event, changed) => {
-      if (changed === null || changed === name) {
-        onFileEvent();
-      }
-    });
-  } catch (error) {
-    throw watchFailed(path, error instanceof Error ? error : undefined);
+    await clock.sleep(wait.delayMs, wait.signal);
+  } catch {
+    return;
   }
+  start();
 }
 
 /**
@@ -95,26 +174,58 @@ function watchFolder(path: string, onFileEvent: () => void): FSWatcher {
  * saves by renaming a new file over the old one, and a file that comes back; the file's own watch
  * is live the moment this returns, where some OSes start a folder's watch a moment later. One save
  * fires several changes, and an event that names no file counts as the file's; the caller waits
- * for the changes to settle. The watch does not keep the process alive. Throws
- * `platform.watch_failed` when the folder cannot be watched.
+ * for the changes to settle. When the OS's file events fail, as when the machine runs out of file
+ * watches, the file is read again at once, the watch is made again after 0.5, 2 and 5 seconds,
+ * and then the file is checked every 100 milliseconds instead (decision 0396). The watch does not
+ * keep the process alive. Throws `platform.watch_failed` when the folder does not exist.
  */
 export function watchFile(path: string, options: WatchFileOptions): FileWatch {
-  const file = createFileWatcher(path, options.onChange);
-  const folder = watchFolder(path, () => {
-    if (!file.isArmed()) {
-      file.arm();
-    }
+  const clock = options.clock ?? systemClock;
+  const stop = new AbortController();
+  const state: { current: EventWatch | undefined; attempt: number } = {
+    current: undefined,
+    attempt: 0,
+  };
+  const degrade = (failed: BinferenceError): void => {
+    state.current = undefined;
     options.onChange();
-  });
-  folder.on("error", (error) => {
-    folder.close();
-    options.onError(watchFailed(path, error));
-  });
-  file.arm();
+    const delayMs = retryDelaysMs[state.attempt];
+    if (delayMs !== undefined) {
+      state.attempt += 1;
+      options.onDegraded?.("retrying", failed);
+      void startAfter(clock, { delayMs, signal: stop.signal }, start);
+      return;
+    }
+    options.onDegraded?.("poll", failed);
+    try {
+      state.current = watchByPolling(path, options.onChange);
+    } catch (failure) {
+      options.onError(watchFailed(path, failure instanceof Error ? failure : undefined));
+    }
+  };
+  const start = (): void => {
+    if (stop.signal.aborted) {
+      return;
+    }
+    try {
+      state.current = watchEvents(path, options, degrade);
+    } catch (error) {
+      degrade(watchFailed(path, error instanceof Error ? error : undefined));
+    }
+  };
+  try {
+    state.current = watchEvents(path, options, degrade);
+  } catch (error) {
+    const cause = error instanceof Error ? error : undefined;
+    if (isMissingFolder(cause)) {
+      throw watchFailed(path, cause);
+    }
+    degrade(watchFailed(path, cause));
+  }
   return {
     close: () => {
-      file.close();
-      folder.close();
+      stop.abort();
+      state.current?.close();
     },
   };
 }

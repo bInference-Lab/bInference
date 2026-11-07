@@ -162,7 +162,14 @@ export function startConfigReload(options: ConfigReloadOptions): ConfigReloadLin
   const onError = (error: BinferenceError): void => {
     options.logger.warn("config.watch_stopped", { errorCode: error.code });
   };
-  const watching = options.watch(options.file, { onChange, onError });
+  // The OS's file events can run out on a busy machine: the watch tries again, then checks the
+  // file on a timer (decision 0396), and each step is logged.
+  const onDegraded = (step: "retrying" | "poll", error: BinferenceError): void => {
+    const event = step === "poll" ? "config.watch_polling" : "config.watch_retrying";
+    options.logger.warn(event, { errorCode: error.code });
+  };
+  const { clock } = options;
+  const watching = options.watch(options.file, { onChange, onError, onDegraded, clock });
   options.closers.add("config reload", async () => {
     watching.close();
     stop.abort();

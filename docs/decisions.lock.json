@@ -1579,6 +1579,10 @@
     "0395": {
       "status": "Accepted",
       "sha256": "b50a4b7d94cb235f46b3bce8360e3b892720cb7a121ec665b6e5afe78abb40a7"
+    },
+    "0396": {
+      "status": "Accepted",
+      "sha256": "a46e6cc8dc302b436dafa37fb0d5044de33503fa297eff742eb7410b92ed8da8"
     }
   }
 }
