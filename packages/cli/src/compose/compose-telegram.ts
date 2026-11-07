@@ -39,6 +39,7 @@ import {
   type TelegramQuestions,
 } from "@binference/telegram";
 import type { Api } from "grammy";
+import { madeImagesOf } from "./telegram-made-images.js";
 import {
   createTelegramRelay,
   type TelegramRelay,
@@ -154,7 +155,10 @@ function relayOf(
   const { notices, agents } = wiring.stores;
   const outbox = createNoticeOutbox({ ...parts, notices, agents, chains, display, clock, logger });
   const agentNames = agentNamesOf(wiring, { active: true });
-  const replies = createChatReplies({ ...parts, clock, logger, display, agentNames, chains });
+  const calls = createOwnerCalls({ handlers: wiring.handlers, ownerId: answersOwner(parts) });
+  const madeImage = madeImagesOf(calls, answersOwner(parts));
+  const replyParts = { ...parts, clock, logger, display, agentNames, chains, madeImage };
+  const replies = createChatReplies(replyParts);
   const shown = {
     ...replies,
     show: async (...args: Parameters<typeof replies.show>) => {

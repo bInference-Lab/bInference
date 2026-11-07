@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { type ProtocolId, protocolIdSchema } from "../ids/id-prefixes.js";
+import { type Empty, emptyResultSchema } from "../values/empty.schema.js";
 import { plainIdSchema } from "../values/plain-id.schema.js";
+import { type ChatSurface, chatSurfaceSchema } from "../views/inbox-message-view.schema.js";
 import { readFlags, type OperationTable } from "./operation.schema.js";
 
 /** The image formats the agent reads (protocol spec, section 7.7). */
@@ -50,10 +52,61 @@ interface ViewImageArgs {
   readonly offset?: number;
 }
 
-/** The operation the agent runtime reads the owner's images with (protocol spec, section 7.7). */
+/** The most characters of a prompt the agent makes images with (decision 0392). */
+export const maxImagePromptChars: number = 4_000;
+
+/**
+ * The args of `image/store`: one part of an image the agent made, at `place` in its job, from
+ * `offset`, of an image `total` bytes long (decision 0392).
+ */
+interface StoreImageArgs {
+  readonly agent: ProtocolId<"agent">;
+  /** The runtime's id of the job, the same for every image it made. */
+  readonly job: string;
+  /** The image's place in its job, 0 to 3. */
+  readonly place: number;
+  readonly offset: number;
+  readonly total: number;
+  /** The part's bytes in base64, at most 512 KiB of them. */
+  readonly data: string;
+}
+
+/** The answer of `image/store`: once the last part arrived, the saved image's id and path. */
+interface StoredImagePart {
+  readonly image?: string;
+  readonly path?: string;
+}
+
+/**
+ * The args of `image/made`: the end of an image job, its images by the ids `image/store` answered
+ * or why it failed, and the turn and surface it was asked for in (decision 0392).
+ */
+interface MadeImagesArgs {
+  readonly agent: ProtocolId<"agent">;
+  readonly session: ProtocolId<"chatSession">;
+  readonly turn: ProtocolId<"chatTurn">;
+  /** The surface the owner asked on, which the wake-up names. */
+  readonly surface: ChatSurface;
+  readonly prompt: string;
+  readonly images: readonly string[];
+  /** Why the job made no image, in a line the agent reads. */
+  readonly failed?: string;
+}
+
+/** The args of `image/read`: one part of an image the agent made, by its id, from `offset`. */
+interface ReadMadeImageArgs {
+  readonly agent: ProtocolId<"agent">;
+  readonly image: string;
+  readonly offset?: number;
+}
+
+/** The operations of the agent's images (protocol spec, section 7.7). */
 export interface ImageOperationShapes {
   readonly "inbox/readImage": { readonly args: ReadImageArgs; readonly result: ImagePart };
   readonly "image/view": { readonly args: ViewImageArgs; readonly result: ImagePart };
+  readonly "image/store": { readonly args: StoreImageArgs; readonly result: StoredImagePart };
+  readonly "image/made": { readonly args: MadeImagesArgs; readonly result: Empty };
+  readonly "image/read": { readonly args: ReadMadeImageArgs; readonly result: ImagePart };
 }
 
 /** Parses an image format the agent reads. */
@@ -76,6 +129,14 @@ export const imagePartSchema: z.ZodType<ImagePart> = z.object({
   offset: byteCount,
   data: z.base64().max(maxPartText),
   next: byteCount.exactOptional(),
+});
+
+const madeImageId = z.string().regex(/^[a-z0-9]{8,64}$/u);
+
+/** Parses the answer of `image/store`. */
+const storedImagePartSchema: z.ZodType<StoredImagePart> = z.object({
+  image: madeImageId.exactOptional(),
+  path: z.string().min(1).max(4_096).exactOptional(),
 });
 
 /** The image operation, by name. */
@@ -110,6 +171,51 @@ export const imageOperations: OperationTable<ImageOperationShapes> = {
       .refine((args) => (args.url === undefined) !== (args.path === undefined), {
         message: "Name exactly one of url and path.",
       }),
+    result: imagePartSchema,
+  },
+  "image/store": {
+    ...readFlags,
+    name: "image/store",
+    scope: "agent",
+    args: z
+      .strictObject({
+        agent: protocolIdSchema("agent"),
+        job: madeImageId,
+        place: z
+          .int()
+          .min(0)
+          .max(maxImagesPerMessage - 1),
+        offset: byteCount,
+        total: byteCount.min(1),
+        data: z.base64().min(1).max(maxPartText),
+      })
+      .refine((args) => args.offset < args.total, { message: "The part starts past the image." }),
+    result: storedImagePartSchema,
+  },
+  "image/made": {
+    ...readFlags,
+    name: "image/made",
+    scope: "agent",
+    args: z.strictObject({
+      agent: protocolIdSchema("agent"),
+      session: protocolIdSchema("chatSession"),
+      turn: protocolIdSchema("chatTurn"),
+      surface: chatSurfaceSchema,
+      prompt: z.string().trim().min(1).max(maxImagePromptChars),
+      images: z.array(madeImageId).max(maxImagesPerMessage).readonly(),
+      failed: z.string().trim().min(1).max(500).exactOptional(),
+    }),
+    result: emptyResultSchema,
+  },
+  "image/read": {
+    ...readFlags,
+    name: "image/read",
+    scope: "read",
+    args: z.strictObject({
+      agent: protocolIdSchema("agent"),
+      image: madeImageId,
+      offset: byteCount.exactOptional(),
+    }),
     result: imagePartSchema,
   },
 };

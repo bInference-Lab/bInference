@@ -1,10 +1,10 @@
 import { cardLineText, reasonText } from "@binference/i18n";
 import type { LaunchDraftView, ProtocolId } from "@binference/protocol";
-import { useEffect, useMemo } from "react";
 import { CardLine, StatusIcon } from "../cards/card-line";
 import { codeWords } from "../connection/error-words";
 import { useFormatter, useText, type Words } from "../i18n/console-text";
 import type { DraftPicture } from "./draft-picture";
+import { usePictureAddress } from "./picture-address";
 import { type EndedDraft, useLaunchDraft } from "./use-launch-draft";
 
 /** The draft's last line: its words, and the status icon before them once it closed. */
@@ -25,26 +25,6 @@ function endedLine(text: Words, reasonOf: (code: string) => string, ended: Ended
       ? text("console.draft.failed", { reason: codeWords(text, error) })
       : text("console.draft.endedBeforeCard", { reason: reasonOf(reason) });
   return { text: said, status: "refused" };
-}
-
-// The photo as an address the page made from its bytes alone, let go when it changes.
-function usePictureAddress(picture: DraftPicture | undefined): string | undefined {
-  const address = useMemo(
-    () =>
-      picture === undefined
-        ? undefined
-        : URL.createObjectURL(new Blob([picture.bytes], { type: picture.contentType })),
-    [picture],
-  );
-  useEffect(
-    () => () => {
-      if (address !== undefined) {
-        URL.revokeObjectURL(address);
-      }
-    },
-    [address],
-  );
-  return address;
 }
 
 function DraftBody(props: {

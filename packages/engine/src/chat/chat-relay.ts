@@ -12,6 +12,7 @@ import type { AgentInboxMessage } from "./agent-inbox-record.js";
 import { type ChatRelayOptions, pushInbox } from "./chat-relay-parts.js";
 import { createImageHandlers, type ImageHandlers } from "./image-handlers.js";
 import { createImageHold } from "./image-hold.js";
+import { createMadeImageHandlers, type MadeImageHandlers } from "./made-images.js";
 import { createOwnerChatHandlers, type OwnerChatHandlers } from "./owner-chat-handlers.js";
 import { createRuntimeChatHandlers, type RuntimeChatHandlers } from "./runtime-chat-handlers.js";
 import { createViewImageHandlers, type ViewImageHandlers } from "./view-image-handlers.js";
@@ -24,7 +25,8 @@ export interface ChatHandlers
     ImageHandlers,
     ViewImageHandlers,
     CredentialRequestHandlers,
-    CredentialStoreHandlers {}
+    CredentialStoreHandlers,
+    MadeImageHandlers {}
 
 /** The engine's relay of chat between the surfaces and the agent runtime. */
 export interface ChatRelay {
@@ -112,6 +114,7 @@ export function createChatRelay(options: ChatRelayOptions): ChatRelay {
         clock: options.clock,
         ...(options.viewImages === undefined ? {} : { source: options.viewImages }),
       }),
+      ...createMadeImageHandlers(options),
       ...createCredentialRequestHandlers(options),
       ...createCredentialStoreHandlers(options),
     },

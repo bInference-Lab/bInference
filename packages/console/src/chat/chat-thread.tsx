@@ -1,9 +1,11 @@
 import { displayOutsideText } from "@binference/i18n";
+import type { ProtocolId } from "@binference/protocol";
 import { useNow } from "../app/use-now";
 import { MessageLine } from "../cards/card-line";
 import { useFormatter, useText } from "../i18n/console-text";
 import { ChartFigure } from "./chart-figure";
 import type { ChatEntry } from "./chat-entries";
+import { MadeImagesFigure } from "./made-images-figure";
 import { RichText } from "./rich-text";
 
 // A person's or the agent's text as it reads: each character a reader cannot see written out.
@@ -62,6 +64,7 @@ function SaidEntry(props: {
 
 function Entry(props: {
   readonly entry: ChatEntry;
+  readonly agent: ProtocolId<"agent">;
   readonly agentName: string;
 }): React.JSX.Element {
   const { entry } = props;
@@ -71,21 +74,25 @@ function Entry(props: {
   if (entry.kind === "chart") {
     return <ChartFigure chart={entry.chart} />;
   }
+  if (entry.kind === "images") {
+    return <MadeImagesFigure agent={props.agent} images={entry.images} />;
+  }
   return <SaidEntry entry={entry} agentName={props.agentName} />;
 }
 
 /**
  * The chat with one agent, oldest first: the owner's messages on the right, the agent's answers on
- * the left, and its status lines and charts between them. The agent's text shows its Markdown drawn as
+ * the left, and its status lines, charts and made images between them. The agent's text shows its Markdown drawn as
  * elements, never as HTML from the text (decision 0383); the owner's shows as written. Screen
  * readers hear each new entry.
  */
 export function ChatThread(props: {
   readonly entries: readonly ChatEntry[];
+  readonly agent: ProtocolId<"agent">;
   readonly agentName: string;
 }): React.JSX.Element {
   const text = useText();
-  const { entries, agentName } = props;
+  const { entries, agent, agentName } = props;
   return (
     <div
       role="log"
@@ -95,7 +102,9 @@ export function ChatThread(props: {
       {entries.length === 0 ? (
         <p className="text-sm text-muted-foreground">{text("console.chat.empty")}</p>
       ) : (
-        entries.map((entry) => <Entry key={entry.id} entry={entry} agentName={agentName} />)
+        entries.map((entry) => (
+          <Entry key={entry.id} entry={entry} agent={agent} agentName={agentName} />
+        ))
       )}
     </div>
   );

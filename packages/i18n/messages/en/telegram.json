@@ -38,5 +38,6 @@
   "draft.starting": "🟡 Starting the launch. This message says how it ends.",
   "draft.launched": "✅ This draft already started its launch. Its card in this chat shows where it stands. Nothing more starts from this draft.",
   "draft.answer.launched": "This draft already started its launch. Its card shows where it stands.",
-  "draft.answer.ended": "The launch this draft started has ended. Its message says why."
+  "draft.answer.ended": "The launch this draft started has ended. Its message says why.",
+  "chat.madeImage": "Saved at"
 }

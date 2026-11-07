@@ -273,6 +273,35 @@ describe("terminal chat", () => {
     expect(opsOf(chat, "chat/answer")).toStrictEqual([]);
   });
 
+  it("prints where each image the agent made was saved", async () => {
+    const chat = await opened();
+    chat.push(`chat:${harnessAgent}`, "chat/images", {
+      agent: harnessAgent,
+      turn,
+      prompt: "A frog logo.",
+      images: [
+        {
+          image: "a1b2c3d4e5f60718",
+          contentType: "image/png",
+          bytes: 70,
+          path: "/w/media/made/a.png",
+        },
+        {
+          image: "a1b2c3d4e5f60719",
+          contentType: "image/png",
+          bytes: 70,
+          path: "/w/media/made/b.png",
+        },
+      ],
+    });
+    await chat.settle();
+    expect(chat.rows().slice(-4, -1)).toStrictEqual([
+      "main made 2 images, saved at:",
+      "/w/media/made/a.png",
+      "/w/media/made/b.png",
+    ]);
+  });
+
   it("prints a chart the agent shows as its text", async () => {
     const chat = await opened();
     chat.push(`chat:${harnessAgent}`, "chat/turnStarted", { agent: harnessAgent, turn });

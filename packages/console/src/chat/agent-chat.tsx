@@ -164,7 +164,11 @@ export function AgentChat(props: {
   return (
     <div className="flex flex-col gap-4">
       <ChatTop actions={actions} canChat={canChat} historyError={transcript.error} />
-      <ChatThread entries={chatEntries(transcript.data ?? [], live.lines)} agentName={agentName} />
+      <ChatThread
+        entries={chatEntries(transcript.data ?? [], live.lines)}
+        agent={agent}
+        agentName={agentName}
+      />
       {running === undefined ? null : (
         <WorkingLine draft={running.draft} startedAt={running.startedAt} />
       )}

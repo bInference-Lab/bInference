@@ -377,6 +377,9 @@ new name here first, in the change that uses it.
 - **masked prompt**: where the owner types a credential the agent asked for, its characters hidden,
   in the console, in terminal chat's masked entry or with `binference credential set`; never a
   chat message.
+- **made image**: an image the agent made with the owner's image model (`make_image`,
+  [decision 0392](DECISIONS.md#d0392)), saved in its workspace under `media/made/` and shown in
+  the chat.
 - **shown chart**: a pie, bar, area or line chart the agent shows the owner in the chat
   (`show_chart`, [decision 0387](DECISIONS.md#d0387)); drawn in the console, as text elsewhere.
 - **shell host**: the process the engine starts to run the agent's commands, behind the wall.
@@ -743,6 +746,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | shell job                                   | 命令任务               |                              |
 | file tools                                  | 文件工具               | `file_read` and the others   |
 | patch (of files)                            | 补丁                   | `file_patch`                 |
+| made image                                  | 生成的图片             | `make_image`                 |
 | shown chart, chart (the agent shows)        | 图表                   | `show_chart`                 |
 | credential (the owner stores)               | 凭据                   | `credentials`                |
 | masked prompt (for a credential)            | 隐藏输入框             |                              |

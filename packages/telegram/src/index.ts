@@ -14,6 +14,7 @@ export { createChatIntake } from "./chat/chat-intake.js";
 export type { ChatIntake, ChatIntakeOptions } from "./chat/chat-intake.js";
 export { createChatReplies } from "./chat/chat-replies.js";
 export type { ChatReplies } from "./chat/chat-replies.js";
+export type { MadeImageReader } from "./chat/made-photos.js";
 export type { ChatRepliesOptions, ReplySettings } from "./chat/chat-replies-options.js";
 export { createFastCommands } from "./commands/create-fast-commands.js";
 export { createTelegramImages } from "./images/telegram-images.js";

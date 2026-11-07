@@ -39,6 +39,7 @@ export const ownerChatOperations = [
   "model/list",
   "model/set",
   "schedule/list",
+  "image/read",
 ] as const;
 
 /** An operation the owner's fast commands run. */

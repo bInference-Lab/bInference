@@ -1,4 +1,10 @@
 import { z } from "zod";
+import {
+  type ImageContentType,
+  imageContentTypeSchema,
+  maxImagePromptChars,
+  maxImagesPerMessage,
+} from "../operations/image-operations.schema.js";
 import { type AgentMode, agentModeSchema } from "./agent-view.schema.js";
 import { type PortableChart, portableChartSchema } from "./portable-chart.schema.js";
 import { type WalletView, walletViewSchema } from "./wallet-view.schema.js";
@@ -8,6 +14,16 @@ import { type WalletView, walletViewSchema } from "./wallet-view.schema.js";
  * the runtime cuts a longer one there (decision 0377).
  */
 export const maxReasoningChars: number = 50_000;
+
+/** An image the agent made, as `chat/images` names it (decision 0392). */
+interface MadeImageView {
+  /** Its id, which `image/read` reads it by. */
+  readonly image: string;
+  readonly contentType: ImageContentType;
+  readonly bytes: number;
+  /** Where it was saved, in the agent's workspace. */
+  readonly path: string;
+}
 
 /** A line's values, as `chat/status` and `chat/progress` carry them. */
 type LineValues = Readonly<Record<string, string | number>>;
@@ -60,6 +76,14 @@ export type ChatPush =
       /** The chart to draw, or to show as text where no chart is drawn (decision 0387). */
       readonly chart: PortableChart;
     }
+  | {
+      readonly kind: "chat/images";
+      readonly agent: string;
+      readonly turn: string;
+      /** What the agent asked the image model for. */
+      readonly prompt: string;
+      readonly images: readonly MadeImageView[];
+    }
   | { readonly kind: "chat/turnEnded"; readonly agent: string; readonly turn: string };
 
 const at = { agent: z.string().min(1), turn: z.string().min(1) };
@@ -96,8 +120,31 @@ const pushSchema = z.discriminatedUnion("kind", [
     kind: z.literal("chat/chart"),
     data: z.looseObject({ ...at, chart: portableChartSchema }),
   }),
+  z.looseObject({
+    kind: z.literal("chat/images"),
+    data: z.looseObject({
+      ...at,
+      prompt: z.string().min(1).max(maxImagePromptChars),
+      images: z
+        .array(
+          z.looseObject({
+            image: z.string().min(1),
+            contentType: imageContentTypeSchema,
+            bytes: z.int().positive(),
+            path: z.string().min(1),
+          }),
+        )
+        .min(1)
+        .max(maxImagesPerMessage),
+    }),
+  }),
   z.looseObject({ kind: z.literal("chat/turnEnded"), data: z.looseObject(at) }),
 ]);
+
+// A line's values when it carries any, as an optional field.
+function valuesOf(shown: LineValues | undefined): { readonly values?: LineValues } {
+  return shown === undefined ? {} : { values: shown };
+}
 
 /**
  * Reads a push of an agent's chat topic as a {@link ChatPush}; `undefined` for any other push,
@@ -118,23 +165,11 @@ export function chatPushOf(push: {
   }
   if (read.kind === "chat/status") {
     const { agent, turn, statusKey, values: shown } = read.data;
-    return {
-      kind: read.kind,
-      agent,
-      turn,
-      statusKey,
-      ...(shown === undefined ? {} : { values: shown }),
-    };
+    return { kind: read.kind, agent, turn, statusKey, ...valuesOf(shown) };
   }
   if (read.kind === "chat/progress") {
     const { agent, turn, progressKey, values: shown } = read.data;
-    return {
-      kind: read.kind,
-      agent,
-      turn,
-      progressKey,
-      ...(shown === undefined ? {} : { values: shown }),
-    };
+    return { kind: read.kind, agent, turn, progressKey, ...valuesOf(shown) };
   }
   if (read.kind === "chat/deposit") {
     const { agent, turn, mode, frozen, wallets } = read.data;
@@ -143,6 +178,10 @@ export function chatPushOf(push: {
   if (read.kind === "chat/chart") {
     const { agent, turn, chart } = read.data;
     return { kind: read.kind, agent, turn, chart };
+  }
+  if (read.kind === "chat/images") {
+    const { agent, turn, prompt, images } = read.data;
+    return { kind: read.kind, agent, turn, prompt, images };
   }
   return { kind: read.kind, agent: read.data.agent, turn: read.data.turn };
 }

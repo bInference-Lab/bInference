@@ -61,4 +61,18 @@ describe("chatEntries", () => {
       { kind: "chart", id: "c2", chart },
     ]);
   });
+
+  it("puts the images the agent made after the last message of the turn that asked for them", () => {
+    const images = [
+      { image: "a1b2c3d4e5f60718", contentType: "image/png" as const, bytes: 70, path: "/w/a.png" },
+    ];
+    const live: readonly LiveLine[] = [{ kind: "images", id: "i", turn: turn(1), images }];
+    expect(
+      chatEntries([said(1, "owner", "Make a logo"), said(2, "agent", "Making it.")], live),
+    ).toStrictEqual([
+      { kind: "owner", id: "seq 1", text: "Make a logo" },
+      { kind: "answer", id: "seq 2", text: "Making it." },
+      { kind: "images", id: "i", images },
+    ]);
+  });
 });

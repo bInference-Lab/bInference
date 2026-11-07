@@ -6,9 +6,8 @@ export type {
   TokenCredential,
 } from "./auth/credential.js";
 export { type DeviceProofInput, deviceProofText } from "./auth/device-proof.js";
-export { mcpTokenScopes, scopes, scopeSchema } from "./auth/scopes.js";
+export { mcpTokenScopes, type Scope, scopes, scopeSchema } from "./auth/scopes.js";
 export { tokenLifetimeMaxMs } from "./auth/token-lifetime.js";
-export type { Scope } from "./auth/scopes.js";
 export { describeOperations } from "./describe/describe-operations.js";
 export { describeProtocol, type ProtocolDescription } from "./describe/describe-protocol.js";
 export type {
@@ -67,6 +66,7 @@ export {
   imageContentTypeSchema,
   imagePartBytes,
   maxImageBytes,
+  maxImagePromptChars,
   maxImagesPerMessage,
 } from "./operations/image-operations.schema.js";
 export type { ImageContentType, ImagePart } from "./operations/image-operations.schema.js";

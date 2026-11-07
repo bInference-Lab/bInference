@@ -3,6 +3,7 @@ import type { Logger, Clock } from "@binference/core";
 import type { OwnerStore } from "@binference/engine/surfaces";
 import type { MessageLocale } from "@binference/i18n";
 import type { Api } from "grammy";
+import type { MadeImageReader } from "./made-photos.js";
 
 /** What `createChatReplies` needs. */
 export interface ChatRepliesOptions {
@@ -28,6 +29,8 @@ export interface ChatRepliesOptions {
    * engine's chain name shows and no explorer link.
    */
   readonly chains?: ChainRegistry;
+  /** Reads an image the agent made from the engine (decision 0392); left out, each shows its path. */
+  readonly madeImage?: MadeImageReader;
 }
 
 /**

@@ -1,4 +1,7 @@
-import type { PortableChart, ResultOf } from "@binference/protocol";
+import type { ChatPush, PortableChart, ResultOf } from "@binference/protocol";
+
+/** An image the agent made, as `chat/images` names it (decision 0392). */
+export type MadeImage = Extract<ChatPush, { readonly kind: "chat/images" }>["images"][number];
 
 /** One message of the agent's transcript, as `chat/messages` reads it. */
 export type TranscriptMessage = ResultOf<"chat/messages">["items"][number];
@@ -26,6 +29,12 @@ export type LiveLine =
       readonly id: string;
       readonly turn: string;
       readonly chart: PortableChart;
+    }
+  | {
+      readonly kind: "images";
+      readonly id: string;
+      readonly turn: string;
+      readonly images: readonly MadeImage[];
     };
 
 /** One entry of the chat as the console draws it, in order. */
@@ -42,7 +51,8 @@ export type ChatEntry =
       readonly statusKey: string;
       readonly values?: Readonly<Record<string, string | number>>;
     }
-  | { readonly kind: "chart"; readonly id: string; readonly chart: PortableChart };
+  | { readonly kind: "chart"; readonly id: string; readonly chart: PortableChart }
+  | { readonly kind: "images"; readonly id: string; readonly images: readonly MadeImage[] };
 
 // How far the engine's clock may run behind the browser's while an owner's message is matched to
 // its copy in the transcript.
@@ -51,6 +61,9 @@ const skewMs = 60_000;
 function entryOf(line: LiveLine): ChatEntry {
   if (line.kind === "chart") {
     return { kind: "chart", id: line.id, chart: line.chart };
+  }
+  if (line.kind === "images") {
+    return { kind: "images", id: line.id, images: line.images };
   }
   if (line.kind === "status") {
     const { id, statusKey, values } = line;
@@ -85,8 +98,8 @@ function heardOwnerLines(
 }
 
 /**
- * The chat in order: the transcript's text messages of the owner and the agent, each status line
- * and chart after the last message of its turn, then what the page heard or sent that the transcript does
+ * The chat in order: the transcript's text messages of the owner and the agent, each status line,
+ * chart and set of images after the last message of its turn, then what the page heard or sent that the transcript does
  * not hold yet, in the order it came. An answer leaves the live lines once its turn's answer is in
  * the transcript, and an owner's message once its text is.
  */
@@ -107,9 +120,9 @@ export function chatEntries(
   );
   const heard = heardOwnerLines(said, live);
   const lastOfTurn = new Map(said.map((message) => [message.turn, message.seq]));
-  // A status line or a chart of a turn the transcript shows goes after that turn's last message.
+  // A status line, a chart or images of a turn the transcript shows go after its last message.
   const placed = live.filter(
-    (line) => (line.kind === "status" || line.kind === "chart") && turnsShown.has(line.turn),
+    (line) => line.kind !== "owner" && line.kind !== "answer" && turnsShown.has(line.turn),
   );
   const entries: ChatEntry[] = [];
   said.forEach((message) => {

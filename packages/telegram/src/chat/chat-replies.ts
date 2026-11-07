@@ -5,15 +5,14 @@ import { createOwnerFormatters } from "../format/owner-formatters.js";
 import { createBotCalls } from "../ingress/bot-calls.js";
 import { createAnswerPreview } from "./answer-preview.js";
 import { sendHtml, sendPiece } from "./answer-sends.js";
-import { type ChartPush, showChart } from "./chart-message.js";
 import { type ChatHtml, chatHtmlOf, statusHtmlOf } from "./chat-html.js";
 import type { ChatRepliesOptions, ReplySettings } from "./chat-replies-options.js";
 import type { Call, Parts, TurnShowing } from "./chat-replies-parts.js";
 import { startTyping } from "./chat-typing.js";
 import { showCredentialRequest } from "./credential-message.js";
-import { type DepositPush, showDeposit } from "./deposit-photos.js";
 import { otherReplyOf } from "./other-reply.js";
 import { reasoningHtmlOf } from "./reasoning-html.js";
+import { type ShownPush, showShown } from "./shown-push.js";
 import { createStatusMessage, type StatusMessage, type StatusParts } from "./status-message.js";
 
 /** Shows the agent's replies in the owner's chat: a status message while it works, then its answer. */
@@ -217,11 +216,7 @@ function progress(parts: Parts, push: ProgressPush): void {
 
 // What a tool shows mid-turn goes below the turn's message so far, which closes and goes, so what
 // the turn writes after it starts a new message below it and nothing shows out of order.
-async function shownMidTurn(
-  parts: Parts,
-  push: DepositPush | ChartPush,
-  call: Call,
-): Promise<void> {
+async function shownMidTurn(parts: Parts, push: ShownPush, call: Call): Promise<void> {
   const key = keyOf(push);
   const before = parts.turns.get(key);
   if (before !== undefined) {
@@ -231,9 +226,7 @@ async function shownMidTurn(
   }
   const owner = async () => ownerChat(parts, call);
   const replies = { ...parts, showing: parts.turns.get(key), owner };
-  await (push.kind === "chat/deposit"
-    ? showDeposit(replies, push, call.signal)
-    : showChart(replies, push, call.signal));
+  await showShown(replies, push, call.signal);
 }
 
 // A final message is the answer; any other is the answer so far, drafted into the turn's message.
@@ -260,6 +253,7 @@ async function showPush(parts: Parts, push: ChatPush, call: Call): Promise<void>
       return reasoned(parts, push, call);
     case "chat/deposit":
     case "chat/chart":
+    case "chat/images":
       return shownMidTurn(parts, push, call);
     case "chat/turnEnded":
       return ended(parts, push, call);

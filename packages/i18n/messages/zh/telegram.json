@@ -38,5 +38,6 @@
   "draft.starting": "🟡 正在开始发射，此消息会显示结果。",
   "draft.launched": "✅ 此草稿已开始发射，本对话中的确认卡片会显示其进展。此草稿不会再开始新的发射。",
   "draft.answer.launched": "此草稿已开始发射，请查看其确认卡片了解进展。",
-  "draft.answer.ended": "此草稿开始的发射已结束，草稿消息会说明原因。"
+  "draft.answer.ended": "此草稿开始的发射已结束，草稿消息会说明原因。",
+  "chat.madeImage": "保存于"
 }

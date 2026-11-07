@@ -12,7 +12,9 @@ The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
   `i18n`, `rich-text` and `chart`, never `core` or another package. A chart the agent shows
   (`chat/chart`, decision 0387) is drawn as SVG from `chartLayout` in the theme's `--chart-*`
   colors (`src/chat/chart-figure.tsx`), its words as text and its text form for screen readers.
-  A credential request (decision 0388) shows above the composer with a masked field and editable
+  The images the agent made (`chat/images`, decision 0392) are drawn from the bytes `image/read`
+  answers, never loaded from an address (`src/chat/made-images-figure.tsx`). A credential request
+  (decision 0388) shows above the composer with a masked field and editable
   hosts (`src/chat/credential-request-card.tsx`); the value goes only in the answer's call. The agent's answers show their
   Markdown through `rich-text`, the reader the Telegram bot uses, drawn as elements
   (`src/chat/rich-text.tsx`, decision 0383).

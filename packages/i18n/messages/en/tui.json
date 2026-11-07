@@ -34,5 +34,6 @@
   "question.choice": "{number}. {choice}",
   "credential.keys": "{name}: type it, then Enter stores it · Esc skips",
   "credential.multiline": "That paste holds more than one line, so none of it was taken. Paste the credential on one line.",
-  "credential.closed": "{outcome, select, stored {The credential is stored; the agent goes on without seeing it.} skipped {Skipped: no credential was stored.} expired {The request for the credential ran out of time; nothing was stored.} other {The agent asked for another credential instead.}}"
+  "credential.closed": "{outcome, select, stored {The credential is stored; the agent goes on without seeing it.} skipped {Skipped: no credential was stored.} expired {The request for the credential ran out of time; nothing was stored.} other {The agent asked for another credential instead.}}",
+  "images.made": "{agent} made {count, plural, one {an image} other {# images}}, saved at:"
 }

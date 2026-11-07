@@ -56,7 +56,12 @@ export interface BotCalls {
    */
   sayPhoto(
     target: ReplyTarget,
-    photo: { readonly png: Uint8Array; readonly caption: readonly RichLine[] },
+    photo: {
+      readonly png: Uint8Array;
+      readonly caption: readonly RichLine[];
+      /** The file's name, which names its format; `address.png` when left out. */
+      readonly fileName?: string;
+    },
     options: { readonly signal: AbortSignal },
   ): Promise<void>;
   /**
@@ -157,16 +162,21 @@ function sayRichWith(api: Api, reply: BotCalls["reply"]): BotCalls["sayRich"] {
 // A photo's caption as HTML, or as plain text when Telegram cannot parse the HTML.
 async function sendPhotoOnce(
   api: Api,
-  sent: { readonly target: ReplyTarget; readonly png: Uint8Array; readonly caption: string },
+  sent: {
+    readonly target: ReplyTarget;
+    readonly png: Uint8Array;
+    readonly caption: string;
+    readonly fileName?: string;
+  },
   options: { readonly signal: AbortSignal; readonly isHtml: boolean },
 ): Promise<void> {
-  const { target, png, caption } = sent;
+  const { target, png, caption, fileName = "address.png" } = sent;
   const thread = target.threadId === undefined ? {} : { message_thread_id: target.threadId };
   const mode = options.isHtml ? { parse_mode: "HTML" as const } : {};
   await callBotApi("sendPhoto", options.signal, async (signal) =>
     api.sendPhoto(
       target.chatId,
-      new InputFile(png, "address.png"),
+      new InputFile(png, fileName),
       { ...thread, caption, ...mode },
       signal,
     ),
@@ -176,11 +186,12 @@ async function sendPhotoOnce(
 function sayPhotoWith(api: Api, sayRich: BotCalls["sayRich"]): BotCalls["sayPhoto"] {
   return async (target, photo, options) => {
     const { png, caption } = photo;
+    const named = photo.fileName === undefined ? {} : { fileName: photo.fileName };
     const { signal } = options;
     try {
       await sendPhotoOnce(
         api,
-        { target, png, caption: richHtmlOf(caption) },
+        { target, png, caption: richHtmlOf(caption), ...named },
         { signal, isHtml: true },
       );
     } catch (error) {
@@ -188,7 +199,7 @@ function sayPhotoWith(api: Api, sayRich: BotCalls["sayRich"]): BotCalls["sayPhot
       if (isEntitiesUnparsed(error)) {
         await sendPhotoOnce(
           api,
-          { target, png, caption: richPlainOf(caption) },
+          { target, png, caption: richPlainOf(caption), ...named },
           { signal, isHtml: false },
         );
         return;

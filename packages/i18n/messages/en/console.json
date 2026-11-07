@@ -195,5 +195,7 @@
   "rules.event.what": "What became of it",
   "rules.event.id": "Alert id",
   "rules.event.outcome": "{taken, select, repeat {A repeat of an alert before it, recorded only} rate {Over the rule's rate, recorded only} other {{fill, select, filled {Filled on paper} skipped {{hasReason, select, yes {Skipped: {reason}} other {Skipped}}} other {Waits for its fill}}}}",
-  "rules.olderEvents": "Show older alerts"
+  "rules.olderEvents": "Show older alerts",
+  "chat.madeImage": "An image the agent made",
+  "chat.madeImageMissing": "The image is no longer held; open it from the path below."
 }

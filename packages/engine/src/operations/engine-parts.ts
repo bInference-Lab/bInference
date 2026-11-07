@@ -4,6 +4,7 @@ import { createDailyModelBudget } from "../billing/daily-model-budget.js";
 import { createModelBudget, type ModelBudget } from "../billing/model-budget.js";
 import { createUsageHandlers, type UsageHandlers } from "../billing/usage-handlers.js";
 import type { AgentInboxMessage } from "../chat/agent-inbox-record.js";
+import type { ChatRelayOptions } from "../chat/chat-relay-parts.js";
 import { type ChatHandlers, type ChatRelay, createChatRelay } from "../chat/chat-relay.js";
 import { createRunningTurns } from "../chat/running-turns.js";
 import type { StoredIntents } from "../intents/create-stored-intents.js";
@@ -91,6 +92,19 @@ function budgetsOf(options: EngineOptions): {
   return { billing, budget: budgetOf(options, billing) };
 }
 
+// What the agent's chat reaches on this machine, when the composition root gives it: the images it
+// views, where the images it makes are saved, and whether a community plugin speaks in its turns.
+function agentSideOf(
+  options: EngineOptions,
+): Pick<ChatRelayOptions, "viewImages" | "madeImageFiles" | "communityPluginsOn"> {
+  const { viewImages, shell, communityPluginsOn } = options;
+  return {
+    ...(viewImages === undefined ? {} : { viewImages }),
+    ...(shell?.files === undefined ? {} : { madeImageFiles: shell.files.files }),
+    ...(communityPluginsOn === undefined ? {} : { communityPluginsOn }),
+  };
+}
+
 /** Creates the engine's {@link EngineChat}, whose turns spend each agent's model budget. */
 export function engineChatOf(options: EngineOptions): EngineChat {
   const { stores, chains } = options;
@@ -114,11 +128,8 @@ export function engineChatOf(options: EngineOptions): EngineChat {
     clock: options.clock,
     publish: options.publish,
     images,
-    ...(options.viewImages === undefined ? {} : { viewImages: options.viewImages }),
+    ...agentSideOf(options),
     credentials: stores.credentials,
-    ...(options.communityPluginsOn === undefined
-      ? {}
-      : { communityPluginsOn: options.communityPluginsOn }),
   });
   const settled = (message: AgentInboxMessage): void => {
     relay.settled(message);

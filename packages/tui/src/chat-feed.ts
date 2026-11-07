@@ -46,6 +46,45 @@ function ended(state: ChatState, turn: string): ChatState {
   return state.running?.turn === turn ? withoutRunning(state) : state;
 }
 
+// Text from outside, made safe to print whole.
+function shown(text: string): string {
+  return displayOutsideText(text, Number.POSITIVE_INFINITY);
+}
+
+// What a tool showed, as the terminal prints it: a chart's text, its title in bold (decision 0387),
+// or where each image the agent made was saved, since the terminal draws neither.
+function shownLines(
+  context: ChatContext,
+  push: Extract<ChatPush, { readonly kind: "chat/chart" | "chat/images" }>,
+): readonly ScreenLine[] {
+  if (push.kind === "chat/chart") {
+    return chartTextLines(push.chart).map((line, index): ScreenLine =>
+      index === 0 ? { text: shown(line), tone: "bold" } : { text: shown(line) },
+    );
+  }
+  const count = push.images.length;
+  return [
+    { text: context.words("tui.images.made", { agent: context.agentName, count }), tone: "bold" },
+    ...push.images.map((made): ScreenLine => ({ text: shown(made.path) })),
+  ];
+}
+
+// A message of the agent: the answer so far into the live area, or the final answer printed.
+function messaged(
+  context: ChatContext,
+  feed: { readonly parts: ChatFeedParts; readonly print: ChatContext["print"] },
+  push: Extract<ChatPush, { readonly kind: "chat/message" }>,
+): void {
+  const { store, clock } = context;
+  if (!push.final) {
+    store.update((state) => drafted(state, push, clock.now()));
+    return;
+  }
+  feed.parts.transcript.printed("agent", push.turn);
+  feed.print(agentSaidLines(context.agentName, push.text));
+  store.update(answered);
+}
+
 // A chat push: the running turn and its answer so far, a final answer, a status line, its end.
 // What it prints waits for the jobs before it, such as a read of the transcript.
 function onChatPush(context: ChatContext, parts: ChatFeedParts, push: ChatPush): void {
@@ -62,13 +101,7 @@ function onChatPush(context: ChatContext, parts: ChatFeedParts, push: ChatPush):
       parts.queue(async () => parts.transcript.catchUp());
       return;
     case "chat/message":
-      if (!push.final) {
-        store.update((state) => drafted(state, push, clock.now()));
-        return;
-      }
-      parts.transcript.printed("agent", push.turn);
-      print(agentSaidLines(context.agentName, push.text));
-      store.update(answered);
+      messaged(context, { parts, print }, push);
       return;
     case "chat/status":
       print([statusLine(context.formatter, push.statusKey, push.values)]);
@@ -81,14 +114,9 @@ function onChatPush(context: ChatContext, parts: ChatFeedParts, push: ChatPush):
     case "chat/deposit":
       print(depositLines(context.formatter, push));
       return;
-    // The terminal draws no chart, so it prints the chart's text (decision 0387).
     case "chat/chart":
-      print(
-        chartTextLines(push.chart).map((line, index): ScreenLine => {
-          const text = displayOutsideText(line, Number.POSITIVE_INFINITY);
-          return index === 0 ? { text, tone: "bold" } : { text };
-        }),
-      );
+    case "chat/images":
+      print(shownLines(context, push));
       return;
     case "chat/turnEnded":
       store.update((state) => ended(state, push.turn));

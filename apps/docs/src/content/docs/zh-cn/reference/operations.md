@@ -288,6 +288,9 @@ description: "引擎协议的每个操作：调用所需的权限范围、操作
 | 操作 | 权限范围 | 类型 | 接受位置 | 回复方 |
 | --- | --- | --- | --- | --- |
 | `image/view` | `agent` | 读取 | 任何连接 | 引擎 |
+| `image/store` | `agent` | 读取 | 任何连接 | 引擎 |
+| `image/made` | `agent` | 读取 | 任何连接 | 引擎 |
+| `image/read` | `read` | 读取 | 任何连接 | 引擎 |
 
 ## `shell`
 

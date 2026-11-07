@@ -1,7 +1,8 @@
 import { err, type Id, jsonValueSchema, ok, type Result } from "@binference/core";
 import type { ProtocolErrorCode } from "@binference/protocol";
 import type { ChatRelayOptions } from "../chat/chat-relay-parts.js";
-import { chatTopic, pushInbox } from "../chat/chat-relay-parts.js";
+import { chatTopic } from "../chat/chat-relay-parts.js";
+import { wakeWithMessage } from "../chat/engine-message.js";
 import { answererOf, type EngineCall, type EngineHandler } from "../operations/engine-call.js";
 import { createCredentialRequests, type OpenRequest } from "./credential-requests.js";
 import type { CredentialStore } from "./ports.js";
@@ -49,26 +50,9 @@ async function wake(
   answer: { readonly request: OpenRequest; readonly hosts?: readonly string[] },
   call: Pick<EngineCall<"credential/answer" | "credential/set">, "caller" | "signal">,
 ): Promise<Result<{ readonly session: Id<"ses">; readonly turn: Id<"trn"> }, ProtocolErrorCode>> {
-  const { ids, clock } = options;
-  const turn = ids.next("trn");
+  const text = answerText(answer.request, answer.hosts);
   const surface = answererOf(call.caller).surface;
-  const stored = await options.agentInbox.add(
-    {
-      id: ids.next("msg"),
-      agentId: answer.request.agent,
-      kind: "inbox/message",
-      turnId: turn,
-      payload: { text: answerText(answer.request, answer.hosts), surface },
-      atMs: clock.now(),
-      opens: ids.next("ses"),
-    },
-    call,
-  );
-  if (!stored.ok) {
-    return err(stored.error === "busy" ? "protocol.busy" : "agent.not_found");
-  }
-  await pushInbox(options, stored.value, call.signal);
-  return ok({ session: stored.value.sessionId, turn });
+  return wakeWithMessage(options, { agent: answer.request.agent, text, surface }, call.signal);
 }
 
 // The open request a call names, for its own agent.

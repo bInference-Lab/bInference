@@ -76,6 +76,10 @@ function stepOf(push: ChatPush, id: string): PushStep {
     const line: LiveLine = { kind: "chart", id, turn: push.turn, chart: push.chart };
     return { lines: (lines) => [...lines, line] };
   }
+  if (push.kind === "chat/images") {
+    const line: LiveLine = { kind: "images", id, turn: push.turn, images: push.images };
+    return { lines: (lines) => [...lines, line] };
+  }
   // The page shows the answer so far while the turn runs; a progress line, the model's reasoning
   // and a deposit card, which the console does not draw yet, add nothing to it.
   if (

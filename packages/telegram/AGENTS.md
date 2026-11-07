@@ -44,8 +44,9 @@ Rules for this package:
   through `sayPhoto` and `sayRich`: lines of `RichRun`s that `rich-html.ts` draws, so each address
   shows in `code` and its explorer page as a link, and a message Telegram cannot parse goes again
   as plain text. Its photos are QR codes `@binference/qr` makes from the addresses the engine
-  answers, never from chat text: the only files the bot uploads, read whole into bytes by the
-  fetch layer, at most 10 MB. A refusal is answered with the error message of its code. The menu is registered with
+  answers, never from chat text. They and the images the agent made (`chat/images`, read from the
+  engine's `image/read`, `src/chat/made-photos.ts`, decision 0392) are the only files the bot
+  uploads, read whole into bytes by the fetch layer, at most 10 MB. A refusal is answered with the error message of its code. The menu is registered with
   `setMyCommands` for private chats, in English and in Chinese.
 - The engine's notices of spec 4, section 4 go to the owner's chat from the outbox through
   `createNoticeOutbox` (decision 0133), written by the engine's `noticeText` in the owner's
