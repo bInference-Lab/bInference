@@ -44,7 +44,7 @@ const unheld = testWalletRecord({
 });
 const address = accountRefSchema.parse("fake:1:0x00000052");
 
-async function agentList() {
+async function agentHandlers() {
   const agents = createMemoryAgentStore();
   await agents.create(testAgentDraft(), testCall({}));
   await agents.create(
@@ -63,7 +63,11 @@ async function agentList() {
     signingSchemes: [createFakeSigningScheme()],
   });
   const custody = createFakeSigner(new Map([[main.id, address]]));
-  return createAgentListHandlers({ agents, install, custody, chains })["agent/list"];
+  return createAgentListHandlers({ agents, install, custody, chains });
+}
+
+async function agentList() {
+  return (await agentHandlers())["agent/list"];
 }
 
 describe("the agent list", () => {
@@ -106,5 +110,19 @@ describe("the agent list", () => {
     await expect(list(testCall({ cursor: fixtureId("agt", 59) }))).resolves.toStrictEqual(
       err("protocol.bad_args"),
     );
+  });
+
+  it("reads one agent with its default wallet, as the list shows it", async () => {
+    const handlers = await agentHandlers();
+    const { items } = expectOk(await handlers["agent/list"](testCall({})));
+    const one = expectOk(await handlers["agent/get"](testCall({ agent: testAgent })));
+    expect(one).toStrictEqual(items[0]);
+  });
+
+  it("refuses an agent the install does not hold", async () => {
+    const handlers = await agentHandlers();
+    await expect(
+      handlers["agent/get"](testCall({ agent: fixtureId("agt", 59) })),
+    ).resolves.toStrictEqual(err("agent.not_found"));
   });
 });
