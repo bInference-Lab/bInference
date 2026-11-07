@@ -12,6 +12,7 @@ import {
 import { createFakeMenus, type FakeMenu, type FakeMenus } from "./fake-commands.js";
 import { createFakeFiles, type FakeFile, type FakeFiles } from "./fake-files.js";
 import type { FakeTopic } from "./fake-topics.js";
+import { readFakeBody } from "./fake-uploads.js";
 import { downloadOverFetch, httpOverFetch } from "./fetch-http.js";
 
 /** A token in the Bot API's shape, for tests only. */
@@ -231,10 +232,13 @@ async function serve(state: State, request: FakeRequest): Promise<Response> {
   return result.ok ? answer(result.value) : refuse({ status: 400, description: result.error });
 }
 
-function requestOf(input: Parameters<Fetch>[0], init: RequestInit | undefined): FakeRequest {
+async function requestOf(
+  input: Parameters<Fetch>[0],
+  init: RequestInit | undefined,
+): Promise<FakeRequest> {
   const url = urlOf(input);
   const [bot = "", method = ""] = new URL(url).pathname.split("/").slice(-2);
-  const body = typeof init?.body === "string" ? init.body : "{}";
+  const body = await readFakeBody(init);
   const chatId = chatSchema.safeParse(JSON.parse(body)).data?.chat_id;
   const call = { method, ...(chatId === undefined ? {} : { chatId }) };
   return { call, bot, url, body, signal: init?.signal };
@@ -256,7 +260,7 @@ function fetchOf(state: State): Fetch {
         ? state.files.download(file[2])
         : new Response("", { status: 404 });
     }
-    const request = requestOf(input, init);
+    const request = await requestOf(input, init);
     state.calls.push(request.call);
     const failure = takeFailure(state, request.call);
     if (failure === "network") {

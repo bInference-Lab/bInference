@@ -40,9 +40,11 @@ Rules for this package:
   and any other message goes on to the agent's chat. Replies go out as plain text, with no parse
   mode, split at line breaks into messages of at most 4,096 characters (`src/split/`); a value
   from outside in them goes through the engine's `cardLineText`. `/wallet` alone goes as HTML,
-  through `sayRich`: lines of `RichRun`s that `rich-html.ts` draws, so each address shows in
-  `code` and its explorer page as a link, and a message Telegram cannot parse goes again as plain
-  text. A refusal is answered with the error message of its code. The menu is registered with
+  through `sayPhoto` and `sayRich`: lines of `RichRun`s that `rich-html.ts` draws, so each address
+  shows in `code` and its explorer page as a link, and a message Telegram cannot parse goes again
+  as plain text. Its photos are QR codes `@binference/qr` makes from the addresses the engine
+  answers, never from chat text: the only files the bot uploads, read whole into bytes by the
+  fetch layer, at most 10 MB. A refusal is answered with the error message of its code. The menu is registered with
   `setMyCommands` for private chats, in English and in Chinese.
 - The engine's notices of spec 4, section 4 go to the owner's chat from the outbox through
   `createNoticeOutbox` (decision 0133), written by the engine's `noticeText` in the owner's

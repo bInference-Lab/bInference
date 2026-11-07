@@ -1032,18 +1032,29 @@ dollars per buy, `cmd.orders.copyItem` with `cmd.orders.copy`: "Copy trade · co
 to {perBuy} a buy · {fills} · ends {expiry}", instead of a side and a token
 ([decision 0261](../DECISIONS.md#d0261)).
 
-`/wallet` shows the wallets of the agent the chat talks to, archived ones left out, each in three
-lines: `cmd.wallet.item`, its full address in `code`, which the owner taps to copy, and
-`cmd.wallet.explorer`, a link to the address's page on the first block explorer the chain registry
-lists, from that explorer's `addressUrl` page template. A blank line parts two wallets. It is the
-one fast command that goes as Telegram HTML, drawn from the fixed tags of the agent's chat text
+`/wallet` shows the wallets of the agent the chat talks to, archived ones left out, one message
+each, in order. A wallet the agent runs from goes as a photo of its address's QR code, made from
+the address the engine reads from custody, never from chat text: the code holds the address alone,
+as the chain writes it, with no scheme, chain id or amount, so every wallet and exchange app reads
+it. Its caption is `cmd.wallet.item`, the full address in `code`, which the owner taps to copy,
+`cmd.wallet.network`, `cmd.wallet.paperFunds` while the agent trades on paper,
+`cmd.wallet.frozenFunds` while it is frozen, and `cmd.wallet.explorer`, a link to the address's
+page on the first block explorer the chain registry lists, from that explorer's `addressUrl` page
+template. An extra launch or bridge wallet, which nothing runs from, gets no code: its message says
+`cmd.wallet.extraFunds` in place of the warnings. When Telegram refuses the photo, its caption
+goes as a message, so the address still arrives. It is the one fast command that goes as Telegram
+HTML, drawn from the fixed tags of the agent's chat text
 ([decision 0370](../DECISIONS.md#d0370)), so the address shows as code.
 
-| Line     | Key                   | English                              | 中文                                 |
-| -------- | --------------------- | ------------------------------------ | ------------------------------------ |
-| Wallet   | `cmd.wallet.item`     | {wallet} · {role} · {chain} · {mode} | {wallet} · {role} · {chain} · {mode} |
-| Explorer | `cmd.wallet.explorer` | View on {explorer}                   | 在 {explorer} 查看                   |
-| None     | `cmd.wallet.none`     | This agent has no wallet yet.        | 这个 Agent 还没有钱包。              |
+| Line         | Key                      | English                                                                                                                       | 中文                                                                                                       |
+| ------------ | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Wallet       | `cmd.wallet.item`        | {wallet} · {role} · {chain} · {mode}                                                                                          | {wallet} · {role} · {chain} · {mode}                                                                       |
+| Network      | `cmd.wallet.network`     | Send only {chain} assets to this address. An asset sent on another network can be lost.                                       | 只向此地址发送 {chain} 上的资产。通过其他网络发送的资产可能会丢失。                                        |
+| Paper        | `cmd.wallet.paperFunds`  | This agent trades on paper: what you send here is real money, and it waits in this wallet until you switch the agent to live. | 这个 Agent 处于模拟模式，只做模拟交易：你转账到这里的是真钱，会留在这个钱包里，直到你把 Agent 切换为实盘。 |
+| Frozen       | `cmd.wallet.frozenFunds` | This agent is frozen: what you send arrives, but it trades nothing until you unfreeze it.                                     | 这个 Agent 已冻结：你转账的资金会到账，但在你解除冻结之前它不会交易。                                      |
+| Extra wallet | `cmd.wallet.extraFunds`  | Nothing runs from this wallet. Send it no funds.                                                                              | 没有任何功能使用这个钱包。请不要向它转账任何资金。                                                         |
+| Explorer     | `cmd.wallet.explorer`    | View on {explorer}                                                                                                            | 在 {explorer} 查看                                                                                         |
+| None         | `cmd.wallet.none`        | This agent has no wallet yet.                                                                                                 | 这个 Agent 还没有钱包。                                                                                    |
 
 `{role}` reads "agent wallet", "launch wallet", "bridge wallet", "extra launch wallet" or "extra
 bridge wallet" / 「Agent 钱包」「发射钱包」「跨链钱包」「额外的发射钱包」「额外的跨链钱包」.

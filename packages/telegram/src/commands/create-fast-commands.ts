@@ -176,6 +176,7 @@ function contextOf(parts: Parts, asker: Asker): CommandContext {
     signal,
     say: async (text, sayOptions) => bot.say(target, text, { signal, ...sayOptions }),
     sayRich: async (lines) => bot.sayRich(target, lines, { signal }),
+    sayPhoto: async (png, caption) => bot.sayPhoto(target, { png, caption }, { signal }),
   };
 }
 

@@ -53,6 +53,11 @@ export interface CommandContext {
    * `code` the owner taps to copy, split at line breaks; plain text if Telegram cannot parse it.
    */
   readonly sayRich: (lines: readonly RichLine[]) => Promise<void>;
+  /**
+   * Sends an image binference made, such as an address's QR code, as a photo with its caption
+   * drawn as `sayRich` draws its lines; the lines go as a message when Telegram refuses the photo.
+   */
+  readonly sayPhoto: (png: Uint8Array, caption: readonly RichLine[]) => Promise<void>;
 }
 
 /** How a reply goes out: the message it answers, and its buttons. */

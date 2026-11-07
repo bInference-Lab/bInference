@@ -1,5 +1,5 @@
 import type { Http, HttpRequest } from "@binference/core";
-import { Api } from "grammy";
+import { Api, InputFile } from "grammy";
 import { describe, expect, it } from "vitest";
 import {
   createFakeBotApi,
@@ -86,5 +86,26 @@ describe("grammY's fetch over the Http port", () => {
     expect(() =>
       botApiRequestOf("https://api.telegram.org/bot1:a/sendPhoto", { body: stream }),
     ).toThrow(expect.objectContaining({ code: "telegram.request_unsupported" }));
+  });
+
+  it("uploads a photo the bot made as multipart bytes, with grammY's content type", async () => {
+    const botApi = createFakeBotApi();
+    const { http, sent } = recorded(botApi);
+    const png = Uint8Array.from([137, 80, 78, 71, 13, 10, 26, 10, 1, 2, 3]);
+    await apiOver(http).sendPhoto(42, new InputFile(png, "address.png"), { caption: "Main" });
+    expect(sent[0]).toMatchObject({ method: "POST", url: `${fakeBotApiBase}/sendPhoto` });
+    expect(sent[0]?.headers?.["content-type"]).toMatch(/^multipart\/form-data; boundary=/u);
+    expect(sent[0]?.body).toBeUndefined();
+    expect(botApi.messages()).toMatchObject([{ chatId: 42, text: "Main", file: { bytes: png } }]);
+  });
+
+  it("refuses an upload over Telegram's 10 MB photo limit before it leaves", async () => {
+    const botApi = createFakeBotApi();
+    const { http, sent } = recorded(botApi);
+    const huge = new Uint8Array(10 * 1024 * 1024 + 1);
+    await expect(
+      apiOver(http).sendPhoto(42, new InputFile(huge, "huge.png")),
+    ).rejects.toMatchObject({ error: { code: "telegram.request_unsupported" } });
+    expect(sent).toStrictEqual([]);
   });
 });

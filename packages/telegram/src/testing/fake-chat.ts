@@ -207,13 +207,25 @@ function sendMessage(state: ChatsState, body: string): Result<JsonValue, string>
 }
 
 // A file sent again by its id, kept as a message the chat holds, with what a reader saw.
-function keepFile(state: ChatsState, sent: SentFile): JsonValue {
+// A caption reads as a message's text does; a file without one has no text.
+function captionOf(sent: SentFile): Result<FormattedText, string> {
+  return sent.caption === undefined
+    ? ok({ text: "", entities: [] })
+    : formatted(sent.caption.text, sent.caption.parseMode);
+}
+
+function keepFile(state: ChatsState, sent: SentFile): Result<JsonValue, string> {
+  const caption = captionOf(sent);
+  if (!caption.ok) {
+    return caption;
+  }
+  const { text, entities } = caption.value;
   const target = { chatId: sent.chatId, messageId: state.nextMessageId() };
-  const message = { ...target, text: "", entities: [], buttons: [], file: sent.file };
+  const message = { ...target, text, entities, buttons: [], file: sent.file };
   state.messages.set(keyOf(target.chatId, target.messageId), message);
   const reply = sent.replyTo === undefined ? {} : { replyTo: sent.replyTo };
-  state.sent.push({ chatId: target.chatId, text: "", file: sent.file, ...reply });
-  return messageJson(message);
+  state.sent.push({ chatId: target.chatId, text, file: sent.file, ...reply });
+  return ok(messageJson(message));
 }
 
 function editMessageText(state: ChatsState, body: string): Result<JsonValue, string> {

@@ -1,6 +1,7 @@
 import { ok } from "@binference/core";
 import type { OwnerChatHandlers } from "@binference/engine/surfaces";
 import { protocolIdSchema, type ResultOf, type WalletView } from "@binference/protocol";
+import { qrPng } from "@binference/qr";
 import { describe, expect, it } from "vitest";
 import { startCommandBot } from "./test-command-bot.js";
 
@@ -8,24 +9,36 @@ const agent = protocolIdSchema("agent").parse("agt_0190f1c2-3a4b-7c5d-8e6f-00000
 const walletId = (n: number) =>
   protocolIdSchema("wallet").parse(`wal_0190f1c2-3a4b-7c5d-8e6f-0000000000${String(n)}`);
 const live = String.fromCodePoint(0x1f534);
-const status: ResultOf<"engine/status"> = {
-  state: "ready",
-  version: "2026.11.0",
-  protocol: 1,
-  frozen: false,
-  agents: [{ id: agent, mode: "live", frozen: false }],
-  health: [],
-};
+const paper = String.fromCodePoint(0x1f9ea);
+const network =
+  "Send only Fake One assets to this address. An asset sent on another network can be lost.";
+
+function statusOf(agentStatus: {
+  mode: "live" | "paper";
+  frozen: boolean;
+}): ResultOf<"engine/status"> {
+  return {
+    state: "ready",
+    version: "2026.11.0",
+    protocol: 1,
+    frozen: false,
+    agents: [{ id: agent, ...agentStatus }],
+    health: [],
+  };
+}
 
 function view(n: number, label: string, marks: Partial<WalletView> = {}): WalletView {
   const address = `fake:1:0x000000${String(n)}` as WalletView["address"];
   return { wallet: walletId(n), agent, address, label, createdAt: n, ...marks };
 }
 
-function walletsBot(items: readonly WalletView[]) {
+function walletsBot(
+  items: readonly WalletView[],
+  agentStatus: { mode: "live" | "paper"; frozen: boolean } = { mode: "live", frozen: false },
+) {
   const asked: unknown[] = [];
   const handlers: OwnerChatHandlers = {
-    "engine/status": async () => Promise.resolve(ok(status)),
+    "engine/status": async () => Promise.resolve(ok(statusOf(agentStatus))),
     "wallet/list": async ({ args }) => {
       asked.push(args);
       return Promise.resolve(ok({ items }));
@@ -35,7 +48,7 @@ function walletsBot(items: readonly WalletView[]) {
 }
 
 describe("the /wallet command", () => {
-  it("shows each wallet's role, chain and mode, its address as code and its explorer page", async () => {
+  it("sends each wallet as the QR code of its own address, captioned with how to fund it", async () => {
     const engine = walletsBot([
       view(10, "Main"),
       view(11, "Launch", { role: "launch" }),
@@ -45,45 +58,56 @@ describe("the /wallet command", () => {
     await bot.send("/wallet");
 
     expect(engine.asked).toStrictEqual([{ agent }]);
-    expect(bot.botApi.messages()).toMatchObject([
-      {
-        text: [
-          `Main · agent wallet · Fake One · ${live} Live`,
-          "0x00000010",
-          "View on scan.example.invalid",
-          "",
-          `Launch · launch wallet · Fake One · ${live} Live`,
-          "0x00000011",
-          "View on scan.example.invalid",
-        ].join("\n"),
-        entities: [
-          { type: "code", offset: 41, length: 10 },
-          {
-            type: "text_link",
-            offset: 52,
-            length: 28,
-            url: "https://scan.example.invalid/address/0x00000010",
-          },
-          { type: "code", offset: 126, length: 10 },
-          {
-            type: "text_link",
-            offset: 137,
-            length: 28,
-            url: "https://scan.example.invalid/address/0x00000011",
-          },
-        ],
-      },
+    const messages = bot.botApi.messages();
+    expect(messages.map((message) => message.file?.bytes)).toStrictEqual([
+      qrPng("0x00000010"),
+      qrPng("0x00000011"),
+    ]);
+    expect(messages[0]).toMatchObject({
+      text: [
+        `Main · agent wallet · Fake One · ${live} Live`,
+        "0x00000010",
+        network,
+        "View on scan.example.invalid",
+      ].join("\n"),
+      entities: [
+        { type: "code", offset: 41, length: 10 },
+        { type: "text_link", url: "https://scan.example.invalid/address/0x00000010" },
+      ],
+    });
+    expect(messages[1]?.text.split("\n")[0]).toBe(
+      `Launch · launch wallet · Fake One · ${live} Live`,
+    );
+  });
+
+  it("warns that a paper agent's deposit is real money and a frozen agent trades nothing", async () => {
+    const bot = await startCommandBot(
+      walletsBot([view(10, "Main")], { mode: "paper", frozen: true }).handlers,
+    );
+    await bot.send("/wallet");
+    expect(bot.botApi.messages()[0]?.text.split("\n")).toStrictEqual([
+      `Main · agent wallet · Fake One · ${paper} Paper`,
+      "0x00000010",
+      network,
+      "This agent trades on paper: what you send here is real money, and it waits in this wallet until you switch the agent to live.",
+      "This agent is frozen: what you send arrives, but it trades nothing until you unfreeze it.",
+      "View on scan.example.invalid",
     ]);
   });
 
-  it("names an extra bridge wallet a rebuild adopted, so the owner rescues what it holds", async () => {
+  it("gives a wallet nothing runs from no QR code, and says to send it nothing", async () => {
     const bot = await startCommandBot(
       walletsBot([view(13, "Spare", { bridge: true, extra: true })]).handlers,
     );
     await bot.send("/wallet");
-    expect(bot.texts()[0]?.split("\n")[0]).toBe(
+    const [message] = bot.botApi.messages();
+    expect(message?.file).toBeUndefined();
+    expect(message?.text.split("\n")).toStrictEqual([
       `Spare · extra bridge wallet · Fake One · ${live} Live`,
-    );
+      "0x00000013",
+      "Nothing runs from this wallet. Send it no funds.",
+      "View on scan.example.invalid",
+    ]);
   });
 
   it("names a chain the registry does not list as the engine does, with no explorer link", async () => {
@@ -93,9 +117,28 @@ describe("the /wallet command", () => {
     await bot.send("/wallet");
     expect(bot.botApi.messages()).toMatchObject([
       {
-        text: `Far · agent wallet · Fake Two · ${live} Live\n0x00000014`,
-        entities: [{ type: "code" }],
+        text: [
+          `Far · agent wallet · Fake Two · ${live} Live`,
+          "0x00000014",
+          "Send only Fake Two assets to this address. An asset sent on another network can be lost.",
+        ].join("\n"),
+        file: { bytes: qrPng("0x00000014") },
       },
+    ]);
+  });
+
+  it("sends the lines as a message when Telegram refuses the photo", async () => {
+    const bot = await startCommandBot(walletsBot([view(10, "Main")]).handlers);
+    bot.botApi.failNext("sendPhoto", {
+      status: 400,
+      description: "Bad Request: IMAGE_PROCESS_FAILED",
+    });
+    await bot.send("/wallet");
+    const [message] = bot.botApi.messages();
+    expect(message?.file).toBeUndefined();
+    expect(message?.text.split("\n").slice(0, 2)).toStrictEqual([
+      `Main · agent wallet · Fake One · ${live} Live`,
+      "0x00000010",
     ]);
   });
 

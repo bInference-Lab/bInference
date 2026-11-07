@@ -24,7 +24,8 @@ export function httpOverFetch(fetch: BotApiFetch): Http {
   return {
     request: async (request) => {
       request.signal.throwIfAborted();
-      const body = request.body === undefined ? {} : { body: request.body };
+      const sent = request.bodyBytes ?? request.body;
+      const body = sent === undefined ? {} : { body: sent };
       const headers = request.headers === undefined ? {} : { headers: request.headers };
       try {
         const response = await fetch(request.url, {

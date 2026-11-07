@@ -1081,6 +1081,9 @@ importers:
       '@binference/i18n':
         specifier: workspace:*
         version: link:../i18n
+      '@binference/qr':
+        specifier: workspace:*
+        version: link:../qr
       grammy:
         specifier: 'catalog:'
         version: 1.46.0

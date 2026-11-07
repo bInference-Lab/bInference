@@ -90,7 +90,7 @@
       "httpListener": true
     },
     "telegram": {
-      "imports": ["core", "chain", "protocol", "i18n", "engine", "grammy"],
+      "imports": ["core", "chain", "protocol", "i18n", "engine", "grammy", "qr"],
       "userText": true
     },
     "client": {

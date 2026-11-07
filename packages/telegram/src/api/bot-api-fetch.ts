@@ -9,8 +9,10 @@ export interface BotApiRequest {
   readonly url: string;
   /** Only the content type: the adapter keeps its own connections and names itself. */
   readonly headers: Readonly<Record<string, string>>;
-  /** grammY's JSON payload; binference sends Telegram no files. */
+  /** grammY's JSON payload. */
   readonly body?: string;
+  /** A file upload as grammY encodes it, `multipart/form-data`, in place of `body`. */
+  readonly bodyBytes?: Uint8Array;
 }
 
 /** What came back for one Bot API request: its status, its content type and its text. */
@@ -38,10 +40,23 @@ function methodOf(init: RequestInit | undefined): BotApiRequest["method"] {
   return method;
 }
 
+// A request's method, URL and content type, the only header the adapter passes on.
+function requestHead(
+  input: string | URL | Request,
+  init: RequestInit | undefined,
+): Omit<BotApiRequest, "body" | "bodyBytes"> {
+  const contentType = new Headers(init?.headers).get("content-type");
+  const headers = contentType === null ? {} : { "content-type": contentType };
+  return { method: methodOf(init), url: fetchInputUrl(input), headers };
+}
+
+// The largest upload binference sends: Telegram's own limit for a photo.
+const mostUploadBytes = 10 * 1024 * 1024;
+
 /**
  * Reads one of grammY's requests: its method, URL, content type and JSON text. grammY's
  * `connection` header stays behind, since the adapter owns its connections. A file upload, whose
- * body is a stream, is `telegram.request_unsupported`.
+ * body is a stream, is `telegram.request_unsupported` here; `createBotApiFetch` reads one whole.
  */
 export function botApiRequestOf(
   input: string | URL | Request,
@@ -51,14 +66,27 @@ export function botApiRequestOf(
   if (body !== undefined && typeof body !== "string") {
     throw unsupported("file uploads");
   }
-  const contentType = new Headers(init?.headers).get("content-type");
-  const headers = contentType === null ? {} : { "content-type": contentType };
-  return {
-    method: methodOf(init),
-    url: fetchInputUrl(input),
-    headers,
-    ...(body === undefined ? {} : { body }),
-  };
+  return { ...requestHead(input, init), ...(body === undefined ? {} : { body }) };
+}
+
+/*
+ * Reads one of grammY's requests as `botApiRequestOf` does, and a file upload too: grammY's
+ * `multipart/form-data` stream, read whole into bytes. An upload over Telegram's 10 MB photo limit
+ * is `telegram.request_unsupported`.
+ */
+async function readBotApiRequest(
+  input: string | URL | Request,
+  init: RequestInit | undefined,
+): Promise<BotApiRequest> {
+  const body = init?.body ?? undefined;
+  if (body === undefined || typeof body === "string") {
+    return botApiRequestOf(input, init);
+  }
+  const bytes = new Uint8Array(await new Response(body).arrayBuffer());
+  if (bytes.length > mostUploadBytes) {
+    throw unsupported("upload over 10 MB");
+  }
+  return { ...requestHead(input, init), bodyBytes: bytes };
 }
 
 /** The answer of the Http port as grammY reads it: its status and its text, read as JSON. */
@@ -101,7 +129,7 @@ export function botApiResponseOf(answer: BotApiAnswer): Response {
  */
 export function createBotApiFetch(http: Http): BotApiFetch {
   return async (input, init) => {
-    const request = botApiRequestOf(input, init);
+    const request = await readBotApiRequest(input, init);
     // grammY gives every call a signal of its own, bounded by its timeout.
     const signal = nodeSignalOf(init?.signal);
     return botApiResponseOf(botApiAnswerOf(await http.request({ ...request, signal })));

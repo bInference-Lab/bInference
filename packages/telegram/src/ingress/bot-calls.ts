@@ -1,4 +1,4 @@
-import type { Api } from "grammy";
+import { type Api, InputFile } from "grammy";
 import { isEntitiesUnparsed } from "../api/bot-api-error.schema.js";
 import { callBotApi } from "../api/call-bot-api.js";
 import { unlessGone } from "../api/unless-gone.js";
@@ -47,6 +47,16 @@ export interface BotCalls {
   sayRich(
     target: ReplyTarget,
     lines: readonly RichLine[],
+    options: { readonly signal: AbortSignal },
+  ): Promise<void>;
+  /**
+   * Sends an image the bot made as a photo, its caption drawn as `sayRich` draws its lines, with no
+   * link preview. A caption Telegram cannot parse goes once more as its plain text. When Telegram
+   * refuses the photo itself, the caption's lines go as a message, so the owner still reads them.
+   */
+  sayPhoto(
+    target: ReplyTarget,
+    photo: { readonly png: Uint8Array; readonly caption: readonly RichLine[] },
     options: { readonly signal: AbortSignal },
   ): Promise<void>;
   /**
@@ -144,6 +154,50 @@ function sayRichWith(api: Api, reply: BotCalls["reply"]): BotCalls["sayRich"] {
   };
 }
 
+// A photo's caption as HTML, or as plain text when Telegram cannot parse the HTML.
+async function sendPhotoOnce(
+  api: Api,
+  sent: { readonly target: ReplyTarget; readonly png: Uint8Array; readonly caption: string },
+  options: { readonly signal: AbortSignal; readonly isHtml: boolean },
+): Promise<void> {
+  const { target, png, caption } = sent;
+  const thread = target.threadId === undefined ? {} : { message_thread_id: target.threadId };
+  const mode = options.isHtml ? { parse_mode: "HTML" as const } : {};
+  await callBotApi("sendPhoto", options.signal, async (signal) =>
+    api.sendPhoto(
+      target.chatId,
+      new InputFile(png, "address.png"),
+      { ...thread, caption, ...mode },
+      signal,
+    ),
+  );
+}
+
+function sayPhotoWith(api: Api, sayRich: BotCalls["sayRich"]): BotCalls["sayPhoto"] {
+  return async (target, photo, options) => {
+    const { png, caption } = photo;
+    const { signal } = options;
+    try {
+      await sendPhotoOnce(
+        api,
+        { target, png, caption: richHtmlOf(caption) },
+        { signal, isHtml: true },
+      );
+    } catch (error) {
+      signal.throwIfAborted();
+      if (isEntitiesUnparsed(error)) {
+        await sendPhotoOnce(
+          api,
+          { target, png, caption: richPlainOf(caption) },
+          { signal, isHtml: false },
+        );
+        return;
+      }
+      await sayRich(target, caption, options);
+    }
+  };
+}
+
 export function createBotCalls(api: Api): BotCalls {
   const reply: BotCalls["reply"] = async (target, text, options) => {
     await callBotApi("sendMessage", options.signal, async (signal) =>
@@ -154,6 +208,7 @@ export function createBotCalls(api: Api): BotCalls {
     reply,
     say: sayWith(reply),
     sayRich: sayRichWith(api, reply),
+    sayPhoto: sayPhotoWith(api, sayRichWith(api, reply)),
     edit: async (at, text, options) =>
       unlessGone(
         callBotApi("editMessageText", options.signal, async (signal) =>

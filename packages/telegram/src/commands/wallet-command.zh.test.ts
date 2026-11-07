@@ -35,29 +35,28 @@ async function walletReply(items: readonly WalletView[]) {
 }
 
 describe("the /wallet command in Chinese", () => {
-  it("names each wallet's role, chain and mode in the owner's language", async () => {
+  it("captions each wallet's code with its role, chain, mode and warnings in the owner's language", async () => {
     const bot = await walletReply([
       view(10, "主钱包"),
       view(11, "发射", { role: "launch" }),
       view(12, "跨链", { bridge: true }),
       view(13, "多余", { role: "launch", extra: true }),
     ]);
+    const lines = (label: string, role: string, n: number) => [
+      `${label} · ${role} · Fake One · ${paper} 模拟`,
+      `0x000000${String(n)}`,
+      "只向此地址发送 Fake One 上的资产。通过其他网络发送的资产可能会丢失。",
+      "这个 Agent 处于模拟模式，只做模拟交易：你转账到这里的是真钱，会留在这个钱包里，直到你把 Agent 切换为实盘。",
+      "在 scan.example.invalid 查看",
+    ];
     expect(bot.texts()).toStrictEqual([
+      lines("主钱包", "Agent 钱包", 10).join("\n"),
+      lines("发射", "发射钱包", 11).join("\n"),
+      lines("跨链", "跨链钱包", 12).join("\n"),
       [
-        `主钱包 · Agent 钱包 · Fake One · ${paper} 模拟`,
-        "0x00000010",
-        "在 scan.example.invalid 查看",
-        "",
-        `发射 · 发射钱包 · Fake One · ${paper} 模拟`,
-        "0x00000011",
-        "在 scan.example.invalid 查看",
-        "",
-        `跨链 · 跨链钱包 · Fake One · ${paper} 模拟`,
-        "0x00000012",
-        "在 scan.example.invalid 查看",
-        "",
         `多余 · 额外的发射钱包 · Fake One · ${paper} 模拟`,
         "0x00000013",
+        "没有任何功能使用这个钱包。请不要向它转账任何资金。",
         "在 scan.example.invalid 查看",
       ].join("\n"),
     ]);
