@@ -23,6 +23,8 @@
   "image.unreadable": "Not read: binference could not fetch an image. Send it again.",
   "image.noVision": "Not read: the agent's model cannot read images and no vision model is set. Set `models.vision` in config.json5, or list the model in `models.imageInput`, then send the image again.",
   "firstChatDone": "Saved your answers to STRATEGY.md and PERSONA.md. Ask the agent to change them any time.",
+  "imageComing": "Making the image. It shows here when it is ready.",
+  "imagesComing": "Making the images. They show here when they are ready.",
   "tool.tokenSearch": "Searching tokens…",
   "tool.addresses": "Reading the address book…",
   "tool.wallets": "Reading the agent's wallets…",

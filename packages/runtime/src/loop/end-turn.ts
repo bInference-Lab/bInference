@@ -57,14 +57,18 @@ async function sayAndStatus(run: TurnRun, status: TurnStatusLine | undefined): P
  * follows the answer, then its final text without a paragraph that repeats what a tool showed the
  * owner (decision 0381), its status line, its end in the journal, then
  * `turn/end`. A turn that ends well with no line of its own ends with the closing line a tool
- * gave it. Each write is best effort with its own time limit, so a
+ * gave it; a line of images on their way only when the turn has no text either (decision 0399),
+ * so the owner never reads that no response came while they come. Each write is best effort with its own time limit, so a
  * port that fails or never answers still lets the turn end; any such failure ends it `failed`.
  */
 export async function endTurn(run: TurnRun, end: LoopEnd): Promise<TurnReport> {
   run.tally.enter("ending");
   await run.feed.settle();
-  const { closingLine } = run.tally.now();
-  const closing = end.outcome === "ok" && closingLine !== undefined;
+  const { closingLine, lastText } = run.tally.now();
+  const closing =
+    end.outcome === "ok" &&
+    closingLine !== undefined &&
+    (closingLine === "firstChatDone" || lastText.trim() === "");
   const status = end.status ?? (closing ? { line: closingLine } : undefined);
   const shown = await sayAndStatus(run, status);
   const ended = shown ? end.outcome : portFailure.outcome;

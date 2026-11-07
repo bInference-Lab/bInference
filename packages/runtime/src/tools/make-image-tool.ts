@@ -143,6 +143,7 @@ async function runJob(run: JobRun): Promise<void> {
 }
 
 const started = (count: number): ToolOutcome => ({
+  closingLine: count === 1 ? "imageComing" : "imagesComing",
   text: `Making ${count === 1 ? "the image" : `${String(count)} images`} now. They arrive in a later turn on their own, where you say they are ready; in this turn say at most one short line that you are making them, then end. Never call make_image again for this request.`,
   isError: false,
 });

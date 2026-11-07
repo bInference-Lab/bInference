@@ -3,8 +3,13 @@ import { callsReply, textReply } from "../testing/scripted-transport.js";
 import type { RecordedStep, TurnRecorder } from "../testing/turn-recorder.js";
 import type { ModelEvent, ResponseReplay } from "./model-event.js";
 import { createTestTurn, ownerMessage, type TestTool, testTurnId } from "./test-turns.js";
+import type { ToolOutcome } from "./turn-records.js";
 
 const usage = { inputTokens: 1, outputTokens: 1, cachedTokens: 0 };
+
+// A started image job's outcome, which gives the turn the line that images are on their way.
+const imageStarted = async (): Promise<ToolOutcome> =>
+  Promise.resolve({ text: "Making.", isError: false, closingLine: "imageComing" });
 
 // The usage record of the turn's attempt `n` of an unpriced test model: it counts $0.
 const usageStep = (n: number): RecordedStep => ({
@@ -162,6 +167,24 @@ describe("createChatTurn", () => {
       { kind: "journalEnd", outcome: "ok", heldBack: 0 },
       { kind: "end", outcome: "ok" },
     ]);
+  });
+
+  it("says images are on their way when the turn that started them has no text, and only then", async () => {
+    const makeImage: TestTool = { name: "make_image", kind: "control", run: imageStarted };
+    const quiet = createTestTurn({
+      replies: [callsReply([{ name: "make_image" }]), textReply("")],
+      tools: [makeImage],
+    });
+    const said = createTestTurn({
+      replies: [callsReply([{ name: "make_image" }]), textReply("Making it now.")],
+      tools: [makeImage],
+    });
+    await quiet.turn.run();
+    await said.turn.run();
+    const statuses = [quiet, said].map(({ recorder }) =>
+      recorder.steps.filter((step) => step.kind === "status"),
+    );
+    expect(statuses).toStrictEqual([[{ kind: "status", line: { line: "imageComing" } }], []]);
   });
 
   it("names the tool whose last call failed when it ends, and not one that succeeded after", async () => {

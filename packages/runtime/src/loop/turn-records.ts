@@ -64,8 +64,11 @@ export interface ToolOutcome {
   readonly shown?: readonly string[];
 }
 
-/** A status line a tool's work gives a turn that ends well: the first chat ended. */
-export type ClosingLine = "firstChatDone";
+/**
+ * A status line a tool's work gives a turn that ends well: the first chat ended, or images are on
+ * their way (decision 0399), a line that shows only when the turn has no text of its own.
+ */
+export type ClosingLine = "firstChatDone" | "imageComing" | "imagesComing";
 
 /** What a tool's run receives. */
 export interface ToolRunContext {

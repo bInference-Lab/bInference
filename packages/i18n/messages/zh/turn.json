@@ -23,6 +23,8 @@
   "image.unreadable": "未读取：binference 无法获取图片。请重新发送。",
   "image.noVision": "未读取：Agent 的模型无法读取图片，且未设置视觉模型。请在 config.json5 中设置 `models.vision`，或将该模型列入 `models.imageInput`，然后重新发送图片。",
   "firstChatDone": "你的回答已保存到 STRATEGY.md 和 PERSONA.md。你可以随时让 Agent 修改。",
+  "imageComing": "正在生成图片，完成后会显示在这里。",
+  "imagesComing": "正在生成这些图片，完成后会显示在这里。",
   "tool.tokenSearch": "正在搜索代币…",
   "tool.addresses": "正在读取地址簿…",
   "tool.wallets": "正在读取 Agent 的钱包…",
