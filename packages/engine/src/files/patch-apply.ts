@@ -34,7 +34,7 @@ type Found =
 
 function linesOf(content: string): FileLines {
   const bom = content.startsWith(byteOrderMark) ? byteOrderMark : "";
-  // Each line keeps the break that ends it: the text splits just after each break.
+  // Each line keeps the break that ends it: the text splits right after each break.
   const raw = content
     .slice(bom.length)
     .split(/(?<=\r\n|\r(?!\n)|\n)/u)
