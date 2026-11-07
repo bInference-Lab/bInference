@@ -30,6 +30,8 @@ export interface RuntimeModels {
   readonly main?: string;
   readonly fast?: string;
   readonly vision?: string;
+  /** The model that makes images (decision 0392); the agent makes none without it. */
+  readonly imageMaking?: string;
   /** The models that take images as input (decision 0227); the vision model reads them by its role. */
   readonly imageInput: readonly string[];
   readonly fallbacks: { readonly main: readonly string[]; readonly fast: readonly string[] };
@@ -141,6 +143,7 @@ const modelsSchema = z.strictObject({
   main: nameSchema.exactOptional(),
   fast: nameSchema.exactOptional(),
   vision: nameSchema.exactOptional(),
+  imageMaking: nameSchema.exactOptional(),
   imageInput: z.array(nameSchema).max(64),
   fallbacks: z.strictObject({
     main: z.array(nameSchema).max(16),

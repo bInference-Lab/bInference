@@ -1,4 +1,5 @@
 import type { Id } from "@binference/core";
+import type { ChatSurface } from "@binference/protocol";
 
 /** A photo the owner sent the bot with one of a turn's messages: the message, and its name. */
 export interface TurnPhoto {
@@ -9,11 +10,13 @@ export interface TurnPhoto {
 
 /**
  * Where one turn runs: its agent, its session, and the turn id the engine reserved for it, and the
- * photos the owner sent the bot with the messages it took, in order, which `launch_draft` names.
+ * photos the owner sent the bot with the messages it took, in order, which `launch_draft` names,
+ * and the surface of the first owner's message it took, which an image job's end names.
  */
 export interface TurnPlace {
   readonly agent: Id<"agt">;
   readonly session: Id<"ses">;
   readonly turn: Id<"trn">;
   readonly photos?: readonly TurnPhoto[];
+  readonly surface?: ChatSurface;
 }

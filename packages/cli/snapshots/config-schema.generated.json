@@ -1,5 +1,5 @@
 {
-  "version": 19,
+  "version": 20,
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object",
@@ -250,6 +250,12 @@
           },
           "vision": {
             "description": "The model that reads images when the main one cannot.",
+            "type": "string",
+            "pattern": "^[^\\s/]+\\/\\S+$",
+            "valueFormat": "model"
+          },
+          "imageMaking": {
+            "description": "The model that makes images, on a provider that speaks OpenAI's Images API.",
             "type": "string",
             "pattern": "^[^\\s/]+\\/\\S+$",
             "valueFormat": "model"

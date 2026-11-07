@@ -131,5 +131,6 @@
   "shell.timeoutSeconds": "Agent 未指定时，一条命令的时限（秒）；0 表示不限。",
   "files": "Agent 的文件工具能访问的范围。",
   "files.workspaceOnly": "true 让 Agent 的文件读取、写入和编辑只在其工作区内；false 允许访问 binference 自己的文件夹以外的任何文件。",
-  "files.patchWorkspaceOnly": "true 让 Agent 的补丁只在其工作区内；false 允许修改 binference 自己的文件夹以外的任何文件。"
+  "files.patchWorkspaceOnly": "true 让 Agent 的补丁只在其工作区内；false 允许修改 binference 自己的文件夹以外的任何文件。",
+  "models.imageMaking": "生成图片的模型，所在服务商须支持 OpenAI 的 Images API。"
 }

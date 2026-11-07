@@ -3,9 +3,12 @@ import process from "node:process";
 import manifest from "@binference/runtime/package.json" with { type: "json" };
 import { defaultContextTokens } from "../compaction/turn-history.js";
 import { agentInstructions } from "../context/agent-instructions.js";
+import { createImageJobs } from "../images/image-jobs.js";
 import { turnLimits } from "../loop/turn-run.js";
+import { imageMakerFor } from "../providers/image-making.js";
 import type { ChainParts } from "../providers/model-transport-for.js";
 import { agentToolBox } from "../tools/agent-tools.js";
+import { modelPriceOf } from "../usage/model-price.js";
 import { connectEngine } from "./engine-link.js";
 import { networkRouteOf } from "./network-route.js";
 import { createNodeStreamingHttp } from "./node-streaming-http.js";
@@ -37,9 +40,21 @@ async function writeLine(line: string): Promise<void> {
 // compaction on the fast model, or on the main model when no fast model is set (decision 0202),
 // and the tools of the community plugins the settings in force name (decision 0349).
 function builtTurnSetup(parts: ChainParts): RuntimeHost["turnSetup"] {
+  // The agents' image jobs outlive the turns that start them.
+  const jobs = createImageJobs();
   return (place, settings, client) => {
     const { agent } = place;
     const { main, summarizer, vision } = turnModelsOf(agent, settings, parts);
+    const makingModel = settings.models.imageMaking;
+    const price =
+      makingModel === undefined ? undefined : modelPriceOf(makingModel, settings.models)?.price;
+    const imageMaking = {
+      jobs,
+      maker: imageMakerFor(settings.models, parts),
+      ...(price === undefined ? {} : { price }),
+      random: processPorts.random,
+      clock: parts.clock,
+    };
     return {
       models: main,
       ...(vision === undefined ? {} : { vision }),
@@ -54,6 +69,7 @@ function builtTurnSetup(parts: ChainParts): RuntimeHost["turnSetup"] {
         turn: place,
         web: { http: parts.http, lookup, clock: parts.clock, search: settings.search },
         plugins: settings.plugins ?? [],
+        imageMaking,
       }),
       instructions: agentInstructions(settings.owner.locale),
       limits: {

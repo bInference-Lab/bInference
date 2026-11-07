@@ -135,6 +135,13 @@ export const configMigrations: readonly ConfigMigration[] = [
       "no file names one yet.",
     edits: () => [],
   },
+  {
+    from: 19,
+    summary:
+      "Adds models.imageMaking, the model that makes the agent's images, unset: the agent makes " +
+      "none until the owner names one.",
+    edits: () => [],
+  },
 ];
 
 /** The version of `config.json5` this binference writes and reads. */

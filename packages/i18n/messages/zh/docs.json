@@ -132,5 +132,6 @@
   "tools.summary.show_chart": "在对话中向所有者显示图表：饼图、柱状图、面积图或折线图；无法绘制时显示其文本。",
   "tools.summary.credentials": "列出所有者存储的凭据，在隐藏输入框中向所有者请求缺少的凭据，或删除凭据。",
   "tools.summary.notes_get": "完整读取 Agent 的一条笔记。",
-  "tools.summary.notes_forget": "删除 Agent 的一条笔记。"
+  "tools.summary.notes_forget": "删除 Agent 的一条笔记。",
+  "tools.summary.make_image": "用所有者的图片模型生成图片，例如代币的标志；图片稍后出现在对话中。"
 }

@@ -10,6 +10,7 @@ import { fileTools } from "./file-tools.js";
 import { launchDraftTool } from "./launch-draft-tool.js";
 import { launchpadsTool } from "./launchpads-tool.js";
 import { lookAtImageTool } from "./look-at-image-tool.js";
+import { makeImageTool } from "./make-image-tool.js";
 import { marketTools } from "./market-tools.js";
 import { noteTools } from "./note-tools.js";
 import { orderCancelTool } from "./order-cancel-tool.js";
@@ -38,7 +39,8 @@ import { workspaceTools } from "./workspace-tools.js";
  * the owner's strategy and persona and end the first chat (decision 0242), then `launchpads` and
  * `launch_draft`, which drafts a token launch the owner starts (decision 0285),
  * then `deposit_address`, which shows the owner where to send funds (decision 0380), `show_chart`,
- * which shows the owner a chart (decision 0387), the machine
+ * which shows the owner a chart (decision 0387), with image parts `make_image`, which makes images
+ * in the background (decision 0392), the machine
  * tools `shell` and `shell_job` (decision 0378) and the file tools (decision 0386), `credentials`, which asks the owner for a credential and ends
  * the turn (decision 0388), then `ask_owner`, which asks the
  * owner in the turn the tools serve and ends it after its batch.
@@ -69,6 +71,7 @@ export function agentTools(parts: AgentToolParts): readonly AgentTool[] {
     launchDraftTool(parts),
     depositTool(parts),
     chartTool(parts),
+    ...(parts.imageMaking === undefined ? [] : [makeImageTool(parts, parts.imageMaking)]),
     ...shellTools(parts),
     ...fileTools(parts),
     credentialsTool(parts),

@@ -56,12 +56,24 @@ function checkedUrl(input: string | URL | Request, prefix: string): string {
   return url;
 }
 
-function bodyOf(init: RequestInit | undefined): string {
+/** A request's body as the port sends it: JSON text, or a form's bytes with its boundary. */
+type SentBody =
+  | { readonly body: string }
+  | { readonly bodyBytes: Uint8Array; readonly contentType: string };
+
+// JSON text as it is; a multipart form, as an image edit sends, encoded once into its bytes and the
+// content type that names its boundary.
+async function bodyOf(init: RequestInit | undefined): Promise<SentBody> {
   const body = init?.body;
-  if (typeof body !== "string") {
-    throw refused("its body is not JSON text");
+  if (typeof body === "string") {
+    return { body };
   }
-  return body;
+  if (!(body instanceof FormData)) {
+    throw refused("its body is neither JSON text nor a form");
+  }
+  const encoded = new Response(body);
+  const contentType = encoded.headers.get("content-type") ?? "";
+  return { bodyBytes: new Uint8Array(await encoded.arrayBuffer()), contentType };
 }
 
 function signalOf(init: RequestInit | undefined): AbortSignal {
@@ -74,7 +86,8 @@ function signalOf(init: RequestInit | undefined): AbortSignal {
 
 /**
  * The `fetch` a model client calls, over the {@link StreamingHttp} port: only POST requests under
- * the provider's base URL, with a JSON text body and the client's signal, carrying only the
+ * the provider's base URL, with a JSON text body or a multipart form and the client's signal,
+ * carrying only the
  * client's `accept` and `content-type` and the headers the transport sets itself. Anything else is
  * refused with `runtime.model_request_refused` before it leaves. The answer streams as it arrives.
  */
@@ -84,13 +97,21 @@ export function createModelFetch(options: ModelFetchOptions): ModelFetch {
     if ((init?.method ?? "GET").toUpperCase() !== "POST") {
       throw refused("only POST requests are sent");
     }
-    const answer = await options.http.open({
-      method: "POST",
-      url: checkedUrl(input, prefix),
-      headers: headersOf(init, options),
-      body: bodyOf(init),
-      signal: signalOf(init),
-    });
+    const url = checkedUrl(input, prefix);
+    const signal = signalOf(init);
+    const sent = await bodyOf(init);
+    const headers = headersOf(init, options);
+    const answer = await options.http.open(
+      "body" in sent
+        ? { method: "POST", url, headers, body: sent.body, signal }
+        : {
+            method: "POST",
+            url,
+            headers: { ...headers, "content-type": sent.contentType },
+            bodyBytes: sent.bodyBytes,
+            signal,
+          },
+    );
     const body = emptyStatuses.has(answer.status) ? null : ReadableStream.from(answer.body);
     return new Response(body, { status: answer.status, headers: answer.headers });
   };

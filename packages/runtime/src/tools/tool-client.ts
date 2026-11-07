@@ -2,6 +2,7 @@ import type { ProtocolClient } from "@binference/client";
 import type { Id } from "@binference/core";
 import type { RuntimePlugin } from "../control/runtime-settings.schema.js";
 import type { TurnPlace } from "../sessions/turn-place.js";
+import type { ImageMakingToolParts } from "./make-image-tool.js";
 import type { WebToolParts } from "./web-tools.js";
 
 /** The protocol client calls an agent's tools make, over the runtime's connection to the engine. */
@@ -20,9 +21,11 @@ export interface AgentToolParts {
    * The turn the tools serve: its session and the turn id, where `ask_owner` asks, and the photos
    * the owner sent the bot with its messages, which `launch_draft` names.
    */
-  readonly turn: Pick<TurnPlace, "session" | "turn" | "photos">;
+  readonly turn: Pick<TurnPlace, "session" | "turn" | "photos" | "surface">;
   /** How the web tools reach the internet; without it, the agent has no web tools. */
   readonly web?: WebToolParts;
   /** The enabled community plugins whose tools the agent may call; none when absent. */
   readonly plugins?: readonly RuntimePlugin[];
+  /** What `make_image` runs on (decision 0392); without it, the agent has no image tool. */
+  readonly imageMaking?: ImageMakingToolParts;
 }

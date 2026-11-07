@@ -71,6 +71,7 @@
   "tool.fileEdit": "Editing a file…",
   "tool.filePatch": "Changing files…",
   "tool.showChart": "Drawing a chart…",
+  "tool.makeImage": "Making an image…",
   "tool.deposit": "Showing where to deposit…",
   "tool.notesGet": "Reading a note…",
   "tool.notesForget": "Forgetting a note…"

@@ -60,6 +60,7 @@ const toolKeys: Readonly<Record<AgentToolName, string | undefined>> = {
   file_edit: "turn.tool.fileEdit",
   file_patch: "turn.tool.filePatch",
   show_chart: "turn.tool.showChart",
+  make_image: "turn.tool.makeImage",
   credentials: "turn.tool.credentials",
 };
 

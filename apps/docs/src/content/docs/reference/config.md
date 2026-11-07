@@ -5,7 +5,7 @@ description: "Every config key in config.json5: what it takes, its default and i
 
 <!-- Generated from the code by pnpm docs:gen. Never edit this file: change the code, then run pnpm docs:gen. -->
 
-This binference reads `config.json5` version 19. Each config key is set in the file, by its variable, or by `--set <key>=<value>`, and a later layer wins. A secret is always a secret source, never the secret itself.
+This binference reads `config.json5` version 20. Each config key is set in the file, by its variable, or by `--set <key>=<value>`, and a later layer wins. A secret is always a secret source, never the secret itself.
 
 ## `version`
 
@@ -62,6 +62,7 @@ Model providers and the models the agent uses.
 - `models.main`: The model that talks and proposes. Takes a model written as provider/model. Default: none. Variable: `BINFERENCE_MODELS__MAIN`.
 - `models.fast`: The model that writes summaries, compacts and classifies. Takes a model written as provider/model. Default: none. Variable: `BINFERENCE_MODELS__FAST`.
 - `models.vision`: The model that reads images when the main one cannot. Takes a model written as provider/model. Default: none. Variable: `BINFERENCE_MODELS__VISION`.
+- `models.imageMaking`: The model that makes images, on a provider that speaks OpenAI's Images API. Takes a model written as provider/model. Default: none. Variable: `BINFERENCE_MODELS__IMAGE_MAKING`.
 - `models.imageInput`: The models that take images as input; any other model gets the vision model's description. Takes a list in which each item is a model written as provider/model. Default: `[]`. Variable: `BINFERENCE_MODELS__IMAGE_INPUT`.
 - `models.fallbacks.main`: Models tried in order when the main one fails. Takes a list in which each item is a model written as provider/model. Default: `[]`. Variable: `BINFERENCE_MODELS__FALLBACKS__MAIN`.
 - `models.fallbacks.fast`: Models tried in order when the fast one fails. Takes a list in which each item is a model written as provider/model. Default: `[]`. Variable: `BINFERENCE_MODELS__FALLBACKS__FAST`.

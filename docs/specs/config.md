@@ -164,6 +164,7 @@ the console. Each key returns, with its config migration, in the task that build
 | `models.fast`                     | `"<provider>/<model>"`                                    | picked by evaluation                         | live    | Summaries, compaction, classification                                                                                                                                                                                                     |
 | `models.vision`                   | `"<provider>/<model>"`                                    | none                                         | live    | Reads images when `main` cannot ([decision 0050](../DECISIONS.md#d0050))                                                                                                                                                                  |
 | `models.imageInput`               | string[]                                                  | `[]`                                         | live    | The models that take images as input; any other gets the vision model's description ([decision 0227](../DECISIONS.md#d0227)). `binference init` adds the linked model once it reads a test image ([decision 0228](../DECISIONS.md#d0228)) |
+| `models.imageMaking`              | `"<provider>/<model>"`                                    | none                                         | live    | Makes the agent's images, on a provider that speaks OpenAI's Images API ([decision 0392](../DECISIONS.md#d0392))                                                                                                                          |
 | `models.fallbacks.main`           | string[]                                                  | `[]`                                         | live    | Tried in order on a provider failure                                                                                                                                                                                                      |
 | `models.fallbacks.fast`           | string[]                                                  | `[]`                                         | live    |                                                                                                                                                                                                                                           |
 | `models.idleTimeoutMs`            | integer                                                   | `120000`                                     | live    | No output for this long aborts a request                                                                                                                                                                                                  |
@@ -269,7 +270,7 @@ decimals; the engine reads them as micro-dollars on load, never through a floati
 ```json5
 // ~/.binference/config.json5
 {
-  version: 19,
+  version: 20,
   owner: { locale: "zh", timezone: "Asia/Shanghai" },
   custody: {
     privy: {

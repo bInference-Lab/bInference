@@ -132,5 +132,6 @@
   "tools.summary.show_chart": "Shows the owner a pie, bar, area or line chart in the chat, or its text where no chart is drawn.",
   "tools.summary.credentials": "Lists the owner's stored credentials, asks the owner for a missing one in a masked prompt, or removes one.",
   "tools.summary.notes_get": "Reads one of the agent's notes in full.",
-  "tools.summary.notes_forget": "Forgets one of the agent's notes."
+  "tools.summary.notes_forget": "Forgets one of the agent's notes.",
+  "tools.summary.make_image": "Makes images with the owner's image model, such as a token's logo; they arrive in the chat a little later."
 }

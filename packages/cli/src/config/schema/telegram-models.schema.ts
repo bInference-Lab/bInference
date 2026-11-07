@@ -55,6 +55,8 @@ export interface ModelsConfig {
   readonly main?: string;
   readonly fast?: string;
   readonly vision?: string;
+  /** The model that makes images, on a provider of OpenAI's Images API (decision 0392). */
+  readonly imageMaking?: string;
   /** The models that take images as input, each `<provider>/<model>` (decision 0227). */
   readonly imageInput: readonly string[];
   readonly fallbacks: FallbackConfig;
@@ -132,6 +134,7 @@ export const modelsSchema: z.ZodType<ModelsConfig> = z
     main: modelRole("talks and proposes"),
     fast: modelRole("writes summaries, compacts and classifies"),
     vision: modelRole("reads images when the main one cannot"),
+    imageMaking: modelRole("makes images, on a provider that speaks OpenAI's Images API"),
     imageInput: z
       .array(modelSchema)
       .prefault([])

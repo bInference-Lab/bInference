@@ -18,8 +18,9 @@ function neverCalled(): never {
   });
 }
 
-// Parts that only declare the tools: no call reaches the engine or the web. The X key is set so
-// the reference lists search_x, which the agent has whenever the owner set one.
+// Parts that only declare the tools: no call reaches the engine, the web or an image model. The X
+// key and the image parts are set so the reference lists search_x and make_image, which the agent
+// has whenever the owner set them.
 const declaringParts: AgentToolParts = {
   agent: idSchema("agt").parse("agt_00000000-0000-7000-8000-000000000000"),
   client: { call: neverCalled },
@@ -32,6 +33,12 @@ const declaringParts: AgentToolParts = {
     lookup: neverCalled,
     clock: { now: neverCalled, sleep: neverCalled },
     search: { keys: {}, xApiKey: "declared" },
+  },
+  imageMaking: {
+    jobs: { running: neverCalled, start: neverCalled },
+    maker: "declared",
+    random: { bytes: neverCalled },
+    clock: { now: neverCalled, sleep: neverCalled },
   },
 };
 

@@ -1,4 +1,5 @@
 import { err, type Id, idSchema, ok } from "@binference/core";
+import type { ChatSurface } from "@binference/protocol";
 import type { QueuedMessage } from "@binference/store";
 import { readTurnPrefix } from "../context/turn-prefix.js";
 import type { TurnStartAnswer } from "../engine-chat/engine-chat-records.js";
@@ -280,13 +281,25 @@ function photosOf(taken: readonly Waiting[]): readonly TurnPhoto[] {
   });
 }
 
+// The surface of the first owner's message the turn took; none for a turn the engine started.
+function surfaceOf(taken: readonly Waiting[]): ChatSurface | undefined {
+  const views = taken.map(({ queued }) => turnMessageOf(queued));
+  const owned = views.find((view) => view?.kind === "inbox/message");
+  return owned?.kind === "inbox/message" ? owned.surface : undefined;
+}
+
 async function runTurn(
   context: ChatContext,
   place: TurnPlace,
   taken: readonly Waiting[],
 ): Promise<void> {
   const { stores, lifetime } = context;
-  const setup = context.setup({ ...place, photos: photosOf(taken) });
+  const surface = surfaceOf(taken);
+  const setup = context.setup({
+    ...place,
+    photos: photosOf(taken),
+    ...(surface === undefined ? {} : { surface }),
+  });
   const prefix = await prefixOf(context, { agent: place.agent, instructions: setup.instructions });
   if (prefix === undefined) {
     return;
