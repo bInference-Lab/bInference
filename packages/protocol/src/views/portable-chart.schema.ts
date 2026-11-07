@@ -76,6 +76,10 @@ const seriesChartSchema = z
   .refine(
     (chart) => new Set(chart.series.map((each) => each.name)).size === chart.series.length,
     "every series has its own name",
+  )
+  .refine(
+    (chart) => new Set(chart.categories).size === chart.categories.length,
+    "every category has its own label",
   );
 
 /** Parses a {@link PortableChart}. */

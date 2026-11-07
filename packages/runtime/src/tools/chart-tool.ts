@@ -31,7 +31,7 @@ const chartArgs: z.ZodType<ChartToolArgs> = z.strictObject({
 
 const refusals: Readonly<Record<string, string>> = {
   "protocol.bad_args":
-    "The chart does not hold together: a pie needs 1 to 12 segments with values above zero; bars, areas and lines need 1 to 100 categories and 1 to 8 series, each with its own name and one value per category; a title is 1 to 80 characters and a label 1 to 40.",
+    "The chart does not hold together: a pie needs 1 to 12 segments with values above zero; bars, areas and lines need 1 to 100 categories, each with its own label, and 1 to 8 series, each with its own name and one value per category; a title is 1 to 80 characters and a label 1 to 40.",
 };
 
 function chartOf(args: ChartToolArgs): PortableChart {
