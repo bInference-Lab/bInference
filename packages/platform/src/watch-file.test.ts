@@ -27,7 +27,9 @@ function nextChange(path: string): Promise<void> {
     limit.addEventListener("abort", () => reject(new Error(`No change seen on ${path}.`)), {
       once: true,
     });
-    watches.push(watchFile(path, { onChange: () => resolve(), onError: reject }));
+    watches.push(
+      watchFile(path, { onChange: () => resolve(), onError: reject, clock: createManualClock() }),
+    );
   });
 }
 
@@ -104,7 +106,11 @@ describe("a file watch", () => {
   it("names the fault when the folder cannot be watched", () => {
     const missing = join(tmpdir(), "bnf-watch-missing", "deeper", "config.json5");
     expect(() =>
-      watchFile(missing, { onChange: () => undefined, onError: () => undefined }),
+      watchFile(missing, {
+        onChange: () => undefined,
+        onError: () => undefined,
+        clock: createManualClock(),
+      }),
     ).toThrow(expect.objectContaining({ code: "platform.watch_failed" }));
   });
 

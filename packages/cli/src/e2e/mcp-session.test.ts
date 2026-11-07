@@ -12,6 +12,7 @@ import { standInProgramsRun, writeStandInProgram } from "@binference/platform/te
 import { afterEach, describe, expect, it } from "vitest";
 import { type SkeletonComposition, skeletonCompositions } from "../compose/test-skeleton.js";
 import { runCli } from "../program/run-cli.js";
+import { createSystemClock } from "../runtime/system-clock.js";
 import { type ServedSkeleton, serveSkeleton } from "./skeleton-machine.js";
 import { createTestMachines, hostWith, noPermissions, type TestMachine } from "./test-host.js";
 
@@ -142,7 +143,13 @@ async function untilLogged(at: Session): Promise<void> {
         resolve();
       }
     };
-    watches.push(watchFile(at.log, { onChange: () => void check(), onError: reject }));
+    watches.push(
+      watchFile(at.log, {
+        onChange: () => void check(),
+        onError: reject,
+        clock: createSystemClock(),
+      }),
+    );
     void check();
   });
   await logged.finally(() => watches.forEach((watch) => watch.close()));

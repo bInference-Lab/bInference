@@ -26,8 +26,8 @@ export interface WatchFileOptions {
    * wait, `poll` once it checks the file on a timer instead (decision 0396).
    */
   readonly onDegraded?: (state: "retrying" | "poll", error: BinferenceError) => void;
-  /** Times the waits between attempts; the process's own clock when absent. */
-  readonly clock?: Clock;
+  /** Times the waits between attempts. */
+  readonly clock: Clock;
   /** The OS's watch, which a test replaces to make it fail. */
   readonly nativeWatch?: typeof watch;
 }
@@ -36,22 +36,6 @@ export interface WatchFileOptions {
 const retryDelaysMs: readonly number[] = [500, 2_000, 5_000];
 /** How often the timer checks the file once the OS's file events failed. */
 const pollIntervalMs = 100;
-
-const systemClock: Clock = {
-  now: () => Date.now(),
-  sleep: async (delayMs, signal) =>
-    new Promise((resolve, reject) => {
-      const timer = setTimeout(resolve, delayMs);
-      signal.addEventListener(
-        "abort",
-        () => {
-          clearTimeout(timer);
-          reject(signal.reason);
-        },
-        { once: true },
-      );
-    }),
-};
 
 function watchFailed(path: string, cause: Error | undefined): BinferenceError {
   return new BinferenceError({
@@ -180,7 +164,7 @@ async function startAfter(
  * keep the process alive. Throws `platform.watch_failed` when the folder does not exist.
  */
 export function watchFile(path: string, options: WatchFileOptions): FileWatch {
-  const clock = options.clock ?? systemClock;
+  const { clock } = options;
   const stop = new AbortController();
   const state: { current: EventWatch | undefined; attempt: number } = {
     current: undefined,

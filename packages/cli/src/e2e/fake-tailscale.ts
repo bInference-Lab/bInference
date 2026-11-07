@@ -9,6 +9,7 @@ import {
 } from "@binference/platform";
 import { writeStandInProgram } from "@binference/platform/testing";
 import { z } from "zod";
+import { createSystemClock } from "../runtime/system-clock.js";
 import { noPermissions, testSystem } from "./test-host.js";
 
 const files = { permissions: noPermissions, signal: new AbortController().signal };
@@ -123,7 +124,13 @@ async function untilFile(file: string, holds: () => Promise<boolean>): Promise<v
         resolve();
       }
     };
-    watches.push(watchFile(file, { onChange: () => void check(), onError: reject }));
+    watches.push(
+      watchFile(file, {
+        onChange: () => void check(),
+        onError: reject,
+        clock: createSystemClock(),
+      }),
+    );
     void check();
   });
   await reached.finally(() => watches.forEach((watch) => watch.close()));
