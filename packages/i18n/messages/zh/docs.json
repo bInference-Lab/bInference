@@ -125,6 +125,10 @@
   "tools.summary.shell_job": "读取运行中命令的新输出，或停止它。",
   "tools.summary.deposit_address": "向所有者显示每个钱包的地址及其二维码，用于向 Agent 转账资金。",
   "tools.summary.look_at_image": "查看公开网址或所有者机器上文件中的图片，并描述其内容。",
+  "tools.summary.file_read": "逐页读取所有者机器上的文本文件，或描述图片文件。",
+  "tools.summary.file_write": "在所有者机器上整体写入文件，并创建所需文件夹。",
+  "tools.summary.file_edit": "在所有者机器上的文件中进行精确替换。",
+  "tools.summary.file_patch": "用一个补丁修改多个文件，默认只在 Agent 工作区内。",
   "tools.summary.notes_get": "完整读取 Agent 的一条笔记。",
   "tools.summary.notes_forget": "删除 Agent 的一条笔记。"
 }

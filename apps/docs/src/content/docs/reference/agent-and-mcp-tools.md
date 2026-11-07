@@ -54,6 +54,10 @@ The tools the agent's model may call in a turn, in the order a turn offers them.
 - `deposit_address` (control): Shows the owner each wallet's address and its QR code, to send funds to the agent.
 - `shell` (machine): Runs a command on the owner's machine, away from binference's own files, and reads its output.
 - `shell_job` (machine): Reads a running command's new output, or stops it.
+- `file_read` (read): Reads a text file on the owner's machine, a page at a time, or describes an image file.
+- `file_write` (machine): Writes a file whole on the owner's machine, making its folders.
+- `file_edit` (machine): Makes exact replacements in a file on the owner's machine.
+- `file_patch` (machine): Changes several files in one patch, by default inside the agent's workspace.
 - `ask_owner` (control): Asks the owner a question with answer buttons.
 
 ## MCP tools

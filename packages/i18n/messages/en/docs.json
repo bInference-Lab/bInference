@@ -125,6 +125,10 @@
   "tools.summary.shell_job": "Reads a running command's new output, or stops it.",
   "tools.summary.deposit_address": "Shows the owner each wallet's address and its QR code, to send funds to the agent.",
   "tools.summary.look_at_image": "Looks at a picture at a public address or in a file on the owner's machine and describes it.",
+  "tools.summary.file_read": "Reads a text file on the owner's machine, a page at a time, or describes an image file.",
+  "tools.summary.file_write": "Writes a file whole on the owner's machine, making its folders.",
+  "tools.summary.file_edit": "Makes exact replacements in a file on the owner's machine.",
+  "tools.summary.file_patch": "Changes several files in one patch, by default inside the agent's workspace.",
   "tools.summary.notes_get": "Reads one of the agent's notes in full.",
   "tools.summary.notes_forget": "Forgets one of the agent's notes."
 }

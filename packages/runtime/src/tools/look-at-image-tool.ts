@@ -1,7 +1,7 @@
 import { BinferenceError, maxUrlChars, ok } from "@binference/core";
 import { z } from "zod";
 import { readPagedImage } from "../images/paged-image.js";
-import type { ImageLookRefusal, ToolOutcome } from "../loop/turn-records.js";
+import type { ImageLookRefusal, ToolOutcome, ToolRunContext } from "../loop/turn-records.js";
 import { agentToolTexts } from "./agent-tool-texts.js";
 import { type AgentTool, defineTool } from "./define-tool.js";
 import { failedAnswer } from "./tool-answer.js";
@@ -52,6 +52,50 @@ function readFailed(code: string): ToolOutcome {
   return { text: refusals[code] ?? `look_at_image failed with ${code}.`, isError: true };
 }
 
+/** Where an image to look at is: a public address or a file on the engine's machine. */
+export type ImagePlace = { readonly url: string } | { readonly path: string };
+
+/**
+ * Reads one image through the engine's `image/view` and answers a model's description of it,
+ * asked `question`; a refusal reads as its sentence. Used by `look_at_image` and by `file_read`
+ * for an image file.
+ */
+export async function lookAtPlace(
+  { agent, client }: Pick<AgentToolParts, "agent" | "client">,
+  place: ImagePlace,
+  context: Pick<ToolRunContext, "signal" | "look"> & { readonly question: string },
+): Promise<ToolOutcome> {
+  const { signal, look, question } = context;
+  try {
+    const image = await readPagedImage<string>({
+      part: async (offset) =>
+        ok(
+          await client.call(
+            "image/view",
+            { agent, ...place, ...(offset === 0 ? {} : { offset }) },
+            { signal },
+          ),
+        ),
+      unreadable: "image.unreadable",
+      tooLarge: "image.too_large",
+    });
+    if (!image.ok) {
+      return readFailed(image.error);
+    }
+    const seen = await look(image.value, question);
+    return seen.ok
+      ? { text: seen.value, isError: false }
+      : { text: lookRefusals[seen.error], isError: true };
+  } catch (error) {
+    if (!(error instanceof BinferenceError)) {
+      throw error;
+    }
+    return refusals[error.code] === undefined
+      ? failedAnswer("look_at_image", error)
+      : readFailed(error.code);
+  }
+}
+
 /**
  * `look_at_image`, a read tool (decision 0385): reads one PNG, JPEG or WebP image of at most 5 MiB
  * from a public address or a file on the engine's machine outside binference's own folder, through
@@ -65,36 +109,11 @@ export function lookAtImageTool({ agent, client }: AgentToolParts): AgentTool {
     outside: true,
     description: agentToolTexts.look_at_image,
     args: lookArgs,
-    run: async ({ url, path, question }, { signal, look }) => {
-      const place = url === undefined ? { path: path ?? "" } : { url };
-      try {
-        const image = await readPagedImage<string>({
-          part: async (offset) =>
-            ok(
-              await client.call(
-                "image/view",
-                { agent, ...place, ...(offset === 0 ? {} : { offset }) },
-                { signal },
-              ),
-            ),
-          unreadable: "image.unreadable",
-          tooLarge: "image.too_large",
-        });
-        if (!image.ok) {
-          return readFailed(image.error);
-        }
-        const seen = await look(image.value, question ?? defaultQuestion);
-        return seen.ok
-          ? { text: seen.value, isError: false }
-          : { text: lookRefusals[seen.error], isError: true };
-      } catch (error) {
-        if (!(error instanceof BinferenceError)) {
-          throw error;
-        }
-        return refusals[error.code] === undefined
-          ? failedAnswer("look_at_image", error)
-          : readFailed(error.code);
-      }
-    },
+    run: async ({ url, path, question }, { signal, look }) =>
+      lookAtPlace({ agent, client }, url === undefined ? { path: path ?? "" } : { url }, {
+        signal,
+        look,
+        question: question ?? defaultQuestion,
+      }),
   });
 }

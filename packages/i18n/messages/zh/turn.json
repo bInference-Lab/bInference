@@ -65,6 +65,10 @@
   "tool.shell": "正在运行命令…",
   "tool.shellJob": "正在查看命令…",
   "tool.lookAtImage": "正在查看图片…",
+  "tool.fileRead": "正在读取文件…",
+  "tool.fileWrite": "正在写入文件…",
+  "tool.fileEdit": "正在编辑文件…",
+  "tool.filePatch": "正在修改文件…",
   "tool.deposit": "正在显示充值地址…",
   "tool.notesGet": "正在读取笔记…",
   "tool.notesForget": "正在删除笔记…"
