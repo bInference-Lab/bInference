@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { type AgentMode, agentModeSchema } from "./agent-view.schema.js";
+import { type PortableChart, portableChartSchema } from "./portable-chart.schema.js";
 import { type WalletView, walletViewSchema } from "./wallet-view.schema.js";
 
 /**
@@ -52,6 +53,13 @@ export type ChatPush =
       /** The wallets to show, each with the address its QR code holds (decision 0380). */
       readonly wallets: readonly WalletView[];
     }
+  | {
+      readonly kind: "chat/chart";
+      readonly agent: string;
+      readonly turn: string;
+      /** The chart to draw, or to show as text where no chart is drawn (decision 0387). */
+      readonly chart: PortableChart;
+    }
   | { readonly kind: "chat/turnEnded"; readonly agent: string; readonly turn: string };
 
 const at = { agent: z.string().min(1), turn: z.string().min(1) };
@@ -83,6 +91,10 @@ const pushSchema = z.discriminatedUnion("kind", [
       frozen: z.boolean(),
       wallets: z.array(walletViewSchema).min(1),
     }),
+  }),
+  z.looseObject({
+    kind: z.literal("chat/chart"),
+    data: z.looseObject({ ...at, chart: portableChartSchema }),
   }),
   z.looseObject({ kind: z.literal("chat/turnEnded"), data: z.looseObject(at) }),
 ]);
@@ -127,6 +139,10 @@ export function chatPushOf(push: {
   if (read.kind === "chat/deposit") {
     const { agent, turn, mode, frozen, wallets } = read.data;
     return { kind: read.kind, agent, turn, mode, frozen, wallets };
+  }
+  if (read.kind === "chat/chart") {
+    const { agent, turn, chart } = read.data;
+    return { kind: read.kind, agent, turn, chart };
   }
   return { kind: read.kind, agent: read.data.agent, turn: read.data.turn };
 }

@@ -6,6 +6,7 @@ import type { WalletRecord } from "../install/install-record.js";
 import { roleWalletIn } from "../install/role-wallet.js";
 import { callsOutsideCeiling } from "../limits/limit-ceiling.js";
 import { type AgentListHandlers, createAgentListHandlers } from "./agent-list-handlers.js";
+import { type ChartHandlers, createChartHandlers } from "./chart-handlers.js";
 import { createDepositHandlers, type DepositHandlers } from "./deposit-handlers.js";
 import type { EngineHandler } from "./engine-call.js";
 import { exportWallet, type ExportWalletOptions } from "./export-wallet.js";
@@ -14,7 +15,7 @@ import { revokeSigner, type RevokeSignerOptions } from "./revoke-signer.js";
 import { walletViewOf } from "./wallet-view-of.js";
 
 /** The handlers of the agent wallets, and the agent list with each default wallet (spec, 7.2). */
-export interface WalletHandlers extends AgentListHandlers, DepositHandlers {
+export interface WalletHandlers extends AgentListHandlers, DepositHandlers, ChartHandlers {
   readonly "wallet/list": EngineHandler<"wallet/list">;
   readonly "wallet/create": EngineHandler<"wallet/create">;
   readonly "wallet/exportSealed": EngineHandler<"wallet/exportSealed">;
@@ -109,7 +110,8 @@ function listWalletsOf(options: WalletHandlersOptions): EngineHandler<"wallet/li
  * caller's recipient key (see {@link exportWallet}); `signer/revoke` removes a machine's agent key
  * from every live wallet with the owner key (see {@link revokeSigner}). `agent/list` lists the
  * agents with their default wallets (see {@link createAgentListHandlers}). `turn/deposit` shows
- * the owner where to send funds (see {@link createDepositHandlers}).
+ * the owner where to send funds (see {@link createDepositHandlers}), and `turn/chart` a chart
+ * (see {@link createChartHandlers}).
  */
 export function createWalletHandlers(options: WalletHandlersOptions): WalletHandlers {
   let queue: Promise<void> = Promise.resolve();
@@ -128,5 +130,6 @@ export function createWalletHandlers(options: WalletHandlersOptions): WalletHand
     "signer/revoke": async (call) => revokeSigner(options, call),
     "wallet/list": listWallets,
     ...createDepositHandlers({ agents: options.agents, listWallets, publish: options.publish }),
+    ...createChartHandlers({ agents: options.agents, publish: options.publish }),
   };
 }

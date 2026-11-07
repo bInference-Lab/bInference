@@ -1,4 +1,5 @@
 import type { OperationName } from "../operations/operations.js";
+import { chartExamples } from "./chart-examples.js";
 import {
   chatExamples,
   imageExamples,
@@ -46,6 +47,7 @@ export const operationExamples: { readonly [N in OperationName]: WireExample } =
   ...reasoningExamples,
   ...shellExamples,
   ...fileExamples,
+  ...chartExamples,
   ...depositExamples,
   ...questionExamples,
   ...noteExamples,

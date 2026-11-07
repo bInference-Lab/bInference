@@ -553,6 +553,12 @@ importers:
         specifier: workspace:*
         version: link:../chain
 
+  packages/chart:
+    dependencies:
+      '@binference/protocol':
+        specifier: workspace:*
+        version: link:../protocol
+
   packages/cli:
     dependencies:
       '@binference/across':
@@ -736,6 +742,9 @@ importers:
       '@base-ui/react':
         specifier: 'catalog:'
         version: 1.8.0(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@binference/chart':
+        specifier: workspace:*
+        version: link:../chart
       '@binference/client':
         specifier: workspace:*
         version: link:../client
@@ -977,6 +986,9 @@ importers:
       '@anthropic-ai/sdk':
         specifier: 'catalog:'
         version: 0.131.0(zod@4.6.6)
+      '@binference/chart':
+        specifier: workspace:*
+        version: link:../chart
       '@binference/client':
         specifier: workspace:*
         version: link:../client
@@ -1077,6 +1089,9 @@ importers:
       '@binference/chain':
         specifier: workspace:*
         version: link:../chain
+      '@binference/chart':
+        specifier: workspace:*
+        version: link:../chart
       '@binference/core':
         specifier: workspace:*
         version: link:../core
@@ -1101,6 +1116,9 @@ importers:
 
   packages/tui:
     dependencies:
+      '@binference/chart':
+        specifier: workspace:*
+        version: link:../chart
       '@binference/client':
         specifier: workspace:*
         version: link:../client
