@@ -9,6 +9,7 @@ import {
 import type { PublishPush } from "@binference/engine";
 import type { RunningTurns } from "@binference/engine/chat";
 import { createPluginNotices } from "@binference/engine/notices";
+import type { EngineShell } from "@binference/engine/shell";
 import type { EngineHandlerTable } from "@binference/engine/surfaces";
 import { ensurePrivateFolder, realFilePath, removePath } from "@binference/platform";
 import {
@@ -26,6 +27,7 @@ import { createPluginRunner, type PluginRunner } from "../plugins/plugin-runner.
 import type { PluginShelf } from "../plugins/put-plugin.js";
 import { sigstoreVerifier } from "../plugins/sigstore-verifier.js";
 import { type ComposedRuntime, composeRuntime } from "./compose-runtime.js";
+import { shellOf } from "./compose-shell.js";
 import type { Opened, Opening } from "./open-engine-parts.js";
 import { createPluginOperations } from "./plugin-operations.js";
 import {
@@ -60,6 +62,8 @@ export interface RuntimeWithPlugins {
   readonly agentSide: {
     readonly turns: ComposedRuntime["turns"];
     readonly communityPluginsOn: () => boolean;
+    /** The agent's shell on this machine (decision 0378). */
+    readonly shell: EngineShell;
   };
 }
 
@@ -289,6 +293,7 @@ export function composeRuntimeWithPlugins(
     runtime.begin(server);
     composed.begin();
   };
-  const agentSide = { turns: runtime.turns, communityPluginsOn: () => offered.isOn() };
+  const communityPluginsOn = (): boolean => offered.isOn();
+  const agentSide = { turns: runtime.turns, communityPluginsOn, shell: shellOf(opening, opened) };
   return { runtime: { ...runtime, begin }, plugins: composed, agentSide };
 }

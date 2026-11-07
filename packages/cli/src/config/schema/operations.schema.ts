@@ -58,6 +58,13 @@ export interface CexConfig {
   readonly binance: { readonly enabled: boolean };
 }
 
+/** The agent's shell (decision 0378): whether it runs commands, and a command's time limit. */
+export interface ShellConfig {
+  readonly run: "off" | "any";
+  /** A command's time limit in seconds when the agent names none; 0 for none. */
+  readonly timeoutSeconds: number;
+}
+
 /** Each plugin's settings by plugin id, checked by the plugin's own schema when it loads. */
 export type PluginsConfig = Readonly<Record<string, JsonObject>>;
 
@@ -179,6 +186,26 @@ export const cexSchema: z.ZodType<CexConfig> = z
   })
   .prefault({})
   .describe("Centralized exchanges.");
+
+/** Parses `shell`. */
+export const shellSchema: z.ZodType<ShellConfig> = z
+  .strictObject({
+    run: z
+      .enum(["off", "any"])
+      .prefault("any")
+      .describe(
+        "any lets the agent run commands on this machine, away from binference's own folder; " +
+          "off runs none.",
+      ),
+    timeoutSeconds: z
+      .int()
+      .min(0)
+      .max(86_400)
+      .prefault(1_800)
+      .describe("A command's time limit in seconds when the agent names none; 0 for none."),
+  })
+  .prefault({})
+  .describe("The agent's shell.");
 
 /** Parses `plugins`. */
 export const pluginsSchema: z.ZodType<PluginsConfig> = z

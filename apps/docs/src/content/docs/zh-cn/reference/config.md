@@ -5,7 +5,7 @@ description: "config.json5 中的每个配置项：取值、默认值和环境�
 
 <!-- Generated from the code by pnpm docs:gen. Never edit this file: change the code, then run pnpm docs:gen. -->
 
-此版本的 binference 读取第 16 版的 `config.json5`。每个配置项可以在文件中、通过对应的变量或用 `--set <key>=<value>` 设置，后面的层优先。密钥始终写成密钥来源，从不写密钥本身。
+此版本的 binference 读取第 17 版的 `config.json5`。每个配置项可以在文件中、通过对应的变量或用 `--set <key>=<value>` 设置，后面的层优先。密钥始终写成密钥来源，从不写密钥本身。
 
 ## `version`
 
@@ -201,6 +201,13 @@ description: "config.json5 中的每个配置项：取值、默认值和环境�
 中心化交易所。
 
 - `cex.binance.enabled`: 开启 Binance Agent OS 插件。取值：true 或 false。默认：`false`。变量：`BINFERENCE_CEX__BINANCE__ENABLED`。
+
+## `shell`
+
+Agent 的命令行。
+
+- `shell.run`: any 让 Agent 在本机运行命令，不触及 binference 自己的文件夹；off 不运行任何命令。取值：以下之一："off", "any"。默认：`"any"`。变量：`BINFERENCE_SHELL__RUN`。
+- `shell.timeoutSeconds`: Agent 未指定时，一条命令的时限（秒）；0 表示不限。取值：0 到 86400 之间的数字。默认：`1800`。变量：`BINFERENCE_SHELL__TIMEOUT_SECONDS`。
 
 ## `plugins`
 

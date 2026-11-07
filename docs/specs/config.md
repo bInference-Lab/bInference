@@ -2,7 +2,7 @@
 
 Status: accepted on 2026-10-06 ([decision 0094](../DECISIONS.md#d0094)), amended by decisions
 [0102](../DECISIONS.md#d0102), [0108](../DECISIONS.md#d0108), [0118](../DECISIONS.md#d0118),
-[0185](../DECISIONS.md#d0185), [0186](../DECISIONS.md#d0186), [0191](../DECISIONS.md#d0191), [0208](../DECISIONS.md#d0208), [0224](../DECISIONS.md#d0224), [0225](../DECISIONS.md#d0225), [0230](../DECISIONS.md#d0230), [0296](../DECISIONS.md#d0296), [0347](../DECISIONS.md#d0347), [0376](../DECISIONS.md#d0376) and [0377](../DECISIONS.md#d0377);
+[0185](../DECISIONS.md#d0185), [0186](../DECISIONS.md#d0186), [0191](../DECISIONS.md#d0191), [0208](../DECISIONS.md#d0208), [0224](../DECISIONS.md#d0224), [0225](../DECISIONS.md#d0225), [0230](../DECISIONS.md#d0230), [0296](../DECISIONS.md#d0296), [0347](../DECISIONS.md#d0347), [0376](../DECISIONS.md#d0376), [0377](../DECISIONS.md#d0377) and [0378](../DECISIONS.md#d0378);
 `defaults.notifications` gains the alert, launch alert, exit order and update notices, accepted by
 the owner on 2026-10-12.
 
@@ -256,6 +256,8 @@ decimals; the engine reads them as micro-dollars on load, never through a floati
 | `logging.maxFileMb`    | integer                                        | `20`                         | live    | Rotation size                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | `cex.binance.enabled`  | boolean                                        | `false`                      | restart | The Binance Agent OS plugin ([decision 0006](../DECISIONS.md#d0006))                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | `plugins.<id>`         | object                                         | the plugin's schema          | live    | Each plugin's settings, validated by its own schema                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| `shell.run`            | `"off"` \| `"any"`                             | `"any"`                      | live    | Whether the agent runs commands on this machine ([decision 0378](../DECISIONS.md#d0378)): each starts in the owner's login shell, as the owner's user, behind a wall that keeps it from binference's own folder; read as each command starts                                                                                                                                                                                                                                                        |
+| `shell.timeoutSeconds` | integer                                        | `1800`                       | live    | A command's time limit in seconds when the agent names none, at most 86400; `0` for none                                                                                                                                                                                                                                                                                                                                                                                                            |
 
 <a id="section-7"></a>
 
@@ -264,7 +266,7 @@ decimals; the engine reads them as micro-dollars on load, never through a floati
 ```json5
 // ~/.binference/config.json5
 {
-  version: 16,
+  version: 17,
   owner: { locale: "zh", timezone: "Asia/Shanghai" },
   custody: {
     privy: {

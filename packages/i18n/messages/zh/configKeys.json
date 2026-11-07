@@ -125,5 +125,8 @@
   "cex": "中心化交易所。",
   "cex.binance.enabled": "开启 Binance Agent OS 插件。",
   "plugins": "每个插件的设置，按插件 ID 列出。",
-  "plugins.<plugin>.<setting>": "某个插件的设置，按该插件自己的格式读取。"
+  "plugins.<plugin>.<setting>": "某个插件的设置，按该插件自己的格式读取。",
+  "shell": "Agent 的命令行。",
+  "shell.run": "any 让 Agent 在本机运行命令，不触及 binference 自己的文件夹；off 不运行任何命令。",
+  "shell.timeoutSeconds": "Agent 未指定时，一条命令的时限（秒）；0 表示不限。"
 }

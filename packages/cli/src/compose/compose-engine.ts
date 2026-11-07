@@ -32,6 +32,7 @@ import {
 import type { HeldWallet } from "@binference/engine/executor";
 import { isNoticeMutedFor } from "@binference/engine/notices";
 import { createRiskCheck, type RiskCheck } from "@binference/engine/risk";
+import type { EngineShell } from "@binference/engine/shell";
 import type { EngineHandlerTable } from "@binference/engine/surfaces";
 import type { EngineState, OwnerInfo } from "@binference/protocol";
 import {
@@ -158,6 +159,8 @@ export interface ComposeEngineOptions extends EngineChainParts {
    * without them no rule is made.
    */
   readonly webhooks?: Pick<EngineOptions, "secretRandom" | "webhookBase">;
+  /** The agent's shell on this machine (decision 0378); off when absent. */
+  readonly shell?: EngineShell;
   readonly logger: Logger;
 }
 
@@ -315,6 +318,7 @@ function engineOf(
     ids: given.ids,
     random: options.random,
     ...options.webhooks,
+    ...(options.shell === undefined ? {} : { shell: options.shell }),
     publish: given.publish,
     turns: given.turns,
     ownerTimeZone: () => options.owner().timezone,

@@ -5,7 +5,7 @@ description: "Every config key in config.json5: what it takes, its default and i
 
 <!-- Generated from the code by pnpm docs:gen. Never edit this file: change the code, then run pnpm docs:gen. -->
 
-This binference reads `config.json5` version 16. Each config key is set in the file, by its variable, or by `--set <key>=<value>`, and a later layer wins. A secret is always a secret source, never the secret itself.
+This binference reads `config.json5` version 17. Each config key is set in the file, by its variable, or by `--set <key>=<value>`, and a later layer wins. A secret is always a secret source, never the secret itself.
 
 ## `version`
 
@@ -201,6 +201,13 @@ Logs.
 Centralized exchanges.
 
 - `cex.binance.enabled`: Turns on the Binance Agent OS plugin. Takes true or false. Default: `false`. Variable: `BINFERENCE_CEX__BINANCE__ENABLED`.
+
+## `shell`
+
+The agent's shell.
+
+- `shell.run`: any lets the agent run commands on this machine, away from binference's own folder; off runs none. Takes one of "off", "any". Default: `"any"`. Variable: `BINFERENCE_SHELL__RUN`.
+- `shell.timeoutSeconds`: A command's time limit in seconds when the agent names none; 0 for none. Takes a number from 0 to 86400. Default: `1800`. Variable: `BINFERENCE_SHELL__TIMEOUT_SECONDS`.
 
 ## `plugins`
 

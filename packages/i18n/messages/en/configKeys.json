@@ -124,6 +124,9 @@
   "logging.maxFileMb": "A log file rotates at this many megabytes.",
   "cex": "Centralized exchanges.",
   "cex.binance.enabled": "Turns on the Binance Agent OS plugin.",
+  "shell": "The agent's shell.",
+  "shell.run": "any lets the agent run commands on this machine, away from binference's own folder; off runs none.",
+  "shell.timeoutSeconds": "A command's time limit in seconds when the agent names none; 0 for none.",
   "plugins": "Each plugin's settings, by plugin id.",
   "plugins.<plugin>.<setting>": "One plugin's settings, as its own schema reads them."
 }

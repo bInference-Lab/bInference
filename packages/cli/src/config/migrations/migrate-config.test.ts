@@ -289,6 +289,25 @@ describe("migrate config", () => {
     });
   });
 
+  it("moves a version 16 file to version 17 unchanged, the shell on", () => {
+    const sixteenth: JsonObject = { version: 16, logging: { level: "debug" } };
+    expect(migrateConfig(sixteenth, configMigrations.slice(0, 16))).toStrictEqual({
+      ok: true,
+      file: { version: 17, logging: { level: "debug" } },
+      steps: [
+        {
+          from: 16,
+          to: 17,
+          summary:
+            'Adds shell, the agent\'s commands on this machine, at run "any" with a 1800-second ' +
+            "limit: the agent runs commands away from binference's own folder until the owner " +
+            "sets off.",
+          edits: [],
+        },
+      ],
+    });
+  });
+
   it("keeps the shipped migrations in order, one version each", () => {
     expect(() => {
       assertMigrationOrder(configMigrations);

@@ -13,6 +13,7 @@ export function platformOf(host: Pick<CliHost, "env" | "homeDir" | "keychain">):
     xdgConfigHome: host.env["XDG_CONFIG_HOME"],
     display: host.env["DISPLAY"],
     waylandDisplay: host.env["WAYLAND_DISPLAY"],
+    loginShell: host.env["SHELL"],
     ...(host.homeDir === undefined ? {} : { homeDir: host.homeDir }),
   });
   return host.keychain === undefined ? platform : { ...platform, keychain: host.keychain };

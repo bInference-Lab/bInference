@@ -113,6 +113,13 @@ export const configMigrations: readonly ConfigMigration[] = [
       "the owner sees no reasoning until they choose to.",
     edits: () => [],
   },
+  {
+    from: 16,
+    summary:
+      'Adds shell, the agent\'s commands on this machine, at run "any" with a 1800-second limit: ' +
+      "the agent runs commands away from binference's own folder until the owner sets off.",
+    edits: () => [],
+  },
 ];
 
 /** The version of `config.json5` this binference writes and reads. */

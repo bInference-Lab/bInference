@@ -64,6 +64,8 @@ describe("when a config change applies", () => {
     ["chains.maxFeePerGasGwei.eip155:1", "0.5", "restart"],
     ["venues.keys.okx.apiKey", "fromEnv", "restart"],
     ["plugins.example.colour", "blue", "now"],
+    ["shell.run", "off", "now"],
+    ["shell.timeoutSeconds", 60, "now"],
     ["a.key.no.entry.covers", 1, "restart"],
   ])("judges %s set to %j as %s", (path, after, time) => {
     expect(applyTimeOf({ path, after }, started)).toBe(time);

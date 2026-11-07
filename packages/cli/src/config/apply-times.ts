@@ -69,6 +69,8 @@ const keysReadOnUse: readonly string[] = [
   // The proxy is read again at the reload: each request and socket that starts after it goes by
   // the new route, the runtime's from its next settings line; one under way finishes as it began.
   "network",
+  // Each shell command reads the switch and the time limit as it starts.
+  "shell",
 ];
 
 // The keys spec 2 marks live that no part reads yet, so no running part holds an older value: the

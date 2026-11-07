@@ -1,5 +1,5 @@
 {
-  "version": 16,
+  "version": 17,
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object",
@@ -1054,6 +1054,30 @@
               }
             },
             "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      "shell": {
+        "description": "The agent's shell.",
+        "default": {},
+        "type": "object",
+        "properties": {
+          "run": {
+            "description": "any lets the agent run commands on this machine, away from binference's own folder; off runs none.",
+            "default": "any",
+            "type": "string",
+            "enum": [
+              "off",
+              "any"
+            ]
+          },
+          "timeoutSeconds": {
+            "description": "A command's time limit in seconds when the agent names none; 0 for none.",
+            "default": 1800,
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 86400
           }
         },
         "additionalProperties": false
