@@ -26,8 +26,8 @@ describe("the deposit lines in the terminal", () => {
     expect(lines.map(({ text }) => text)).toStrictEqual([
       "Main · BNB Smart Chain",
       "  0x52908400098527886E0F7030069857D2E4169EE7",
-      "Send only BNB Smart Chain assets to this address. An asset sent on another network can be lost.",
-      "This agent trades on paper: what you send here is real money, and it waits in this wallet until you switch the agent to live.",
+      "Send only BNB Smart Chain assets here. Assets sent on any other network can be lost.",
+      `${String.fromCodePoint(0x1f9ea)} Paper mode: deposits are real money and stay in this wallet until you switch the agent to live.`,
     ]);
   });
 });

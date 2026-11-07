@@ -57,11 +57,13 @@ describe("the deposit the agent shows in Telegram", () => {
     const [photo] = botApi.messages();
     expect(photo?.file?.bytes).toStrictEqual(qrPng("0x00000010"));
     expect(photo?.text.split("\n")).toStrictEqual([
-      `Main · agent wallet · Fake One · ${paper} Paper`,
+      "Main · agent wallet",
       "0x00000010",
-      "Send only Fake One assets to this address. An asset sent on another network can be lost.",
-      "This agent trades on paper: what you send here is real money, and it waits in this wallet until you switch the agent to live.",
-      "This agent is frozen: what you send arrives, but it trades nothing until you unfreeze it.",
+      "",
+      "Send only Fake One assets here. Assets sent on any other network can be lost.",
+      `${paper} Paper mode: deposits are real money and stay in this wallet until you switch the agent to live.`,
+      "Frozen: deposits arrive, but the agent trades nothing until you unfreeze it.",
+      "",
       "View on scan.example.invalid",
     ]);
   });

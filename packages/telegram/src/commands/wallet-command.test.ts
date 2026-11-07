@@ -8,10 +8,8 @@ import { startCommandBot } from "./test-command-bot.js";
 const agent = protocolIdSchema("agent").parse("agt_0190f1c2-3a4b-7c5d-8e6f-0000000000a1");
 const walletId = (n: number) =>
   protocolIdSchema("wallet").parse(`wal_0190f1c2-3a4b-7c5d-8e6f-0000000000${String(n)}`);
-const live = String.fromCodePoint(0x1f534);
 const paper = String.fromCodePoint(0x1f9ea);
-const network =
-  "Send only Fake One assets to this address. An asset sent on another network can be lost.";
+const network = "Send only Fake One assets here. Assets sent on any other network can be lost.";
 
 function statusOf(agentStatus: {
   mode: "live" | "paper";
@@ -48,7 +46,7 @@ function walletsBot(
 }
 
 describe("the /wallet command", () => {
-  it("sends each wallet as the QR code of its own address, captioned with how to fund it", async () => {
+  it("sends each wallet as the QR code of its own address, captioned with its name, address and warnings", async () => {
     const engine = walletsBot([
       view(10, "Main"),
       view(11, "Launch", { role: "launch" }),
@@ -65,19 +63,21 @@ describe("the /wallet command", () => {
     ]);
     expect(messages[0]).toMatchObject({
       text: [
-        `Main · agent wallet · Fake One · ${live} Live`,
+        "Main · agent wallet",
         "0x00000010",
+        "",
         network,
+        "",
         "View on scan.example.invalid",
       ].join("\n"),
       entities: [
-        { type: "code", offset: 41, length: 10 },
+        { type: "bold", offset: 0, length: 4 },
+        { type: "code", offset: 20, length: 10 },
+        { type: "blockquote" },
         { type: "text_link", url: "https://scan.example.invalid/address/0x00000010" },
       ],
     });
-    expect(messages[1]?.text.split("\n")[0]).toBe(
-      `Launch · launch wallet · Fake One · ${live} Live`,
-    );
+    expect(messages[1]?.text.split("\n")[0]).toBe("Launch · launch wallet");
   });
 
   it("warns that a paper agent's deposit is real money and a frozen agent trades nothing", async () => {
@@ -86,11 +86,13 @@ describe("the /wallet command", () => {
     );
     await bot.send("/wallet");
     expect(bot.botApi.messages()[0]?.text.split("\n")).toStrictEqual([
-      `Main · agent wallet · Fake One · ${paper} Paper`,
+      "Main · agent wallet",
       "0x00000010",
+      "",
       network,
-      "This agent trades on paper: what you send here is real money, and it waits in this wallet until you switch the agent to live.",
-      "This agent is frozen: what you send arrives, but it trades nothing until you unfreeze it.",
+      `${paper} Paper mode: deposits are real money and stay in this wallet until you switch the agent to live.`,
+      "Frozen: deposits arrive, but the agent trades nothing until you unfreeze it.",
+      "",
       "View on scan.example.invalid",
     ]);
   });
@@ -103,9 +105,11 @@ describe("the /wallet command", () => {
     const [message] = bot.botApi.messages();
     expect(message?.file).toBeUndefined();
     expect(message?.text.split("\n")).toStrictEqual([
-      `Spare · extra bridge wallet · Fake One · ${live} Live`,
+      "Spare · extra bridge wallet",
       "0x00000013",
+      "",
       "Nothing runs from this wallet. Send it no funds.",
+      "",
       "View on scan.example.invalid",
     ]);
   });
@@ -118,9 +122,10 @@ describe("the /wallet command", () => {
     expect(bot.botApi.messages()).toMatchObject([
       {
         text: [
-          `Far · agent wallet · Fake Two · ${live} Live`,
+          "Far · agent wallet",
           "0x00000014",
-          "Send only Fake Two assets to this address. An asset sent on another network can be lost.",
+          "",
+          "Send only Fake Two assets here. Assets sent on any other network can be lost.",
         ].join("\n"),
         file: { bytes: qrPng("0x00000014") },
       },
@@ -137,7 +142,7 @@ describe("the /wallet command", () => {
     const [message] = bot.botApi.messages();
     expect(message?.file).toBeUndefined();
     expect(message?.text.split("\n").slice(0, 2)).toStrictEqual([
-      `Main · agent wallet · Fake One · ${live} Live`,
+      "Main · agent wallet",
       "0x00000010",
     ]);
   });
@@ -152,9 +157,12 @@ describe("the /wallet command", () => {
     const bot = await startCommandBot(walletsBot([view(10, "<b>Main</b> & co")]).handlers);
     await bot.send("/wallet");
     const [message] = bot.botApi.messages();
-    expect(message?.text.split("\n")[0]).toBe(
-      `<b>Main</b> & co · agent wallet · Fake One · ${live} Live`,
-    );
-    expect(message?.entities.map((entity) => entity.type)).toStrictEqual(["code", "text_link"]);
+    expect(message?.text.split("\n")[0]).toBe("<b>Main</b> & co · agent wallet");
+    expect(message?.entities.map((entity) => entity.type)).toStrictEqual([
+      "bold",
+      "code",
+      "blockquote",
+      "text_link",
+    ]);
   });
 });
