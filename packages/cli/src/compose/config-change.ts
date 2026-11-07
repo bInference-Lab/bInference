@@ -13,6 +13,7 @@ import { isJsonObject, jsonValueSchema } from "../config/json-value.schema.js";
 import { editJson5Text } from "../config/json5-edit.js";
 import type { ReadTextFile } from "../config/load-config.js";
 import { shownConfig } from "../config/shown-config.js";
+import { unknownModelProviders } from "../config/unknown-model-providers.js";
 import type { ConfigOutcome } from "../config/validate-config.js";
 import type { ConfigCell } from "./config-cell.js";
 import type { ConfigReloadLink } from "./config-reload-link.js";
@@ -68,6 +69,9 @@ export function createConfigChange(options: ConfigChangeOptions): EngineHandler<
       return err(isInline ? "config.secret_inline" : "config.invalid");
     }
     const running = options.settings.current();
+    if (unknownModelProviders(running.models, checked.config.models).length > 0) {
+      return err("config.invalid");
+    }
     await write(options.file, edited, { permissions: options.permissions, signal });
     const reason = args.reason === undefined ? {} : { reason: args.reason };
     await options.reload.applyNow({ author: authorOf(caller), ...reason }, signal);

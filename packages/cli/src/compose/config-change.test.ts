@@ -264,6 +264,17 @@ describe("a config change from a chat", () => {
     await test.closers.closeAll(live().signal);
   });
 
+  it("refuses a model whose provider the config does not hold, as config/change does", async () => {
+    const test = await machine();
+    const patch = { models: { imageMaking: "openai/gpt-image-1" } };
+    expect([await test.proposals.preview(patch, live()), await test.call(patch)]).toStrictEqual([
+      err("config.invalid"),
+      err("config.invalid"),
+    ]);
+    expect(test.writes).toStrictEqual([]);
+    await test.closers.closeAll(live().signal);
+  });
+
   it("applies a confirmed change as the owner who tapped, with the reason, and only once", async () => {
     const test = await machine();
     const quote = {

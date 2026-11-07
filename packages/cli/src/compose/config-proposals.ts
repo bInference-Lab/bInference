@@ -16,6 +16,7 @@ import { isJsonObject, type JsonValue, jsonValueSchema } from "../config/json-va
 import { editJson5Text } from "../config/json5-edit.js";
 import type { BinferenceConfig } from "../config/schema/config.schema.js";
 import { shownConfig } from "../config/shown-config.js";
+import { unknownModelProviders } from "../config/unknown-model-providers.js";
 import type { ConfigChangeOptions } from "./config-change.js";
 import type { Opened, Opening } from "./open-engine-parts.js";
 import { ownerChatHandlers } from "./owner-chat-config-change.js";
@@ -61,7 +62,10 @@ async function readPatch(
   if (!now.ok) {
     return err(refusalOf(now.issues));
   }
-  return was.ok ? ok({ edited, before: was.config, after: now.config }) : err("config.invalid");
+  if (!was.ok || unknownModelProviders(was.config.models, now.config.models).length > 0) {
+    return err("config.invalid");
+  }
+  return ok({ edited, before: was.config, after: now.config });
 }
 
 function previewOf(options: ConfigChangeOptions, read: PatchRead): ConfigChangePreview {
