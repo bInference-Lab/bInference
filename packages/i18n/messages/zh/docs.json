@@ -122,5 +122,6 @@
   "tools.summary.binference_alert_create": "设置价格提醒、钱包提醒或发射提醒。",
   "tools.summary.binference_ledger": "读取一个 Agent 的账本。",
   "tools.summary.shell": "在所有者的机器上运行一条命令，不触及 binference 自己的文件，并读取输出。",
-  "tools.summary.shell_job": "读取运行中命令的新输出，或停止它。"
+  "tools.summary.shell_job": "读取运行中命令的新输出，或停止它。",
+  "tools.summary.deposit_address": "向所有者显示每个钱包的地址及其二维码，用于向 Agent 转账资金。"
 }

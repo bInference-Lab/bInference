@@ -1042,7 +1042,9 @@ it. Its caption is `cmd.wallet.item`, the full address in `code`, which the owne
 page on the first block explorer the chain registry lists, from that explorer's `addressUrl` page
 template. An extra launch or bridge wallet, which nothing runs from, gets no code: its message says
 `cmd.wallet.extraFunds` in place of the warnings. When Telegram refuses the photo, its caption
-goes as a message, so the address still arrives. It is the one fast command that goes as Telegram
+goes as a message, so the address still arrives. The agent's `deposit_address` tool shows the same
+messages in the turn's chat, from the engine's `chat/deposit` push
+([decision 0380](../DECISIONS.md#d0380)), and they count as the turn's answer. It is the one fast command that goes as Telegram
 HTML, drawn from the fixed tags of the agent's chat text
 ([decision 0370](../DECISIONS.md#d0370)), so the address shows as code.
 
@@ -1472,6 +1474,7 @@ How the owner's messages reach the agent and its replies reach the owner in Tele
 | `notes_search`, `notes_write`                         | `turn.tool.notesSearch`, `turn.tool.notesWrite`                                  | Searching the notes…, Writing a note…                               | 正在搜索笔记…，正在写笔记…                              |
 | `open_skill`, `workspace_write`                       | `turn.tool.openSkill`, `turn.tool.workspaceWrite`                                | Opening a skill…, Saving a workspace file…                          | 正在打开技能…，正在保存工作区文件…                      |
 | `launchpads`, `launch_draft`                          | `turn.tool.launchpads`, `turn.tool.launchDraft`                                  | Reading the launchpads…, Drafting a launch…                         | 正在读取发射台…，正在起草发射…                          |
+| `deposit_address`                                     | `turn.tool.deposit`                                                              | Showing where to deposit…                                           | 正在显示充值地址…                                       |
 | `shell`, `shell_job`                                  | `turn.tool.shell`, `turn.tool.shellJob`                                          | Running a command…, Checking a command…                             | 正在运行命令…，正在查看命令…                            |
 | A plugin's tool `<id>__<tool>`                        | `turn.tool.plugin`                                                               | Asking the plugin {plugin}…                                         | 正在询问插件 {plugin}…                                  |
 

@@ -4,7 +4,7 @@ import type { OwnerStore } from "@binference/engine/surfaces";
 import type { MessageLocale, MessageValues } from "@binference/i18n";
 import type { Api } from "grammy";
 import type { CardShowing, TelegramCards } from "../cards/create-telegram-cards.js";
-import type { ReplySettings } from "../chat/chat-replies.js";
+import type { ReplySettings } from "../chat/chat-replies-options.js";
 import { createOwnerFormatters, type OwnerFormatters } from "../format/owner-formatters.js";
 import { type BotCalls, createBotCalls } from "../ingress/bot-calls.js";
 import type { ReplyTarget } from "../ingress/decide-update.js";

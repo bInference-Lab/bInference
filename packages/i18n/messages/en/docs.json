@@ -122,5 +122,6 @@
   "tools.summary.binference_alert_create": "Sets a price, wallet or launch alert.",
   "tools.summary.binference_ledger": "Reads an agent's ledger.",
   "tools.summary.shell": "Runs a command on the owner's machine, away from binference's own files, and reads its output.",
-  "tools.summary.shell_job": "Reads a running command's new output, or stops it."
+  "tools.summary.shell_job": "Reads a running command's new output, or stops it.",
+  "tools.summary.deposit_address": "Shows the owner each wallet's address and its QR code, to send funds to the agent."
 }

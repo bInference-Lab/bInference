@@ -329,12 +329,12 @@ Each tool has one kind, which the loop reads; nothing else in the loop depends o
 | `control` | Changes something without moving money or opening a card             | In order                                    | No               |
 | `machine` | Runs a command on the owner's machine through the shell host         | In order, with its own time limits          | No               |
 
-| Kind      | Tools ([ARCHITECTURE.md section 6](../ARCHITECTURE.md#section-6))                                                                                                                                                                                                                                          |
-| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `read`    | `token_search`, `addresses`, `wallets`, `portfolio`, `token_info`, `token_risk`, `quote`, `market_scan`, `chart`, `wallet_activity`, `staking_options`, `bridge_quote`, `tx_status`, `orders`, `schedule_list`, `cex_*`, `search_web`, `search_x`, `read_page`, `notes_search`, `open_skill`, `launchpads` |
-| `propose` | `swap`, `buy`, `sell`, `send`, `approval_revoke`, `order_create`, `stake`, `unstake`, `claim`, `bridge`, `cex_order`                                                                                                                                                                                       |
-| `control` | `order_cancel` (braking), `alert_create`, `schedule_create`, `schedule_cancel`, `notes_write`, `ask_owner`, `workspace_write`, `first_chat_end` ([decision 0242](../DECISIONS.md#d0242)), `launch_draft` ([decision 0285](../DECISIONS.md#d0285))                                                          |
-| `machine` | `shell`, `shell_job` ([decision 0378](../DECISIONS.md#d0378))                                                                                                                                                                                                                                              |
+| Kind      | Tools ([ARCHITECTURE.md section 6](../ARCHITECTURE.md#section-6))                                                                                                                                                                                                                                             |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `read`    | `token_search`, `addresses`, `wallets`, `portfolio`, `token_info`, `token_risk`, `quote`, `market_scan`, `chart`, `wallet_activity`, `staking_options`, `bridge_quote`, `tx_status`, `orders`, `schedule_list`, `cex_*`, `search_web`, `search_x`, `read_page`, `notes_search`, `open_skill`, `launchpads`    |
+| `propose` | `swap`, `buy`, `sell`, `send`, `approval_revoke`, `order_create`, `stake`, `unstake`, `claim`, `bridge`, `cex_order`                                                                                                                                                                                          |
+| `control` | `order_cancel` (braking), `alert_create`, `schedule_create`, `schedule_cancel`, `notes_write`, `ask_owner`, `workspace_write`, `first_chat_end` ([decision 0242](../DECISIONS.md#d0242)), `launch_draft` ([decision 0285](../DECISIONS.md#d0285)), `deposit_address` ([decision 0380](../DECISIONS.md#d0380)) |
+| `machine` | `shell`, `shell_job` ([decision 0378](../DECISIONS.md#d0378))                                                                                                                                                                                                                                                 |
 
 `wallet_activity` reads only a wallet the agent tracks, the leader of one of its copy orders or the
 account of one of its wallet alerts. For the agent's own wallets the engine answers
@@ -351,6 +351,12 @@ plugin turned off since ([decision 0349](../DECISIONS.md#d0349)).
 saved address by its entry id. The owner saved each address and wrote each label with the owner
 key, so its answer is never outside content. `.bnb` names go to `send` as the owner wrote them,
 and the engine reads them; no tool resolves a name for the model.
+
+`deposit_address` shows the owner where to send funds: the engine pushes each wallet the agent runs
+from, its address read from custody, and the owner's chat shows it with its QR code
+(`turn/deposit`, [decision 0380](../DECISIONS.md#d0380)). The model names no wallet and writes no
+address; the tool answers the addresses the engine showed, which a proposal may take as the
+engine's own facts.
 
 `wallets` reads the agent's own wallets (`wallet/list`) with its mode (`agent/get`): each wallet's
 role (`agent`, `launch` or `bridge`), its chain's name, its address as the chain writes it and as a

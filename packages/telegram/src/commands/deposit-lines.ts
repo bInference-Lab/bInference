@@ -14,8 +14,10 @@ export interface DepositWallet {
   readonly isFrozen: boolean;
 }
 
-/** What the deposit lines are written with: the words, the chains and the formatter. */
-type LineParts = Pick<CommandContext, "words" | "chains" | "formatter">;
+/** What the deposit lines are written with: the words, the formatter, and the chains if known. */
+type LineParts = Pick<CommandContext, "words" | "formatter"> & {
+  readonly chains?: CommandContext["chains"];
+};
 
 const textBlock = { kind: "text" } as const;
 
@@ -79,8 +81,8 @@ function warningLines(parts: LineParts, wallet: DepositWallet, chain: string): r
 export function depositLines(parts: LineParts, wallet: DepositWallet): readonly RichLine[] {
   const { view, mode } = wallet;
   const { chain, address } = accountRefParts(view.address);
-  const registered = parts.chains.get(chain);
-  const definition = registered.ok ? registered.value.definition : undefined;
+  const registered = parts.chains?.get(chain);
+  const definition = registered?.ok === true ? registered.value.definition : undefined;
   const chainName = definition?.name ?? view.chainName ?? chain;
   const template = definition?.explorers[0]?.addressUrl;
   const display: CardDisplay = { formatter: parts.formatter, assets: {} };

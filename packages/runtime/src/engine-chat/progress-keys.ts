@@ -49,6 +49,7 @@ const toolKeys: Readonly<Record<AgentToolName, string | undefined>> = {
   launchpads: "turn.tool.launchpads",
   launch_draft: "turn.tool.launchDraft",
   ask_owner: undefined,
+  deposit_address: "turn.tool.deposit",
   shell: "turn.tool.shell",
   shell_job: "turn.tool.shellJob",
 };

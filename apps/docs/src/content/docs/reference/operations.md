@@ -262,6 +262,7 @@ Every operation of the engine protocol, version 1, by domain. A client calls an 
 | `turn/progress` | `agent` | read | any connection | engine |
 | `turn/end` | `agent` | write | any connection | engine |
 | `turn/reasoning` | `agent` | read | any connection | engine |
+| `turn/deposit` | `agent` | read | any connection | engine |
 | `turn/ask` | `agent` | write | any connection | engine |
 
 ## `usage`

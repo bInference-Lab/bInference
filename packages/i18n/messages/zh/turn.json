@@ -63,5 +63,6 @@
   "tool.launchDraft": "正在起草发射…",
   "tool.plugin": "正在询问插件 {plugin}…",
   "tool.shell": "正在运行命令…",
-  "tool.shellJob": "正在查看命令…"
+  "tool.shellJob": "正在查看命令…",
+  "tool.deposit": "正在显示充值地址…"
 }

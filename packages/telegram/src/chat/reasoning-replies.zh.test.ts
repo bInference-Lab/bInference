@@ -5,7 +5,8 @@ import { describe, expect, it } from "vitest";
 import { createFakeBotApi, fakeBotToken } from "../testing/fake-bot-api.js";
 import { ownerId } from "../testing/update-fixtures.js";
 import { createBotThrottlers } from "../throttle/create-bot-throttlers.js";
-import { createChatReplies, type ReplySettings } from "./chat-replies.js";
+import type { ReplySettings } from "./chat-replies-options.js";
+import { createChatReplies } from "./chat-replies.js";
 
 const live = { signal: new AbortController().signal };
 const agent = "agt_0190f1c2-3a4b-7c5d-8e6f-0123456789ab";

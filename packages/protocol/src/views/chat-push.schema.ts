@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { type AgentMode, agentModeSchema } from "./agent-view.schema.js";
+import { type WalletView, walletViewSchema } from "./wallet-view.schema.js";
 
 /**
  * The most characters of reasoning one `turn/reasoning`, and so one `chat/reasoning`, carries;
@@ -40,6 +42,16 @@ export type ChatPush =
       readonly text: string;
       readonly final: boolean;
     }
+  | {
+      readonly kind: "chat/deposit";
+      readonly agent: string;
+      readonly turn: string;
+      /** The agent's mode and freeze now, which a surface warns of beside each address. */
+      readonly mode: AgentMode;
+      readonly frozen: boolean;
+      /** The wallets to show, each with the address its QR code holds (decision 0380). */
+      readonly wallets: readonly WalletView[];
+    }
   | { readonly kind: "chat/turnEnded"; readonly agent: string; readonly turn: string };
 
 const at = { agent: z.string().min(1), turn: z.string().min(1) };
@@ -62,6 +74,15 @@ const pushSchema = z.discriminatedUnion("kind", [
   z.looseObject({
     kind: z.literal("chat/reasoning"),
     data: z.looseObject({ ...at, text: z.string(), final: z.boolean() }),
+  }),
+  z.looseObject({
+    kind: z.literal("chat/deposit"),
+    data: z.looseObject({
+      ...at,
+      mode: agentModeSchema,
+      frozen: z.boolean(),
+      wallets: z.array(walletViewSchema).min(1),
+    }),
   }),
   z.looseObject({ kind: z.literal("chat/turnEnded"), data: z.looseObject(at) }),
 ]);
@@ -102,6 +123,10 @@ export function chatPushOf(push: {
       progressKey,
       ...(shown === undefined ? {} : { values: shown }),
     };
+  }
+  if (read.kind === "chat/deposit") {
+    const { agent, turn, mode, frozen, wallets } = read.data;
+    return { kind: read.kind, agent, turn, mode, frozen, wallets };
   }
   return { kind: read.kind, agent: read.data.agent, turn: read.data.turn };
 }

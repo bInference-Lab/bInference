@@ -6,6 +6,7 @@ import {
 } from "./binance-agent-operations.schema.js";
 import { type BridgeOperationShapes, bridgeOperations } from "./bridge-operations.schema.js";
 import { type ChatOperationShapes, chatOperations } from "./chat-operations.schema.js";
+import { type DepositOperationShapes, depositOperations } from "./deposit-operations.schema.js";
 import { type EngineOperationShapes, engineOperations } from "./engine-operations.schema.js";
 import { type ImageOperationShapes, imageOperations } from "./image-operations.schema.js";
 import { type IntentOperationShapes, intentOperations } from "./intent-operations.schema.js";
@@ -56,6 +57,7 @@ export interface OperationShapes
     ImageOperationShapes,
     ReasoningOperationShapes,
     ShellOperationShapes,
+    DepositOperationShapes,
     QuestionOperationShapes,
     NoteOperationShapes,
     PluginOperationShapes,
@@ -91,6 +93,7 @@ export const operations: OperationTable<OperationShapes> = {
   ...imageOperations,
   ...reasoningOperations,
   ...shellOperations,
+  ...depositOperations,
   ...questionOperations,
   ...noteOperations,
   ...pluginOperations,

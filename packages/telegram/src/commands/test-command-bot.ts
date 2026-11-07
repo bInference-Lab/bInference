@@ -24,7 +24,7 @@ import type { MessageLocale } from "@binference/i18n";
 import { Api } from "grammy";
 import type { CardShowing } from "../cards/create-telegram-cards.js";
 import { createTelegramCards } from "../cards/create-telegram-cards.js";
-import type { ReplySettings } from "../chat/chat-replies.js";
+import type { ReplySettings } from "../chat/chat-replies-options.js";
 import { createFakeCardAnswers, type FakeCardAnswers } from "../fakes/fake-card-answers.js";
 import { createTelegramIngress } from "../ingress/create-telegram-ingress.js";
 import type { OwnerUpdate } from "../ingress/decide-update.js";

@@ -6,6 +6,7 @@ import type { WalletRecord } from "../install/install-record.js";
 import { roleWalletIn } from "../install/role-wallet.js";
 import { callsOutsideCeiling } from "../limits/limit-ceiling.js";
 import { type AgentListHandlers, createAgentListHandlers } from "./agent-list-handlers.js";
+import { createDepositHandlers, type DepositHandlers } from "./deposit-handlers.js";
 import type { EngineHandler } from "./engine-call.js";
 import { exportWallet, type ExportWalletOptions } from "./export-wallet.js";
 import { makeWallet, type MakeWalletOptions } from "./make-wallet.js";
@@ -13,7 +14,7 @@ import { revokeSigner, type RevokeSignerOptions } from "./revoke-signer.js";
 import { walletViewOf } from "./wallet-view-of.js";
 
 /** The handlers of the agent wallets, and the agent list with each default wallet (spec, 7.2). */
-export interface WalletHandlers extends AgentListHandlers {
+export interface WalletHandlers extends AgentListHandlers, DepositHandlers {
   readonly "wallet/list": EngineHandler<"wallet/list">;
   readonly "wallet/create": EngineHandler<"wallet/create">;
   readonly "wallet/exportSealed": EngineHandler<"wallet/exportSealed">;
@@ -72,6 +73,27 @@ async function listedView(
   return missingCalls.length === 0 ? view : { ...view, missingCalls };
 }
 
+// The wallet list: the agent's wallets, or every agent's, each as `listedView` answers it.
+function listWalletsOf(options: WalletHandlersOptions): EngineHandler<"wallet/list"> {
+  return async ({ args, signal }) => {
+    if (
+      args.agent !== undefined &&
+      (await options.agents.get(args.agent, { signal })) === undefined
+    ) {
+      return err("agent.not_found");
+    }
+    const { wallets } = await options.install.read({ signal });
+    const records = wallets.filter(
+      (wallet) => args.agent === undefined || wallet.agentId === args.agent,
+    );
+    const views = await Promise.all(
+      records.map(async (wallet) => listedView(options, { wallet, wallets }, signal)),
+    );
+    const items = views.filter((view) => view !== undefined);
+    return items.length === records.length ? ok({ items }) : err("wallet.custody_down");
+  };
+}
+
 /**
  * Creates the wallet list. `wallet/list` answers the agent's wallets, or every agent's when the
  * call names none, oldest first, so an agent's default wallet comes first; archived wallets are
@@ -86,10 +108,12 @@ async function listedView(
  * launch or bridge wallet of an agent is refused before custody makes it; and `wallet/exportSealed` exports one's key sealed to the
  * caller's recipient key (see {@link exportWallet}); `signer/revoke` removes a machine's agent key
  * from every live wallet with the owner key (see {@link revokeSigner}). `agent/list` lists the
- * agents with their default wallets (see {@link createAgentListHandlers}).
+ * agents with their default wallets (see {@link createAgentListHandlers}). `turn/deposit` shows
+ * the owner where to send funds (see {@link createDepositHandlers}).
  */
 export function createWalletHandlers(options: WalletHandlersOptions): WalletHandlers {
   let queue: Promise<void> = Promise.resolve();
+  const listWallets = listWalletsOf(options);
   return {
     ...createAgentListHandlers(options),
     async "wallet/create"(call): Promise<Result<WalletView, ProtocolErrorCode>> {
@@ -102,22 +126,7 @@ export function createWalletHandlers(options: WalletHandlersOptions): WalletHand
     },
     "wallet/exportSealed": async (call) => exportWallet(options, call),
     "signer/revoke": async (call) => revokeSigner(options, call),
-    async "wallet/list"({ args, signal }) {
-      if (
-        args.agent !== undefined &&
-        (await options.agents.get(args.agent, { signal })) === undefined
-      ) {
-        return err("agent.not_found");
-      }
-      const { wallets } = await options.install.read({ signal });
-      const records = wallets.filter(
-        (wallet) => args.agent === undefined || wallet.agentId === args.agent,
-      );
-      const views = await Promise.all(
-        records.map(async (wallet) => listedView(options, { wallet, wallets }, signal)),
-      );
-      const items = views.filter((view) => view !== undefined);
-      return items.length === records.length ? ok({ items }) : err("wallet.custody_down");
-    },
+    "wallet/list": listWallets,
+    ...createDepositHandlers({ agents: options.agents, listWallets, publish: options.publish }),
   };
 }

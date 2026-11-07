@@ -107,6 +107,18 @@ const answers: Readonly<Record<string, FakeAnswer>> = {
   "launchpad/list": { items: [] },
   "launch/draft": { draft: "c2hvd24tb25jZS1h", expiresAt: 600_001 },
   "shell/run": shellView,
+  "turn/deposit": {
+    wallets: [
+      {
+        wallet,
+        agent,
+        address: "fake:1:0x0000000b",
+        label: "Main",
+        chainName: "Fake One",
+        createdAt: 1,
+      },
+    ],
+  },
   "shell/job": shellView,
   "turn/ask": {
     question: "qst_0190f1c2-3a4b-7c5d-8e6f-0123456789ab",
@@ -343,6 +355,7 @@ const mappings: readonly (readonly [string, JsonValue, JsonValue])[] = [
       },
     ],
   ],
+  ["deposit_address", {}, [{ op: "turn/deposit", args: { agent, turn: toolTurn.turn } }]],
   ["shell", { command: "ls" }, [{ op: "shell/run", args: { agent, command: "ls" } }]],
   [
     "shell_job",

@@ -2,7 +2,7 @@ import { ok } from "@binference/core";
 import type { OwnerChatHandlers } from "@binference/engine/surfaces";
 import type { ArgsOf } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
-import type { ReplySettings } from "../chat/chat-replies.js";
+import type { ReplySettings } from "../chat/chat-replies-options.js";
 import { ownerId } from "../testing/update-fixtures.js";
 import { startCommandBot } from "./test-command-bot.js";
 

@@ -3,6 +3,7 @@ import { alertCreateTool } from "./alert-create-tool.js";
 import { askOwnerTool } from "./ask-owner-tool.js";
 import { createToolBox } from "./create-tool-box.js";
 import type { AgentTool } from "./define-tool.js";
+import { depositTool } from "./deposit-tool.js";
 import { launchDraftTool } from "./launch-draft-tool.js";
 import { launchpadsTool } from "./launchpads-tool.js";
 import { marketTools } from "./market-tools.js";
@@ -32,7 +33,8 @@ import { workspaceTools } from "./workspace-tools.js";
  * follow them, then `notes_write`, and last `workspace_write` and `first_chat_end`, which write
  * the owner's strategy and persona and end the first chat (decision 0242), then `launchpads` and
  * `launch_draft`, which drafts a token launch the owner starts (decision 0285),
- * then the machine tools `shell` and `shell_job` (decision 0378), then `ask_owner`, which asks the
+ * then `deposit_address`, which shows the owner where to send funds (decision 0380), the machine
+ * tools `shell` and `shell_job` (decision 0378), then `ask_owner`, which asks the
  * owner in the turn the tools serve and ends it after its batch.
  */
 export function agentTools(parts: AgentToolParts): readonly AgentTool[] {
@@ -56,6 +58,7 @@ export function agentTools(parts: AgentToolParts): readonly AgentTool[] {
     ...workspaceTools(parts),
     launchpadsTool(parts),
     launchDraftTool(parts),
+    depositTool(parts),
     ...shellTools(parts),
     askOwnerTool(parts),
   ];

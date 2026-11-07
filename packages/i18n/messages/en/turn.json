@@ -63,5 +63,6 @@
   "tool.launchDraft": "Drafting a launch…",
   "tool.plugin": "Asking the plugin {plugin}…",
   "tool.shell": "Running a command…",
-  "tool.shellJob": "Checking a command…"
+  "tool.shellJob": "Checking a command…",
+  "tool.deposit": "Showing where to deposit…"
 }

@@ -4,7 +4,7 @@ import type { OwnerChatOperation } from "@binference/engine/surfaces";
 import type { Formatter, MessageLocale, MessageValues } from "@binference/i18n";
 import type { ArgsOf, ResultOf } from "@binference/protocol";
 import type { CardShowing, TelegramCards } from "../cards/create-telegram-cards.js";
-import type { ReplySettings } from "../chat/chat-replies.js";
+import type { ReplySettings } from "../chat/chat-replies-options.js";
 import type { RichLine } from "../format/rich-line.js";
 import type { ButtonRows } from "../ingress/bot-calls.js";
 import type { OwnerCalls } from "../ports.js";

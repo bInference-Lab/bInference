@@ -4,6 +4,7 @@ import type { ChatContext } from "./chat-context.js";
 import { saidLines, statusLine } from "./chat-lines.js";
 import { type ChatState, withoutRunning } from "./chat-state.js";
 import type { ChatTranscript } from "./chat-transcript.js";
+import { depositLines } from "./deposit-lines.js";
 
 /** The parts the agent's chat topic feeds. */
 export interface ChatFeedParts {
@@ -65,6 +66,9 @@ function onChatPush(context: ChatContext, parts: ChatFeedParts, push: ChatPush):
     // nothing.
     case "chat/progress":
     case "chat/reasoning":
+      return;
+    case "chat/deposit":
+      print(depositLines(context.formatter, push));
       return;
     case "chat/turnEnded":
       store.update((state) => ended(state, push.turn));

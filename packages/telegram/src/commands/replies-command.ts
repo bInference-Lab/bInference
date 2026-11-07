@@ -1,5 +1,5 @@
 import type { OwnerChatPatch, ReasoningShown, ReplyStream } from "@binference/engine/surfaces";
-import type { ReplySettings } from "../chat/chat-replies.js";
+import type { ReplySettings } from "../chat/chat-replies-options.js";
 import type { ButtonRows } from "../ingress/bot-calls.js";
 import { commandCallbackData, type ReplyChoice } from "./command-callback.schema.js";
 import { callOrSay, type CommandContext, type PressContext } from "./command-context.js";

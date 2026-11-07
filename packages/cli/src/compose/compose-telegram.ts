@@ -154,7 +154,7 @@ function relayOf(
   const { notices, agents } = wiring.stores;
   const outbox = createNoticeOutbox({ ...parts, notices, agents, chains, display, clock, logger });
   const agentNames = agentNamesOf(wiring, { active: true });
-  const replies = createChatReplies({ ...parts, clock, logger, display, agentNames });
+  const replies = createChatReplies({ ...parts, clock, logger, display, agentNames, chains });
   const shown = {
     ...replies,
     show: async (...args: Parameters<typeof replies.show>) => {
