@@ -86,7 +86,9 @@ Rules for this package:
   parse mode, and the log names its message id, never its words.
 - A turn's pushes show in the order they came, one at a time, through the relay's one line. What
   a tool shows mid-turn (`chat/deposit`) closes the turn's open message first, so what the turn
-  writes after it starts a new message below it (decision 0381).
+  writes after it starts a new message below it (decision 0381). A `chat/chart` shows as its text
+  from `@binference/chart`, the title in bold (`src/chat/chart-message.ts`, decision 0387):
+  Telegram draws no chart.
 - A status message's send and edit are previews (`src/chat/preview-sends.ts`): each goes with a
   `previewSignal`, and the throttler drops it rather than queue it behind another call or a wait.
   A dropped preview waits for the next refresh. A first send that may have reached Telegram is

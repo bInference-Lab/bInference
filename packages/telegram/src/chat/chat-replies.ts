@@ -1,14 +1,15 @@
 import type { JsonValue } from "@binference/core";
-import type { Formatter } from "@binference/i18n";
 import { type ChatPush, chatPushOf } from "@binference/protocol";
 import { escapeHtml } from "../format/escape-html.js";
 import { createOwnerFormatters } from "../format/owner-formatters.js";
-import { type BotCalls, createBotCalls } from "../ingress/bot-calls.js";
+import { createBotCalls } from "../ingress/bot-calls.js";
 import { createAnswerPreview } from "./answer-preview.js";
 import { sendHtml, sendPiece } from "./answer-sends.js";
+import { type ChartPush, showChart } from "./chart-message.js";
 import { type ChatHtml, chatHtmlOf, statusHtmlOf } from "./chat-html.js";
 import type { ChatRepliesOptions, ReplySettings } from "./chat-replies-options.js";
-import { type ChatTyping, startTyping } from "./chat-typing.js";
+import type { Call, Parts, TurnShowing } from "./chat-replies-parts.js";
+import { startTyping } from "./chat-typing.js";
 import { type DepositPush, showDeposit } from "./deposit-photos.js";
 import { otherReplyOf } from "./other-reply.js";
 import { reasoningHtmlOf } from "./reasoning-html.js";
@@ -29,35 +30,6 @@ export interface ChatReplies {
   idle(): Promise<void>;
   /** Stops refreshing every status message; a removal that waits goes at once. */
   close(): void;
-}
-
-/** One running turn in the owner's chat: its chat and its status message. */
-interface TurnShowing {
-  readonly agent: string;
-  readonly chatId: number;
-  readonly status: StatusMessage;
-  readonly typing: ChatTyping;
-  /** Whether the owner got something of the turn: its answer, a status line, a question. */
-  readonly reply: { isGiven: boolean };
-  /** How the model's reasoning shows in this turn, as the turn started. */
-  readonly reasoning: NonNullable<ReplySettings["reasoning"]>;
-  /** A new message of the turn's kind, for what the turn writes after something it showed. */
-  readonly fresh: () => StatusMessage;
-}
-
-interface Call {
-  readonly signal: AbortSignal;
-}
-
-/** What the replies work with once made. */
-interface Parts {
-  readonly options: ChatRepliesOptions;
-  readonly bot: BotCalls;
-  readonly formatter: () => Formatter;
-  /** Each running turn by its agent and turn. */
-  readonly turns: Map<string, TurnShowing>;
-  /** The status messages that wait for their time to go, by their removal. */
-  readonly removals: Map<Promise<void>, StatusMessage>;
 }
 
 // The most turns the replies follow at once; past it, the oldest one's status message goes.
@@ -244,7 +216,11 @@ function progress(parts: Parts, push: ProgressPush): void {
 
 // What a tool shows mid-turn goes below the turn's message so far, which closes and goes, so what
 // the turn writes after it starts a new message below it and nothing shows out of order.
-async function deposited(parts: Parts, push: DepositPush, call: Call): Promise<void> {
+async function shownMidTurn(
+  parts: Parts,
+  push: DepositPush | ChartPush,
+  call: Call,
+): Promise<void> {
   const key = keyOf(push);
   const before = parts.turns.get(key);
   if (before !== undefined) {
@@ -253,7 +229,19 @@ async function deposited(parts: Parts, push: DepositPush, call: Call): Promise<v
     parts.turns.set(key, { ...before, status: before.fresh() });
   }
   const owner = async () => ownerChat(parts, call);
-  await showDeposit({ ...parts, showing: parts.turns.get(key), owner }, push, call.signal);
+  const replies = { ...parts, showing: parts.turns.get(key), owner };
+  await (push.kind === "chat/deposit"
+    ? showDeposit(replies, push, call.signal)
+    : showChart(replies, push, call.signal));
+}
+
+// A final message is the answer; any other is the answer so far, drafted into the turn's message.
+async function messaged(parts: Parts, push: MessagePush, call: Call): Promise<void> {
+  if (push.final) {
+    return answered(parts, push, call);
+  }
+  parts.turns.get(keyOf(push))?.status.draft(push.text);
+  return Promise.resolve();
 }
 
 async function showPush(parts: Parts, push: ChatPush, call: Call): Promise<void> {
@@ -261,11 +249,7 @@ async function showPush(parts: Parts, push: ChatPush, call: Call): Promise<void>
     case "chat/turnStarted":
       return started(parts, push, call);
     case "chat/message":
-      if (push.final) {
-        return answered(parts, push, call);
-      }
-      parts.turns.get(keyOf(push))?.status.draft(push.text);
-      return Promise.resolve();
+      return messaged(parts, push, call);
     case "chat/progress":
       progress(parts, push);
       return Promise.resolve();
@@ -274,7 +258,8 @@ async function showPush(parts: Parts, push: ChatPush, call: Call): Promise<void>
     case "chat/reasoning":
       return reasoned(parts, push, call);
     case "chat/deposit":
-      return deposited(parts, push, call);
+    case "chat/chart":
+      return shownMidTurn(parts, push, call);
     case "chat/turnEnded":
       return ended(parts, push, call);
   }

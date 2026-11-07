@@ -59,6 +59,7 @@ const toolKeys: Readonly<Record<AgentToolName, string | undefined>> = {
   file_write: "turn.tool.fileWrite",
   file_edit: "turn.tool.fileEdit",
   file_patch: "turn.tool.filePatch",
+  show_chart: "turn.tool.chart",
 };
 
 // A plugin's tool is named `<id>__<tool>`, its id with `_` for `-`.

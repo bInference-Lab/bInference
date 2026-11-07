@@ -129,6 +129,7 @@
   "tools.summary.file_write": "Writes a file whole on the owner's machine, making its folders.",
   "tools.summary.file_edit": "Makes exact replacements in a file on the owner's machine.",
   "tools.summary.file_patch": "Changes several files in one patch, by default inside the agent's workspace.",
+  "tools.summary.show_chart": "Shows the owner a pie, bar, area or line chart in the chat, or its text where no chart is drawn.",
   "tools.summary.notes_get": "Reads one of the agent's notes in full.",
   "tools.summary.notes_forget": "Forgets one of the agent's notes."
 }

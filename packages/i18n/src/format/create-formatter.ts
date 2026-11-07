@@ -1,5 +1,6 @@
 import type { Bps } from "@binference/core";
 import type { MessageLocale } from "../locales.js";
+import { formatChartValue } from "./chart-value.js";
 import { formatPercent, formatTokenAmount, formatUsd, formatUsdChange } from "./format-amount.js";
 import { createMessageFormat, type MessageValues } from "./format-message.js";
 import { createTimeFormats } from "./format-time.js";
@@ -33,6 +34,8 @@ export interface Formatter {
   readonly date: (epochMs: number) => string;
   /** The day and the time of day together. */
   readonly dateTime: (epochMs: number) => string;
+  /** A chart's value on its axis: up to 4 decimals, compact from 10,000 up. */
+  readonly chartValue: (value: number) => string;
 }
 
 /**
@@ -48,6 +51,7 @@ export function createFormatter(options: FormatterOptions): Formatter {
     usd: formatUsd,
     usdChange: formatUsdChange,
     percent: formatPercent,
+    chartValue: formatChartValue,
     ...times,
   };
 }

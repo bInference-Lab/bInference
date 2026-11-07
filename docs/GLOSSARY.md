@@ -363,7 +363,16 @@ new name here first, in the change that uses it.
   order and its card, and tools that change something without moving money or opening a card
   (cancel an order, set an alert or a schedule, write a note, ask the owner).
 - **machine tools**: `shell` and `shell_job`, which run commands on the owner's machine through
-  the shell host ([decision 0378](DECISIONS.md#d0378)).
+  the shell host ([decision 0378](DECISIONS.md#d0378)), and `file_write`, `file_edit` and
+  `file_patch`, which change its files ([decision 0386](DECISIONS.md#d0386)).
+- **file tools**: `file_read`, `file_write`, `file_edit` and `file_patch`, which read and change
+  files on the owner's machine, relative paths in the workspace, behind the same wall as the shell.
+- **patch**: a change to several files at once, from `*** Begin Patch` to `*** End Patch`, written
+  only once every change is found.
+- **image look**: a model of the turn that takes images describing an image a tool read, with the
+  agent's question (`look_at_image`, [decision 0385](DECISIONS.md#d0385)).
+- **shown chart**: a pie, bar, area or line chart the agent shows the owner in the chat
+  (`show_chart`, [decision 0387](DECISIONS.md#d0387)); drawn in the console, as text elsewhere.
 - **shell host**: the process the engine starts to run the agent's commands, behind the wall.
 - **wall**: what keeps every command from `auth/`, `keys/`, the databases, the config, the IPC
   socket and binference's keychain entries. A machine that cannot hold it refuses the shell.
@@ -726,6 +735,9 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | shell host                                  | 命令行宿主             | Process                      |
 | wall (of the shell)                         | 隔离墙                 |                              |
 | shell job                                   | 命令任务               |                              |
+| file tools                                  | 文件工具               | `file_read` and the others   |
+| patch (of files)                            | 补丁                   | `file_patch`                 |
+| shown chart, chart (the agent shows)        | 图表                   | `show_chart`                 |
 | shell request                               | 命令请求               |                              |
 | allowed command                             | 允许的命令             |                              |
 | filter command                              | 过滤命令               |                              |

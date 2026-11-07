@@ -188,6 +188,19 @@ describe("terminal chat", () => {
     ]);
   });
 
+  it("prints a chart the agent shows as its text", async () => {
+    const chat = await opened();
+    chat.push(`chat:${harnessAgent}`, "chat/turnStarted", { agent: harnessAgent, turn });
+    chat.push(`chat:${harnessAgent}`, "chat/chart", {
+      agent: harnessAgent,
+      turn,
+      chart: { chartType: "pie", title: "Holdings", segments: [{ label: "BNB", value: 3 }] },
+    });
+    chat.push(`chat:${harnessAgent}`, "chat/turnEnded", { agent: harnessAgent, turn });
+    await chat.settle();
+    expect(chat.rows().slice(-3)).toStrictEqual(["Holdings (pie chart)", "- BNB: 3", "› "]);
+  });
+
   it("prints the final answer once after drafts, a progress line and reasoning, and none of them", async () => {
     const chat = await opened();
     const topic = `chat:${harnessAgent}` as const;

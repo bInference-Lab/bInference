@@ -72,9 +72,17 @@ function stepOf(push: ChatPush, id: string): PushStep {
     };
     return { lines: (lines) => [...lines, line] };
   }
-  // The page shows the answer so far while the turn runs; a progress line and the model's
-  // reasoning add nothing to it.
-  if (push.kind === "chat/progress" || push.kind === "chat/reasoning") {
+  if (push.kind === "chat/chart") {
+    const line: LiveLine = { kind: "chart", id, turn: push.turn, chart: push.chart };
+    return { lines: (lines) => [...lines, line] };
+  }
+  // The page shows the answer so far while the turn runs; a progress line, the model's reasoning
+  // and a deposit card, which the console does not draw yet, add nothing to it.
+  if (
+    push.kind === "chat/progress" ||
+    push.kind === "chat/reasoning" ||
+    push.kind === "chat/deposit"
+  ) {
     return {};
   }
   return { running: (running) => (running?.turn === push.turn ? undefined : running) };

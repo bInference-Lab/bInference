@@ -30,6 +30,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "catalog:",
+    "@binference/chart": "workspace:*",
     "@binference/client": "workspace:*",
     "@binference/core": "workspace:*",
     "@binference/platform": "workspace:*",

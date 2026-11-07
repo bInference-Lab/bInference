@@ -1,7 +1,10 @@
+import { chartTextLines } from "@binference/chart";
+import { displayOutsideText } from "@binference/i18n";
 import { type ChatPush, chatPushOf, type PushFrame, questionPushOf } from "@binference/protocol";
 import type { AgentQuestion } from "./agent-question.js";
 import type { ChatContext } from "./chat-context.js";
 import { agentSaidLines, statusLine } from "./chat-lines.js";
+import type { ScreenLine } from "./chat-screen.js";
 import { type ChatState, withoutRunning } from "./chat-state.js";
 import type { ChatTranscript } from "./chat-transcript.js";
 import { depositLines } from "./deposit-lines.js";
@@ -69,6 +72,15 @@ function onChatPush(context: ChatContext, parts: ChatFeedParts, push: ChatPush):
       return;
     case "chat/deposit":
       print(depositLines(context.formatter, push));
+      return;
+    // The terminal draws no chart, so it prints the chart's text (decision 0387).
+    case "chat/chart":
+      print(
+        chartTextLines(push.chart).map((line, index): ScreenLine => {
+          const text = displayOutsideText(line, Number.POSITIVE_INFINITY);
+          return index === 0 ? { text, tone: "bold" } : { text };
+        }),
+      );
       return;
     case "chat/turnEnded":
       store.update((state) => ended(state, push.turn));

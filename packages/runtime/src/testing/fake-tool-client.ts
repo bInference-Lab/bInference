@@ -1,6 +1,7 @@
 import type { CallableName } from "@binference/client";
 import { BinferenceError, type JsonValue, jsonValueSchema } from "@binference/core";
 import { type OperationShapes, operations } from "@binference/protocol";
+import { z } from "zod";
 import type { ToolClient } from "../tools/tool-client.js";
 
 /** An operation the fake answers: any operation a tool may call. */
@@ -35,7 +36,15 @@ export function createFakeToolClient(
     calls: () => [...taken],
     async call(op, args, options) {
       const operation = operations[op];
-      const wire = jsonValueSchema.parse(JSON.parse(JSON.stringify(operation.args.encode(args))));
+      // As the real client, args that break their schema are refused before anything is sent.
+      const encoded = z.safeEncode(operation.args, args);
+      if (!encoded.success) {
+        throw new BinferenceError({
+          code: "protocol.bad_args",
+          message: `The args of ${op} break its schema.`,
+        });
+      }
+      const wire = jsonValueSchema.parse(JSON.parse(JSON.stringify(encoded.data)));
       taken.push({ op, args: wire, ...(options.key === undefined ? {} : { key: options.key }) });
       const answer = answers[op];
       if (answer instanceof Error) {

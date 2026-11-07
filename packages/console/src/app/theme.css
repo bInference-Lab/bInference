@@ -28,6 +28,13 @@
   --gold-text: #a77a00;
   --gain: #0b8a5a;
   --loss: #d9304e;
+  /* A chart's series, in order: gold first, then colors that stay apart in both themes. */
+  --chart-1: #c99400;
+  --chart-2: #1e78c8;
+  --chart-3: #0b8a5a;
+  --chart-4: #d9304e;
+  --chart-5: #7b5ac8;
+  --chart-6: #707a8a;
   --radius: 0.5rem;
 }
 
@@ -52,6 +59,12 @@
     --gold-text: var(--gold);
     --gain: #0ecb81;
     --loss: #f6465d;
+    --chart-1: var(--gold);
+    --chart-2: #3d9be9;
+    --chart-3: #0ecb81;
+    --chart-4: #f6465d;
+    --chart-5: #a98bf0;
+    --chart-6: #8b919a;
   }
 }
 

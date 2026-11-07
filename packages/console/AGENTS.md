@@ -9,7 +9,9 @@ The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
 
 - It is a client like any other: it reaches the engine only through `@binference/client` over the
   page's own `/ws`, and it decides nothing the engine decides. It imports `client`, `protocol`,
-  `i18n` and `rich-text`, never `core` or another package. The agent's answers show their
+  `i18n`, `rich-text` and `chart`, never `core` or another package. A chart the agent shows
+  (`chat/chart`, decision 0387) is drawn as SVG from `chartLayout` in the theme's `--chart-*`
+  colors (`src/chat/chart-figure.tsx`), its words as text and its text form for screen readers. The agent's answers show their
   Markdown through `rich-text`, the reader the Telegram bot uses, drawn as elements
   (`src/chat/rich-text.tsx`, decision 0383).
 - The stack is React, Vite, Tailwind, shadcn on Base UI, TanStack Router and TanStack Query.

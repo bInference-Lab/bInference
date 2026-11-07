@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "@binference/chain": "workspace:*",
+    "@binference/chart": "workspace:*",
     "@binference/core": "workspace:*",
     "@binference/engine": "workspace:*",
     "@binference/i18n": "workspace:*",

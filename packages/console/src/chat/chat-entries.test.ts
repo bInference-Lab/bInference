@@ -44,4 +44,21 @@ describe("chatEntries", () => {
       chatEntries([said(1, "owner", "Hi"), tool], live).map((entry) => entry.id),
     ).toStrictEqual(["seq 1", "s", "a"]);
   });
+
+  it("puts a chart after its turn's last message, as a status line goes", () => {
+    const chart = {
+      chartType: "pie" as const,
+      title: "Holdings",
+      segments: [{ label: "BNB", value: 1 }],
+    };
+    const live: readonly LiveLine[] = [
+      { kind: "chart", id: "c", turn: turn(1), chart },
+      { kind: "chart", id: "c2", turn: turn(4), chart },
+    ];
+    expect(chatEntries([said(1, "owner", "Show my holdings")], live)).toStrictEqual([
+      { kind: "owner", id: "seq 1", text: "Show my holdings" },
+      { kind: "chart", id: "c", chart },
+      { kind: "chart", id: "c2", chart },
+    ]);
+  });
 });

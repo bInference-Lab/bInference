@@ -112,6 +112,7 @@ const answers: Readonly<Record<string, FakeAnswer>> = {
   "file/write": { path: "/w/a.md", changed: true, bytes: 1 },
   "file/edit": { path: "/w/a.md", changed: true, bytes: 1, replaced: 1 },
   "file/patch": { files: [{ path: "/w/a.md", change: "added" }] },
+  "turn/chart": { chart: { chartType: "pie", title: "x", segments: [{ label: "a", value: 1 }] } },
   "schedule/create": scheduleWire(),
   "schedule/cancel": {},
   "agent/editFile": { updatedAt: 1 },
@@ -380,6 +381,20 @@ const mappings: readonly (readonly [string, JsonValue, JsonValue])[] = [
     ],
   ],
   ["deposit_address", {}, [{ op: "turn/deposit", args: { agent, turn: toolTurn.turn } }]],
+  [
+    "show_chart",
+    { chartType: "pie", title: "x", segments: [{ label: "a", value: 1 }] },
+    [
+      {
+        op: "turn/chart",
+        args: {
+          agent,
+          turn: toolTurn.turn,
+          chart: { chartType: "pie", title: "x", segments: [{ label: "a", value: 1 }] },
+        },
+      },
+    ],
+  ],
   ["shell", { command: "ls" }, [{ op: "shell/run", args: { agent, command: "ls" } }]],
   [
     "shell_job",

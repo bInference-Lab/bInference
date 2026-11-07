@@ -17,6 +17,7 @@
   },
   "devDependencies": {
     "@base-ui/react": "catalog:",
+    "@binference/chart": "workspace:*",
     "@binference/client": "workspace:*",
     "@binference/i18n": "workspace:*",
     "@binference/protocol": "workspace:*",

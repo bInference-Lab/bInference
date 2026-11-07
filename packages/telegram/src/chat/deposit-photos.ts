@@ -50,6 +50,20 @@ export interface DepositShowing {
 }
 
 /**
+ * The chat what a tool shows goes to: the turn's, or the owner's when the turn is not followed.
+ * It counts as an answer given, so the turn does not end saying the agent answered nothing.
+ */
+export async function shownChat(
+  replies: Pick<DepositShowing, "showing" | "owner">,
+): Promise<number | undefined> {
+  const { showing } = replies;
+  if (showing !== undefined) {
+    showing.reply.isGiven = true;
+  }
+  return showing?.chatId ?? (await replies.owner());
+}
+
+/**
  * Shows a `chat/deposit` push in the turn's chat, or the owner's when the turn is not followed,
  * and counts it as an answer given, so the turn does not end saying the agent answered nothing.
  */
@@ -58,11 +72,8 @@ export async function showDeposit(
   push: DepositPush,
   signal: AbortSignal,
 ): Promise<void> {
-  const { showing, options } = replies;
-  const chatId = showing?.chatId ?? (await replies.owner());
-  if (showing !== undefined) {
-    showing.reply.isGiven = true;
-  }
+  const { options } = replies;
+  const chatId = await shownChat(replies);
   if (chatId === undefined) {
     return;
   }
