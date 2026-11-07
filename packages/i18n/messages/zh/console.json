@@ -197,5 +197,7 @@
   "rules.event.outcome": "{taken, select, repeat {与之前的提醒重复，只记录} rate {超出规则的频率，只记录} other {{fill, select, filled {已模拟成交} skipped {{hasReason, select, yes {已跳过：{reason}} other {已跳过}}} other {等待成交}}}}",
   "rules.olderEvents": "显示更早的提醒",
   "chat.madeImage": "Agent 生成的图片",
-  "chat.madeImageMissing": "引擎已不再保留这张图片；请从下方路径打开。"
+  "chat.madeImageMissing": "引擎已不再保留这张图片；请从下方路径打开。",
+  "chat.saveFile": "保存",
+  "chat.fileMissing": "引擎已不再保留这个文件；请从上方路径打开。"
 }

@@ -1,8 +1,8 @@
 import type { Formatter } from "@binference/i18n";
 import type { ChatPush, ImageContentType } from "@binference/protocol";
-import type { RichLine } from "@binference/rich-text";
 import type { BotCalls } from "../ingress/bot-calls.js";
 import { type DepositShowing, shownChat } from "./deposit-photos.js";
+import { savedAtCaption } from "./saved-at-caption.js";
 
 /** A `chat/images` push: the images the agent made, saved in its workspace (decision 0392). */
 export type MadeImagesPush = Extract<ChatPush, { readonly kind: "chat/images" }>;
@@ -30,21 +30,6 @@ const fileNames: Readonly<Record<ImageContentType, string>> = {
   "image/webp": "image.webp",
 };
 
-// The caption: where the image was saved, in `code`, as the agent's workspace holds it.
-function captionOf(formatter: Formatter, path: string): readonly RichLine[] {
-  // oxlint-disable-next-line eslint/no-restricted-properties -- the formatter's message method picks i18n text by key; no error message is read
-  const label = formatter.message("telegram.chat.madeImage");
-  return [
-    {
-      block: { kind: "text" },
-      runs: [
-        { text: `${label} `, marks: [] },
-        { text: path, marks: [{ kind: "code" }] },
-      ],
-    },
-  ];
-}
-
 /**
  * Shows a `chat/images` push in the turn's chat, or the owner's when the turn is not followed, as
  * it usually is, since a job ends after its turn: one photo per image, in order, read whole from
@@ -63,7 +48,7 @@ export async function showMadeImages(
   const formatter = replies.formatter();
   await push.images.reduce(async (previous, made) => {
     await previous;
-    const caption = captionOf(formatter, made.path);
+    const caption = savedAtCaption(formatter, made.path);
     const bytes = await replies.madeImage?.({ agent: push.agent, image: made.image }, { signal });
     if (bytes === undefined || bytes.byteLength > maxPhotoBytes) {
       await replies.bot.sayRich({ chatId }, caption, { signal });

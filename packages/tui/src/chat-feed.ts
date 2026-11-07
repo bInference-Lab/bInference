@@ -51,16 +51,26 @@ function shown(text: string): string {
   return displayOutsideText(text, Number.POSITIVE_INFINITY);
 }
 
+type ShownPush = Extract<ChatPush, { readonly kind: "chat/chart" | "chat/images" | "chat/files" }>;
+
+function isShownPush(push: ChatPush): push is ShownPush {
+  return push.kind === "chat/chart" || push.kind === "chat/images" || push.kind === "chat/files";
+}
+
 // What a tool showed, as the terminal prints it: a chart's text, its title in bold (decision 0387),
-// or where each image the agent made was saved, since the terminal draws neither.
-function shownLines(
-  context: ChatContext,
-  push: Extract<ChatPush, { readonly kind: "chat/chart" | "chat/images" }>,
-): readonly ScreenLine[] {
+// or where each image or file the agent made, showed or sent is, since the terminal draws neither.
+function shownLines(context: ChatContext, push: ShownPush): readonly ScreenLine[] {
   if (push.kind === "chat/chart") {
     return chartTextLines(push.chart).map((line, index): ScreenLine =>
       index === 0 ? { text: shown(line), tone: "bold" } : { text: shown(line) },
     );
+  }
+  if (push.kind === "chat/files") {
+    const count = push.files.length;
+    return [
+      { text: context.words("tui.files.sent", { agent: context.agentName, count }), tone: "bold" },
+      ...push.files.map((sent): ScreenLine => ({ text: shown(sent.path) })),
+    ];
   }
   const count = push.images.length;
   return [
@@ -95,6 +105,10 @@ function onChatPush(context: ChatContext, parts: ChatFeedParts, push: ChatPush):
       return Promise.resolve();
     });
   };
+  if (isShownPush(push)) {
+    print(shownLines(context, push));
+    return;
+  }
   switch (push.kind) {
     case "chat/turnStarted":
       store.update((state) => ({ ...state, running: { turn: push.turn, startedAt: clock.now() } }));
@@ -113,10 +127,6 @@ function onChatPush(context: ChatContext, parts: ChatFeedParts, push: ChatPush):
       return;
     case "chat/deposit":
       print(depositLines(context.formatter, push));
-      return;
-    case "chat/chart":
-    case "chat/images":
-      print(shownLines(context, push));
       return;
     case "chat/turnEnded":
       store.update((state) => ended(state, push.turn));

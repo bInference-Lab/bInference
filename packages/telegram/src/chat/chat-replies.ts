@@ -12,7 +12,7 @@ import { startTyping } from "./chat-typing.js";
 import { showCredentialRequest } from "./credential-message.js";
 import { otherReplyOf } from "./other-reply.js";
 import { reasoningHtmlOf } from "./reasoning-html.js";
-import { type ShownPush, showShown } from "./shown-push.js";
+import { isShownPush, type ShownPush, showShown } from "./shown-push.js";
 import { createStatusMessage, type StatusMessage, type StatusParts } from "./status-message.js";
 
 /** Shows the agent's replies in the owner's chat: a status message while it works, then its answer. */
@@ -239,6 +239,9 @@ async function messaged(parts: Parts, push: MessagePush, call: Call): Promise<vo
 }
 
 async function showPush(parts: Parts, push: ChatPush, call: Call): Promise<void> {
+  if (isShownPush(push)) {
+    return shownMidTurn(parts, push, call);
+  }
   switch (push.kind) {
     case "chat/turnStarted":
       return started(parts, push, call);
@@ -251,10 +254,6 @@ async function showPush(parts: Parts, push: ChatPush, call: Call): Promise<void>
       return status(parts, push, call);
     case "chat/reasoning":
       return reasoned(parts, push, call);
-    case "chat/deposit":
-    case "chat/chart":
-    case "chat/images":
-      return shownMidTurn(parts, push, call);
     case "chat/turnEnded":
       return ended(parts, push, call);
   }

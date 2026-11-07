@@ -3,6 +3,9 @@ import type { ChatPush, PortableChart, ResultOf } from "@binference/protocol";
 /** An image the agent made, as `chat/images` names it (decision 0392). */
 export type MadeImage = Extract<ChatPush, { readonly kind: "chat/images" }>["images"][number];
 
+/** A file the agent sent, as `chat/files` names it (decision 0400). */
+export type SentFile = Extract<ChatPush, { readonly kind: "chat/files" }>["files"][number];
+
 /** One message of the agent's transcript, as `chat/messages` reads it. */
 export type TranscriptMessage = ResultOf<"chat/messages">["items"][number];
 
@@ -35,6 +38,12 @@ export type LiveLine =
       readonly id: string;
       readonly turn: string;
       readonly images: readonly MadeImage[];
+    }
+  | {
+      readonly kind: "files";
+      readonly id: string;
+      readonly turn: string;
+      readonly files: readonly SentFile[];
     };
 
 /** One entry of the chat as the console draws it, in order. */
@@ -52,7 +61,8 @@ export type ChatEntry =
       readonly values?: Readonly<Record<string, string | number>>;
     }
   | { readonly kind: "chart"; readonly id: string; readonly chart: PortableChart }
-  | { readonly kind: "images"; readonly id: string; readonly images: readonly MadeImage[] };
+  | { readonly kind: "images"; readonly id: string; readonly images: readonly MadeImage[] }
+  | { readonly kind: "files"; readonly id: string; readonly files: readonly SentFile[] };
 
 // How far the engine's clock may run behind the browser's while an owner's message is matched to
 // its copy in the transcript.
@@ -64,6 +74,9 @@ function entryOf(line: LiveLine): ChatEntry {
   }
   if (line.kind === "images") {
     return { kind: "images", id: line.id, images: line.images };
+  }
+  if (line.kind === "files") {
+    return { kind: "files", id: line.id, files: line.files };
   }
   if (line.kind === "status") {
     const { id, statusKey, values } = line;

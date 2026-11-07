@@ -45,6 +45,7 @@ import {
   type TelegramRelay,
   type TelegramRelayContext,
 } from "./telegram-relay.js";
+import { sentFilesOf } from "./telegram-sent-files.js";
 
 /** The owner's bot as the engine serves it. */
 export interface TelegramParts {
@@ -157,7 +158,8 @@ function relayOf(
   const agentNames = agentNamesOf(wiring, { active: true });
   const calls = createOwnerCalls({ handlers: wiring.handlers, ownerId: answersOwner(parts) });
   const madeImage = madeImagesOf(calls, answersOwner(parts));
-  const replyParts = { ...parts, clock, logger, display, agentNames, chains, madeImage };
+  const sentFile = sentFilesOf(calls, answersOwner(parts));
+  const replyParts = { ...parts, clock, logger, display, agentNames, chains, madeImage, sentFile };
   const replies = createChatReplies(replyParts);
   const shown = {
     ...replies,

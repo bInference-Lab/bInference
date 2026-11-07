@@ -4,6 +4,7 @@ import type { OwnerStore } from "@binference/engine/surfaces";
 import type { MessageLocale } from "@binference/i18n";
 import type { Api } from "grammy";
 import type { MadeImageReader } from "./made-photos.js";
+import type { SentFileReader } from "./sent-documents.js";
 
 /** What `createChatReplies` needs. */
 export interface ChatRepliesOptions {
@@ -31,6 +32,8 @@ export interface ChatRepliesOptions {
   readonly chains?: ChainRegistry;
   /** Reads an image the agent made from the engine (decision 0392); left out, each shows its path. */
   readonly madeImage?: MadeImageReader;
+  /** Reads a file the agent sent from the engine (decision 0400); left out, each shows its path. */
+  readonly sentFile?: SentFileReader;
 }
 
 /**

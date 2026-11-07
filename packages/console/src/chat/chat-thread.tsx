@@ -7,6 +7,7 @@ import { ChartFigure } from "./chart-figure";
 import type { ChatEntry } from "./chat-entries";
 import { MadeImagesFigure } from "./made-images-figure";
 import { RichText } from "./rich-text";
+import { SentFilesList } from "./sent-files-list";
 
 // A person's or the agent's text as it reads: each character a reader cannot see written out.
 function shownText(text: string): string {
@@ -73,6 +74,9 @@ function Entry(props: {
   }
   if (entry.kind === "chart") {
     return <ChartFigure chart={entry.chart} />;
+  }
+  if (entry.kind === "files") {
+    return <SentFilesList agent={props.agent} files={entry.files} />;
   }
   if (entry.kind === "images") {
     return <MadeImagesFigure agent={props.agent} images={entry.images} />;

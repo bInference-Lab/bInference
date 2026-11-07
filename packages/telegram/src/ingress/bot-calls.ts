@@ -65,6 +65,19 @@ export interface BotCalls {
     options: { readonly signal: AbortSignal },
   ): Promise<void>;
   /**
+   * Sends a file as a document, its caption as HTML or, when Telegram cannot parse it, as plain
+   * text (decision 0400); a document Telegram refuses otherwise goes as its caption alone.
+   */
+  sayDocument(
+    target: ReplyTarget,
+    document: {
+      readonly bytes: Uint8Array;
+      readonly caption: readonly RichLine[];
+      readonly fileName: string;
+    },
+    options: { readonly signal: AbortSignal },
+  ): Promise<void>;
+  /**
    * Edits a plain-text message and its buttons. A message Telegram no longer has, or one that
    * shows the same already, counts as done.
    */
@@ -159,47 +172,53 @@ function sayRichWith(api: Api, reply: BotCalls["reply"]): BotCalls["sayRich"] {
   };
 }
 
-// A photo's caption as HTML, or as plain text when Telegram cannot parse the HTML.
-async function sendPhotoOnce(
+// A photo's or document's caption as HTML, or as plain text when Telegram cannot parse the HTML.
+async function sendFileOnce(
   api: Api,
   sent: {
+    readonly method: "sendPhoto" | "sendDocument";
     readonly target: ReplyTarget;
-    readonly png: Uint8Array;
+    readonly bytes: Uint8Array;
     readonly caption: string;
-    readonly fileName?: string;
+    readonly fileName: string;
   },
   options: { readonly signal: AbortSignal; readonly isHtml: boolean },
 ): Promise<void> {
-  const { target, png, caption, fileName = "address.png" } = sent;
+  const { method, target, bytes, caption, fileName } = sent;
   const thread = target.threadId === undefined ? {} : { message_thread_id: target.threadId };
   const mode = options.isHtml ? { parse_mode: "HTML" as const } : {};
-  await callBotApi("sendPhoto", options.signal, async (signal) =>
-    api.sendPhoto(
-      target.chatId,
-      new InputFile(png, fileName),
-      { ...thread, caption, ...mode },
-      signal,
-    ),
+  const other = { ...thread, caption, ...mode };
+  const file = new InputFile(bytes, fileName);
+  await callBotApi(method, options.signal, async (signal) =>
+    method === "sendPhoto"
+      ? api.sendPhoto(target.chatId, file, other, signal)
+      : api.sendDocument(target.chatId, file, other, signal),
   );
 }
 
-function sayPhotoWith(api: Api, sayRich: BotCalls["sayRich"]): BotCalls["sayPhoto"] {
-  return async (target, photo, options) => {
-    const { png, caption } = photo;
-    const named = photo.fileName === undefined ? {} : { fileName: photo.fileName };
+// A file with its caption: as HTML, again as plain text when Telegram cannot parse it, and as the
+// caption alone when Telegram refuses the file.
+function sayFileWith(api: Api, method: "sendPhoto" | "sendDocument", sayRich: BotCalls["sayRich"]) {
+  return async (
+    target: ReplyTarget,
+    file: {
+      readonly bytes: Uint8Array;
+      readonly caption: readonly RichLine[];
+      readonly fileName: string;
+    },
+    options: { readonly signal: AbortSignal },
+  ): Promise<void> => {
+    const { bytes, caption, fileName } = file;
     const { signal } = options;
+    const sent = { method, target, bytes, fileName };
     try {
-      await sendPhotoOnce(
-        api,
-        { target, png, caption: richHtmlOf(caption), ...named },
-        { signal, isHtml: true },
-      );
+      await sendFileOnce(api, { ...sent, caption: richHtmlOf(caption) }, { signal, isHtml: true });
     } catch (error) {
       signal.throwIfAborted();
       if (isEntitiesUnparsed(error)) {
-        await sendPhotoOnce(
+        await sendFileOnce(
           api,
-          { target, png, caption: richPlainOf(caption), ...named },
+          { ...sent, caption: richPlainOf(caption) },
           { signal, isHtml: false },
         );
         return;
@@ -219,7 +238,13 @@ export function createBotCalls(api: Api): BotCalls {
     reply,
     say: sayWith(reply),
     sayRich: sayRichWith(api, reply),
-    sayPhoto: sayPhotoWith(api, sayRichWith(api, reply)),
+    sayPhoto: async (target, photo, options) =>
+      sayFileWith(api, "sendPhoto", sayRichWith(api, reply))(
+        target,
+        { bytes: photo.png, caption: photo.caption, fileName: photo.fileName ?? "address.png" },
+        options,
+      ),
+    sayDocument: sayFileWith(api, "sendDocument", sayRichWith(api, reply)),
     edit: async (at, text, options) =>
       unlessGone(
         callBotApi("editMessageText", options.signal, async (signal) =>

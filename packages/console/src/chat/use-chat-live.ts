@@ -54,6 +54,19 @@ function messageStep(push: MessagePush, id: string): PushStep {
   };
 }
 
+// What a tool showed: a chart, images or files, each a line of its own.
+function shownLineOf(push: ChatPush, id: string): LiveLine | undefined {
+  if (push.kind === "chat/chart") {
+    return { kind: "chart", id, turn: push.turn, chart: push.chart };
+  }
+  if (push.kind === "chat/images") {
+    return { kind: "images", id, turn: push.turn, images: push.images };
+  }
+  return push.kind === "chat/files"
+    ? { kind: "files", id, turn: push.turn, files: push.files }
+    : undefined;
+}
+
 function stepOf(push: ChatPush, id: string): PushStep {
   if (push.kind === "chat/turnStarted") {
     return { running: () => ({ turn: push.turn, startedAt: Date.now() }) };
@@ -72,13 +85,9 @@ function stepOf(push: ChatPush, id: string): PushStep {
     };
     return { lines: (lines) => [...lines, line] };
   }
-  if (push.kind === "chat/chart") {
-    const line: LiveLine = { kind: "chart", id, turn: push.turn, chart: push.chart };
-    return { lines: (lines) => [...lines, line] };
-  }
-  if (push.kind === "chat/images") {
-    const line: LiveLine = { kind: "images", id, turn: push.turn, images: push.images };
-    return { lines: (lines) => [...lines, line] };
+  const shown = shownLineOf(push, id);
+  if (shown !== undefined) {
+    return { lines: (lines) => [...lines, shown] };
   }
   // The page shows the answer so far while the turn runs; a progress line, the model's reasoning
   // and a deposit card, which the console does not draw yet, add nothing to it.
