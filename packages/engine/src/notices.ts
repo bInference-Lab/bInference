@@ -22,6 +22,7 @@ export { noticeArea, noticeRecordOf } from "./notices/notice-record-of.js";
 export type { NoticeStamp } from "./notices/notice-record-of.js";
 export { storedNoticePush } from "./pushes/notice-push.js";
 export { createPluginNotices } from "./pushes/plugin-notice.js";
+export { restartedNotice } from "./pushes/restart-notice.js";
 export {
   type UpdateSteps,
   updatedNotice,

@@ -1,11 +1,13 @@
 import { BinferenceError, createSecret, ok } from "@binference/core";
 import type { AgentStore } from "@binference/engine";
+import { authorOf } from "@binference/engine/audit";
 import type { InstallStore } from "@binference/engine/install";
 import type { EngineHandlerTable } from "@binference/engine/surfaces";
 import { engineDebugSwitch } from "@binference/plugin-host";
 import { type EngineState, protocolVersion, type ResultOf } from "@binference/protocol";
 import type { EngineLock } from "../unlock/engine-lock.js";
 import type { LockReason } from "../unlock/unlock-keys.js";
+import type { EngineRestart } from "./engine-restart.js";
 import type { HealthSignal } from "./health-signals.js";
 
 /** What the engine's own operations read and do. */
@@ -28,6 +30,8 @@ export interface EngineOperationsOptions {
    * server that answers the call.
    */
   readonly stop: () => void;
+  /** Restarts the engine (decision 0395): a record for the next start, then the shutdown sequence. */
+  readonly restart: Pick<EngineRestart, "request">;
 }
 
 type EngineStatus = ResultOf<"engine/status">;
@@ -131,6 +135,10 @@ export function createEngineOperations(options: EngineOperationsOptions): Engine
       if (!unlocked.ok) {
         throw lockedFault(unlocked.error);
       }
+      return ok({});
+    },
+    "engine/restart": async ({ caller, signal }) => {
+      await options.restart.request({ reason: "owner", surface: authorOf(caller).surface }, signal);
       return ok({});
     },
     "engine/stop": async () => {

@@ -16,7 +16,7 @@ import { runAgents, runClear, runSchedules, runUse } from "./chat-commands.js";
 import { commandCallbackSchema } from "./command-callback.schema.js";
 import type { CommandContext, CommandRun, PressContext } from "./command-context.js";
 import { commandArgs, commandOf, type FastCommandName, fastCommandNames } from "./command-of.js";
-import { runConfig } from "./config-command.js";
+import { runConfig, runRestart } from "./config-command.js";
 import { runConsole } from "./console-command.js";
 import { runLang, runLanguage } from "./lang-command.js";
 import { runOrders } from "./orders-command.js";
@@ -109,6 +109,7 @@ const runs: Readonly<Record<FastCommandName, CommandRun>> = {
   console: runConsole,
   replies: runReplies,
   config: runConfig,
+  restart: runRestart,
   lang: runLang,
   help: runHelp,
 };

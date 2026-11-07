@@ -195,6 +195,11 @@ export const noticeTable: Readonly<Record<string, TableNotice>> = {
   },
   "notice.backupFailed": { key: "notice.backupFailed", values: { reason: "copy" } },
   "notice.locked": { key: "notice.locked", values: {} },
+  "notice.restarted": { key: "notice.restarted", values: {} },
+  "notice.restartedForConfig": {
+    key: "notice.restartedForConfig",
+    values: { changed: "models.imageMaking, engine.port" },
+  },
   "notice.signerStopped": { key: "notice.signerStopped", values: {} },
   "notice.signerRefused": { key: "notice.signerRefused", values: { rule: "rule_3" } },
   "notice.privyUnreachable": { key: "notice.privyUnreachable", values: {} },

@@ -14,6 +14,7 @@ Every operation of the engine protocol, version 1, by domain. A client calls an 
 | `engine/status` | `read` | read | any connection | engine |
 | `engine/describe` | `read` | read | any connection | engine |
 | `engine/stop` | `admin` | write | IPC only | engine |
+| `engine/restart` | `admin` | write | any connection | engine |
 | `engine/unlock` | `admin` | write | IPC only | engine |
 
 ## `safety`

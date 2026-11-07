@@ -386,7 +386,8 @@ Rules for this package:
   announced as done from Telegram, and an operation joins `ownerChatOperations` only when its
   scope is one of those two. The exceptions are `config/change` with one patch of
   `ownerChatPatchSchema`: `owner.locale` or one key of `telegram.replies` (decisions 0134 and 0377), any other patch from the chat `auth.scope`; and
-  `config/propose`, a `propose` operation whose change waits for the owner's tap on its card (decision 0393). A card version is drawn from the stored intent, a press is
+  `config/propose`, a `propose` operation whose change waits for the owner's tap on its card (decision 0393), and
+  `engine/restart`, the owner's `/restart` (decision 0395). A card version is drawn from the stored intent, a press is
   answered only for the owner and only through the answer step, and every card version carries a
   callback reference from the `Random` port, never an id.
 - The wallet queue (`src/wallet-queue/`, exported as `@binference/engine/wallet-queue`) runs one

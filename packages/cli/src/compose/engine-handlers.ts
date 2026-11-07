@@ -7,6 +7,7 @@ import type { ComposedRuntime } from "./compose-runtime.js";
 import { composeUpdateOperations } from "./compose-updates.js";
 import { composeConfigChange } from "./config-change.js";
 import { createEngineOperations } from "./engine-operations.js";
+import type { EngineRestart } from "./engine-restart.js";
 import { type HealthSignal, startHealthProbe } from "./health-signals.js";
 import { createModelOperations } from "./model-operations.js";
 import type { Opened, Opening } from "./open-engine-parts.js";
@@ -18,6 +19,8 @@ import { createTelegramPair } from "./telegram-pair.js";
 interface EngineWiring {
   /** The call that `engine/stop` makes once the shutdown sequence exists. */
   readonly stopper: { readonly stop: () => void };
+  /** The engine's restart of itself, which `engine/restart` asks for (decision 0395). */
+  readonly restart: Pick<EngineRestart, "request">;
   /** The engine lock, whose state `engine/status` reports and `engine/unlock` opens. */
   readonly locked: ComposedLock;
   /** Where a long job's end goes, once the engine's publish exists. */
@@ -95,6 +98,7 @@ export function engineHandlers(
       nodeOptions: opening.host.entry.nodeOptions,
       communityPluginsOn: wiring.communityPluginsOn,
       stop: () => wiring.stopper.stop(),
+      restart: wiring.restart,
     }),
     ...createTelegramPair({ api: opened.bot?.api, access: opened.stores.access, clock, random }),
     ...composeBackupOperations(opening, opened, (push) => wiring.jobs.publish(push)),

@@ -65,6 +65,7 @@ function operationsWith(
     health: () => [{ signal: "memory", state: "ok" }],
     nodeOptions: ["--disable-sigusr1"],
     communityPluginsOn: () => false,
+    restart: { request: async () => Promise.resolve() },
     stop: () => {
       stops.count += 1;
     },
@@ -141,6 +142,7 @@ describe("the engine's own operations", () => {
       nodeOptions: [],
       communityPluginsOn: () => plugins.on,
       stop: () => undefined,
+      restart: { request: async () => Promise.resolve() },
     });
     const on = await handlers["engine/status"]?.({ ...call, args: {} });
     plugins.on = false;

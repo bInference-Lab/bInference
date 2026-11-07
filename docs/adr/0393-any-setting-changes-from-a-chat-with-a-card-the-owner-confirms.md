@@ -1,6 +1,6 @@
 # 0393. Any setting changes from a chat, with a card the owner confirms
 
-Status: Accepted
+Status: Amended by 0395
 
 Accepted by the owner on 2026-11-07. Amends [decisions 0134](../DECISIONS.md#d0134) and
 [0377](../DECISIONS.md#d0377).

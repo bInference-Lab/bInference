@@ -49,6 +49,17 @@ async function newMachine(): Promise<TestMachine> {
   return machine;
 }
 
+// Matches the engine's ready line once it has shown `count` times, as after a restart.
+function nthReadyLine(count: number): (line: string) => boolean {
+  let seen = 0;
+  return (line) => {
+    if (line.includes('"state":"ready"')) {
+      seen += 1;
+    }
+    return seen === count;
+  };
+}
+
 interface Started {
   readonly exit: Promise<number>;
   readonly ready: { readonly http: { readonly port: number }; readonly ipc: string };
@@ -228,6 +239,35 @@ describe("binference start, status, health and logs end to end", () => {
     client.close();
     await stopping;
   });
+
+  it(
+    "restarts in the same process on engine/restart, and tells the owner once it serves again",
+    slow,
+    async () => {
+      const clock = createManualClock(nowMs);
+      const machine = { ...(await newMachine()), clock };
+      await writeTestConfig(machine.folder);
+      const port = await freePort();
+      const argv = ["start", "--foreground", "--json", "--set", `engine.port=${String(port)}`];
+      const host = hostWith(machine, argv, { env: {} });
+      const exit = runCli(host);
+      running.push(exit);
+      const readyAgain = host.waitForLine(nthReadyLine(2));
+      await host.waitForLine((line) => line.includes('"state":"ready"'));
+      const client = await connectClient(machine);
+      await client.call("engine/restart", {}, { signal: live() });
+      client.close();
+      await clock.advance(2_000);
+      await host.waitForLine((line) => line.includes('"state":"restarting"'));
+      await readyAgain;
+      const after = await connectClient(machine);
+      const notices = await after.call("notice/list", { limit: 10 }, { signal: live() });
+      after.close();
+      expect(notices.items.map(({ key }) => key)).toContain("notice.restarted");
+      machine.signals.emit("SIGINT", "SIGINT");
+      await expect(exit).resolves.toBe(0);
+    },
+  );
 
   it("writes the engine log, which logs reads back as lines and as JSON", slow, async () => {
     const machine = await newMachine();

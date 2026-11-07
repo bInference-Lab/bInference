@@ -124,6 +124,7 @@ export interface EngineOperationShapes {
   readonly "engine/status": { readonly args: Empty; readonly result: EngineStatus };
   readonly "engine/describe": { readonly args: Empty; readonly result: EngineDescription };
   readonly "engine/stop": { readonly args: Empty; readonly result: Empty };
+  readonly "engine/restart": { readonly args: Empty; readonly result: Empty };
   readonly "engine/unlock": { readonly args: UnlockArgs; readonly result: Empty };
   readonly "safety/status": { readonly args: Empty; readonly result: SafetyStatus };
   readonly "safety/freeze": {
@@ -241,6 +242,13 @@ export const engineOperations: OperationTable<EngineOperationShapes> = {
   "engine/stop": {
     ...localWriteFlags,
     name: "engine/stop",
+    scope: "admin",
+    args: emptyArgsSchema,
+    result: emptyResultSchema,
+  },
+  "engine/restart": {
+    ...writeFlags,
+    name: "engine/restart",
     scope: "admin",
     args: emptyArgsSchema,
     result: emptyResultSchema,

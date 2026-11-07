@@ -89,6 +89,9 @@ export async function startForeground(
     const unfinished = report.steps
       .filter((step) => step.outcome !== "done")
       .map((step) => step.name);
+    if (started.engine.isRestarting() && unfinished.length === 0) {
+      return restart(host, output, sets);
+    }
     output.json({ state: "stopped", unfinished });
     if (unfinished.length > 0) {
       output.say("start.stoppedLate", { steps: unfinished.join(", ") });
@@ -98,6 +101,19 @@ export async function startForeground(
     return 0;
   };
   return { isStarted: true, serve };
+}
+
+// A restart the engine asked for (decision 0395): the same process starts it again, as the service
+// would, so a restart works in the terminal too.
+async function restart(
+  host: CliHost,
+  output: CliOutput,
+  sets: readonly string[],
+): Promise<ExitCode> {
+  output.json({ state: "restarting" });
+  output.say("start.restarting");
+  const again = await startForeground(host, output, sets);
+  return again.isStarted ? again.serve() : again.code;
 }
 
 /**

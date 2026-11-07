@@ -1,6 +1,7 @@
-import type { Result } from "@binference/core";
+import { BinferenceError, type Result } from "@binference/core";
 import { lockedNotice, type PublishPush } from "@binference/engine";
 import { privyUnreachableNotice } from "@binference/engine/install";
+import { restartedNotice } from "@binference/engine/notices";
 import { createShutdown, type ShutdownReport, watchFile } from "@binference/platform";
 import type { LockReason } from "../unlock/unlock-keys.js";
 import { type BotChannel, startBotChannel } from "./bot-channel.js";
@@ -13,6 +14,7 @@ import { startUpdateChecks, tellUpdateOutcome } from "./compose-updates.js";
 import { startConfigReload } from "./config-reload.js";
 import { startCopyTimer } from "./copy-timer.js";
 import { startDowntimeTimer } from "./downtime-timer.js";
+import { takeRestartRecord } from "./engine-restart.js";
 import { startGasCheckTimer } from "./gas-check-timer.js";
 import { listenForProtocol, type Opened, type Opening } from "./open-engine-parts.js";
 import { startTestOrders } from "./order-pricing.js";
@@ -86,6 +88,21 @@ async function tellServing(
     publish(lockedNotice());
   }
   await tellUpdateOutcome(opening, opened, publish);
+  await tellRestart(opening, opened, publish);
+}
+
+// Tells the owner what the restart that started this engine applied (decision 0395); a record
+// that cannot be read or removed is logged, and nothing is told.
+async function tellRestart(opening: Opening, opened: Opened, publish: PublishPush): Promise<void> {
+  try {
+    const record = await takeRestartRecord(opening.platform.stateFolder.root, opening.signal);
+    if (record !== undefined) {
+      publish(restartedNotice(record.reason === "config" ? record.changed : []));
+    }
+  } catch (error) {
+    const errorCode = error instanceof BinferenceError ? error.code : "unexpected";
+    opened.log.logger.warn("engine.restart_unread", { errorCode });
+  }
 }
 
 function isUnreachable(unlocked: Result<void, LockReason>): boolean {
@@ -241,6 +258,7 @@ export async function serveEngine(opening: Opening, opened: Opened): Promise<Sta
     state: locked.state(),
     ...(unlocked.ok ? {} : { lockReason: unlocked.error }),
     finished,
+    isRestarting: () => composed.stopper.restart.isRequested(),
   };
   return { ok: true, engine };
 }

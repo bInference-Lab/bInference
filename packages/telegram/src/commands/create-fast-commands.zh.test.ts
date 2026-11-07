@@ -84,6 +84,7 @@ describe("the fast commands in Chinese", () => {
       ["console", "在 Telegram 中打开控制台"],
       ["replies", "Agent 回复和推理在此对话中的显示方式"],
       ["config", "查看或更改设置"],
+      ["restart", "重启 binference"],
       ["lang", "binference 与你沟通使用的语言"],
       ["help", "所有命令，每行一个"],
     ]);

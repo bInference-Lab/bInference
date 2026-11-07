@@ -39,6 +39,7 @@ function configHandlers(asked: unknown[]): OwnerChatHandlers {
               rules: [
                 { path: "logging.level", description: "How much it logs.", takes: "a level" },
               ],
+              hash: "0".repeat(64),
             }),
       );
     },
@@ -67,9 +68,9 @@ describe("the /config command in Telegram", () => {
     await bot.send("/config set logging.level debug");
     await bot.send("/config unset logging.level");
     expect(asked).toStrictEqual([
-      { patch: { engine: { port: 7460 } } },
-      { patch: { logging: { level: "debug" } } },
-      { patch: { logging: { level: null } } },
+      { patch: { engine: { port: 7460 } }, replacePaths: ["engine.port"] },
+      { patch: { logging: { level: "debug" } }, replacePaths: ["logging.level"] },
+      { patch: { logging: { level: null } }, replacePaths: ["logging.level"] },
     ]);
     const [card] = bot.botApi.messages();
     expect(bot.botApi.sent()[1]).toStrictEqual({
@@ -86,5 +87,22 @@ describe("the /config command in Telegram", () => {
     const [usage, refused] = bot.texts();
     expect(usage).toMatch(/^\/config shows your settings/u);
     expect(refused).not.toBe(usage);
+  });
+});
+
+describe("the /restart command in Telegram", () => {
+  it("asks the engine to restart and says it tells the owner when it serves again", async () => {
+    const asked: string[] = [];
+    const bot = await startCommandBot({
+      "engine/restart": async () => {
+        asked.push("restart");
+        return Promise.resolve(ok({}));
+      },
+    });
+    await bot.send("/restart");
+    expect([asked, bot.texts()]).toStrictEqual([
+      ["restart"],
+      ["binference restarts now and tells you here when it serves again."],
+    ]);
   });
 });

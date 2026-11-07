@@ -18,7 +18,8 @@ import { ownerChatPatchSchema } from "./owner-chat-patch.schema.js";
  * (decision 0111). `config/change` runs only to set `owner.locale` or `telegram.replies`, the
  * exceptions to its `admin` scope (decisions 0134 and 0377). Any other setting changes through
  * `config/propose`, a card the owner confirms like any other (decision 0393); `config/view` reads
- * the config with every secret shown as its kind.
+ * the config with every secret shown as its kind. `engine/restart` restarts binference for the
+ * owner alone (decision 0395).
  */
 export const ownerChatOperations = [
   "engine/status",
@@ -36,6 +37,7 @@ export const ownerChatOperations = [
   "config/change",
   "config/view",
   "config/propose",
+  "engine/restart",
   "chat/post",
   "chat/answer",
   "chat/clear",

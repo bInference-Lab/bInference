@@ -11,6 +11,7 @@ export type {
   ConfigChangePreview,
   ConfigChanges,
   ConfigChangeRefusal,
+  ConfigPatchAsked,
   ConfigPreviewRefusal,
 } from "./config-changes/config-change-parts.js";
 export type {

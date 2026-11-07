@@ -407,6 +407,22 @@ binference 已更新到 2027.1.0。
 🔴 binference 已重启并处于锁定状态。请运行 `binference unlock`。
 ```
 
+## `restarted`
+
+级别：信息。可静音：否。
+
+```text
+binference 已按你的要求重启，现已恢复服务。
+```
+
+## `restartedForConfig`
+
+级别：信息。可静音：否。
+
+```text
+binference 已重启以应用你的设置，现已恢复服务：models.imageMaking, engine.port。
+```
+
 ## `signerStopped`
 
 级别：严重。可静音：否。

@@ -38,9 +38,9 @@ async function propose(context: CommandContext, path: string, value: JsonValue):
     await context.say(context.words("cmd.config.usage"));
     return;
   }
-  const proposed = await callOrSay(context, "config/propose", {
-    patch: patchOf(path.split("."), value),
-  });
+  // The owner typed the whole value, so a list they set or unset is replaced as typed.
+  const patch = patchOf(path.split("."), value);
+  const proposed = await callOrSay(context, "config/propose", { patch, replacePaths: [path] });
   if (proposed === undefined) {
     return;
   }
@@ -86,4 +86,14 @@ export async function runConfig(context: CommandContext): Promise<void> {
     return;
   }
   await context.say(context.words("cmd.config.usage"));
+}
+
+/**
+ * `/restart`: restarts binference for the owner (decision 0395). It stops through its shutdown
+ * sequence and starts again, then tells the owner here that it serves again.
+ */
+export async function runRestart(context: CommandContext): Promise<void> {
+  if ((await callOrSay(context, "engine/restart", {})) !== undefined) {
+    await context.say(context.words("cmd.restart.started"));
+  }
 }

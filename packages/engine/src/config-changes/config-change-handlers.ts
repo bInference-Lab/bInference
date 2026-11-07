@@ -67,7 +67,11 @@ export function createConfigChangeHandlers(
       if (proposer === undefined || proposer.role === "mcp_client") {
         return err("auth.scope");
       }
-      const { patch, reason } = args;
+      const { patch, reason, baseHash, replacePaths } = args;
+      const asked = {
+        ...(baseHash === undefined ? {} : { baseHash }),
+        ...(replacePaths === undefined ? {} : { replacePaths }),
+      };
       const agent: Id<"agt"> | undefined = args.agent;
       const request: ConfigChangeRequest = {
         kind: "configChange",
@@ -78,6 +82,7 @@ export function createConfigChangeHandlers(
         await finishConfirmed(options, signal);
         return proposeConfigChange(options, {
           request,
+          asked,
           ...(agent === undefined ? {} : { agent }),
           proposer,
           signal,

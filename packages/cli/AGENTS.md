@@ -121,6 +121,13 @@ Rules for this package:
   `Prompter` of `src/term/`: the terminal's over `@clack/prompts`, a scripted one in tests, and
   one that only prints when nobody answers, so every answer then comes from a flag. Secrets come
   from flags only as secret sources, never as values.
+- A config change from a chat (`src/compose/config-proposals.ts`, decisions 0393 and 0395) answers
+  the file's SHA-256 on each read and refuses a patch made from another one, a list it shortens
+  that `replacePaths` does not name, a model on a provider the config lacks and a secret source with
+  nothing behind it (a `fromCommand` source is never run to check). A confirmed change that needs a
+  restart asks `EngineStopper.restart`: it leaves `restart.json`, runs the shutdown sequence, and
+  `binference start --foreground` starts the engine again in the same process, which tells the
+  owner with `notice.restartedForConfig` once it serves.
 - A part that follows a reload of `config.json5` reads its key from `Opened.settings`, the config
   cell, on each use, and its path joins `keysReadOnEachUse` in `src/config/config-changes.ts`;
   a part that copies a key at start reads `Opened.config`, and the reload says that key waits

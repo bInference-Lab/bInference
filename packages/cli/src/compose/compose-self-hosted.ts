@@ -22,6 +22,7 @@ import { composeTrading, type TradingParts } from "./compose-trading.js";
 import { type ComposedWatching, composeWatching, serveWatching } from "./compose-watching.js";
 import { chatConfigPartsOf } from "./config-proposals.js";
 import { engineHandlers } from "./engine-handlers.js";
+import { createEngineStopper, type EngineStopper } from "./engine-restart.js";
 import { chainIdentityRegistries } from "./identity-registries.js";
 import { selfHostedMarketReads } from "./market-reads.js";
 import { chainNameResolvers } from "./name-resolvers.js";
@@ -61,7 +62,7 @@ export interface ComposedSelfHosted extends TimedWork {
   /** Takes the confirmed intents the lock held; logs a failure and never rejects. */
   readonly resume: (signal: AbortSignal) => Promise<void>;
   /** The call that `engine/stop` makes once the shutdown sequence exists. */
-  readonly stopper: { stop: () => void };
+  readonly stopper: EngineStopper;
   /** `starting` until the startup order ends, then `ready`. */
   readonly state: { current: EngineState };
   readonly locked: ComposedLock;
@@ -143,7 +144,7 @@ interface Wiring extends ComposedWatching, RuntimeWithPlugins {
   readonly sending: ReturnType<typeof composeSending>;
   readonly resume: (signal: AbortSignal) => Promise<void>;
   readonly locked: ComposedLock;
-  readonly stopper: { stop: () => void };
+  readonly stopper: EngineStopper;
   /** What a signer that stops by itself sets off, once the server can say so. */
   readonly signerStopped: { run: () => void };
   /** What a step the signer refused sets off, once the server can say so. */
@@ -185,7 +186,7 @@ function composeParts(opening: Opening, opened: Opened): Wiring {
     openCustody: custody.open,
     resume,
   });
-  const stopper = { stop: (): void => undefined };
+  const stopper = createEngineStopper(platform, host.clock);
   const jobs = { publish: (_push: EnginePush): void => undefined };
   return {
     ...composeWatching(opening, opened, parts.reads),
@@ -223,6 +224,7 @@ function ownHandlersOf(opening: Opening, opened: Opened, wiring: Wiring): Engine
       custody: () => (custody.cell.isOpen() ? "ok" : "fail"),
       backupKey: () => (wiring.sealKey.isSealed() ? "ok" : "warn"),
       stopper: wiring.stopper,
+      restart: wiring.stopper.restart,
       locked,
       jobs: wiring.jobs,
       runtime: runtime.health,
@@ -277,7 +279,7 @@ function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
       ...chainReadParts(parts.reads, host.version),
       bridging: parts.bridging.engine,
       workspace: stateWorkspace(opening.platform),
-      ...chatConfigPartsOf(opening, opened),
+      ...chatConfigPartsOf(opening, opened, wiring.stopper.restart),
       ...webPushOf(opening, opened),
       ...wiring.agentSide,
       handlers: ownHandlersOf(opening, opened, wiring),

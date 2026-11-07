@@ -21,6 +21,7 @@ export const fastCommandNames = [
   "console",
   "replies",
   "config",
+  "restart",
   "lang",
   "help",
 ] as const;

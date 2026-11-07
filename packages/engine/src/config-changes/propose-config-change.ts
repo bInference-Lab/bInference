@@ -14,7 +14,7 @@ import { createIntentStateMachine } from "../intents/state-machine.js";
 import type { Proposer } from "../money-path/create-money-path.js";
 import { openCardUnchecked } from "../money-path/open-card-unchecked.js";
 import type { AgentStore, WalletFactsSource } from "../ports.js";
-import type { ConfigChanges } from "./config-change-parts.js";
+import type { ConfigChanges, ConfigPatchAsked } from "./config-change-parts.js";
 import {
   type ConfigChangeRequest,
   configChangeLimits,
@@ -37,6 +37,8 @@ export interface ConfigChangeProposalParts {
 /** One proposal: the patch with its reason, the agent named, and who proposes it. */
 interface ConfigChangeCall {
   readonly request: ConfigChangeRequest;
+  /** The hash the patch was made from and the lists it may shorten. */
+  readonly asked?: Omit<ConfigPatchAsked, "patch">;
   readonly agent?: Id<"agt">;
   readonly proposer: Proposer;
   readonly signal: AbortSignal;
@@ -115,7 +117,8 @@ export async function proposeConfigChange(
   if (!owner.ok) {
     return owner;
   }
-  const preview = await parts.configChanges.preview(call.request.patch, { signal });
+  const asked = { ...call.asked, patch: call.request.patch };
+  const preview = await parts.configChanges.preview(asked, { signal });
   if (!preview.ok) {
     return preview;
   }

@@ -21,5 +21,6 @@ export function readyEngineOperations(
     nodeOptions: ["--disable-sigusr1"],
     communityPluginsOn,
     stop: () => undefined,
+    restart: { request: async () => Promise.resolve() },
   });
 }

@@ -128,6 +128,7 @@
   "usage.invalid": "binference 无法读取这条命令。请运行 `binference --help` 查看各个命令及其参数。",
   "start.ready": "binference 正在运行。控制台和 WebSocket 位于 http://{host}:{port}，本地 IPC 位于 {ipc}，日志位于 {logFile}。按 Ctrl+C 停止。",
   "start.stopped": "binference 已停止。",
+  "start.restarting": "binference 已停止以重启，现在重新启动。",
   "start.stoppedLate": "binference 已停止，但以下步骤没有完成：{steps}。请运行 `binference logs` 查看原因。",
   "start.alreadyRunning": "binference 已在状态文件夹 {folder} 上运行。请先停止它，或把 BINFERENCE_HOME 设为另一个文件夹。",
   "start.configInvalid": "{file} 有 {count, plural, other {# 个问题}}。请逐一修复，然后再启动。",

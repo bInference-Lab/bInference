@@ -71,6 +71,9 @@ const expected: Readonly<Record<string, string>> = {
   "notice.updateRolledBack": `${warning} binference 2027.1.0 did not pass after the update, so binference went back to 2026.12.2. Your settings and records are as they were before the update; messages and alerts that came while it was checked are not kept.`,
   "notice.backupFailed": `${warning} Last night's backup failed: its second copy in backups.copyTo could not be written`,
   "notice.locked": `${red} binference restarted and is locked. Run \`binference unlock\`.`,
+  "notice.restarted": "binference restarted, as you asked, and serves again.",
+  "notice.restartedForConfig":
+    "binference restarted to apply your settings and serves again: models.imageMaking, engine.port.",
   "notice.signerStopped": `${red} The signer stopped, so binference signs nothing. Fix what \`binference logs\` shows, then run \`binference unlock\`.`,
   "notice.signerRefused": `${warning} The signer refused to sign a step of a trade: its amounts are not the trade's. Nothing was sent for it.`,
   "notice.privyUnreachable": `${red} binference could not reach Privy for five minutes after it started, so it stays locked. Check this machine's network, then run \`binference unlock\`.`,

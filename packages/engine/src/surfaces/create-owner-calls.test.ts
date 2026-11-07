@@ -45,8 +45,13 @@ async function rescuing(): Promise<TestEngine> {
   return test;
 }
 
-// The two the chat runs past its scopes: a few settings at once, and any other through a card.
-const beyondScopes: ReadonlySet<string> = new Set(["config/change", "config/propose"]);
+// What the chat runs past its scopes: a few settings at once, any other through a card, and the
+// owner's restart.
+const beyondScopes: ReadonlySet<string> = new Set([
+  "config/change",
+  "config/propose",
+  "engine/restart",
+]);
 
 describe("the owner's calls from Telegram", () => {
   it.each(ownerChatOperations.filter((op) => !beyondScopes.has(op)))(
@@ -64,7 +69,7 @@ describe("the owner's calls from Telegram", () => {
   it("proposes a setting change as the owner on Telegram, which waits for the owner's tap", async () => {
     const change = { path: "owner.timezone", before: '"UTC"', after: '"Asia/Shanghai"' };
     const configChanges: ConfigChanges = {
-      view: async () => Promise.resolve(ok({ rules: [] })),
+      view: async () => Promise.resolve(ok({ rules: [], hash: "0".repeat(64) })),
       preview: async () => Promise.resolve(ok({ changes: [change], restartNeeded: false })),
       apply: async () => Promise.resolve(ok(undefined)),
     };

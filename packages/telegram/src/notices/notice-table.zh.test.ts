@@ -70,6 +70,9 @@ const expected: Readonly<Record<string, string>> = {
   "notice.updateRolledBack": `${warning} binference 2027.1.0 更新后未通过，binference 已回退到 2026.12.2。你的设置和记录与更新前一致；检查期间收到的消息和提醒不会保留。`,
   "notice.backupFailed": `${warning} 昨晚的备份失败：无法在 backups.copyTo 中写入第二份副本`,
   "notice.locked": `${red} binference 已重启并处于锁定状态。请运行 \`binference unlock\`。`,
+  "notice.restarted": "binference 已按你的要求重启，现已恢复服务。",
+  "notice.restartedForConfig":
+    "binference 已重启以应用你的设置，现已恢复服务：models.imageMaking, engine.port。",
   "notice.signerStopped": `${red} 签名进程已停止，binference 不会签名。请先处理 \`binference logs\` 显示的问题，再运行 \`binference unlock\`。`,
   "notice.signerRefused": `${warning} 签名进程拒绝为一笔交易的一个步骤签名：金额与这笔交易不符。该步骤未发送任何内容。`,
   "notice.privyUnreachable": `${red} binference 启动后五分钟内都无法连接 Privy，因此仍处于锁定状态。请检查本机网络，然后运行 \`binference unlock\`。`,

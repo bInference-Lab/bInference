@@ -407,6 +407,22 @@ Level: critical. Can be muted: no.
 🔴 binference restarted and is locked. Run `binference unlock`.
 ```
 
+## `restarted`
+
+Level: info. Can be muted: no.
+
+```text
+binference restarted, as you asked, and serves again.
+```
+
+## `restartedForConfig`
+
+Level: info. Can be muted: no.
+
+```text
+binference restarted to apply your settings and serves again: models.imageMaking, engine.port.
+```
+
 ## `signerStopped`
 
 Level: critical. Can be muted: no.

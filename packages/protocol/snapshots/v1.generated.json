@@ -545,6 +545,9 @@
         "limit.bridge_ceiling",
         "config.invalid",
         "config.secret_inline",
+        "config.secret_unreadable",
+        "config.changed",
+        "config.list_shrinks",
         "plugin.not_found",
         "plugin.hash_mismatch",
         "plugin.review_needed",
@@ -1038,6 +1041,71 @@
       "since": "2026.10.0"
     },
     "reply/engine/stop": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "reply"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "result": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "result"
+      ]
+    },
+    "call/engine/restart": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "op": {
+          "type": "string",
+          "const": "engine/restart"
+        },
+        "args": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "op",
+        "args",
+        "key"
+      ],
+      "scope": "admin",
+      "kind": "write",
+      "transport": "any",
+      "answeredBy": "engine",
+      "since": "2026.10.0"
+    },
+    "reply/engine/restart": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
       "properties": {
@@ -39707,10 +39775,15 @@
                   "takes"
                 ]
               }
+            },
+            "hash": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
             }
           },
           "required": [
-            "rules"
+            "rules",
+            "hash"
           ]
         }
       },
@@ -39755,6 +39828,20 @@
             "agent": {
               "type": "string",
               "pattern": "^agt_"
+            },
+            "baseHash": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            "replacePaths": {
+              "readOnly": true,
+              "maxItems": 64,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              }
             }
           },
           "required": [

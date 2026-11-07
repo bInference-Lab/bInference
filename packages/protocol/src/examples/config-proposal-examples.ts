@@ -18,10 +18,15 @@ export const configProposalExamples: {
           takes: "a model as <provider>/<model>",
         },
       ],
+      hash: "9f2c1a7e5b3d4c6f8a0b2d4e6f8a1c3e5b7d9f0a2c4e6b8d0f1a3c5e7b9d2f4a",
     },
   },
   "config/propose": {
-    args: { patch, reason: "The owner asked for OpenAI's newest image model." },
+    args: {
+      patch,
+      reason: "The owner asked for OpenAI's newest image model.",
+      baseHash: "9f2c1a7e5b3d4c6f8a0b2d4e6f8a1c3e5b7d9f0a2c4e6b8d0f1a3c5e7b9d2f4a",
+    },
     result: {
       intent: ids.intent,
       agent: ids.agent,

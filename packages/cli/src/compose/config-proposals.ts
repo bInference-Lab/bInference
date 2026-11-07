@@ -1,13 +1,16 @@
-import { err, ok, type Result } from "@binference/core";
+import { createHash } from "node:crypto";
+import { BinferenceError, err, ok, type Result } from "@binference/core";
 import type {
   ConfigChangePreview,
   ConfigChanges,
   ConfigKeyChange,
   ConfigPatch,
+  ConfigPatchAsked,
   ConfigPreviewRefusal,
 } from "@binference/engine/audit";
 import { configChangeLimits } from "@binference/engine/audit";
 import { readTextFile, writePrivateFile } from "@binference/platform";
+import { addedSecretSources } from "../config/added-secret-sources.js";
 import { configChanges } from "../config/config-changes.js";
 import { configTree } from "../config/config-json-schema.js";
 import { configKeyRules } from "../config/config-key-rules.js";
@@ -15,14 +18,20 @@ import { editsOfPatch } from "../config/config-patch.js";
 import { isJsonObject, type JsonValue, jsonValueSchema } from "../config/json-value.schema.js";
 import { editJson5Text } from "../config/json5-edit.js";
 import type { BinferenceConfig } from "../config/schema/config.schema.js";
+import type { SecretSource } from "../config/schema/secret-source.schema.js";
+import type { SecretReader } from "../config/secrets/secret-reader.js";
 import { shownConfig } from "../config/shown-config.js";
+import { shrunkLists } from "../config/shrunk-lists.js";
 import { unknownModelProviders } from "../config/unknown-model-providers.js";
 import type { ConfigChangeOptions } from "./config-change.js";
+import type { EngineRestart } from "./engine-restart.js";
 import type { Opened, Opening } from "./open-engine-parts.js";
 import { ownerChatHandlers } from "./owner-chat-config-change.js";
 
 /** The file's text as it stands and with the patch, each read in the layers the engine runs with. */
 interface PatchRead {
+  /** The SHA-256 of the file's text before the patch. */
+  readonly hash: string;
   readonly edited: string;
   readonly before: BinferenceConfig;
   readonly after: BinferenceConfig;
@@ -65,7 +74,61 @@ async function readPatch(
   if (!was.ok || unknownModelProviders(was.config.models, now.config.models).length > 0) {
     return err("config.invalid");
   }
-  return ok({ edited, before: was.config, after: now.config });
+  return ok({ hash: hashOf(text.value), edited, before: was.config, after: now.config });
+}
+
+/** The SHA-256 of the config file's text, which `config/view` answers and a proposal sends back. */
+function hashOf(text: string): string {
+  return createHash("sha256").update(text).digest("hex");
+}
+
+// The refusal the asked hash and lists give a read patch, before its secrets are read.
+function askedRefusal(asked: ConfigPatchAsked, read: PatchRead): ConfigPreviewRefusal | undefined {
+  if (asked.baseHash !== undefined && asked.baseHash !== read.hash) {
+    return "config.changed";
+  }
+  const replaced = new Set(asked.replacePaths ?? []);
+  const shrunk = shrunkLists(read.before, read.after).filter((path) => !replaced.has(path));
+  return shrunk.length > 0 ? "config.list_shrinks" : undefined;
+}
+
+/** What the chats' config changes read, check and write: `config/change`'s parts and the secrets. */
+interface ConfigProposalOptions extends ConfigChangeOptions {
+  /** Reads each secret source a change adds, so one that is not there is refused at once. */
+  readonly secrets: SecretReader;
+  /** Restarts the engine once a change that applies only after a restart is written. */
+  readonly restart?: Pick<EngineRestart, "request">;
+}
+
+// Whether a secret source has a secret behind it; the secret read is dropped at once.
+async function isReadable(
+  secrets: SecretReader,
+  added: { readonly path: string; readonly source: SecretSource },
+  signal: AbortSignal,
+): Promise<boolean> {
+  try {
+    await secrets.read(added.path, added.source, signal);
+    return true;
+  } catch (error) {
+    if (error instanceof BinferenceError && error.code === "config.secret_unavailable") {
+      return false;
+    }
+    throw error;
+  }
+}
+
+// A secret source the change adds with nothing behind it: no such credential, variable, keychain
+// entry or file.
+async function hasUnreadableSecret(
+  options: ConfigProposalOptions,
+  read: PatchRead,
+  signal: AbortSignal,
+): Promise<boolean> {
+  const added = addedSecretSources(read.before, read.after);
+  const readable = await Promise.all(
+    added.map(async (source) => isReadable(options.secrets, source, signal)),
+  );
+  return readable.includes(false);
 }
 
 function previewOf(options: ConfigChangeOptions, read: PatchRead): ConfigChangePreview {
@@ -93,17 +156,18 @@ function isUnmoved(now: readonly ConfigKeyChange[], card: readonly ConfigKeyChan
   return now.every((change) => card.some((shown) => sameChange(change, shown)));
 }
 
-function view(options: ConfigChangeOptions, path: string | undefined) {
+async function view(options: ConfigChangeOptions, path: string | undefined, signal: AbortSignal) {
   const keys = path === undefined ? [] : path.split(".");
   const rules = configKeyRules(configTree, keys);
-  if (rules === undefined) {
+  const text = await (options.readFile ?? readTextFile)(options.file, signal);
+  if (rules === undefined || !text.ok) {
     return err("protocol.bad_args" as const);
   }
   const shown = keys.reduce<JsonValue | undefined>(
     (node, key) => (isJsonObject(node) ? node[key] : undefined),
     shownConfig(options.settings.current()),
   );
-  return ok({ ...(shown === undefined ? {} : { value: shown }), rules });
+  return ok({ ...(shown === undefined ? {} : { value: shown }), rules, hash: hashOf(text.value) });
 }
 
 /**
@@ -114,20 +178,29 @@ function view(options: ConfigChangeOptions, path: string | undefined) {
  * key the card did not show as it stands (`config_moved`), writes the file in one atomic write
  * and journals it through the reload path with the owner who confirmed it.
  */
-export function createConfigProposals(options: ConfigChangeOptions): ConfigChanges {
+export function createConfigProposals(options: ConfigProposalOptions): ConfigChanges {
   const write = options.writeFile ?? writePrivateFile;
   return {
-    view: async (path) => Promise.resolve(view(options, path)),
-    async preview(patch, { signal }) {
-      const read = await readPatch(options, patch, signal);
-      return read.ok ? ok(previewOf(options, read.value)) : read;
+    view: async (path, { signal }) => view(options, path, signal),
+    async preview(asked, { signal }) {
+      const read = await readPatch(options, asked.patch, signal);
+      if (!read.ok) {
+        return read;
+      }
+      const refusal = askedRefusal(asked, read.value);
+      if (refusal !== undefined) {
+        return err(refusal);
+      }
+      return (await hasUnreadableSecret(options, read.value, signal))
+        ? err("config.secret_unreadable")
+        : ok(previewOf(options, read.value));
     },
     async apply({ patch, quote, reason }, { author, signal }) {
       const read = await readPatch(options, patch, signal);
       if (!read.ok) {
         return err("config_invalid");
       }
-      const { changes } = previewOf(options, read.value);
+      const { changes, restartNeeded } = previewOf(options, read.value);
       if (!isUnmoved(changes, quote.changes)) {
         return err("config_moved");
       }
@@ -136,6 +209,10 @@ export function createConfigProposals(options: ConfigChangeOptions): ConfigChang
         await write(options.file, read.value.edited, { permissions, signal });
         const why = reason === undefined ? {} : { reason };
         await options.reload.applyNow({ author, ...why }, signal);
+      }
+      if (restartNeeded) {
+        const changed = changes.map(({ path }) => path);
+        await options.restart?.request({ reason: "config", changed }, signal);
       }
       return ok(undefined);
     },
@@ -149,7 +226,8 @@ export function createConfigProposals(options: ConfigChangeOptions): ConfigChang
  */
 export function chatConfigPartsOf(
   opening: Pick<Opening, "platform">,
-  opened: Pick<Opened, "settings" | "readConfigFrom" | "configReload">,
+  opened: Pick<Opened, "settings" | "readConfigFrom" | "configReload" | "secrets">,
+  restart: Pick<EngineRestart, "request">,
 ): {
   readonly ownerChat: ReturnType<typeof ownerChatHandlers>;
   readonly configChanges: ConfigChanges;
@@ -164,6 +242,8 @@ export function chatConfigPartsOf(
       settings: opened.settings,
       validate: opened.readConfigFrom,
       reload: opened.configReload,
+      secrets: opened.secrets,
+      restart,
     }),
   };
 }

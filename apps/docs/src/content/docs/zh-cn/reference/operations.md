@@ -14,6 +14,7 @@ description: "引擎协议的每个操作：调用所需的权限范围、操作
 | `engine/status` | `read` | 读取 | 任何连接 | 引擎 |
 | `engine/describe` | `read` | 读取 | 任何连接 | 引擎 |
 | `engine/stop` | `admin` | 写入 | 仅 IPC | 引擎 |
+| `engine/restart` | `admin` | 写入 | 任何连接 | 引擎 |
 | `engine/unlock` | `admin` | 写入 | 仅 IPC | 引擎 |
 
 ## `safety`

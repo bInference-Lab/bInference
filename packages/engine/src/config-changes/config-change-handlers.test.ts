@@ -13,7 +13,11 @@ import {
   type TestEngine,
 } from "../operations/test-engine.js";
 import { createCardShowings } from "../surfaces/create-card-showings.js";
-import type { ConfigChangeRefusal, ConfigChanges } from "./config-change-parts.js";
+import type {
+  ConfigChangeRefusal,
+  ConfigChanges,
+  ConfigPatchAsked,
+} from "./config-change-parts.js";
 import type { ConfigChangeQuote, ConfigKeyChange, ConfigPatch } from "./config-change-quote.js";
 
 const live = { signal: new AbortController().signal };
@@ -24,6 +28,8 @@ const unknownAgent = "agt_0190f1c2-3a4b-7c5d-8e6f-0000000000b2";
 
 /** A config file that answers one change, and keeps each apply it is asked for. */
 interface FakeConfig extends ConfigChanges {
+  /** What each preview was asked besides the patch: the hash and the lists it may shorten. */
+  readonly previewed: Omit<ConfigPatchAsked, "patch">[];
   readonly applied: {
     readonly patch: ConfigPatch;
     readonly quote: ConfigChangeQuote;
@@ -42,9 +48,11 @@ function fakeConfig(answers: {
   readonly changes?: readonly ConfigKeyChange[];
 }): FakeConfig {
   const applied: FakeConfig["applied"] = [];
+  const previewed: FakeConfig["previewed"] = [];
   let stops = answers.isFirstStopped === true ? 1 : 0;
   return {
     applied,
+    previewed,
     view: async (path) =>
       Promise.resolve(
         path === "nowhere"
@@ -52,17 +60,20 @@ function fakeConfig(answers: {
           : ok({
               value: "info",
               rules: [{ path: "logging.level", description: "", takes: "text" }],
+              hash: "0".repeat(64),
             }),
       ),
-    preview: async () =>
-      Promise.resolve(
+    preview: async ({ patch: _patch, ...asked }) => {
+      previewed.push(asked);
+      return Promise.resolve(
         answers.previewRefusal === undefined
           ? ok({
               changes: answers.changes ?? [change],
               restartNeeded: answers.restartNeeded === true,
             })
           : err(answers.previewRefusal),
-      ),
+      );
+    },
     apply: async (made, { author }) => {
       if (stops > 0) {
         stops -= 1;
@@ -201,6 +212,19 @@ describe("a config change from a chat", () => {
       value: { value: "info" },
     });
     expect(await view?.(testCall({ path: "nowhere" }))).toStrictEqual(err("protocol.bad_args"));
+  });
+
+  it("hands the preview the hash the patch was made from and the lists it may shorten", async () => {
+    const config = fakeConfig({});
+    const test = await startTestEngine({ configChanges: config });
+    const hash = "a".repeat(64);
+    const asked = { patch, baseHash: hash, replacePaths: ["models.imageInput"] };
+    expectOk(await proposeOf(test)(testCall(asked)));
+    expectOk(await proposeOf(test)(testCall({ patch })));
+    expect(config.previewed).toStrictEqual([
+      { baseHash: hash, replacePaths: ["models.imageInput"] },
+      {},
+    ]);
   });
 
   it("serves neither operation without a config file", async () => {

@@ -22,6 +22,11 @@ interface ConfigKeyRule {
 interface ConfigKeysView {
   readonly value?: unknown;
   readonly rules: readonly ConfigKeyRule[];
+  /**
+   * The SHA-256 of `config.json5` as it was read, which a proposal sends back as `baseHash` so a
+   * change made meanwhile is never overwritten (decision 0395).
+   */
+  readonly hash: string;
 }
 
 /** The args of `config/propose`: a JSON merge patch over `config.json5`, and why. */
@@ -30,6 +35,10 @@ interface ProposeConfigArgs {
   readonly reason?: string;
   /** The agent whose chat shows the card; the first active agent when absent. */
   readonly agent?: ProtocolId<"agent">;
+  /** The `hash` of the `config/view` the patch was made from; a file changed since is refused. */
+  readonly baseHash?: string;
+  /** Lists whose entries the patch may drop; dropping any other list's entries is refused. */
+  readonly replacePaths?: readonly string[];
 }
 
 /** The operations that read the config and propose a change of it with a card (decision 0393). */
@@ -56,6 +65,7 @@ export const configProposalOperations: OperationTable<ConfigProposalOperationSha
     result: z.object({
       value: z.unknown().exactOptional(),
       rules: z.array(rule).max(200).readonly(),
+      hash: z.string().regex(/^[0-9a-f]{64}$/u),
     }),
   },
   "config/propose": {
@@ -66,6 +76,11 @@ export const configProposalOperations: OperationTable<ConfigProposalOperationSha
       patch: z.record(z.string(), z.unknown()),
       reason: z.string().trim().min(1).max(maxConfigReasonChars).exactOptional(),
       agent: protocolIdSchema("agent").exactOptional(),
+      baseHash: z
+        .string()
+        .regex(/^[0-9a-f]{64}$/u)
+        .exactOptional(),
+      replacePaths: z.array(z.string().trim().min(1).max(200)).max(64).readonly().exactOptional(),
     }),
     result: intentViewSchema,
   },

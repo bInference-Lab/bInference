@@ -38,6 +38,8 @@ export interface RunningEngine {
   readonly lockReason?: LockReason;
   /** Resolves once the shutdown sequence has ended, with what each step did. */
   readonly finished: Promise<ShutdownReport>;
+  /** Whether the engine stops to start again (decision 0395), not to end. */
+  readonly isRestarting: () => boolean;
 }
 
 /** A running engine, or why it did not start. */

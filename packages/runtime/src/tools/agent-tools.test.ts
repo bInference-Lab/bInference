@@ -94,7 +94,7 @@ const answers: Readonly<Record<string, FakeAnswer>> = {
   },
   "wallet/activity": { items: [trade], assets: {} },
   "intent/propose": intentWire("awaiting_confirmation"),
-  "config/view": { value: "info", rules: [] },
+  "config/view": { value: "info", rules: [], hash: "a".repeat(64) },
   "config/propose": {
     ...intentWire("awaiting_confirmation"),
     kind: "configChange",
@@ -327,11 +327,20 @@ const mappings: readonly (readonly [string, JsonValue, JsonValue])[] = [
   ],
   [
     "settings_change",
-    { changes: [{ key: "logging.level", value: "debug" }], reason: "The owner asked." },
+    {
+      changes: [{ key: "logging.level", value: "debug" }],
+      reason: "The owner asked.",
+      baseHash: "a".repeat(64),
+    },
     [
       {
         op: "config/propose",
-        args: { patch: { logging: { level: "debug" } }, reason: "The owner asked.", agent },
+        args: {
+          patch: { logging: { level: "debug" } },
+          reason: "The owner asked.",
+          agent,
+          baseHash: "a".repeat(64),
+        },
         key,
       },
     ],

@@ -1,4 +1,4 @@
-import { err, ok, type Result } from "@binference/core";
+import { BinferenceError, createSecret, err, ok, type Result } from "@binference/core";
 import { createManualClock, createMemoryLogger } from "@binference/core/testing";
 import type { EngineCaller, EnginePush } from "@binference/engine";
 import { createMemoryConfigJournal } from "@binference/engine/testing";
@@ -7,14 +7,30 @@ import type { ArgsOf } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
 import { loadConfig } from "../config/load-config.js";
 import { currentConfigVersion } from "../config/migrations/config-migrations.js";
+import type { SecretReader } from "../config/secrets/secret-reader.js";
 import { noPermissions } from "../e2e/test-host.js";
 import { createClosers } from "./closers.js";
 import { createConfigCell } from "./config-cell.js";
 import { createConfigChange } from "./config-change.js";
 import { createConfigProposals } from "./config-proposals.js";
 import { startConfigReload } from "./config-reload.js";
+import type { RestartWhy } from "./restart-record.schema.js";
 
 const live = () => ({ signal: new AbortController().signal });
+// A patch adding an OpenAI provider whose key comes from the source given.
+const openaiKey = (source: object) => ({
+  models: { providers: { openai: { kind: "openai", apiKey: source } } },
+});
+
+// The engine's environment holds one variable, and no other source has a secret behind it.
+const envSecrets: SecretReader = {
+  read: async (_path, source) =>
+    "fromEnv" in source && source.fromEnv === "SET_KEY"
+      ? Promise.resolve(createSecret("set"))
+      : Promise.reject(
+          new BinferenceError({ code: "config.secret_unavailable", message: "Not there." }),
+        ),
+};
 const file = "/state/config.json5";
 // The file as binference init writes it, then edited by hand.
 const golden = `// The binference config file (docs/specs/config.md), written by binference init.
@@ -106,11 +122,18 @@ async function machine() {
     writeFile,
   };
   const change = createConfigChange(parts);
-  const proposals = createConfigProposals(parts);
+  const restarts: RestartWhy[] = [];
+  const restart = {
+    request: async (why: RestartWhy) => {
+      restarts.push(why);
+      return Promise.resolve();
+    },
+  };
+  const proposals = createConfigProposals({ ...parts, secrets: envSecrets, restart });
   const call = async (patch: ArgsOf<"config/change">["patch"], reason?: string) =>
     change({ args: reason === undefined ? { patch } : { patch, reason }, caller: cli, ...live() });
   const entries = async () => journal.list({ after: 0, limit: 10 }, live());
-  return { disk, writes, settings, clock, closers, pushes, call, entries, proposals };
+  return { disk, writes, settings, clock, closers, pushes, call, entries, proposals, restarts };
 }
 
 describe("config/change", () => {
@@ -245,7 +268,7 @@ const debug = { logging: { level: "debug" } };
 describe("a config change from a chat", () => {
   it("previews each key the patch changes, before and after, and writes nothing", async () => {
     const test = await machine();
-    const preview = await test.proposals.preview(debug, live());
+    const preview = await test.proposals.preview({ patch: debug }, live());
     expect(preview).toStrictEqual(
       ok({
         changes: [{ path: "logging.level", before: '"info"', after: '"debug"' }],
@@ -258,8 +281,11 @@ describe("a config change from a chat", () => {
 
   it("refuses a secret written as text and a value the config refuses, before anything is written", async () => {
     const test = await machine();
-    const inline = await test.proposals.preview({ telegram: { botToken: "123:abc" } }, live());
-    const wrong = await test.proposals.preview({ logging: { level: "loud" } }, live());
+    const inline = await test.proposals.preview(
+      { patch: { telegram: { botToken: "123:abc" } } },
+      live(),
+    );
+    const wrong = await test.proposals.preview({ patch: { logging: { level: "loud" } } }, live());
     expect([inline, wrong]).toStrictEqual([err("config.secret_inline"), err("config.invalid")]);
     await test.closers.closeAll(live().signal);
   });
@@ -267,11 +293,54 @@ describe("a config change from a chat", () => {
   it("refuses a model whose provider the config does not hold, as config/change does", async () => {
     const test = await machine();
     const patch = { models: { imageMaking: "openai/gpt-image-1" } };
-    expect([await test.proposals.preview(patch, live()), await test.call(patch)]).toStrictEqual([
-      err("config.invalid"),
-      err("config.invalid"),
-    ]);
+    expect([
+      await test.proposals.preview({ patch: patch }, live()),
+      await test.call(patch),
+    ]).toStrictEqual([err("config.invalid"), err("config.invalid")]);
     expect(test.writes).toStrictEqual([]);
+    await test.closers.closeAll(live().signal);
+  });
+
+  it("refuses a secret source with nothing behind it, and never runs a program to find out", async () => {
+    const test = await machine();
+    const answers = await Promise.all([
+      test.proposals.preview({ patch: openaiKey({ fromCredential: "OPENAI_API_KEY" }) }, live()),
+      test.proposals.preview({ patch: openaiKey({ fromEnv: "SET_KEY" }) }, live()),
+      test.proposals.preview(
+        { patch: openaiKey({ fromCommand: ["op", "read", "op://ai/openai"] }) },
+        live(),
+      ),
+    ]);
+    expect(answers.map(({ ok: isOk }) => isOk)).toStrictEqual([false, true, true]);
+    expect(answers[0]).toStrictEqual(err("config.secret_unreadable"));
+    await test.closers.closeAll(live().signal);
+  });
+
+  it("answers the file's hash, and refuses a patch made from another version of it", async () => {
+    const test = await machine();
+    const { hash } = okValue(await test.proposals.view("logging", live()));
+    const fresh = await test.proposals.preview({ patch: debug, baseHash: hash }, live());
+    const stale = await test.proposals.preview({ patch: debug, baseHash: "f".repeat(64) }, live());
+    expect([fresh.ok, stale]).toStrictEqual([true, err("config.changed")]);
+    await test.closers.closeAll(live().signal);
+  });
+
+  it("refuses a patch that drops a list's entries unless it names the list to replace", async () => {
+    const test = await machine();
+    await test.call({
+      models: { providers: { a: { kind: "openai" } }, imageInput: ["a/one", "a/two"] },
+    });
+    const shorter = { models: { imageInput: ["a/one"] } };
+    const kept = await test.proposals.preview(
+      { patch: { models: { imageInput: ["a/one", "a/two", "a/three"] } } },
+      live(),
+    );
+    const dropped = await test.proposals.preview({ patch: shorter }, live());
+    const replaced = await test.proposals.preview(
+      { patch: shorter, replacePaths: ["models.imageInput"] },
+      live(),
+    );
+    expect([kept.ok, dropped, replaced.ok]).toStrictEqual([true, err("config.list_shrinks"), true]);
     await test.closers.closeAll(live().signal);
   });
 
@@ -293,6 +362,20 @@ describe("a config change from a chat", () => {
       "telegram",
       "Find the stuck order.",
     ]);
+    await test.closers.closeAll(live().signal);
+  });
+
+  it("restarts once a confirmed change that applies only after a restart is written", async () => {
+    const test = await machine();
+    const port = okValue(
+      await test.proposals.preview({ patch: { engine: { port: 7460 } } }, live()),
+    );
+    const level = okValue(await test.proposals.preview({ patch: debug }, live()));
+    const quoted = (preview: typeof port) => ({ ...preview, quotedAtMs: 1 });
+    const by = { author: owner, ...live() };
+    await test.proposals.apply({ patch: debug, quote: quoted(level) }, by);
+    await test.proposals.apply({ patch: { engine: { port: 7460 } }, quote: quoted(port) }, by);
+    expect(test.restarts).toStrictEqual([{ reason: "config", changed: ["engine.port"] }]);
     await test.closers.closeAll(live().signal);
   });
 
