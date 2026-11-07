@@ -362,6 +362,18 @@ new name here first, in the change that uses it.
 - **read, propose and control tools**: tools that read data, tools that create an intent or an auto
   order and its card, and tools that change something without moving money or opening a card
   (cancel an order, set an alert or a schedule, write a note, ask the owner).
+- **machine tools**: `shell` and `shell_job`, which run commands on the owner's machine through
+  the shell host ([decision 0378](DECISIONS.md#d0378)).
+- **shell host**: the process the engine starts to run the agent's commands, behind the wall.
+- **wall**: what keeps every command from `auth/`, `keys/`, the databases, the config, the IPC
+  socket and binference's keychain entries. A machine that cannot hold it refuses the shell.
+- **shell job**: one command the shell host runs, with its output, until it ends and is forgotten.
+- **shell request**: the agent's ask to run one command, which the owner answers with Allow once,
+  Always allow or Refuse; it waits 10 minutes.
+- **allowed command**: a command the owner allowed always, which runs under `shell.run: listed`
+  without asking.
+- **filter command**: a command that only reads its input, such as `wc`, allowed under
+  `shell.run: listed` with plain arguments (`shell.filters`).
 - **image input**: `models.imageInput`, the models declared to take images as input; a model reads
   images only when it is listed there or is the vision model.
 - **vision model**: `models.vision`, which reads images when the main model cannot.
@@ -710,6 +722,14 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | English                                     | 中文                   | Notes                        |
 | ------------------------------------------- | ---------------------- | ---------------------------- |
 | state folder                                | 状态文件夹             | `~/.binference`              |
+| shell tool                                  | 命令行工具             | `shell`, `shell_job`         |
+| shell host                                  | 命令行宿主             | Process                      |
+| wall (of the shell)                         | 隔离墙                 |                              |
+| shell job                                   | 命令任务               |                              |
+| shell request                               | 命令请求               |                              |
+| allowed command                             | 允许的命令             |                              |
+| filter command                              | 过滤命令               |                              |
+| sandbox                                     | 沙箱                   | `shell.sandbox`              |
 | usage (of a command)                        | 用法                   | Help's heading               |
 | config key                                  | 配置项                 |                              |
 | value (of a config key)                     | 值                     |                              |

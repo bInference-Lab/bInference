@@ -49,8 +49,9 @@ agent's workspace files from the engine with `agent/readFile` ([decision 0200](.
   `propose` and `agent`), stores only its hash, and revokes the previous runtime token in the same
   write. The token lives in the two processes' memory only.
 - Node's permission model limits the runtime's files to its own package, `agent.sqlite` and
-  `workspace/`, and lets it start no child process. The owner's shell, file and browser tools
-  ([rule 15](../ARCHITECTURE.md#rule-15)) widen only what each one needs when turned on.
+  `workspace/`, and lets it start no child process. The agent's shell commands run in the shell
+  host the engine starts, behind the wall of [decision 0378](../DECISIONS.md#d0378), never in the
+  runtime.
 - Start order inside the runtime: read the `start` line, open and migrate `agent.sqlite`, take the
   writer fence, repair unfinished turns (section 2.4), connect to the engine, subscribe to `inbox`,
   read the untaken messages with `inbox/list`, then write `ready`.
@@ -326,12 +327,14 @@ Each tool has one kind, which the loop reads; nothing else in the loop depends o
 | `read`    | Reads; changes nothing outside the runtime                           | In parallel with other reads that allow it  | No               |
 | `propose` | Creates an intent or an auto order in the engine, which opens a card | Alone, in order; one per turn (section 6.2) | Yes              |
 | `control` | Changes something without moving money or opening a card             | In order                                    | No               |
+| `machine` | Runs a command on the owner's machine through the shell host         | In order, with its own time limits          | No               |
 
 | Kind      | Tools ([ARCHITECTURE.md section 6](../ARCHITECTURE.md#section-6))                                                                                                                                                                                                                                          |
 | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `read`    | `token_search`, `addresses`, `wallets`, `portfolio`, `token_info`, `token_risk`, `quote`, `market_scan`, `chart`, `wallet_activity`, `staking_options`, `bridge_quote`, `tx_status`, `orders`, `schedule_list`, `cex_*`, `search_web`, `search_x`, `read_page`, `notes_search`, `open_skill`, `launchpads` |
 | `propose` | `swap`, `buy`, `sell`, `send`, `approval_revoke`, `order_create`, `stake`, `unstake`, `claim`, `bridge`, `cex_order`                                                                                                                                                                                       |
 | `control` | `order_cancel` (braking), `alert_create`, `schedule_create`, `schedule_cancel`, `notes_write`, `ask_owner`, `workspace_write`, `first_chat_end` ([decision 0242](../DECISIONS.md#d0242)), `launch_draft` ([decision 0285](../DECISIONS.md#d0285))                                                          |
+| `machine` | `shell`, `shell_job` ([decision 0378](../DECISIONS.md#d0378))                                                                                                                                                                                                                                              |
 
 `wallet_activity` reads only a wallet the agent tracks, the leader of one of its copy orders or the
 account of one of its wallet alerts. For the agent's own wallets the engine answers
@@ -372,6 +375,8 @@ engine holds these wallets for the agent, so its answer is never outside content
 - A result is text for the model, cut to 12,000 characters with a line saying how much was cut.
   A tool's error is a result too, never a turn failure.
 - A read or control call times out after 60 seconds and returns its timeout as its result. A
+  `machine` call has its own limits: the command's timeout, its wait before it is left running,
+  and the 10 minutes a shell request waits for the owner. A
   propose call waits up to 30 seconds for the engine; without an answer its outcome is unknown, and
   it is never sent again (section 6.1).
 
@@ -403,7 +408,8 @@ engine holds these wallets for the agent, so its answer is never outside content
   `schedule_list` when it lists a marked schedule ([decision 0247](../DECISIONS.md#d0247)),
   `open_skill` when it reads an installed skill, a community plugin's tool always, `staking_options` when it lists a validator, and
   `tx_status` when it reads a staking move, which names its validator
-  ([decision 0327](../DECISIONS.md#d0327)). Every
+  ([decision 0327](../DECISIONS.md#d0327)), and `shell` and `shell_job` whenever they carry a
+  command's output ([decision 0378](../DECISIONS.md#d0378)). Every
   other tool shows an unlisted token by its address and the words "unlisted token", so its result
   stays clean.
 - **The turn's mark** is set when the model's context holds outside content: at `turn/start`, when

@@ -72,9 +72,11 @@ Every part of binference follows these rules. A rule changes only through a new 
 14. <a id="rule-14"></a>**Every word a person sees ships in English and Chinese**
     ([decision 0018](DECISIONS.md#d0018)). Chinese follows the
     [Chinese terms](GLOSSARY.md#chinese-terms) in the glossary.
-15. <a id="rule-15"></a>**Shell, file and browser tools are off by default.** The owner may turn
-    them on for their own agent. Even then they run in the agent runtime, away from keys and
-    confirmations.
+15. <a id="rule-15"></a>**Shell commands run behind a wall.** The agent's shell is on by default
+    and runs in a shell host the engine starts, never in the engine, the signer or the runtime. A
+    command never reaches `auth/`, `keys/`, the databases, the config, the IPC socket or
+    binference's keychain entries; a machine that cannot hold that wall refuses the shell
+    ([decision 0378](DECISIONS.md#d0378)). File and browser tools are off by default.
 16. <a id="rule-16"></a>**Beyond custody, the bot and a model, it needs no keys.** Self-hosted
     owners bring their Privy app, BotFather bot and model key ([decision 0087](DECISIONS.md#d0087));
     every other v1 default (routing, risk data, launch feed, RPC, private sends) is keyless. Keys
