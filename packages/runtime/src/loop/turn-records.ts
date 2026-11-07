@@ -38,7 +38,7 @@ export interface ChainModel {
 }
 
 /** What a tool does, which decides how the loop runs it (runtime spec, section 5.1). */
-export type ToolKind = "read" | "propose" | "control";
+export type ToolKind = "read" | "propose" | "control" | "machine";
 
 /**
  * A tool's result, which the model reads. A tool's error is a result, never a turn failure. A

@@ -48,6 +48,8 @@ The tools the agent's model may call in a turn, in the order a turn offers them.
 - `first_chat_end` (control): Ends the first chat once the owner's answers are saved.
 - `launchpads` (read): Lists the launchpads on a chain and their settings.
 - `launch_draft` (control): Drafts a token launch that only the owner can start.
+- `shell` (machine): Runs a command on the owner's machine, away from binference's own files, and reads its output.
+- `shell_job` (machine): Reads a running command's new output, or stops it.
 - `ask_owner` (control): Asks the owner a question with answer buttons.
 
 ## MCP tools

@@ -56,6 +56,7 @@
   "tools.kind.read": "read",
   "tools.kind.propose": "proposal",
   "tools.kind.control": "control",
+  "tools.kind.machine": "machine",
   "tools.mcp": "MCP tools",
   "tools.mcpIntro": "The tools `binference mcp` serves to MCP clients, each calling one engine operation. An MCP client holds only the read and propose scopes, so no tool can confirm. A tool that takes a request id returns the first card again when a call is retried with the same id.",
   "tools.tool": "Tool",
@@ -119,5 +120,7 @@
   "tools.summary.binference_order_create": "Proposes an auto order, which opens a card.",
   "tools.summary.binference_order_cancel": "Cancels an auto order.",
   "tools.summary.binference_alert_create": "Sets a price, wallet or launch alert.",
-  "tools.summary.binference_ledger": "Reads an agent's ledger."
+  "tools.summary.binference_ledger": "Reads an agent's ledger.",
+  "tools.summary.shell": "Runs a command on the owner's machine, away from binference's own files, and reads its output.",
+  "tools.summary.shell_job": "Reads a running command's new output, or stops it."
 }

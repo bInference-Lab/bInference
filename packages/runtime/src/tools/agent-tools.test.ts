@@ -38,6 +38,21 @@ const launchTerms = {
   pairWith: coin,
 };
 
+const shellJob = "shj_0190f1c2-3a4b-7c5d-8e6f-000000000001";
+const shellView = {
+  job: shellJob,
+  status: "ended",
+  command: "ls",
+  folder: "/home/owner",
+  startedAt: 1,
+  endedAt: 2,
+  exitCode: 0,
+  timedOut: false,
+  stopped: false,
+  output: "",
+  outputCut: false,
+};
+
 const answers: Readonly<Record<string, FakeAnswer>> = {
   "asset/search": { items: [{ asset: coin, ...coinInfo }] },
   "address/list": { items: [] },
@@ -91,6 +106,8 @@ const answers: Readonly<Record<string, FakeAnswer>> = {
   "agent/endFirstChat": {},
   "launchpad/list": { items: [] },
   "launch/draft": { draft: "c2hvd24tb25jZS1h", expiresAt: 600_001 },
+  "shell/run": shellView,
+  "shell/job": shellView,
   "turn/ask": {
     question: "qst_0190f1c2-3a4b-7c5d-8e6f-0123456789ab",
     agent,
@@ -325,6 +342,12 @@ const mappings: readonly (readonly [string, JsonValue, JsonValue])[] = [
         key,
       },
     ],
+  ],
+  ["shell", { command: "ls" }, [{ op: "shell/run", args: { agent, command: "ls" } }]],
+  [
+    "shell_job",
+    { job: shellJob, action: "poll" },
+    [{ op: "shell/job", args: { agent, job: shellJob, action: "poll" } }],
   ],
   [
     "ask_owner",

@@ -61,5 +61,7 @@
   "tool.workspaceWrite": "Saving a workspace file…",
   "tool.launchpads": "Reading the launchpads…",
   "tool.launchDraft": "Drafting a launch…",
-  "tool.plugin": "Asking the plugin {plugin}…"
+  "tool.plugin": "Asking the plugin {plugin}…",
+  "tool.shell": "Running a command…",
+  "tool.shellJob": "Checking a command…"
 }

@@ -11,6 +11,7 @@ import { orderCancelTool } from "./order-cancel-tool.js";
 import { pluginTools } from "./plugin-tools.js";
 import { readTools } from "./read-tools.js";
 import { scheduleTools } from "./schedule-tools.js";
+import { shellTools } from "./shell-tools.js";
 import { openSkillTool } from "./skill-tools.js";
 import type { AgentToolParts } from "./tool-client.js";
 import { tradeTools } from "./trade-tools.js";
@@ -30,8 +31,9 @@ import { workspaceTools } from "./workspace-tools.js";
  * enabled community plugins (decision 0349); `notes_search` and `open_skill`
  * follow them, then `notes_write`, and last `workspace_write` and `first_chat_end`, which write
  * the owner's strategy and persona and end the first chat (decision 0242), then `launchpads` and
- * `launch_draft`, which drafts a token launch the owner starts (decision 0285), then `ask_owner`,
- * which asks the owner in the turn the tools serve and ends it after its batch.
+ * `launch_draft`, which drafts a token launch the owner starts (decision 0285),
+ * then the machine tools `shell` and `shell_job` (decision 0378), then `ask_owner`, which asks the
+ * owner in the turn the tools serve and ends it after its batch.
  */
 export function agentTools(parts: AgentToolParts): readonly AgentTool[] {
   const web = parts.web === undefined ? [] : webTools(parts.web);
@@ -54,6 +56,7 @@ export function agentTools(parts: AgentToolParts): readonly AgentTool[] {
     ...workspaceTools(parts),
     launchpadsTool(parts),
     launchDraftTool(parts),
+    ...shellTools(parts),
     askOwnerTool(parts),
   ];
 }

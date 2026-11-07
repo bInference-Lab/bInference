@@ -49,6 +49,8 @@ const toolKeys: Readonly<Record<AgentToolName, string | undefined>> = {
   launchpads: "turn.tool.launchpads",
   launch_draft: "turn.tool.launchDraft",
   ask_owner: undefined,
+  shell: "turn.tool.shell",
+  shell_job: "turn.tool.shellJob",
 };
 
 // A plugin's tool is named `<id>__<tool>`, its id with `_` for `-`.

@@ -56,6 +56,7 @@
   "tools.kind.read": "读取",
   "tools.kind.propose": "提议",
   "tools.kind.control": "控制",
+  "tools.kind.machine": "本机",
   "tools.mcp": "MCP 工具",
   "tools.mcpIntro": "`binference mcp` 提供给 MCP 客户端的工具，每个工具调用一个引擎操作。MCP 客户端只有读取和提议权限范围，因此没有工具可以确认。接受请求 id 的工具在用同一 id 重试时，会再次返回第一张卡片。",
   "tools.tool": "工具",
@@ -119,5 +120,7 @@
   "tools.summary.binference_order_create": "提议一个自动订单，并打开一张卡片。",
   "tools.summary.binference_order_cancel": "取消一个自动订单。",
   "tools.summary.binference_alert_create": "设置价格提醒、钱包提醒或发射提醒。",
-  "tools.summary.binference_ledger": "读取一个 Agent 的账本。"
+  "tools.summary.binference_ledger": "读取一个 Agent 的账本。",
+  "tools.summary.shell": "在所有者的机器上运行一条命令，不触及 binference 自己的文件，并读取输出。",
+  "tools.summary.shell_job": "读取运行中命令的新输出，或停止它。"
 }
