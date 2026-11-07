@@ -280,6 +280,12 @@ Every operation of the engine protocol, version 1, by domain. A client calls an 
 | `inbox/take` | `agent` | write | any connection | engine |
 | `inbox/readImage` | `agent` | read | any connection | engine |
 
+## `image`
+
+| Operation | Scope | Kind | Accepted | Answered by |
+| --- | --- | --- | --- | --- |
+| `image/view` | `agent` | read | any connection | engine |
+
 ## `shell`
 
 | Operation | Scope | Kind | Accepted | Answered by |

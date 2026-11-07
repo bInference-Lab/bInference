@@ -5,7 +5,7 @@ import type { AgentStore } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import type { AgentInboxMessage } from "./agent-inbox-record.js";
 import { inboxPushData, inboxViewOf, type IntentViewOf } from "./inbox-views.js";
-import type { AgentInboxStore, OwnerImageSource, QuestionStore } from "./ports.js";
+import type { AgentInboxStore, OwnerImageSource, ViewImageSource, QuestionStore } from "./ports.js";
 import type { RunningTurns } from "./running-turns.js";
 
 /** What the chat relay reads, writes and pushes through. */
@@ -26,6 +26,8 @@ export interface ChatRelayOptions {
   readonly publish: PublishPush;
   /** The owner's images by the names messages give them; without it none can be read. */
   readonly images?: OwnerImageSource;
+  /** The images the agent views, at public addresses or in files (decision 0385); none without. */
+  readonly viewImages?: ViewImageSource;
   /**
    * Whether a community plugin is on and offers the agent tools, whose words reach every turn:
    * each turn then starts marked as outside content (decision 0350).

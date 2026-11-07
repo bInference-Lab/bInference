@@ -34,6 +34,8 @@
   "image.too_large": "这张图片超过 5 MiB 的上限。请发送更小的图片。",
   "image.format": "只能读取 PNG、JPEG 和 WebP 图片。请以其中一种格式发送图片。",
   "image.unreadable": "binference 无法获取这张图片。请重新发送。",
+  "image.walled": "该文件位于 binference 自己的文件夹中，Agent 永远无法读取。请换一个文件。",
+  "image.not_public": "该地址位于私有网络中，Agent 从不读取。请使用公开地址。",
   "agent.budget": "此 Agent 已用完今日模型预算。对话将于你所在时区的午夜恢复；自动订单继续运行。",
   "alert.not_found": "此提醒不存在或已不再监控。请列出 Agent 的提醒，查看仍在生效的提醒。",
   "alert.too_many": "此 Agent 已有 50 个生效的提醒。请先删除一个，再添加新的。",

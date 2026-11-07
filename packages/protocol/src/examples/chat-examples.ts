@@ -228,6 +228,10 @@ export const imageExamples: { readonly [N in keyof ImageOperationShapes]: WireEx
     args: { agent: ids.agent, message: ids.message, image: "tg:AgACAgIAAxkBAAIB" },
     result: { contentType: "image/png", bytes: 8, offset: 0, data: "iVBORw0KGgo=" },
   },
+  "image/view": {
+    args: { agent: ids.agent, url: "https://example.com/chart.png" },
+    result: { contentType: "image/png", bytes: 8, offset: 0, data: "iVBORw0KGgo=" },
+  },
 };
 
 /** An example call of the operation the runtime sends its model's reasoning with. */

@@ -6,9 +6,11 @@ import { createImageHandlers, type ImageHandlers } from "./image-handlers.js";
 import { createImageHold } from "./image-hold.js";
 import { createOwnerChatHandlers, type OwnerChatHandlers } from "./owner-chat-handlers.js";
 import { createRuntimeChatHandlers, type RuntimeChatHandlers } from "./runtime-chat-handlers.js";
+import { createViewImageHandlers, type ViewImageHandlers } from "./view-image-handlers.js";
 
 /** The chat operations the engine answers itself; the routed ones reach the runtime. */
-export interface ChatHandlers extends OwnerChatHandlers, RuntimeChatHandlers, ImageHandlers {}
+export interface ChatHandlers
+  extends OwnerChatHandlers, RuntimeChatHandlers, ImageHandlers, ViewImageHandlers {}
 
 /** The engine's relay of chat between the surfaces and the agent runtime. */
 export interface ChatRelay {
@@ -91,6 +93,11 @@ export function createChatRelay(options: ChatRelayOptions): ChatRelay {
       ...createOwnerChatHandlers(options),
       ...createRuntimeChatHandlers(options),
       ...imageHandlersOf(options),
+      ...createViewImageHandlers({
+        turns: options.turns,
+        clock: options.clock,
+        ...(options.viewImages === undefined ? {} : { source: options.viewImages }),
+      }),
     },
     settled(message) {
       void pushInbox(options, message, new AbortController().signal).catch(() => undefined);

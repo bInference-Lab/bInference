@@ -1,4 +1,4 @@
-import type { OwnerImageSource } from "../chat/ports.js";
+import type { OwnerImageSource, ViewImageSource } from "../chat/ports.js";
 import type { UploadShelf } from "./upload-shelf.js";
 
 /** Where the engine reads the owner's images from (decision 0227). */
@@ -10,4 +10,6 @@ export interface ImageOptions {
    * composition root gives the server the same shelf. An engine without one makes its own.
    */
   readonly uploads?: UploadShelf;
+  /** The images the agent views (decision 0385); without it, every view is `image.unreadable`. */
+  readonly viewImages?: ViewImageSource;
 }

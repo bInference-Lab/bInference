@@ -141,8 +141,13 @@ export function createSystemHttp(options: SystemHttpOptions): SystemHttp {
       });
     },
     async download(download) {
-      const { url, signal, maxBytes } = download;
-      const request: HttpRequest = { method: "GET", url, signal };
+      const { url, signal, maxBytes, publicOnly } = download;
+      const request: HttpRequest = {
+        method: "GET",
+        url,
+        signal,
+        ...(publicOnly === true ? { publicOnly } : {}),
+      };
       return failing<DownloadAnswer>(request, async () => {
         const answer = await exchange(request, { pools, userAgent, maxBytes });
         return { status: answer.status, headers: answer.headers, bytes: answer.bytes };

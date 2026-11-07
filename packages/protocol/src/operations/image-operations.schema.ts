@@ -37,9 +37,23 @@ export interface ImagePart {
   readonly next?: number;
 }
 
+/**
+ * The args of `image/view`: an image the agent looks at, at a public `http:` or `https:` address
+ * or a file on the engine's machine, exactly one of the two, from `offset`.
+ */
+interface ViewImageArgs {
+  readonly agent: ProtocolId<"agent">;
+  readonly url?: string;
+  /** Absolute, or under the owner's home folder; the home folder's own file names start it. */
+  readonly path?: string;
+  /** Where this part starts, in bytes; 0 when absent. */
+  readonly offset?: number;
+}
+
 /** The operation the agent runtime reads the owner's images with (protocol spec, section 7.7). */
 export interface ImageOperationShapes {
   readonly "inbox/readImage": { readonly args: ReadImageArgs; readonly result: ImagePart };
+  readonly "image/view": { readonly args: ViewImageArgs; readonly result: ImagePart };
 }
 
 /** Parses an image format the agent reads. */
@@ -76,6 +90,26 @@ export const imageOperations: OperationTable<ImageOperationShapes> = {
       image: plainIdSchema,
       offset: byteCount.exactOptional(),
     }),
+    result: imagePartSchema,
+  },
+  "image/view": {
+    ...readFlags,
+    name: "image/view",
+    scope: "agent",
+    args: z
+      .strictObject({
+        agent: protocolIdSchema("agent"),
+        url: z
+          .string()
+          .regex(/^https?:\/\//iu)
+          .max(2_048)
+          .exactOptional(),
+        path: z.string().min(1).max(4_096).exactOptional(),
+        offset: byteCount.exactOptional(),
+      })
+      .refine((args) => (args.url === undefined) !== (args.path === undefined), {
+        message: "Name exactly one of url and path.",
+      }),
     result: imagePartSchema,
   },
 };

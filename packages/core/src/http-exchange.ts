@@ -37,6 +37,8 @@ export interface DownloadRequest {
   readonly maxBytes: number;
   /** Aborts the download; callers combine their timeout into it. */
   readonly signal: AbortSignal;
+  /** Connects only to public internet addresses, as {@link HttpRequest.publicOnly} does. */
+  readonly publicOnly?: boolean;
 }
 
 /** The answer to a {@link DownloadRequest}: its status, its headers and its body as it came. */

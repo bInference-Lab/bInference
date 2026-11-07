@@ -19,6 +19,9 @@ export type {
   AgentInboxStore,
   ImageRefusal,
   OwnerImageSource,
+  ViewedImagePlace,
+  ViewImageRefusal,
+  ViewImageSource,
   QuestionStore,
 } from "./chat/ports.js";
 export { createUploadShelf } from "./uploads/upload-shelf.js";

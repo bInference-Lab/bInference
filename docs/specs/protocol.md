@@ -821,6 +821,7 @@ ceiling is checked for it, and no bridge wallet's ceiling for any other venue
 | `inbox/list`          | `agent`                |       | paging, `{ agent? }` → the untaken inbox messages, in the order they arrived                                                                                                                                                                                                                                                                                        |
 | `inbox/take`          | `agent`                | ✓     | `{ messages }` → `{}`: the runtime holds them in its chat queue                                                                                                                                                                                                                                                                                                     |
 | `inbox/readImage`     | `agent`                |       | `{ agent, message, image, offset? }` → `{ contentType, bytes, offset, data, next? }`: 512 KiB of an image of the agent's own `inbox/message`, in base64, from `offset`; `next` is where the next part starts                                                                                                                                                        |
+| `image/view`          | `agent`                |       | `{ agent, url? \| path?, offset? }` → an `ImagePart` of an image at a public address or in a file on the engine's machine, exactly one of the two; fails `image.not_public`, `image.walled`, `image.not_found` ([decision 0385](../DECISIONS.md#d0385))                                                                                                             |
 | `usage/get`           | `read`                 |       | `{ agent?, from, to }` → spend by day and model, and the budget                                                                                                                                                                                                                                                                                                     |
 | `notes/search`        | `read` (R)             |       | `{ agent, query, limit? }` → notes with their origin label                                                                                                                                                                                                                                                                                                          |
 | `notes/list`          | `read` (R)             |       | `{ agent, cursor?, limit? }` → notes                                                                                                                                                                                                                                                                                                                                |
@@ -917,6 +918,13 @@ for 2 minutes. An image over 5 MiB is `image.too_large`, one whose first bytes a
 or WebP is `image.format`, and one its source no longer has (an expired upload, a file id Telegram
 refuses) is `image.unreadable`; Telegram out of reach is `telegram.unreachable`
 ([decision 0227](../DECISIONS.md#d0227)).
+
+**Viewing an image.** `image/view` answers only the engine's current runtime, with the same parts,
+hold and checks. An address goes through the outbound HTTP to public addresses only, else
+`image.not_public`; an answer that is no success is `image.not_found`. A file, absolute or under
+the owner's home folder, is read at its real path; one inside the state folder, its workspace
+aside, is `image.walled`, and one that is not there is `image.not_found`
+([decision 0385](../DECISIONS.md#d0385)).
 
 <a id="section-7-8"></a>
 

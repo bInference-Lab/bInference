@@ -159,6 +159,12 @@ export { createMemoryAccessStore } from "./fakes/memory-access-store.js";
 export { createMemoryAgentInboxStore } from "./fakes/memory-agent-inbox-store.js";
 export { createMemoryOwnerImages } from "./fakes/memory-owner-images.js";
 export { createMemoryLaunchImages } from "./fakes/memory-launch-images.js";
+export { createMemoryViewImages } from "./fakes/memory-view-images.js";
+export { viewImageSourceContract } from "./contracts/view-image-source-contract.js";
+export type {
+  ViewImageSourceHarness,
+  ViewImageSourceSubject,
+} from "./contracts/view-image-source-contract.js";
 export { testImageHeads, testPng } from "./chat/test-images.js";
 export { ownerImageSourceContract } from "./contracts/owner-image-source-contract.js";
 export type {

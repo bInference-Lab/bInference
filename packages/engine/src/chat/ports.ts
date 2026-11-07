@@ -135,3 +135,26 @@ export interface OwnerImageSource {
     options: { readonly signal: AbortSignal },
   ): Promise<Result<Uint8Array, ImageRefusal>>;
 }
+
+/**
+ * Why an image the agent views cannot be read (decision 0385): over 5 MiB, unreadable, no file at
+ * the path, a path inside binference's own folder, or an address on a private network.
+ */
+export type ViewImageRefusal = "too_large" | "unreadable" | "not_found" | "walled" | "not_public";
+
+/** Where an image the agent views is: a public web address, or a file on the engine's machine. */
+export type ViewedImagePlace = { readonly url: string } | { readonly path: string };
+
+/**
+ * Reads an image the agent asks to look at (decision 0385): a public `http:` or `https:` address,
+ * never one on a private network (`not_public`), or a file on the engine's machine, absolute or
+ * under the owner's home folder, never inside binference's own folder (`walled`). It never reads
+ * more than 5 MiB (`too_large`). A source that does not answer is `unreadable`. Rejects with the
+ * signal's reason once it aborts. The bytes are never logged.
+ */
+export interface ViewImageSource {
+  read(
+    place: ViewedImagePlace,
+    options: { readonly signal: AbortSignal },
+  ): Promise<Result<Uint8Array, ViewImageRefusal>>;
+}

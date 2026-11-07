@@ -34,6 +34,8 @@
   "image.too_large": "This image is over the 5 MiB limit. Send a smaller one.",
   "image.format": "Only PNG, JPEG and WebP images can be read. Send the image in one of these formats.",
   "image.unreadable": "binference could not fetch this image. Send it again.",
+  "image.walled": "That file is inside binference's own folder, which the agent can never read. Name another file.",
+  "image.not_public": "That address is on a private network, which the agent never reads. Use a public address.",
   "agent.budget": "This agent used today's model budget. Chat resumes at midnight in your timezone; orders keep running.",
   "alert.not_found": "This alert does not exist or no longer watches. List the agent's alerts to see the active ones.",
   "alert.too_many": "This agent already has 50 active alerts. Delete one before you add another.",

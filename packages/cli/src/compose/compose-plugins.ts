@@ -7,11 +7,11 @@ import {
   type Logger,
 } from "@binference/core";
 import type { PublishPush } from "@binference/engine";
-import type { RunningTurns } from "@binference/engine/chat";
+import type { RunningTurns, ViewImageSource } from "@binference/engine/chat";
 import { createPluginNotices } from "@binference/engine/notices";
 import type { EngineShell } from "@binference/engine/shell";
 import type { EngineHandlerTable } from "@binference/engine/surfaces";
-import { ensurePrivateFolder, realFilePath, removePath } from "@binference/platform";
+import { ensurePrivateFolder, realFilePath, removePath, walledPaths } from "@binference/platform";
 import {
   imageFolders,
   imageLayout,
@@ -28,6 +28,7 @@ import type { PluginShelf } from "../plugins/put-plugin.js";
 import { sigstoreVerifier } from "../plugins/sigstore-verifier.js";
 import { type ComposedRuntime, composeRuntime } from "./compose-runtime.js";
 import { shellOf } from "./compose-shell.js";
+import { viewImagesOf } from "./compose-view-images.js";
 import type { Opened, Opening } from "./open-engine-parts.js";
 import { createPluginOperations } from "./plugin-operations.js";
 import {
@@ -64,6 +65,8 @@ export interface RuntimeWithPlugins {
     readonly communityPluginsOn: () => boolean;
     /** The agent's shell on this machine (decision 0378). */
     readonly shell: EngineShell;
+    /** The images the agent views on this machine (decision 0385). */
+    readonly viewImages: ViewImageSource;
   };
 }
 
@@ -294,6 +297,16 @@ export function composeRuntimeWithPlugins(
     composed.begin();
   };
   const communityPluginsOn = (): boolean => offered.isOn();
-  const agentSide = { turns: runtime.turns, communityPluginsOn, shell: shellOf(opening, opened) };
+  const viewImages = viewImagesOf({
+    ...(opening.host.download === undefined ? {} : { download: opening.host.download }),
+    walled: walledPaths(opening.platform.stateFolder),
+    ...(opening.host.homeDir === undefined ? {} : { homeDir: opening.host.homeDir }),
+  });
+  const agentSide = {
+    turns: runtime.turns,
+    communityPluginsOn,
+    shell: shellOf(opening, opened),
+    viewImages,
+  };
   return { runtime: { ...runtime, begin }, plugins: composed, agentSide };
 }

@@ -1,6 +1,6 @@
 import { err, ok, type Clock, type Result } from "@binference/core";
 import { type ImageContentType, imageTypeOf } from "@binference/protocol";
-import type { ImageRefusal, OwnerImageSource } from "./ports.js";
+import type { ImageRefusal } from "./ports.js";
 
 /** An image the hold read from its source, with its format by its first bytes. */
 export interface HeldImage {
@@ -9,13 +9,18 @@ export interface HeldImage {
 }
 
 /** Why the hold has no image to give: the source's refusal, or a format the agent cannot read. */
-export type HoldRefusal = ImageRefusal | "format";
+export type HoldRefusal<R extends string = ImageRefusal> = R | "format";
+
+/** Where the hold reads an image by its name: the owner's images, or the images the agent views. */
+interface HeldImageSource<R extends string> {
+  read(image: string, options: { readonly signal: AbortSignal }): Promise<Result<Uint8Array, R>>;
+}
 
 /**
  * The owner's images the engine holds while the runtime reads them in parts (decision 0227): each
  * read once from its source, kept in memory until `drop` or for 2 minutes, at most 8 at once.
  */
-export interface ImageHold {
+export interface ImageHold<R extends string = ImageRefusal> {
   /**
    * The image under `key`, read from the source with `image` the first time and held after. A read
    * that fails is not held, so the next call reads again.
@@ -24,14 +29,14 @@ export interface ImageHold {
     key: string,
     image: string,
     options: { readonly signal: AbortSignal },
-  ): Promise<Result<HeldImage, HoldRefusal>>;
+  ): Promise<Result<HeldImage, HoldRefusal<R>>>;
   /** Lets the image under `key` go: its last part was read. */
   drop(key: string): void;
 }
 
 /** How long and how many images the hold keeps. */
-export interface ImageHoldOptions {
-  readonly source: OwnerImageSource;
+export interface ImageHoldOptions<R extends string = ImageRefusal> {
+  readonly source: HeldImageSource<R>;
   readonly clock: Clock;
   readonly keepMs?: number;
   readonly most?: number;
@@ -42,11 +47,11 @@ interface Entry {
   readonly untilMs: number;
 }
 
-async function readOnce(
-  source: OwnerImageSource,
+async function readOnce<R extends string>(
+  source: HeldImageSource<R>,
   image: string,
   options: { readonly signal: AbortSignal },
-): Promise<Result<HeldImage, HoldRefusal>> {
+): Promise<Result<HeldImage, HoldRefusal<R>>> {
   const read = await source.read(image, options);
   if (!read.ok) {
     return read;
@@ -55,8 +60,10 @@ async function readOnce(
   return contentType === undefined ? err("format") : ok({ contentType, bytes: read.value });
 }
 
-/** Creates an {@link ImageHold} over the owner's image source. */
-export function createImageHold(options: ImageHoldOptions): ImageHold {
+/** Creates an {@link ImageHold} over an image source: the owner's images, or those the agent views. */
+export function createImageHold<R extends string = ImageRefusal>(
+  options: ImageHoldOptions<R>,
+): ImageHold<R> {
   const { source, clock } = options;
   const keepMs = options.keepMs ?? 120_000;
   const most = options.most ?? 8;

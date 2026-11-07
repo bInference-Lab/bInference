@@ -454,6 +454,8 @@
         "image.too_large",
         "image.format",
         "image.unreadable",
+        "image.walled",
+        "image.not_public",
         "alert.not_found",
         "alert.too_many",
         "webhook.not_found",
@@ -38872,6 +38874,130 @@
       "since": "2026.10.0"
     },
     "reply/inbox/readImage": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "reply"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "contentType": {
+              "type": "string",
+              "enum": [
+                "image/png",
+                "image/jpeg",
+                "image/webp"
+              ]
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 5242880
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 5242880
+            },
+            "data": {
+              "type": "string",
+              "maxLength": 699052,
+              "format": "base64",
+              "contentEncoding": "base64",
+              "pattern": "^$|^(?:[0-9a-zA-Z+/]{4})*(?:(?:[0-9a-zA-Z+/]{2}==)|(?:[0-9a-zA-Z+/]{3}=))?$"
+            },
+            "next": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 5242880
+            }
+          },
+          "required": [
+            "contentType",
+            "bytes",
+            "offset",
+            "data"
+          ]
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "result"
+      ]
+    },
+    "call/image/view": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "op": {
+          "type": "string",
+          "const": "image/view"
+        },
+        "args": {
+          "type": "object",
+          "properties": {
+            "agent": {
+              "type": "string",
+              "pattern": "^agt_"
+            },
+            "url": {
+              "type": "string",
+              "maxLength": 2048,
+              "pattern": "^https?:\\/\\/"
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 5242880
+            }
+          },
+          "required": [
+            "agent"
+          ],
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "op",
+        "args"
+      ],
+      "scope": "agent",
+      "kind": "read",
+      "transport": "any",
+      "answeredBy": "engine",
+      "since": "2026.10.0"
+    },
+    "reply/image/view": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
       "properties": {

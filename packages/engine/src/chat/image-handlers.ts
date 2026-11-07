@@ -1,9 +1,9 @@
-import { err, ok } from "@binference/core";
+import { err } from "@binference/core";
 import type { ProtocolErrorCode } from "@binference/protocol";
 import type { EngineHandler } from "../operations/engine-call.js";
 import type { AgentInboxMessage } from "./agent-inbox-record.js";
 import type { HoldRefusal, ImageHold } from "./image-hold.js";
-import { imagePartOf } from "./image-part.js";
+import { readHeldPart } from "./image-part.js";
 import { ownerMessagePayloadSchema } from "./inbox-payload.schema.js";
 import type { AgentInboxStore } from "./ports.js";
 import type { RunningTurns } from "./running-turns.js";
@@ -62,19 +62,11 @@ export function createImageHandlers(options: ImageHandlerOptions): ImageHandlers
       if (hold === undefined) {
         return err("image.unreadable");
       }
-      const key = `${message} ${image}`;
-      const read = await hold.read(key, image, call);
-      if (!read.ok) {
-        return err(refusalCodes[read.error]);
-      }
-      if (offset >= read.value.bytes.byteLength) {
-        return err("protocol.bad_args");
-      }
-      const part = imagePartOf(read.value, offset);
-      if (part.next === undefined) {
-        hold.drop(key);
-      }
-      return ok(part);
+      return readHeldPart(
+        { hold, codes: refusalCodes },
+        { key: `${message} ${image}`, image, offset },
+        call,
+      );
     },
   };
 }

@@ -28,6 +28,7 @@ import {
   markRuntimeTurns,
   type RunningTurns,
   type UploadShelf,
+  type ViewImageSource,
 } from "@binference/engine/chat";
 import type { HeldWallet } from "@binference/engine/executor";
 import { isNoticeMutedFor } from "@binference/engine/notices";
@@ -161,6 +162,8 @@ export interface ComposeEngineOptions extends EngineChainParts {
   readonly webhooks?: Pick<EngineOptions, "secretRandom" | "webhookBase">;
   /** The agent's shell on this machine (decision 0378); off when absent. */
   readonly shell?: EngineShell;
+  /** The images the agent views on this machine (decision 0385); none when absent. */
+  readonly viewImages?: ViewImageSource;
   readonly logger: Logger;
 }
 
@@ -319,6 +322,7 @@ function engineOf(
     random: options.random,
     ...options.webhooks,
     ...(options.shell === undefined ? {} : { shell: options.shell }),
+    ...(options.viewImages === undefined ? {} : { viewImages: options.viewImages }),
     publish: given.publish,
     turns: given.turns,
     ownerTimeZone: () => options.owner().timezone,
