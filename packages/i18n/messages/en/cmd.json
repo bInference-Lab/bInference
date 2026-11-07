@@ -86,7 +86,7 @@
   "replies.stream.progress": "Status message",
   "replies.stream.partial": "Growing answer",
   "replies.reasoning.off": "Hide reasoning",
-  "replies.reasoning.streamed": "Show reasoning as it comes",
+  "replies.reasoning.streamed": "Show reasoning",
   "replies.reasoning.kept": "Keep reasoning",
   "replies.switched": "Saved. It applies from the next answer.",
   "agents.heading": "Your agents:",

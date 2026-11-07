@@ -86,7 +86,7 @@
   "replies.stream.progress": "状态消息",
   "replies.stream.partial": "逐步生成回答",
   "replies.reasoning.off": "隐藏推理",
-  "replies.reasoning.streamed": "实时显示推理",
+  "replies.reasoning.streamed": "显示推理",
   "replies.reasoning.kept": "保留推理",
   "replies.switched": "已保存，从下一个回答起生效。",
   "agents.heading": "你的 Agent：",

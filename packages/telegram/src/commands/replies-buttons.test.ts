@@ -44,7 +44,7 @@ describe("the /replies command", () => {
           ],
           [
             { text: "Hide reasoning", data: "bnf1:r:t:off" },
-            { text: "Show reasoning as it comes", data: "bnf1:r:t:streamed" },
+            { text: "Show reasoning", data: "bnf1:r:t:streamed" },
             { text: "Keep reasoning (now)", data: "bnf1:r:t:kept" },
           ],
         ],

@@ -1084,7 +1084,7 @@ the change and announces it on every surface.
 `/replies` names how the agent's replies grow and how the model's reasoning shows in this chat
 ([decision 0377](../DECISIONS.md#d0377)), with one row of buttons for `telegram.replies.stream`
 ("Status message", "Growing answer") and one for `telegram.replies.reasoning` ("Hide reasoning",
-"Show reasoning as it comes", "Keep reasoning"), the choice in use followed by "(now)". A tap sets
+"Show reasoning", "Keep reasoning"), the choice in use followed by "(now)". A tap sets
 that one key in config.json5 through `config/change`, which the live reload applies from the next
 turn, and answers "Saved. It applies from the next answer." / 「已保存，从下一个回答起生效。」
 
