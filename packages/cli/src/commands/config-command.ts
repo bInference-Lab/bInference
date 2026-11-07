@@ -86,18 +86,30 @@ type AskedValue =
   | { readonly ok: true; readonly value: JsonValue }
   | { readonly ok: false; readonly problem: "not_one" | "secret_as_text" };
 
+// The secret source a request names with a flag in place of a value, if any.
+function flagSource(options: ConfigSetRequest["options"]): JsonValue | undefined {
+  const { fromEnv, fromKeychain, fromCredential } = options;
+  if (fromEnv !== undefined) {
+    return { fromEnv };
+  }
+  if (fromKeychain !== undefined) {
+    return { fromKeychain };
+  }
+  return fromCredential === undefined ? undefined : { fromCredential };
+}
+
 // The value the request sets, or why it names none it may send.
 function valueOf(request: ConfigSetRequest): AskedValue {
-  const { fromEnv, fromKeychain } = request.options;
-  const given = [request.value, fromEnv, fromKeychain].filter((each) => each !== undefined);
+  const { fromEnv, fromKeychain, fromCredential } = request.options;
+  const given = [request.value, fromEnv, fromKeychain, fromCredential].filter(
+    (each) => each !== undefined,
+  );
   if (given.length !== 1) {
     return { ok: false, problem: "not_one" };
   }
-  if (fromEnv !== undefined) {
-    return { ok: true, value: { fromEnv } };
-  }
-  if (fromKeychain !== undefined) {
-    return { ok: true, value: { fromKeychain } };
+  const source = flagSource(request.options);
+  if (source !== undefined) {
+    return { ok: true, value: source };
   }
   const value = typedValue(request.value ?? "");
   const node = nodeAt(configTree, request.key.split("."));

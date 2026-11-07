@@ -11,7 +11,7 @@
   "rule.oneOf": "以下之一：{choices}",
   "rule.list": "列表，每一项为{item}",
   "rule.either": "{first}或{second}",
-  "rule.secret": "密钥来源：{keychain}、{env}、{file} 或 {command}",
+  "rule.secret": "密钥来源：{keychain}、{env}、{file}、{command} 或 {credential}",
   "rule.commandSecret": "密钥来源 {command}",
   "rule.url": "URL",
   "rule.httpsOrigin": "不带路径的 HTTPS 地址，例如 `https://owner.example.ts.net`",
@@ -22,5 +22,6 @@
   "rule.usd": "写成文本的美元金额，例如 \"100\" 或 \"0.25\"，最多六位小数",
   "rule.path": "绝对路径，或以 ~/ 开头的路径",
   "rule.keychainName": "钥匙串条目名，由字母、数字、点、短横线和下划线组成",
-  "rule.envName": "环境变量名"
+  "rule.envName": "环境变量名",
+  "rule.credentialName": "凭据名，由大写字母、数字和下划线组成，以字母开头"
 }

@@ -1,6 +1,7 @@
 import { join } from "node:path";
 import { err, ok } from "@binference/core";
 import { createManualClock, createMemorySecretStore } from "@binference/core/testing";
+import { createMemoryCredentialStore } from "@binference/engine/testing";
 import type { RunProgram } from "@binference/platform";
 import { describe, expect, it } from "vitest";
 import type { ReadTextFile } from "../load-config.js";
@@ -51,6 +52,28 @@ describe("secret reader", () => {
     const secret = await reader().read("telegram.botToken", source, signal());
     expect(secret.reveal()).toBe(token);
     expect(String(secret)).not.toContain(token);
+  });
+
+  it("reads a credential the engine stores, and says what is wrong when it cannot", async () => {
+    const credentials = createMemoryCredentialStore();
+    await credentials.put(
+      { name: "BOT_TOKEN", value: token, allowedHosts: [], atMs: 0 },
+      { signal: signal() },
+    );
+    const stored = await reader({ credentials }).read(
+      "telegram.botToken",
+      { fromCredential: "BOT_TOKEN" },
+      signal(),
+    );
+    expect(stored.reveal()).toBe(token);
+    const read = (more: Partial<SecretReaderOptions>, name: string) =>
+      reader(more).read("telegram.botToken", { fromCredential: name }, signal());
+    await expect(read({ credentials }, "OTHER_TOKEN")).rejects.toMatchObject({
+      details: { reason: "not_found" },
+    });
+    await expect(read({}, "BOT_TOKEN")).rejects.toMatchObject({
+      details: { reason: "engine_only" },
+    });
   });
 
   it("runs the program with its arguments as given, never through a shell", async () => {

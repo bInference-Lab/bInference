@@ -22,8 +22,21 @@ export interface CommandSource {
   readonly fromCommand: readonly string[];
 }
 
+/**
+ * A credential the owner stored in the engine (decision 0390), such as one the agent asked for;
+ * only the running engine reads it.
+ */
+export interface CredentialSource {
+  readonly fromCredential: string;
+}
+
 /** Where a config key typed `Secret` reads its value; the file never holds the value itself. */
-export type SecretSource = KeychainSource | EnvSource | FileSource | CommandSource;
+export type SecretSource =
+  | KeychainSource
+  | EnvSource
+  | FileSource
+  | CommandSource
+  | CredentialSource;
 
 const commandShape = z.strictObject({
   fromCommand: z
@@ -38,7 +51,7 @@ export const commandSourceSchema: z.ZodType<CommandSource> = commandShape.meta({
   description: "A secret printed by a program: { fromCommand: [program, ...arguments] }.",
 });
 
-/** Exactly one of `fromKeychain`, `fromEnv`, `fromFile` and `fromCommand`. */
+/** Exactly one of `fromKeychain`, `fromEnv`, `fromFile`, `fromCommand` and `fromCredential`. */
 export const secretSourceSchema: z.ZodType<SecretSource> = z
   .union([
     z.strictObject({
@@ -47,10 +60,16 @@ export const secretSourceSchema: z.ZodType<SecretSource> = z
     z.strictObject({ fromEnv: formatted("env_name").describe("The environment variable.") }),
     z.strictObject({ fromFile: pathSchema.describe("The file that holds only the secret.") }),
     commandShape,
+    z.strictObject({
+      fromCredential: formatted("credential_name").describe(
+        "The name of a credential stored in the engine.",
+      ),
+    }),
   ])
   .meta({
     id: "Secret",
     description:
-      "A secret source: { fromKeychain: name }, { fromEnv: variable }, { fromFile: path } or " +
-      "{ fromCommand: [program, ...arguments] }. Never the secret itself.",
+      "A secret source: { fromKeychain: name }, { fromEnv: variable }, { fromFile: path }, " +
+      "{ fromCommand: [program, ...arguments] } or { fromCredential: NAME }. Never the secret " +
+      "itself.",
   });

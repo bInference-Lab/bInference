@@ -47,6 +47,27 @@ function readChecks(harness: CredentialStoreHarness): readonly ContractCheck[] {
   ];
 }
 
+function revealChecks(harness: CredentialStoreHarness): readonly ContractCheck[] {
+  return [
+    {
+      name: "reveals a stored credential's value and hosts, and nothing once it is removed",
+      run: async () => {
+        const store = await harness.create();
+        await store.put(put("API_KEY", 1, ["a.example.com"]), live);
+        const revealed = await store.reveal("API_KEY", live);
+        assert.deepEqual(
+          { name: revealed?.name, allowedHosts: revealed?.allowedHosts },
+          { name: "API_KEY", allowedHosts: ["a.example.com"] },
+        );
+        assert.equal(revealed?.value.reveal(), "value of API_KEY");
+        assert.equal(await store.reveal("OTHER_KEY", live), undefined);
+        await store.remove("API_KEY", { ...live, atMs: 2 });
+        assert.equal(await store.reveal("API_KEY", live), undefined);
+      },
+    },
+  ];
+}
+
 function removalChecks(harness: CredentialStoreHarness): readonly ContractCheck[] {
   return [
     {
@@ -83,5 +104,5 @@ function removalChecks(harness: CredentialStoreHarness): readonly ContractCheck[
 
 /** The contract every `CredentialStore` adapter passes (decision 0388). */
 export function credentialStoreContract(harness: CredentialStoreHarness): readonly ContractCheck[] {
-  return [...readChecks(harness), ...removalChecks(harness)];
+  return [...readChecks(harness), ...revealChecks(harness), ...removalChecks(harness)];
 }

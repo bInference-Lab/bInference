@@ -1,6 +1,6 @@
 # 0388. The owner stores credentials the agent never sees
 
-Status: Amended by 0389
+Status: Amended by 0390
 
 Accepted by the owner on 2026-11-07.
 

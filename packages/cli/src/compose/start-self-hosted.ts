@@ -1,5 +1,6 @@
 import { homedir } from "node:os";
 import { BinferenceError, createDeadline, ok } from "@binference/core";
+import type { CredentialStore } from "@binference/engine/chat";
 import { acquireFileLock, ensurePrivateFolder } from "@binference/platform";
 import { runtimeSettingsOf } from "../agent-runtime/runtime-settings-of.js";
 import { loadConfig } from "../config/load-config.js";
@@ -64,13 +65,22 @@ async function openAndServe(opening: Opening, sets: readonly string[]): Promise<
   const settings = createConfigCell(loaded.config);
   const log = await openEngineLog(opening, settings);
   try {
-    const parts = await readSecretParts(opening, settings, log);
+    const config = loaded.config;
+    // Before the secret sources, as a config key may name a credential the store keeps.
+    const openedStores = await openEngineStores(opening, { logger: log.logger, config });
+    if (!openedStores.ok) {
+      return storeRefusal(opening, openedStores);
+    }
+    const { stores } = openedStores;
+    const parts = await readSecretParts(opening, settings, {
+      log,
+      credentials: stores.credentials,
+    });
     const consoleFiles = await openConsoleFiles(host.consoleFolder, { logger: log.logger, signal });
     const webPushKey = await openEngineWebPushKey(platform, { logger: log.logger, signal });
-    const config = loaded.config;
     const read = { readConfig, readConfigFrom, configReload: createConfigReloadLink() };
     const opened = { config, settings, ...read, log, consoleFiles, webPushKey, ...parts };
-    return await openStoresAndServe(opening, opened);
+    return await serveWithStores(opening, { ...opened, stores });
   } catch (error) {
     // The log closes with the other parts; the fault's code is what `binference logs` shows.
     const errorCode = error instanceof BinferenceError ? error.code : "unexpected";
@@ -120,15 +130,17 @@ async function venuePartsOf(
 async function readSecretParts(
   opening: Opening,
   settings: ConfigCell,
-  log: OpenedLog,
+  opened: { readonly log: OpenedLog; readonly credentials: CredentialStore },
 ): Promise<SecretParts> {
   const { host, platform, signal } = opening;
+  const { log, credentials } = opened;
   const config = settings.started;
   const secrets = createSecretReader({
     env: host.env,
     keychain: platform.keychain,
     homeDir: host.homeDir ?? homedir(),
     clock: host.clock,
+    credentials,
   });
   const call = { logger: log.logger, signal };
   // Before any part reaches the network, so every request goes by the owner's proxy.
@@ -164,22 +176,23 @@ async function readSecretParts(
   return { tracers, headSockets, chains, reads, ...venued, bot, runtime, secrets, proxy };
 }
 
-async function openStoresAndServe(
+// The start's refusal when the store did not open: damaged, or its backup before a migration failed.
+function storeRefusal(
   opening: Opening,
-  opened: Omit<Opened, "stores" | "install">,
+  failed: Extract<Awaited<ReturnType<typeof openEngineStores>>, { readonly ok: false }>,
+): StartOutcome {
+  const file = opening.platform.stateFolder.engineDatabase;
+  return failed.refusal === "store_damaged"
+    ? { ok: false, refusal: "store_damaged", file }
+    : { ok: false, refusal: "backup_failed", file, reason: failed.reason };
+}
+
+async function serveWithStores(
+  opening: Opening,
+  opened: Omit<Opened, "install">,
 ): Promise<StartOutcome> {
   const { host, platform, signal } = opening;
-  const openedStores = await openEngineStores(opening, {
-    logger: opened.log.logger,
-    config: opened.config,
-  });
-  const file = platform.stateFolder.engineDatabase;
-  if (!openedStores.ok) {
-    return openedStores.refusal === "store_damaged"
-      ? { ok: false, refusal: "store_damaged", file }
-      : { ok: false, refusal: "backup_failed", file, reason: openedStores.reason };
-  }
-  const { stores } = openedStores;
+  const { stores } = opened;
   await ensureCliToken({
     access: stores.access,
     file: cliTokenFile(platform.stateFolder),
@@ -189,15 +202,16 @@ async function openStoresAndServe(
     signal,
   });
   const install = await readSetUpInstall(stores, { host, signal });
-  return serveEngine(opening, { ...opened, stores, install });
+  return serveEngine(opening, { ...opened, install });
 }
 
 /**
  * Starts a self-hosted engine in this process (the composition root of `binference start
  * --foreground`, which the background service runs), in the startup order of ARCHITECTURE.md
  * section 24: the engine lock on the state folder, so a second engine on it refuses at once; the
- * config with its secret sources; the log file; `engine.sqlite` on its store workers with its
- * migrations and integrity check; the CLI's token; then {@link serveEngine}. Stop signals and
+ * config; the log file; `engine.sqlite` on its store workers with its migrations and integrity
+ * check; the config's secret sources, which may name a credential the store keeps; the CLI's
+ * token; then {@link serveEngine}. Stop signals and
  * `engine/stop` start the shutdown sequence, which closes the parts in the reverse order. A start
  * that fails part way closes what it opened.
  */

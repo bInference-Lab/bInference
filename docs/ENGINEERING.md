@@ -562,7 +562,8 @@ Decided in [decision 0032](DECISIONS.md#d0032).
 - **Rule:** layers, lowest first: defaults, the file, `BINFERENCE_*` environment variables, CLI
   flags. Per-agent values sit under `agents.<id>`. Enforcer: the config loader test.
 - **Rule:** secrets are references, never values. The secret sources are `{ fromEnv }`,
-  `{ fromFile }`, `{ fromCommand }` (1Password, Vault, pass) and `{ fromKeychain }`. A plaintext
+  `{ fromFile }`, `{ fromCommand }` (1Password, Vault, pass), `{ fromKeychain }` and
+  `{ fromCredential }` (a credential stored in the engine). A plaintext
   secret fails validation, because these secrets open wallets, and `binference check --fix` offers
   to move it to the keychain. Enforcer: the config schema test.
 - **Rule:** every key has a `.describe()` text; docs and console forms are generated from the

@@ -140,7 +140,7 @@ describe("validate config", () => {
   it("names the forms of a secret source that has none of them", () => {
     expect(lines({ telegram: { botToken: { fromVault: "bot" } } })[0]).toBe(
       'telegram.botToken: must be a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, ' +
-        '{ fromFile: "path" } or { fromCommand: ["program", "argument"] }. Set it in config.json5 or remove it.',
+        '{ fromFile: "path" }, { fromCommand: ["program", "argument"] } or { fromCredential: "NAME" }. Set it in config.json5 or remove it.',
     );
     expect(lines({ telegram: { botToken: { fromEnv: "1BAD", fromFile: "/x" } } })).toHaveLength(1);
   });

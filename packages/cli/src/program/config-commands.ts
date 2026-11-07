@@ -29,6 +29,7 @@ export function addConfigCommands(program: Command, options: ProgramOptions): vo
     .addArgument(new Argument("[value]", message("argument.configValue")))
     .option("--from-env <variable>", message("option.fromEnv"))
     .option("--from-keychain <name>", message("option.fromKeychain"))
+    .option("--from-credential <name>", message("option.fromCredential"))
     .option("--reason <text>", message("option.reason"))
     .action((key: string, value: string | undefined, flags: OptionValues) => {
       const set = configSetFlagsSchema.parse(flags);

@@ -93,4 +93,7 @@ export {
   type CredentialPut,
   credentialEntrySchema,
   credentialPutSchema,
+  type RevealedCredential,
+  type RevealedCredentialRow,
+  revealedCredentialRowSchema,
 } from "./credentials/credential-record.js";

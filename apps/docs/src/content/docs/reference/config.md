@@ -5,7 +5,7 @@ description: "Every config key in config.json5: what it takes, its default and i
 
 <!-- Generated from the code by pnpm docs:gen. Never edit this file: change the code, then run pnpm docs:gen. -->
 
-This binference reads `config.json5` version 18. Each config key is set in the file, by its variable, or by `--set <key>=<value>`, and a later layer wins. A secret is always a secret source, never the secret itself.
+This binference reads `config.json5` version 19. Each config key is set in the file, by its variable, or by `--set <key>=<value>`, and a later layer wins. A secret is always a secret source, never the secret itself.
 
 ## `version`
 
@@ -37,16 +37,16 @@ Who holds the agent wallets.
 
 - `custody.provider`: The custody provider. Takes "privy". Default: `"privy"`. Variable: `BINFERENCE_CUSTODY__PROVIDER`.
 - `custody.privy.appId`: The owner's Privy app id (public). Takes text. Default: none. Variable: `BINFERENCE_CUSTODY__PRIVY__APP_ID`.
-- `custody.privy.appSecret`: The owner's Privy app secret, as a secret source. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" } or { fromCommand: ["program", "argument"] }. Default: none. Variable: `BINFERENCE_CUSTODY__PRIVY__APP_SECRET`.
+- `custody.privy.appSecret`: The owner's Privy app secret, as a secret source. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" }, { fromCommand: ["program", "argument"] } or { fromCredential: "NAME" }. Default: none. Variable: `BINFERENCE_CUSTODY__PRIVY__APP_SECRET`.
 - `custody.privy.ownerKeyPublic`: The owner key's public half, written by binference init. Takes text. Default: none. Variable: `BINFERENCE_CUSTODY__PRIVY__OWNER_KEY_PUBLIC`.
 
 ## `telegram`
 
 The owner's Telegram bot.
 
-- `telegram.botToken`: The owner's BotFather token. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" } or { fromCommand: ["program", "argument"] }. Required. Variable: `BINFERENCE_TELEGRAM__BOT_TOKEN`.
+- `telegram.botToken`: The owner's BotFather token. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" }, { fromCommand: ["program", "argument"] } or { fromCredential: "NAME" }. Required. Variable: `BINFERENCE_TELEGRAM__BOT_TOKEN`.
 - `telegram.mode`: How updates arrive. Takes one of "polling", "webhook". Default: `"polling"`. Variable: `BINFERENCE_TELEGRAM__MODE`.
-- `telegram.webhookSecret`: Checks webhook calls; required with the webhook mode. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" } or { fromCommand: ["program", "argument"] }. Default: none. Variable: `BINFERENCE_TELEGRAM__WEBHOOK_SECRET`.
+- `telegram.webhookSecret`: Checks webhook calls; required with the webhook mode. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" }, { fromCommand: ["program", "argument"] } or { fromCredential: "NAME" }. Default: none. Variable: `BINFERENCE_TELEGRAM__WEBHOOK_SECRET`.
 - `telegram.topicsPerAgent`: One direct-message topic per agent, once the bot has topics turned on. Takes true or false. Default: `false`. Variable: `BINFERENCE_TELEGRAM__TOPICS_PER_AGENT`.
 - `telegram.replies.stream`: progress shows a status message once the agent works, then the answer as a new message; partial grows the answer in one message that becomes the answer itself. Takes one of "progress", "partial". Default: `"progress"`. Variable: `BINFERENCE_TELEGRAM__REPLIES__STREAM`.
 - `telegram.replies.reasoning`: How the model's reasoning shows: off hides it, streamed shows it while the agent works, kept sends it as a message of its own before the answer. Takes one of "off", "streamed", "kept". Default: `"off"`. Variable: `BINFERENCE_TELEGRAM__REPLIES__REASONING`.
@@ -58,7 +58,7 @@ Model providers and the models the agent uses.
 - `models.providers`: The model providers, by name. Takes an object. Default: `{}`. Variable: `BINFERENCE_MODELS__PROVIDERS`. Names: text.
 - `models.providers.<provider>.kind`: The provider's wire format. Takes one of "binference", "openai", "anthropic". Required. Variable: `BINFERENCE_MODELS__PROVIDERS__<PROVIDER>__KIND`.
 - `models.providers.<provider>.baseUrl`: Where to call; the binference AI gateway for the binference kind. Takes a URL. Default: none. Variable: `BINFERENCE_MODELS__PROVIDERS__<PROVIDER>__BASE_URL`.
-- `models.providers.<provider>.apiKey`: The provider's key. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" } or { fromCommand: ["program", "argument"] }. Default: none. Variable: `BINFERENCE_MODELS__PROVIDERS__<PROVIDER>__API_KEY`.
+- `models.providers.<provider>.apiKey`: The provider's key. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" }, { fromCommand: ["program", "argument"] } or { fromCredential: "NAME" }. Default: none. Variable: `BINFERENCE_MODELS__PROVIDERS__<PROVIDER>__API_KEY`.
 - `models.main`: The model that talks and proposes. Takes a model written as provider/model. Default: none. Variable: `BINFERENCE_MODELS__MAIN`.
 - `models.fast`: The model that writes summaries, compacts and classifies. Takes a model written as provider/model. Default: none. Variable: `BINFERENCE_MODELS__FAST`.
 - `models.vision`: The model that reads images when the main one cannot. Takes a model written as provider/model. Default: none. Variable: `BINFERENCE_MODELS__VISION`.
@@ -111,9 +111,9 @@ Chains.
 - `chains.enabled`: Chains the agent trades on. Takes a list in which each item is a chain id such as eip155:56. Default: `["eip155:56"]`. Variable: `BINFERENCE_CHAINS__ENABLED`.
 - `chains.rpc`: RPCs per chain. Takes an object. Default: `{}`. Variable: `BINFERENCE_CHAINS__RPC`. Names: a chain id such as eip155:56.
 - `chains.rpc.<chain>.urls`: Extra or replacement RPCs. Takes a list in which each item is a URL. Default: the public RPCs. Variable: `BINFERENCE_CHAINS__RPC__<CHAIN>__URLS`.
-- `chains.rpc.<chain>.key`: A paid RPC's key. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" } or { fromCommand: ["program", "argument"] }. Default: none. Variable: `BINFERENCE_CHAINS__RPC__<CHAIN>__KEY`.
-- `chains.rpc.<chain>.tracer`: The URL of your RPC that answers debug_traceTransaction, such as a paid node's. binference asks it what a trade received once the public RPCs dropped an old block. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" } or { fromCommand: ["program", "argument"] }. Default: none. Variable: `BINFERENCE_CHAINS__RPC__<CHAIN>__TRACER`.
-- `chains.rpc.<chain>.ws`: The wss:// URL of your RPC that pushes new blocks, such as a paid node's. The price watcher follows each new block through it, and polls the RPCs while it is down. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" } or { fromCommand: ["program", "argument"] }. Default: none. Variable: `BINFERENCE_CHAINS__RPC__<CHAIN>__WS`.
+- `chains.rpc.<chain>.key`: A paid RPC's key. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" }, { fromCommand: ["program", "argument"] } or { fromCredential: "NAME" }. Default: none. Variable: `BINFERENCE_CHAINS__RPC__<CHAIN>__KEY`.
+- `chains.rpc.<chain>.tracer`: The URL of your RPC that answers debug_traceTransaction, such as a paid node's. binference asks it what a trade received once the public RPCs dropped an old block. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" }, { fromCommand: ["program", "argument"] } or { fromCredential: "NAME" }. Default: none. Variable: `BINFERENCE_CHAINS__RPC__<CHAIN>__TRACER`.
+- `chains.rpc.<chain>.ws`: The wss:// URL of your RPC that pushes new blocks, such as a paid node's. The price watcher follows each new block through it, and polls the RPCs while it is down. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" }, { fromCommand: ["program", "argument"] } or { fromCredential: "NAME" }. Default: none. Variable: `BINFERENCE_CHAINS__RPC__<CHAIN>__WS`.
 - `chains.relays.<chain>`: Private relays for sends, per chain. Takes a list in which each item is text. Default: the two fastest, by measurement. Variable: `BINFERENCE_CHAINS__RELAYS__<CHAIN>`. Names: a chain id such as eip155:56.
 - `chains.maxFeePerGasGwei.<chain>`: The network fee cap per chain, in gwei: a higher fee per gas asks the owner. Takes a decimal number written as text, such as "0.002". Default: `{"eip155:56":"1"}`. Variable: `BINFERENCE_CHAINS__MAX_FEE_PER_GAS_GWEI__<CHAIN>`. Names: a chain id such as eip155:56.
 
@@ -121,12 +121,12 @@ Chains.
 
 Routing venues.
 
-- `venues.keys.okx.apiKey`: OKX's API key. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" } or { fromCommand: ["program", "argument"] }. Required. Variable: `BINFERENCE_VENUES__KEYS__OKX__API_KEY`.
-- `venues.keys.okx.secret`: OKX's secret. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" } or { fromCommand: ["program", "argument"] }. Required. Variable: `BINFERENCE_VENUES__KEYS__OKX__SECRET`.
-- `venues.keys.okx.passphrase`: OKX's passphrase. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" } or { fromCommand: ["program", "argument"] }. Required. Variable: `BINFERENCE_VENUES__KEYS__OKX__PASSPHRASE`.
-- `venues.keys.oneinch`: Adds 1inch routing. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" } or { fromCommand: ["program", "argument"] }. Default: none. Variable: `BINFERENCE_VENUES__KEYS__ONEINCH`.
-- `venues.keys.zerox`: Adds 0x routing. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" } or { fromCommand: ["program", "argument"] }. Default: none. Variable: `BINFERENCE_VENUES__KEYS__ZEROX`.
-- `venues.keys.relay`: Relay's API key, sent with every Relay request. Without one Relay answers at a lower rate, and a Relay deposit's status reads only until Relay retires that read on 2026-11-24. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" } or { fromCommand: ["program", "argument"] }. Default: none. Variable: `BINFERENCE_VENUES__KEYS__RELAY`.
+- `venues.keys.okx.apiKey`: OKX's API key. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" }, { fromCommand: ["program", "argument"] } or { fromCredential: "NAME" }. Required. Variable: `BINFERENCE_VENUES__KEYS__OKX__API_KEY`.
+- `venues.keys.okx.secret`: OKX's secret. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" }, { fromCommand: ["program", "argument"] } or { fromCredential: "NAME" }. Required. Variable: `BINFERENCE_VENUES__KEYS__OKX__SECRET`.
+- `venues.keys.okx.passphrase`: OKX's passphrase. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" }, { fromCommand: ["program", "argument"] } or { fromCredential: "NAME" }. Required. Variable: `BINFERENCE_VENUES__KEYS__OKX__PASSPHRASE`.
+- `venues.keys.oneinch`: Adds 1inch routing. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" }, { fromCommand: ["program", "argument"] } or { fromCredential: "NAME" }. Default: none. Variable: `BINFERENCE_VENUES__KEYS__ONEINCH`.
+- `venues.keys.zerox`: Adds 0x routing. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" }, { fromCommand: ["program", "argument"] } or { fromCredential: "NAME" }. Default: none. Variable: `BINFERENCE_VENUES__KEYS__ZEROX`.
+- `venues.keys.relay`: Relay's API key, sent with every Relay request. Without one Relay answers at a lower rate, and a Relay deposit's status reads only until Relay retires that read on 2026-11-24. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" }, { fromCommand: ["program", "argument"] } or { fromCredential: "NAME" }. Default: none. Variable: `BINFERENCE_VENUES__KEYS__RELAY`.
 - `venues.kyberClientId`: The client id sent to KyberSwap. Takes text. Default: `"binference"`. Variable: `BINFERENCE_VENUES__KYBER_CLIENT_ID`.
 
 ## `risk`
@@ -140,9 +140,9 @@ Risk data.
 Web search.
 
 - `search.provider`: The provider behind search_web. Takes one of "brave", "tavily". Default: the first of brave and tavily with a key. Variable: `BINFERENCE_SEARCH__PROVIDER`.
-- `search.keys.brave`: Brave Search's key. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" } or { fromCommand: ["program", "argument"] }. Default: none. Variable: `BINFERENCE_SEARCH__KEYS__BRAVE`.
-- `search.keys.tavily`: Tavily's key. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" } or { fromCommand: ["program", "argument"] }. Default: none. Variable: `BINFERENCE_SEARCH__KEYS__TAVILY`.
-- `search.xApiKey`: Turns search_x on. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" } or { fromCommand: ["program", "argument"] }. Default: none. Variable: `BINFERENCE_SEARCH__X_API_KEY`.
+- `search.keys.brave`: Brave Search's key. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" }, { fromCommand: ["program", "argument"] } or { fromCredential: "NAME" }. Default: none. Variable: `BINFERENCE_SEARCH__KEYS__BRAVE`.
+- `search.keys.tavily`: Tavily's key. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" }, { fromCommand: ["program", "argument"] } or { fromCredential: "NAME" }. Default: none. Variable: `BINFERENCE_SEARCH__KEYS__TAVILY`.
+- `search.xApiKey`: Turns search_x on. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" }, { fromCommand: ["program", "argument"] } or { fromCredential: "NAME" }. Default: none. Variable: `BINFERENCE_SEARCH__X_API_KEY`.
 
 ## `remote`
 
@@ -178,7 +178,7 @@ Telemetry.
 
 The outbound network.
 
-- `network.proxy`: The owner's proxy as an http:// or https:// URL, its user name and password included: every outbound request but those to this machine, addresses off the internet and noProxy goes through it as a tunnel. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" } or { fromCommand: ["program", "argument"] }. Default: none. Variable: `BINFERENCE_NETWORK__PROXY`.
+- `network.proxy`: The owner's proxy as an http:// or https:// URL, its user name and password included: every outbound request but those to this machine, addresses off the internet and noProxy goes through it as a tunnel. Takes a secret source: { fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" }, { fromCommand: ["program", "argument"] } or { fromCredential: "NAME" }. Default: none. Variable: `BINFERENCE_NETWORK__PROXY`.
 - `network.noProxy`: Hosts reached without the proxy, at most 256: * for every host, a name in punycode that also covers the names under it, an IP address or [IPv6], each with an optional :port, or an address block such as 10.0.0.0/8. Takes a list in which each item is text. Default: `["127.0.0.1","localhost"]`. Variable: `BINFERENCE_NETWORK__NO_PROXY`.
 
 ## `chats`

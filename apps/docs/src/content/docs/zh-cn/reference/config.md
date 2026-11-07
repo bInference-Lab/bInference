@@ -5,7 +5,7 @@ description: "config.json5 中的每个配置项：取值、默认值和环境�
 
 <!-- Generated from the code by pnpm docs:gen. Never edit this file: change the code, then run pnpm docs:gen. -->
 
-此版本的 binference 读取第 18 版的 `config.json5`。每个配置项可以在文件中、通过对应的变量或用 `--set <key>=<value>` 设置，后面的层优先。密钥始终写成密钥来源，从不写密钥本身。
+此版本的 binference 读取第 19 版的 `config.json5`。每个配置项可以在文件中、通过对应的变量或用 `--set <key>=<value>` 设置，后面的层优先。密钥始终写成密钥来源，从不写密钥本身。
 
 ## `version`
 
@@ -37,16 +37,16 @@ description: "config.json5 中的每个配置项：取值、默认值和环境�
 
 - `custody.provider`: 托管服务商。取值："privy"。默认：`"privy"`。变量：`BINFERENCE_CUSTODY__PROVIDER`。
 - `custody.privy.appId`: 所有者的 Privy 应用 ID（公开）。取值：文本。默认：无。变量：`BINFERENCE_CUSTODY__PRIVY__APP_ID`。
-- `custody.privy.appSecret`: 所有者的 Privy 应用密钥，写成密钥来源。取值：密钥来源：{ fromKeychain: "name" }、{ fromEnv: "NAME" }、{ fromFile: "path" } 或 { fromCommand: ["program", "argument"] }。默认：无。变量：`BINFERENCE_CUSTODY__PRIVY__APP_SECRET`。
+- `custody.privy.appSecret`: 所有者的 Privy 应用密钥，写成密钥来源。取值：密钥来源：{ fromKeychain: "name" }、{ fromEnv: "NAME" }、{ fromFile: "path" }、{ fromCommand: ["program", "argument"] } 或 { fromCredential: "NAME" }。默认：无。变量：`BINFERENCE_CUSTODY__PRIVY__APP_SECRET`。
 - `custody.privy.ownerKeyPublic`: 所有者密钥的公钥部分，由 binference init 写入。取值：文本。默认：无。变量：`BINFERENCE_CUSTODY__PRIVY__OWNER_KEY_PUBLIC`。
 
 ## `telegram`
 
 所有者的 Telegram 机器人。
 
-- `telegram.botToken`: 所有者从 BotFather 得到的机器人 Token。取值：密钥来源：{ fromKeychain: "name" }、{ fromEnv: "NAME" }、{ fromFile: "path" } 或 { fromCommand: ["program", "argument"] }。必填。变量：`BINFERENCE_TELEGRAM__BOT_TOKEN`。
+- `telegram.botToken`: 所有者从 BotFather 得到的机器人 Token。取值：密钥来源：{ fromKeychain: "name" }、{ fromEnv: "NAME" }、{ fromFile: "path" }、{ fromCommand: ["program", "argument"] } 或 { fromCredential: "NAME" }。必填。变量：`BINFERENCE_TELEGRAM__BOT_TOKEN`。
 - `telegram.mode`: 接收更新的方式。取值：以下之一："polling", "webhook"。默认：`"polling"`。变量：`BINFERENCE_TELEGRAM__MODE`。
-- `telegram.webhookSecret`: 用于校验 Webhook 调用；使用 webhook 方式时必填。取值：密钥来源：{ fromKeychain: "name" }、{ fromEnv: "NAME" }、{ fromFile: "path" } 或 { fromCommand: ["program", "argument"] }。默认：无。变量：`BINFERENCE_TELEGRAM__WEBHOOK_SECRET`。
+- `telegram.webhookSecret`: 用于校验 Webhook 调用；使用 webhook 方式时必填。取值：密钥来源：{ fromKeychain: "name" }、{ fromEnv: "NAME" }、{ fromFile: "path" }、{ fromCommand: ["program", "argument"] } 或 { fromCredential: "NAME" }。默认：无。变量：`BINFERENCE_TELEGRAM__WEBHOOK_SECRET`。
 - `telegram.topicsPerAgent`: 机器人开启话题后，每个 Agent 使用一个私聊话题。取值：true 或 false。默认：`false`。变量：`BINFERENCE_TELEGRAM__TOPICS_PER_AGENT`。
 - `telegram.replies.stream`: progress 在 Agent 开始工作时显示一条状态消息，然后以新消息发送回答；partial 让回答在同一条消息中逐步生成，这条消息就是回答本身。取值：以下之一："progress", "partial"。默认：`"progress"`。变量：`BINFERENCE_TELEGRAM__REPLIES__STREAM`。
 - `telegram.replies.reasoning`: 模型推理的显示方式：off 不显示，streamed 在 Agent 工作时显示，kept 在回答之前作为单独的一条消息发送。取值：以下之一："off", "streamed", "kept"。默认：`"off"`。变量：`BINFERENCE_TELEGRAM__REPLIES__REASONING`。
@@ -58,7 +58,7 @@ description: "config.json5 中的每个配置项：取值、默认值和环境�
 - `models.providers`: 模型服务商，按名称列出。取值：对象。默认：`{}`。变量：`BINFERENCE_MODELS__PROVIDERS`。名称：文本。
 - `models.providers.<provider>.kind`: 服务商的接口格式。取值：以下之一："binference", "openai", "anthropic"。必填。变量：`BINFERENCE_MODELS__PROVIDERS__<PROVIDER>__KIND`。
 - `models.providers.<provider>.baseUrl`: 调用的接口地址；binference 类型使用 binference AI 网关。取值：URL。默认：无。变量：`BINFERENCE_MODELS__PROVIDERS__<PROVIDER>__BASE_URL`。
-- `models.providers.<provider>.apiKey`: 服务商的 API 密钥。取值：密钥来源：{ fromKeychain: "name" }、{ fromEnv: "NAME" }、{ fromFile: "path" } 或 { fromCommand: ["program", "argument"] }。默认：无。变量：`BINFERENCE_MODELS__PROVIDERS__<PROVIDER>__API_KEY`。
+- `models.providers.<provider>.apiKey`: 服务商的 API 密钥。取值：密钥来源：{ fromKeychain: "name" }、{ fromEnv: "NAME" }、{ fromFile: "path" }、{ fromCommand: ["program", "argument"] } 或 { fromCredential: "NAME" }。默认：无。变量：`BINFERENCE_MODELS__PROVIDERS__<PROVIDER>__API_KEY`。
 - `models.main`: 负责对话和提议的模型。取值：写作 provider/model 的模型，即服务商名加模型名。默认：无。变量：`BINFERENCE_MODELS__MAIN`。
 - `models.fast`: 负责写摘要、压缩上下文和分类的模型。取值：写作 provider/model 的模型，即服务商名加模型名。默认：无。变量：`BINFERENCE_MODELS__FAST`。
 - `models.vision`: 主模型无法读取图片时，负责读取图片的模型。取值：写作 provider/model 的模型，即服务商名加模型名。默认：无。变量：`BINFERENCE_MODELS__VISION`。
@@ -111,9 +111,9 @@ description: "config.json5 中的每个配置项：取值、默认值和环境�
 - `chains.enabled`: Agent 交易使用的链。取值：列表，每一项为链 id，例如 eip155:56。默认：`["eip155:56"]`。变量：`BINFERENCE_CHAINS__ENABLED`。
 - `chains.rpc`: 每条链的 RPC。取值：对象。默认：`{}`。变量：`BINFERENCE_CHAINS__RPC`。名称：链 id，例如 eip155:56。
 - `chains.rpc.<chain>.urls`: 追加或替换的 RPC。取值：列表，每一项为URL。默认：公共 RPC。变量：`BINFERENCE_CHAINS__RPC__<CHAIN>__URLS`。
-- `chains.rpc.<chain>.key`: 付费 RPC 的 API 密钥。取值：密钥来源：{ fromKeychain: "name" }、{ fromEnv: "NAME" }、{ fromFile: "path" } 或 { fromCommand: ["program", "argument"] }。默认：无。变量：`BINFERENCE_CHAINS__RPC__<CHAIN>__KEY`。
-- `chains.rpc.<chain>.tracer`: 你的 RPC 中能回答 debug_traceTransaction 的地址，例如付费节点。公共 RPC 丢弃旧区块后，binference 通过它查询一笔交易收到了什么。取值：密钥来源：{ fromKeychain: "name" }、{ fromEnv: "NAME" }、{ fromFile: "path" } 或 { fromCommand: ["program", "argument"] }。默认：无。变量：`BINFERENCE_CHAINS__RPC__<CHAIN>__TRACER`。
-- `chains.rpc.<chain>.ws`: 你的 RPC 中推送新区块的 wss:// 地址，例如付费节点。价格监控通过它跟进每个新区块，它断开时改为轮询 RPC。取值：密钥来源：{ fromKeychain: "name" }、{ fromEnv: "NAME" }、{ fromFile: "path" } 或 { fromCommand: ["program", "argument"] }。默认：无。变量：`BINFERENCE_CHAINS__RPC__<CHAIN>__WS`。
+- `chains.rpc.<chain>.key`: 付费 RPC 的 API 密钥。取值：密钥来源：{ fromKeychain: "name" }、{ fromEnv: "NAME" }、{ fromFile: "path" }、{ fromCommand: ["program", "argument"] } 或 { fromCredential: "NAME" }。默认：无。变量：`BINFERENCE_CHAINS__RPC__<CHAIN>__KEY`。
+- `chains.rpc.<chain>.tracer`: 你的 RPC 中能回答 debug_traceTransaction 的地址，例如付费节点。公共 RPC 丢弃旧区块后，binference 通过它查询一笔交易收到了什么。取值：密钥来源：{ fromKeychain: "name" }、{ fromEnv: "NAME" }、{ fromFile: "path" }、{ fromCommand: ["program", "argument"] } 或 { fromCredential: "NAME" }。默认：无。变量：`BINFERENCE_CHAINS__RPC__<CHAIN>__TRACER`。
+- `chains.rpc.<chain>.ws`: 你的 RPC 中推送新区块的 wss:// 地址，例如付费节点。价格监控通过它跟进每个新区块，它断开时改为轮询 RPC。取值：密钥来源：{ fromKeychain: "name" }、{ fromEnv: "NAME" }、{ fromFile: "path" }、{ fromCommand: ["program", "argument"] } 或 { fromCredential: "NAME" }。默认：无。变量：`BINFERENCE_CHAINS__RPC__<CHAIN>__WS`。
 - `chains.relays.<chain>`: 每条链用于发送交易的私密中继。取值：列表，每一项为文本。默认：实测最快的两个。变量：`BINFERENCE_CHAINS__RELAYS__<CHAIN>`。名称：链 id，例如 eip155:56。
 - `chains.maxFeePerGasGwei.<chain>`: 每条链的网络费上限，单位为 gwei：每单位 gas 的手续费更高时询问所有者。取值：写成文本的小数，例如 "0.002"。默认：`{"eip155:56":"1"}`。变量：`BINFERENCE_CHAINS__MAX_FEE_PER_GAS_GWEI__<CHAIN>`。名称：链 id，例如 eip155:56。
 
@@ -121,12 +121,12 @@ description: "config.json5 中的每个配置项：取值、默认值和环境�
 
 路由平台。
 
-- `venues.keys.okx.apiKey`: OKX 的 API 密钥。取值：密钥来源：{ fromKeychain: "name" }、{ fromEnv: "NAME" }、{ fromFile: "path" } 或 { fromCommand: ["program", "argument"] }。必填。变量：`BINFERENCE_VENUES__KEYS__OKX__API_KEY`。
-- `venues.keys.okx.secret`: OKX 的密钥。取值：密钥来源：{ fromKeychain: "name" }、{ fromEnv: "NAME" }、{ fromFile: "path" } 或 { fromCommand: ["program", "argument"] }。必填。变量：`BINFERENCE_VENUES__KEYS__OKX__SECRET`。
-- `venues.keys.okx.passphrase`: OKX 的密码短语。取值：密钥来源：{ fromKeychain: "name" }、{ fromEnv: "NAME" }、{ fromFile: "path" } 或 { fromCommand: ["program", "argument"] }。必填。变量：`BINFERENCE_VENUES__KEYS__OKX__PASSPHRASE`。
-- `venues.keys.oneinch`: 启用 1inch 路由。取值：密钥来源：{ fromKeychain: "name" }、{ fromEnv: "NAME" }、{ fromFile: "path" } 或 { fromCommand: ["program", "argument"] }。默认：无。变量：`BINFERENCE_VENUES__KEYS__ONEINCH`。
-- `venues.keys.zerox`: 启用 0x 路由。取值：密钥来源：{ fromKeychain: "name" }、{ fromEnv: "NAME" }、{ fromFile: "path" } 或 { fromCommand: ["program", "argument"] }。默认：无。变量：`BINFERENCE_VENUES__KEYS__ZEROX`。
-- `venues.keys.relay`: Relay 的 API 密钥，随每个 Relay 请求发送。没有它时 Relay 的回答速率较低，且 Relay 跨链存款的状态只能读取到 2026-11-24 Relay 停用该读取为止。取值：密钥来源：{ fromKeychain: "name" }、{ fromEnv: "NAME" }、{ fromFile: "path" } 或 { fromCommand: ["program", "argument"] }。默认：无。变量：`BINFERENCE_VENUES__KEYS__RELAY`。
+- `venues.keys.okx.apiKey`: OKX 的 API 密钥。取值：密钥来源：{ fromKeychain: "name" }、{ fromEnv: "NAME" }、{ fromFile: "path" }、{ fromCommand: ["program", "argument"] } 或 { fromCredential: "NAME" }。必填。变量：`BINFERENCE_VENUES__KEYS__OKX__API_KEY`。
+- `venues.keys.okx.secret`: OKX 的密钥。取值：密钥来源：{ fromKeychain: "name" }、{ fromEnv: "NAME" }、{ fromFile: "path" }、{ fromCommand: ["program", "argument"] } 或 { fromCredential: "NAME" }。必填。变量：`BINFERENCE_VENUES__KEYS__OKX__SECRET`。
+- `venues.keys.okx.passphrase`: OKX 的密码短语。取值：密钥来源：{ fromKeychain: "name" }、{ fromEnv: "NAME" }、{ fromFile: "path" }、{ fromCommand: ["program", "argument"] } 或 { fromCredential: "NAME" }。必填。变量：`BINFERENCE_VENUES__KEYS__OKX__PASSPHRASE`。
+- `venues.keys.oneinch`: 启用 1inch 路由。取值：密钥来源：{ fromKeychain: "name" }、{ fromEnv: "NAME" }、{ fromFile: "path" }、{ fromCommand: ["program", "argument"] } 或 { fromCredential: "NAME" }。默认：无。变量：`BINFERENCE_VENUES__KEYS__ONEINCH`。
+- `venues.keys.zerox`: 启用 0x 路由。取值：密钥来源：{ fromKeychain: "name" }、{ fromEnv: "NAME" }、{ fromFile: "path" }、{ fromCommand: ["program", "argument"] } 或 { fromCredential: "NAME" }。默认：无。变量：`BINFERENCE_VENUES__KEYS__ZEROX`。
+- `venues.keys.relay`: Relay 的 API 密钥，随每个 Relay 请求发送。没有它时 Relay 的回答速率较低，且 Relay 跨链存款的状态只能读取到 2026-11-24 Relay 停用该读取为止。取值：密钥来源：{ fromKeychain: "name" }、{ fromEnv: "NAME" }、{ fromFile: "path" }、{ fromCommand: ["program", "argument"] } 或 { fromCredential: "NAME" }。默认：无。变量：`BINFERENCE_VENUES__KEYS__RELAY`。
 - `venues.kyberClientId`: 发送给 KyberSwap 的客户端 ID。取值：文本。默认：`"binference"`。变量：`BINFERENCE_VENUES__KYBER_CLIENT_ID`。
 
 ## `risk`
@@ -140,9 +140,9 @@ description: "config.json5 中的每个配置项：取值、默认值和环境�
 联网搜索。
 
 - `search.provider`: search_web 背后的服务商。取值：以下之一："brave", "tavily"。默认：brave 和 tavily 中第一个设置了 API 密钥的。变量：`BINFERENCE_SEARCH__PROVIDER`。
-- `search.keys.brave`: Brave Search 的 API 密钥。取值：密钥来源：{ fromKeychain: "name" }、{ fromEnv: "NAME" }、{ fromFile: "path" } 或 { fromCommand: ["program", "argument"] }。默认：无。变量：`BINFERENCE_SEARCH__KEYS__BRAVE`。
-- `search.keys.tavily`: Tavily 的 API 密钥。取值：密钥来源：{ fromKeychain: "name" }、{ fromEnv: "NAME" }、{ fromFile: "path" } 或 { fromCommand: ["program", "argument"] }。默认：无。变量：`BINFERENCE_SEARCH__KEYS__TAVILY`。
-- `search.xApiKey`: 开启 search_x。取值：密钥来源：{ fromKeychain: "name" }、{ fromEnv: "NAME" }、{ fromFile: "path" } 或 { fromCommand: ["program", "argument"] }。默认：无。变量：`BINFERENCE_SEARCH__X_API_KEY`。
+- `search.keys.brave`: Brave Search 的 API 密钥。取值：密钥来源：{ fromKeychain: "name" }、{ fromEnv: "NAME" }、{ fromFile: "path" }、{ fromCommand: ["program", "argument"] } 或 { fromCredential: "NAME" }。默认：无。变量：`BINFERENCE_SEARCH__KEYS__BRAVE`。
+- `search.keys.tavily`: Tavily 的 API 密钥。取值：密钥来源：{ fromKeychain: "name" }、{ fromEnv: "NAME" }、{ fromFile: "path" }、{ fromCommand: ["program", "argument"] } 或 { fromCredential: "NAME" }。默认：无。变量：`BINFERENCE_SEARCH__KEYS__TAVILY`。
+- `search.xApiKey`: 开启 search_x。取值：密钥来源：{ fromKeychain: "name" }、{ fromEnv: "NAME" }、{ fromFile: "path" }、{ fromCommand: ["program", "argument"] } 或 { fromCredential: "NAME" }。默认：无。变量：`BINFERENCE_SEARCH__X_API_KEY`。
 
 ## `remote`
 
@@ -178,7 +178,7 @@ description: "config.json5 中的每个配置项：取值、默认值和环境�
 
 对外网络。
 
-- `network.proxy`: 所有者的代理，写成 http:// 或 https:// URL，含用户名和密码：除发往本机、非互联网地址和 noProxy 的请求外，每个对外请求都通过它以隧道方式发出。取值：密钥来源：{ fromKeychain: "name" }、{ fromEnv: "NAME" }、{ fromFile: "path" } 或 { fromCommand: ["program", "argument"] }。默认：无。变量：`BINFERENCE_NETWORK__PROXY`。
+- `network.proxy`: 所有者的代理，写成 http:// 或 https:// URL，含用户名和密码：除发往本机、非互联网地址和 noProxy 的请求外，每个对外请求都通过它以隧道方式发出。取值：密钥来源：{ fromKeychain: "name" }、{ fromEnv: "NAME" }、{ fromFile: "path" }、{ fromCommand: ["program", "argument"] } 或 { fromCredential: "NAME" }。默认：无。变量：`BINFERENCE_NETWORK__PROXY`。
 - `network.noProxy`: 不经代理访问的主机，最多 256 个：* 表示所有主机；也可以是 punycode 写法的域名（同时包含其下的子域名）、IP 地址或 [IPv6]，均可带 :端口；或地址段，例如 10.0.0.0/8。取值：列表，每一项为文本。默认：`["127.0.0.1","localhost"]`。变量：`BINFERENCE_NETWORK__NO_PROXY`。
 
 ## `chats`

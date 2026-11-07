@@ -5,6 +5,8 @@ import type { TempFolder } from "@binference/platform/testing";
 import { fakeBotToken } from "@binference/telegram/testing";
 import { afterEach, describe, expect, it } from "vitest";
 import { z } from "zod";
+import { runCli } from "../program/run-cli.js";
+import { createScriptedPrompter } from "../term/scripted-prompter.js";
 import {
   type InitMachine,
   initFlags,
@@ -14,7 +16,8 @@ import {
   secretVariables,
 } from "./init-fixtures.js";
 import { miniAppClient, signedLaunch, ticketOf } from "./mini-app-fixtures.js";
-import { engineLogLines, freePort } from "./test-host.js";
+import { engineLogLines, freePort, hostWith } from "./test-host.js";
+import { createTestSigner } from "./test-signer.js";
 import { createRunningEngines } from "./unlock-fixtures.js";
 
 const slow = { timeout: 60_000 };
@@ -304,4 +307,40 @@ describe("the owner's bot in binference start", () => {
     expect(skipped[0]).toContain('"errorCode":"config.secret_unavailable"');
     expect(skipped[0]).not.toContain(fakeBotToken);
   });
+
+  it(
+    "reads its token from a credential stored in the engine, with no other source",
+    slow,
+    async () => {
+      const { machine } = await setUp();
+      const port = String(await freePort());
+      const argv = ["start", "--foreground", "--json", "--set", `engine.port=${port}`];
+      const parts = { http: machine.world, startSigner: createTestSigner().start };
+      const first = hostWith(machine, argv, { env: secretEnv(machine), parts });
+      const exit = runCli(first);
+      await first.waitForLine((text) => text.includes('"state":'));
+      const prompter = createScriptedPrompter({ credential: [fakeBotToken] });
+      const stored = await runOn(machine, ["credential", "set", "BOT_TOKEN"], {
+        parts: { prompter },
+      });
+      expect(stored.code).toBe(0);
+      const named = ["config", "set", "telegram.botToken", "--from-credential", "BOT_TOKEN"];
+      expect((await runOn(machine, named)).code).toBe(0);
+      machine.signals.emit("SIGINT", "SIGINT");
+      await expect(exit).resolves.toBe(0);
+      const env = Object.fromEntries(
+        Object.entries(secretEnv(machine)).filter(([name]) => name !== secretVariables.botToken),
+      );
+      const world = watchedWorld(machine);
+      await expect(
+        engines.start(machine, { env, parts: { http: world.http } }),
+      ).resolves.toMatchObject({
+        state: "ready",
+      });
+      await world.until((call) => call.method === "getUpdates");
+      const lines = (await engineLogLines(machine)).join("\n");
+      expect(lines).not.toContain('"event":"telegram.bot_skipped"');
+      expect(lines).not.toContain(fakeBotToken);
+    },
+  );
 });

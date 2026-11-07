@@ -1,5 +1,5 @@
 {
-  "version": 18,
+  "version": 19,
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object",
@@ -1211,9 +1211,24 @@
               "fromCommand"
             ],
             "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "fromCredential": {
+                "type": "string",
+                "pattern": "^[A-Z][A-Z0-9_]{0,63}$",
+                "valueFormat": "credential_name",
+                "description": "The name of a credential stored in the engine."
+              }
+            },
+            "required": [
+              "fromCredential"
+            ],
+            "additionalProperties": false
           }
         ],
-        "description": "A secret source: { fromKeychain: name }, { fromEnv: variable }, { fromFile: path } or { fromCommand: [program, ...arguments] }. Never the secret itself."
+        "description": "A secret source: { fromKeychain: name }, { fromEnv: variable }, { fromFile: path }, { fromCommand: [program, ...arguments] } or { fromCredential: NAME }. Never the secret itself."
       },
       "JsonValue": {
         "$ref": "#/$defs/__schema0"

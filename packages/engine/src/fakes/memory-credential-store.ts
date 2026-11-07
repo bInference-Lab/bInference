@@ -1,3 +1,4 @@
+import { createSecret } from "@binference/core";
 import type { CredentialEntry } from "../credentials/credential-record.js";
 import type { CredentialStore } from "../credentials/ports.js";
 
@@ -14,7 +15,10 @@ const viewOf = ({ name, allowedHosts, updatedAtMs }: CredentialEntry): Credentia
  * suite.
  */
 export function createMemoryCredentialStore(): CredentialStore {
-  const held = new Map<string, CredentialEntry & { readonly removedAtMs?: number }>();
+  const held = new Map<
+    string,
+    CredentialEntry & { readonly value: string; readonly removedAtMs?: number }
+  >();
   const live = (name: string) => {
     const found = held.get(name);
     return found === undefined || found.removedAtMs !== undefined ? undefined : found;
@@ -31,8 +35,16 @@ export function createMemoryCredentialStore(): CredentialStore {
       const found = live(name);
       return Promise.resolve(found === undefined ? undefined : viewOf(found));
     },
-    put: async ({ name, allowedHosts, atMs }) => {
-      held.set(name, { name, allowedHosts: [...allowedHosts], updatedAtMs: atMs });
+    reveal: async (name) => {
+      const found = live(name);
+      return Promise.resolve(
+        found === undefined
+          ? undefined
+          : { name, value: createSecret(found.value), allowedHosts: found.allowedHosts },
+      );
+    },
+    put: async ({ name, value, allowedHosts, atMs }) => {
+      held.set(name, { name, value, allowedHosts: [...allowedHosts], updatedAtMs: atMs });
       return Promise.resolve();
     },
     remove: async (name, { atMs }) => {

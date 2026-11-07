@@ -6,6 +6,7 @@ const secretKinds: ReadonlySet<string> = new Set([
   "fromEnv",
   "fromFile",
   "fromCommand",
+  "fromCredential",
 ]);
 
 /** Whether a value is a JSON object, not a list, a scalar or nothing. */

@@ -24,8 +24,8 @@ describe("config reference", () => {
     );
     expect(reference).toContain(
       "- `telegram.botToken`: The owner's BotFather token. Takes a secret source: " +
-        '{ fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" } or ' +
-        '{ fromCommand: ["program", "argument"] }. Required.',
+        '{ fromKeychain: "name" }, { fromEnv: "NAME" }, { fromFile: "path" }, ' +
+        '{ fromCommand: ["program", "argument"] } or { fromCredential: "NAME" }. Required.',
     );
     expect(reference).toContain("`chains.rpc.<chain>.urls`");
     expect(reference).toContain("`BINFERENCE_MODELS__PROVIDERS__<PROVIDER>__API_KEY`");

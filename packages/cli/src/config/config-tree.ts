@@ -50,6 +50,7 @@ const formats: readonly ValueFormat[] = [
   "path",
   "keychain_name",
   "env_name",
+  "credential_name",
 ];
 
 // JSON Schema writes no maximum on most integers, but zod writes the largest safe one.

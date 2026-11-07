@@ -87,12 +87,13 @@ shown by kind only.
 
 Any key typed `Secret` takes exactly one of:
 
-| Form                                                      | Reads the secret from                                                                                    |
-| --------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `{ fromKeychain: "telegram-bot" }`                        | The OS keychain entry `binference/<name>` (`platform` SecretStore)                                       |
-| `{ fromEnv: "TELEGRAM_BOT_TOKEN" }`                       | An environment variable of the engine process                                                            |
-| `{ fromFile: "~/.binference/secrets/bot" }`               | A file with owner-only permissions; its whole content, trimmed                                           |
-| `{ fromCommand: ["op", "read", "op://vault/bot/token"] }` | A command's standard output (1Password, Vault, pass), run with an argument array, no shell, 10 s timeout |
+| Form                                                      | Reads the secret from                                                                                                                                                          |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `{ fromKeychain: "telegram-bot" }`                        | The OS keychain entry `binference/<name>` (`platform` SecretStore)                                                                                                             |
+| `{ fromEnv: "TELEGRAM_BOT_TOKEN" }`                       | An environment variable of the engine process                                                                                                                                  |
+| `{ fromFile: "~/.binference/secrets/bot" }`               | A file with owner-only permissions; its whole content, trimmed                                                                                                                 |
+| `{ fromCommand: ["op", "read", "op://vault/bot/token"] }` | A command's standard output (1Password, Vault, pass), run with an argument array, no shell, 10 s timeout                                                                       |
+| `{ fromCredential: "DUNE_API_KEY" }`                      | A credential stored in the engine ([decision 0390](../DECISIONS.md#d0390)); only the running engine reads it, so `binference init`, `check` and the unlock keys never take one |
 
 Secrets are read when needed and never logged, returned by `config/read`, or written back.
 
@@ -268,7 +269,7 @@ decimals; the engine reads them as micro-dollars on load, never through a floati
 ```json5
 // ~/.binference/config.json5
 {
-  version: 18,
+  version: 19,
   owner: { locale: "zh", timezone: "Asia/Shanghai" },
   custody: {
     privy: {

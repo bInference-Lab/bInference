@@ -3,6 +3,8 @@ import {
   type CredentialPut,
   credentialEntrySchema,
   credentialPutSchema,
+  type RevealedCredentialRow,
+  revealedCredentialRowSchema,
 } from "@binference/engine/chat";
 import { z } from "zod";
 import type { EngineTables } from "../databases/engine-tables.js";
@@ -57,6 +59,31 @@ export const getCredentialTask: StoreTask<string, CredentialEntry | null> = defi
         .where("deleted_at", "is", null),
     );
     return row === undefined ? null : entryOf(row);
+  },
+});
+
+/** One stored credential by name with its value, or null; a removed one is null. */
+export const revealCredentialTask: StoreTask<string, RevealedCredentialRow | null> = defineTask({
+  name: "credentials.reveal",
+  access: "read",
+  input: z.string(),
+  output: revealedCredentialRowSchema.nullable(),
+  run(database, name) {
+    const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
+    const row = takeFirst(
+      kysely
+        .selectFrom("credentials")
+        .select(["name", "value", "allowed_hosts"])
+        .where("name", "=", name)
+        .where("deleted_at", "is", null),
+    );
+    return row === undefined
+      ? null
+      : {
+          name: row.name,
+          value: row.value,
+          allowedHosts: hostsSchema.parse(JSON.parse(row.allowed_hosts)),
+        };
   },
 });
 

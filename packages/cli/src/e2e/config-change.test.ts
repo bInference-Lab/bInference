@@ -133,6 +133,15 @@ describe("binference config set and get", () => {
       expect(sourced.code).toBe(0);
       expect(await fileText(machine)).toContain('botToken: { fromKeychain: "telegram-bot" }');
       expect(await fileText(machine)).not.toContain("123456:AAAA-secret");
+      const credential = await runOn(machine, [
+        "config",
+        "set",
+        "venues.keys.zerox",
+        "--from-credential",
+        "ZEROX_API_KEY",
+      ]);
+      expect(credential.code).toBe(0);
+      expect(await fileText(machine)).toContain('zerox: { fromCredential: "ZEROX_API_KEY" }');
     },
   );
 });

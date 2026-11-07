@@ -11,7 +11,7 @@
   "rule.oneOf": "one of {choices}",
   "rule.list": "a list in which each item is {item}",
   "rule.either": "{first} or {second}",
-  "rule.secret": "a secret source: {keychain}, {env}, {file} or {command}",
+  "rule.secret": "a secret source: {keychain}, {env}, {file}, {command} or {credential}",
   "rule.commandSecret": "a secret source {command}",
   "rule.url": "a URL",
   "rule.httpsOrigin": "an HTTPS address with no path, such as `https://owner.example.ts.net`",
@@ -22,5 +22,6 @@
   "rule.usd": "US dollars written as text, such as \"100\" or \"0.25\", with at most six decimals",
   "rule.path": "an absolute path, or one that starts with ~/",
   "rule.keychainName": "a keychain entry name of letters, digits, dots, dashes and underscores",
-  "rule.envName": "an environment variable name"
+  "rule.envName": "an environment variable name",
+  "rule.credentialName": "a credential name of capital letters, digits and underscores, starting with a letter"
 }

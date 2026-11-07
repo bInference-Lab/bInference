@@ -530,6 +530,7 @@ Options:
 
 - `--from-env <variable>`: Set the key to the secret source that reads this environment variable.
 - `--from-keychain <name>`: Set the key to the secret source that reads this keychain entry.
+- `--from-credential <name>`: Set the key to the secret source that reads this credential stored in the engine.
 - `--reason <text>`: Why, for the config journal.
 
 ## `binference mcp`

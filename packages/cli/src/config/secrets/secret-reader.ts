@@ -7,10 +7,12 @@ import {
   type Secret,
   type SecretStore,
 } from "@binference/core";
+import type { CredentialStore } from "@binference/engine/chat";
 import { readTextFile, type RunProgram, runCommand } from "@binference/platform";
 import type { ReadTextFile } from "../load-config.js";
 import type {
   CommandSource,
+  CredentialSource,
   EnvSource,
   FileSource,
   KeychainSource,
@@ -44,9 +46,14 @@ export interface SecretReaderOptions {
   readonly run?: RunProgram;
   /** The platform's reader unless a test passes another. */
   readonly readFile?: ReadTextFile;
+  /**
+   * The engine's stored credentials, for `fromCredential`; only the running engine passes them,
+   * so anywhere else a credential source is `engine_only`.
+   */
+  readonly credentials?: Pick<CredentialStore, "reveal">;
 }
 
-type Reason = "not_set" | "not_found" | "empty" | "failed" | "timeout";
+type Reason = "not_set" | "not_found" | "empty" | "failed" | "timeout" | "engine_only";
 
 interface Unavailable {
   readonly path: string;
@@ -151,8 +158,29 @@ async function fromFile(
   return filled(read.value.trim(), { path, from });
 }
 
+async function fromCredential(
+  options: SecretReaderOptions,
+  { path, source, signal }: SecretRequest<CredentialSource>,
+): Promise<Secret> {
+  const name = source.fromCredential;
+  const from = `the credential ${name}`;
+  if (options.credentials === undefined) {
+    const message = `${from} is stored in the engine, which alone reads it. Start binference, or name another secret source.`;
+    throw unavailable({ path, from, reason: "engine_only", message });
+  }
+  const stored = await options.credentials.reveal(name, { signal });
+  if (stored === undefined) {
+    const message = `no credential ${name} is stored. Store it with binference credential set ${name}, or name another secret source.`;
+    throw unavailable({ path, from, reason: "not_found", message });
+  }
+  return stored.value;
+}
+
 async function readSource(options: SecretReaderOptions, request: SecretRequest): Promise<Secret> {
   const { source } = request;
+  if ("fromCredential" in source) {
+    return fromCredential(options, { ...request, source });
+  }
   if ("fromEnv" in source) {
     return fromEnv(options, { ...request, source });
   }
@@ -167,8 +195,9 @@ async function readSource(options: SecretReaderOptions, request: SecretRequest):
 
 /**
  * Creates the reader that turns secret sources into secrets: environment variables, the OS
- * keychain, owner-only files and programs such as `op read`, run with an argument array, no
- * shell and a 10 second limit. A file's content and a program's output are trimmed.
+ * keychain, owner-only files, programs such as `op read`, run with an argument array, no shell and
+ * a 10 second limit, and the engine's stored credentials when it passes them. A file's content and
+ * a program's output are trimmed.
  */
 export function createSecretReader(options: SecretReaderOptions): SecretReader {
   return {

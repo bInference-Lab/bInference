@@ -128,6 +128,13 @@ export const configMigrations: readonly ConfigMigration[] = [
       "(patchWorkspaceOnly true).",
     edits: () => [],
   },
+  {
+    from: 18,
+    summary:
+      "Lets a secret source name a credential stored in the engine, { fromCredential: NAME }; " +
+      "no file names one yet.",
+    edits: () => [],
+  },
 ];
 
 /** The version of `config.json5` this binference writes and reads. */

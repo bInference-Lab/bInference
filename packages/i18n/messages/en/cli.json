@@ -108,6 +108,7 @@
   "argument.configValue": "The value, read as JSON5 (7460, true, \"text\", [1, 2], or null to remove the config key), else as text",
   "option.fromEnv": "Set the key to the secret source that reads this environment variable",
   "option.fromKeychain": "Set the key to the secret source that reads this keychain entry",
+  "option.fromCredential": "Set the key to the secret source that reads this credential stored in the engine",
   "option.reason": "Why, for the config journal",
   "configGet.value": "{key} = {value}",
   "configGet.noKey": "There is no config key {key}. Run `binference config get` to see every config key.",

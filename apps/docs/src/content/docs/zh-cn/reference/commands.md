@@ -530,6 +530,7 @@ description: "binference 的每个命令及其参数和选项。"
 
 - `--from-env <variable>`: 把该配置项设为读取此环境变量的密钥来源。
 - `--from-keychain <name>`: 把该配置项设为读取此钥匙串条目的密钥来源。
+- `--from-credential <name>`: 把该配置项设为读取引擎中保存的此凭据的密钥来源。
 - `--reason <text>`: 修改原因，记入配置日志。
 
 ## `binference mcp`

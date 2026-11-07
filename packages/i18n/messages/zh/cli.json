@@ -108,6 +108,7 @@
   "argument.configValue": "值，按 JSON5 读取（7460、true、\"text\"、[1, 2]，null 表示删除该配置项），否则按文本读取",
   "option.fromEnv": "把该配置项设为读取此环境变量的密钥来源",
   "option.fromKeychain": "把该配置项设为读取此钥匙串条目的密钥来源",
+  "option.fromCredential": "把该配置项设为读取引擎中保存的此凭据的密钥来源",
   "option.reason": "修改原因，记入配置日志",
   "configGet.value": "{key} = {value}",
   "configGet.noKey": "配置中没有 {key} 这个配置项。运行 `binference config get` 查看所有配置项。",

@@ -13,7 +13,8 @@ export type ValueFormat =
   | "usd"
   | "path"
   | "keychain_name"
-  | "env_name";
+  | "env_name"
+  | "credential_name";
 
 type PatternFormat = Exclude<ValueFormat, "url" | "chain">;
 
@@ -25,6 +26,7 @@ const patterns: Readonly<Record<PatternFormat, RegExp>> = {
   path: /^(?:~[/\\]|[/\\]|[A-Za-z]:[/\\])/,
   keychain_name: /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/,
   env_name: /^[A-Za-z_][A-Za-z0-9_]*$/,
+  credential_name: /^[A-Z][A-Z0-9_]{0,63}$/,
   https_origin: /^https:\/\/[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?(?::\d{1,5})?\/?$/,
 };
 

@@ -16,6 +16,7 @@ const formatKeys: Readonly<Record<ValueFormat, string>> = {
   path: "rule.path",
   keychain_name: "rule.keychainName",
   env_name: "rule.envName",
+  credential_name: "rule.credentialName",
 };
 
 // The secret source forms are config syntax, the same in every language.
@@ -24,6 +25,7 @@ const secretForms = {
   env: '{ fromEnv: "NAME" }',
   file: '{ fromFile: "path" }',
   command: '{ fromCommand: ["program", "argument"] }',
+  credential: '{ fromCredential: "NAME" }',
 };
 
 const plainKeys: Readonly<Record<"boolean" | "object" | "json", string>> = {

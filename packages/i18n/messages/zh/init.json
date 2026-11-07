@@ -179,7 +179,7 @@
   "refused.answersInvalid": "应答文件 {file} 在 {key} 处有 binference init 不接受的内容。每一项都以 `binference init --help` 中某个选项的驼峰写法命名，例如 `privyAppId`；`set` 中写配置项。",
   "refused.badAnswer": "{name} 的值 binference init 不接受。运行 `binference init --help` 查看它接受的值。",
   "refused.badSource": "{flag} 不是密钥来源。请按 config.json5 的写法，使用 fromEnv、fromFile、fromKeychain 或 fromCommand。",
-  "refused.sourceUnavailable": "无法读取 {flag} 指定的密钥：{reason, select, not_set {该环境变量未设置} not_found {那里没有内容} empty {内容为空} timeout {程序在 10 秒内没有输出} other {程序运行失败}}。请修复后再次运行 `binference init`。",
+  "refused.sourceUnavailable": "无法读取 {flag} 指定的密钥：{reason, select, not_set {该环境变量未设置} not_found {那里没有内容} empty {内容为空} timeout {程序在 10 秒内没有输出} engine_only {凭据只有运行中的引擎才能读取，而 init 还没有设置好引擎；请换一个密钥来源} other {程序运行失败}}。请修复后再次运行 `binference init`。",
   "refused.badProxy": "{flag} 指定的不是 http:// 或 https:// 代理 URL。请以密钥来源（如 {example}）或 http://host:port 的形式给出代理，然后再次运行 `binference init`。",
   "refused.proxyOnCommandLine": "{flag} 只接受密钥来源形式的代理（如 {example}），这样代理地址不会留在 shell 历史中。请改用环境变量 BINFERENCE_INIT_PROXY 或应答文件的 proxy 键给出 URL，然后再次运行 `binference init`。",
   "refused.badAppId": "{flag} 不是 Privy 应用 ID。请从 Privy 控制面板的 App settings 中复制。",
