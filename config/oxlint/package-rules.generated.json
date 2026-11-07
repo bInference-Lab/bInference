@@ -10692,6 +10692,7 @@
         "packages/engine/src/risk.ts",
         "packages/engine/src/safety.ts",
         "packages/engine/src/sends.ts",
+        "packages/engine/src/shell.ts",
         "packages/engine/src/simulation.ts",
         "packages/engine/src/surfaces.ts",
         "packages/engine/src/testing.ts",

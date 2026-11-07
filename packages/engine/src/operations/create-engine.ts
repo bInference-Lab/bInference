@@ -44,7 +44,6 @@ import type { LaunchingMoneyPath } from "../money-path/launching-money-path.js";
 import type { LaunchImageSource } from "../money-path/ports.js";
 import type { ReadTokenCode } from "../money-path/token-code.js";
 import { createVenueQuoteSource } from "../money-path/venue-quote-source.js";
-import { createNameHandlers } from "../names/name-handlers.js";
 import type { CopyOrders } from "../orders/copy-orders.js";
 import type { CanPrice, OrderParts } from "../orders/create-order.js";
 import { createDcaOrders, type DcaOrders } from "../orders/dca-orders.js";
@@ -59,6 +58,7 @@ import type { PruneWork } from "../records/prune-records.js";
 import { createRescueAddressHandlers } from "../safety/rescue-address-handlers.js";
 import { rescueReadsOf, settleRescueCeilings } from "../safety/rescue-ceilings.js";
 import { createSendLevelHandlers } from "../send-levels/send-level-handlers.js";
+import { type EngineShell, machineHandlersOf } from "../shell/engine-shell.js";
 import { type StakeWork, stakeWorkOf } from "../staking/engine-staking.js";
 import type { DailySummaries } from "../summaries/daily-summaries.js";
 import { createCardShowings } from "../surfaces/create-card-showings.js";
@@ -273,6 +273,8 @@ export interface EngineOptions extends MarketParts, ModelBudgetParts, ImageOptio
    * `intent.kind_unavailable`.
    */
   readonly identity?: IdentityOptions;
+  /** The agent's shell (decision 0378); without it `shell/run` is `shell.off`. */
+  readonly shell?: EngineShell;
   readonly clock: Clock;
   readonly ids: IdSource;
   /** Where each card version's callback reference comes from (spec 4, section 2). */
@@ -467,7 +469,7 @@ export function createEngineWithFills(given: EngineOptions): {
       ...safetyHandlersOf(options, { stored: intents.stored, relay: chat.relay }),
       ...chat.handlers,
       ...drafts.handlers,
-      ...createNameHandlers({ resolvers: options.nameResolvers ?? [], clock: options.clock }),
+      ...machineHandlersOf(options),
       ...createIdentityHandlers({
         moneyPath: intents.moneyPath,
         identities: options.stores.identities,

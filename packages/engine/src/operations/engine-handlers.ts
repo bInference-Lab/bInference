@@ -8,6 +8,7 @@ import type { OrderHandlers } from "../orders/order-handlers.js";
 import type { RescueAddressHandlers } from "../safety/rescue-address-handlers.js";
 import type { SafetyHandlers } from "../safety/safety-handlers.js";
 import type { SendLevelHandlers } from "../send-levels/send-level-handlers.js";
+import type { ShellHandlers } from "../shell/shell-handlers.js";
 import type { WebhookRuleHandlers } from "../webhooks/webhook-rule-handlers.js";
 import type { LaunchDraftHandlers } from "./engine-launch-drafts.js";
 import type { EngineChatHandlers } from "./engine-parts.js";
@@ -33,4 +34,5 @@ export interface EngineHandlers
     LaunchDraftHandlers,
     NameHandlers,
     IdentityHandlers,
-    WebhookRuleHandlers {}
+    WebhookRuleHandlers,
+    ShellHandlers {}
