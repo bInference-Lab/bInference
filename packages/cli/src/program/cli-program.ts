@@ -20,6 +20,7 @@ import {
 } from "./cli-flags.schema.js";
 import { addSet, agentOption, idOf, withCommon } from "./command-options.js";
 import { addConfigCommands } from "./config-commands.js";
+import { addCredentialCommands } from "./credential-commands.js";
 import { addLimitCommands } from "./limit-commands.js";
 import { addMcpCommands } from "./mcp-commands.js";
 import { addOwnerKeyCommands } from "./owner-key-commands.js";
@@ -222,6 +223,7 @@ function addCommands(program: Command, options: ProgramOptions): void {
   addServiceCommands(program, options);
   addAddressCommands(program, options);
   addWebhookCommands(program, options);
+  addCredentialCommands(program, options);
   addPluginCommands(program, options);
   addLimitCommands(program, options);
   addConfigCommands(program, options);

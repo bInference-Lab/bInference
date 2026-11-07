@@ -28,5 +28,8 @@
   "card.closed": "{state, select, expired {The card expired. Nothing was sent.} denied {The card was cancelled elsewhere. Nothing was sent.} cancelled {The card was cancelled elsewhere. Nothing was sent.} other {The card was confirmed elsewhere.}}",
   "card.failed": "Not answered: {reason}",
   "question.keys": "Press 1 to {last} to answer, or write your own answer.",
+  "credential.header": "{agent} asks for the credential {name}",
+  "credential.hosts": "Hosts it may be sent to: {hosts}",
+  "credential.where": "Never type it here. Enter it in the console's masked prompt, or run binference credential set {name} in another terminal.",
   "question.choice": "{number}. {choice}"
 }

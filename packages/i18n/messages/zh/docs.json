@@ -130,6 +130,7 @@
   "tools.summary.file_edit": "在所有者机器上的文件中进行精确替换。",
   "tools.summary.file_patch": "用一个补丁修改多个文件，默认只在 Agent 工作区内。",
   "tools.summary.show_chart": "在对话中向所有者显示图表：饼图、柱状图、面积图或折线图；无法绘制时显示其文本。",
+  "tools.summary.credentials": "列出所有者存储的凭据，在隐藏输入框中向所有者请求缺少的凭据，或删除凭据。",
   "tools.summary.notes_get": "完整读取 Agent 的一条笔记。",
   "tools.summary.notes_forget": "删除 Agent 的一条笔记。"
 }

@@ -371,6 +371,11 @@ new name here first, in the change that uses it.
   only once every change is found.
 - **image look**: a model of the turn that takes images describing an image a tool read, with the
   agent's question (`look_at_image`, [decision 0385](DECISIONS.md#d0385)).
+- **credential**: a secret such as an API key the owner stores for the agents, by a name like an
+  environment variable's, with the exact hosts it may be sent to; the agent never sees its value
+  (`credentials`, [decision 0388](DECISIONS.md#d0388)).
+- **masked prompt**: where the owner types a credential the agent asked for, its characters hidden,
+  in the console or with `binference credential set`; never the chat.
 - **shown chart**: a pie, bar, area or line chart the agent shows the owner in the chat
   (`show_chart`, [decision 0387](DECISIONS.md#d0387)); drawn in the console, as text elsewhere.
 - **shell host**: the process the engine starts to run the agent's commands, behind the wall.
@@ -738,6 +743,8 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | file tools                                  | 文件工具               | `file_read` and the others   |
 | patch (of files)                            | 补丁                   | `file_patch`                 |
 | shown chart, chart (the agent shows)        | 图表                   | `show_chart`                 |
+| credential (the owner stores)               | 凭据                   | `credentials`                |
+| masked prompt (for a credential)            | 隐藏输入框             |                              |
 | shell request                               | 命令请求               |                              |
 | allowed command                             | 允许的命令             |                              |
 | filter command                              | 过滤命令               |                              |

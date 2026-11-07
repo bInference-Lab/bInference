@@ -404,6 +404,34 @@ description: "binference 的每个命令及其参数和选项。"
 
 - `<rule>`: 提醒规则的 ID，以 whr_ 开头，可通过 `binference webhook list` 查看。必填。
 
+## `binference credential`
+
+列出、存储和删除 Agent 请求的凭据，Agent 永远看不到它们。
+
+### `binference credential list`
+
+按名称列出已存储的凭据，以及每个凭据可发送到的主机。
+
+### `binference credential set`
+
+在隐藏输入框中输入并存储凭据，以及它可发送到的主机。
+
+参数：
+
+- `<name>`: 凭据名称，例如 API 密钥的名称 DUNE_API_KEY。必填。
+
+选项：
+
+- `--allow-host <host>`: 凭据可发送到的主机，例如 api.dune.com；可重复以添加更多。
+
+### `binference credential delete`
+
+删除已存储的凭据。
+
+参数：
+
+- `<name>`: 凭据名称，例如 API 密钥的名称 DUNE_API_KEY。必填。
+
 ## `binference plugin`
 
 添加、列出、启用、停用和移除社区插件。

@@ -112,6 +112,7 @@ const answers: Readonly<Record<string, FakeAnswer>> = {
   "file/write": { path: "/w/a.md", changed: true, bytes: 1 },
   "file/edit": { path: "/w/a.md", changed: true, bytes: 1, replaced: 1 },
   "file/patch": { files: [{ path: "/w/a.md", change: "added" }] },
+  "credential/list": { items: [] },
   "turn/chart": { chart: { chartType: "pie", title: "x", segments: [{ label: "a", value: 1 }] } },
   "schedule/create": scheduleWire(),
   "schedule/cancel": {},
@@ -417,6 +418,7 @@ const mappings: readonly (readonly [string, JsonValue, JsonValue])[] = [
     { input: "*** Begin Patch" },
     [{ op: "file/patch", args: { agent, input: "*** Begin Patch" } }],
   ],
+  ["credentials", { action: "list" }, [{ op: "credential/list", args: {} }]],
   [
     "ask_owner",
     { text: "Hold for hours or days?", choices: ["Hours", "Days"] },

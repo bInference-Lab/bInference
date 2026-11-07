@@ -11,6 +11,7 @@
   "chat.photoTooLarge": "Agent 只读取不超过 5 MiB 的图片，因此有 {count, plural, other {# 张图片}}未发送。请发送更小的图片。",
   "chat.forwarded": "转发的消息不会发送给 Agent。请把你想让它读取的内容写在你自己的消息中。",
   "chat.edited": "编辑后的消息不会发送给 Agent。请发送一条新消息。",
+  "credential.request": "Agent 请求一个凭据：{name}\n原因：{reason}\n可发送到的主机：{hosts}\n\n切勿在此对话中发送凭据。请在控制台的隐藏输入框中输入（发送 /console 打开控制台），或在运行 binference 的电脑上运行 binference credential set {name}。",
   "chat.unsupported": "Agent 只读取文字和图片。请以文字或图片的形式发送。",
   "notice.agent": "{agent} · {notice}",
   "chat.agent": "{agent} · {text}",

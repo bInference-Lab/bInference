@@ -34,6 +34,7 @@
   "tool.txStatus": "正在查询交易…",
   "tool.marketScan": "正在扫描市场…",
   "tool.chart": "正在读取 K 线图…",
+  "tool.credentials": "正在请求凭据…",
   "tool.walletActivity": "正在读取钱包的交易…",
   "tool.swap": "正在准备兑换…",
   "tool.buy": "正在准备买入…",

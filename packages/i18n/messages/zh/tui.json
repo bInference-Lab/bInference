@@ -28,5 +28,8 @@
   "card.closed": "{state, select, expired {卡片已过期，未发送任何交易。} denied {卡片已在其他地方取消，未发送任何交易。} cancelled {卡片已在其他地方取消，未发送任何交易。} other {卡片已在其他地方确认。}}",
   "card.failed": "未回复：{reason}",
   "question.keys": "按 1 到 {last} 回答，或直接输入你的回答。",
+  "credential.header": "{agent} 请求凭据 {name}",
+  "credential.hosts": "可发送到的主机：{hosts}",
+  "credential.where": "切勿在此输入。请在控制台的隐藏输入框中输入该凭据，或在另一个终端运行 binference credential set {name}。",
   "question.choice": "{number}. {choice}"
 }

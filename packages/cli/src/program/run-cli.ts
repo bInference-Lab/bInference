@@ -13,6 +13,11 @@ import { runChat } from "../commands/chat-command.js";
 import { runCheck } from "../commands/check-command.js";
 import { runConfigGet, runConfigSet } from "../commands/config-command.js";
 import { runConsole } from "../commands/console-command.js";
+import {
+  runCredentialDelete,
+  runCredentialList,
+  runCredentialSet,
+} from "../commands/credential-command.js";
 import { runExpose } from "../commands/expose-command.js";
 import { runHealth } from "../commands/health-command.js";
 import { runInitCommand } from "../commands/init-command.js";
@@ -157,6 +162,11 @@ const runners: { readonly [N in ChosenCommand["name"]]: Runner<N> } = {
   pluginEnable: runPluginChange,
   pluginDisable: runPluginChange,
   pluginRemove: runPluginChange,
+  credentialList: async (context) => runCredentialList(context),
+  credentialSet: async (context, chosen) =>
+    runCredentialSet(context, { options: chosen.options, name: chosen.credential }),
+  credentialDelete: async (context, chosen) =>
+    runCredentialDelete(context, { name: chosen.credential }),
   webhookList: async (context) => runWebhookList(context),
   webhookCreate: async (context, chosen) => runWebhookCreate(context, chosen.options),
   webhookEvents: runWebhookEvents,

@@ -404,6 +404,34 @@ Arguments:
 
 - `<rule>`: The alert rule's id, starting with whr_, as `binference webhook list` shows it. Required.
 
+## `binference credential`
+
+List, store and delete the credentials the agent asks for, which it never sees.
+
+### `binference credential list`
+
+List the stored credentials by name, with the hosts each may be sent to.
+
+### `binference credential set`
+
+Store a credential, typed at a masked prompt, and the hosts it may be sent to.
+
+Arguments:
+
+- `<name>`: The credential's name, such as DUNE_API_KEY. Required.
+
+Options:
+
+- `--allow-host <host>`: A host the credential may be sent to, such as api.dune.com; repeat for more.
+
+### `binference credential delete`
+
+Delete a stored credential.
+
+Arguments:
+
+- `<name>`: The credential's name, such as DUNE_API_KEY. Required.
+
 ## `binference plugin`
 
 Add, list, enable, disable and remove community plugins.

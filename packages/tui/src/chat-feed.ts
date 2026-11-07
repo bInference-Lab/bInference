@@ -1,12 +1,19 @@
 import { chartTextLines } from "@binference/chart";
 import { displayOutsideText } from "@binference/i18n";
-import { type ChatPush, chatPushOf, type PushFrame, questionPushOf } from "@binference/protocol";
+import {
+  type ChatPush,
+  chatPushOf,
+  credentialPushes,
+  type PushFrame,
+  questionPushOf,
+} from "@binference/protocol";
 import type { AgentQuestion } from "./agent-question.js";
 import type { ChatContext } from "./chat-context.js";
 import { agentSaidLines, statusLine } from "./chat-lines.js";
 import type { ScreenLine } from "./chat-screen.js";
 import { type ChatState, withoutRunning } from "./chat-state.js";
 import type { ChatTranscript } from "./chat-transcript.js";
+import { credentialLines } from "./credential-lines.js";
 import { depositLines } from "./deposit-lines.js";
 
 /** The parts the agent's chat topic feeds. */
@@ -100,6 +107,18 @@ export function followChat(context: ChatContext, parts: ChatFeedParts): () => vo
       const chat = chatPushOf(push);
       if (chat !== undefined) {
         onChatPush(context, parts, chat);
+        return;
+      }
+      const credential = credentialPushes.credentialPushOf(push);
+      if (credential?.kind === "chat/credentialRequest") {
+        const lines = credentialLines(context.formatter, {
+          request: credential.request,
+          agentName: context.agentName,
+        });
+        parts.queue(async () => {
+          context.print(lines);
+          return Promise.resolve();
+        });
         return;
       }
       const question = questionPushOf(push);

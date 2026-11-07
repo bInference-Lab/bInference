@@ -9,13 +9,13 @@ export interface OtherReply {
 
 // A question names its turn, a launch draft only its agent.
 const otherReplySchema = z.looseObject({
-  kind: z.enum(["chat/question", "chat/launchDraft"]),
+  kind: z.enum(["chat/question", "chat/launchDraft", "chat/credentialRequest"]),
   data: z.looseObject({ agent: z.string(), turn: z.string().optional() }),
 });
 
 /**
  * Reads a push of an agent's chat topic that another part of the bot shows as a reply of a
- * running turn: the agent's question or its launch draft. Any other push gives none.
+ * running turn: the agent's question, its launch draft or its request for a credential. Any other push gives none.
  */
 export function otherReplyOf(push: {
   readonly kind: string;

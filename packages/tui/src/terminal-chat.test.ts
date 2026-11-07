@@ -188,6 +188,28 @@ describe("terminal chat", () => {
     ]);
   });
 
+  it("prints a credential request and where to answer it, never asking for it in the chat", async () => {
+    const chat = await opened();
+    chat.push(`chat:${harnessAgent}`, "chat/credentialRequest", {
+      request: "crq_0190f1c2-3a4b-7c5d-8e6f-000000000001",
+      agent: harnessAgent,
+      session: "ses_0190f1c2-3a4b-7c5d-8e6f-000000000001",
+      turn,
+      name: "DUNE_API_KEY",
+      reason: "Holder history.",
+      allowedHosts: ["api.dune.com"],
+      createdAt: 1,
+      closesAt: 2,
+    });
+    await chat.settle();
+    expect(chat.rows().slice(-5, -1)).toStrictEqual([
+      "main asks for the credential DUNE_API_KEY",
+      "Holder history.",
+      "Hosts it may be sent to: api.dune.com",
+      "Never type it here. Enter it in the console's masked prompt, or run binference credential set DUNE_API_KEY in another terminal.",
+    ]);
+  });
+
   it("prints a chart the agent shows as its text", async () => {
     const chat = await opened();
     chat.push(`chat:${harnessAgent}`, "chat/turnStarted", { agent: harnessAgent, turn });

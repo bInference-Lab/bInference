@@ -79,6 +79,17 @@ export type ChosenCommand =
       readonly options: CommonOptions;
       readonly plugin: string;
     }
+  | { readonly name: "credentialList"; readonly options: CommonOptions }
+  | {
+      readonly name: "credentialSet";
+      readonly options: CommonOptions & { readonly allowHost: readonly string[] };
+      readonly credential: string;
+    }
+  | {
+      readonly name: "credentialDelete";
+      readonly options: CommonOptions;
+      readonly credential: string;
+    }
   | { readonly name: "webhookList"; readonly options: CommonOptions }
   | { readonly name: "webhookCreate"; readonly options: WebhookCreateFlags }
   | {

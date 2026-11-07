@@ -3,6 +3,7 @@ import { alertCreateTool } from "./alert-create-tool.js";
 import { askOwnerTool } from "./ask-owner-tool.js";
 import { chartTool } from "./chart-tool.js";
 import { createToolBox } from "./create-tool-box.js";
+import { credentialsTool } from "./credentials-tool.js";
 import type { AgentTool } from "./define-tool.js";
 import { depositTool } from "./deposit-tool.js";
 import { fileTools } from "./file-tools.js";
@@ -38,7 +39,8 @@ import { workspaceTools } from "./workspace-tools.js";
  * `launch_draft`, which drafts a token launch the owner starts (decision 0285),
  * then `deposit_address`, which shows the owner where to send funds (decision 0380), `show_chart`,
  * which shows the owner a chart (decision 0387), the machine
- * tools `shell` and `shell_job` (decision 0378) and the file tools (decision 0386), then `ask_owner`, which asks the
+ * tools `shell` and `shell_job` (decision 0378) and the file tools (decision 0386), `credentials`, which asks the owner for a credential and ends
+ * the turn (decision 0388), then `ask_owner`, which asks the
  * owner in the turn the tools serve and ends it after its batch.
  */
 export function agentTools(parts: AgentToolParts): readonly AgentTool[] {
@@ -69,6 +71,7 @@ export function agentTools(parts: AgentToolParts): readonly AgentTool[] {
     chartTool(parts),
     ...shellTools(parts),
     ...fileTools(parts),
+    credentialsTool(parts),
     askOwnerTool(parts),
   ];
 }

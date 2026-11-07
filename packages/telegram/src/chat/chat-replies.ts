@@ -10,6 +10,7 @@ import { type ChatHtml, chatHtmlOf, statusHtmlOf } from "./chat-html.js";
 import type { ChatRepliesOptions, ReplySettings } from "./chat-replies-options.js";
 import type { Call, Parts, TurnShowing } from "./chat-replies-parts.js";
 import { startTyping } from "./chat-typing.js";
+import { showCredentialRequest } from "./credential-message.js";
 import { type DepositPush, showDeposit } from "./deposit-photos.js";
 import { otherReplyOf } from "./other-reply.js";
 import { reasoningHtmlOf } from "./reasoning-html.js";
@@ -344,6 +345,8 @@ export function createChatReplies(options: ChatRepliesOptions): ChatReplies {
       if (push !== undefined) {
         await showPush(parts, push, call);
       }
+      const owner = async () => ownerChat(parts, call);
+      await showCredentialRequest({ ...parts, owner }, given, call.signal);
       noteOtherReply(parts, given);
     },
     async idle() {

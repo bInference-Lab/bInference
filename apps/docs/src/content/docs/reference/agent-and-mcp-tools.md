@@ -59,6 +59,7 @@ The tools the agent's model may call in a turn, in the order a turn offers them.
 - `file_write` (machine): Writes a file whole on the owner's machine, making its folders.
 - `file_edit` (machine): Makes exact replacements in a file on the owner's machine.
 - `file_patch` (machine): Changes several files in one patch, by default inside the agent's workspace.
+- `credentials` (control): Lists the owner's stored credentials, asks the owner for a missing one in a masked prompt, or removes one.
 - `ask_owner` (control): Asks the owner a question with answer buttons.
 
 ## MCP tools

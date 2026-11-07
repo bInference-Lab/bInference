@@ -34,6 +34,7 @@
   "tool.txStatus": "Checking a transaction…",
   "tool.marketScan": "Scanning the market…",
   "tool.chart": "Reading a chart…",
+  "tool.credentials": "Asking for a credential…",
   "tool.walletActivity": "Reading a wallet's trades…",
   "tool.swap": "Preparing the swap…",
   "tool.buy": "Preparing the buy…",
