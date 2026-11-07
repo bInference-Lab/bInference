@@ -20,6 +20,7 @@ import type { ComposedRuntime } from "./compose-runtime.js";
 import type { ComposedTelegram } from "./compose-telegram.js";
 import { composeTrading, type TradingParts } from "./compose-trading.js";
 import { type ComposedWatching, composeWatching, serveWatching } from "./compose-watching.js";
+import { chatConfigPartsOf } from "./config-proposals.js";
 import { engineHandlers } from "./engine-handlers.js";
 import { chainIdentityRegistries } from "./identity-registries.js";
 import { selfHostedMarketReads } from "./market-reads.js";
@@ -32,7 +33,6 @@ import {
   selfHostedRatePrices,
 } from "./open-engine-parts.js";
 import { pricingOf } from "./order-pricing.js";
-import { ownerChatHandlers } from "./owner-chat-config-change.js";
 import { publishedParts } from "./published-parts.js";
 import { webhookPartsOf } from "./remote-reading.js";
 import { selfHostedRiskSources } from "./risk-sources.js";
@@ -277,7 +277,7 @@ function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
       ...chainReadParts(parts.reads, host.version),
       bridging: parts.bridging.engine,
       workspace: stateWorkspace(opening.platform),
-      ownerChat: ownerChatHandlers(opening.platform, opened.settings),
+      ...chatConfigPartsOf(opening, opened),
       ...webPushOf(opening, opened),
       ...wiring.agentSide,
       handlers: ownHandlersOf(opening, opened, wiring),

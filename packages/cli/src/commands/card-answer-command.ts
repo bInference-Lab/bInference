@@ -36,7 +36,11 @@ export interface CardAnswerRequest {
 }
 
 /** The request of an intent whose confirmation sends nothing on chain. */
-type Written = UnfreezeRequest | AutoOrderRequest | WebhookRuleCardRequest;
+type Written =
+  | UnfreezeRequest
+  | AutoOrderRequest
+  | WebhookRuleCardRequest
+  | Extract<IntentView["request"], { readonly kind: "configChange" }>;
 
 /**
  * Where the auto order or alert rule a confirmed card started stands after the tap: its state,
@@ -92,6 +96,10 @@ function reportWritten(
   if (request.kind === "unfreeze") {
     return reportUnfrozen(output, intent, request.agent);
   }
+  if (request.kind === "configChange") {
+    output.say("confirm.configChanged", { intent });
+    return 0;
+  }
   const key = request.kind === "autoOrder" ? "confirm.order" : "confirm.webhookRule";
   output.say(key, { intent, state: started });
   return 0;
@@ -135,7 +143,10 @@ function reportEnded(
     return 1;
   }
   const isWritten =
-    request.kind === "unfreeze" || request.kind === "autoOrder" || request.kind === "webhookRule";
+    request.kind === "unfreeze" ||
+    request.kind === "autoOrder" ||
+    request.kind === "webhookRule" ||
+    request.kind === "configChange";
   return isWritten ? reportWritten(run.output, { intent, request }, started) : undefined;
 }
 

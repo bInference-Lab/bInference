@@ -266,6 +266,7 @@
   "confirm.unfrozen": "已确认 {intent}。{scope, select, install {所有 Agent 都已解除冻结} other {{agent} 已解除冻结}}。",
   "confirm.order": "已确认 {intent}。{state, select, active {自动订单已生效。} expired {自动订单未生效：确认之前它已过期。} cancelled {自动订单未生效：它已先被取消。} awaiting_confirmation {自动订单未生效：它已先被取消。} unread {暂时无法读取自动订单的状态。} other {自动订单已生效。}}",
   "confirm.webhookRule": "已确认 {intent}。{state, select, active {提醒规则已生效：其地址现在开始接收提醒，每次提醒都以模拟方式成交。} unread {暂时无法读取提醒规则的状态。} other {提醒规则未生效：它已先被删除或已过期。}}",
+  "confirm.configChanged": "已确认 {intent}。设置已更改；卡片回执会说明是否有部分设置需重启后生效。",
   "confirm.unsent": "已确认 {intent}。{receipt}",
   "confirm.ask": "确认此卡片吗？输入 是 确认，或输入 否 保留卡片",
   "confirm.yes": "是",

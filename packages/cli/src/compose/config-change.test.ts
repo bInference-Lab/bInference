@@ -1,4 +1,4 @@
-import { err, ok } from "@binference/core";
+import { err, ok, type Result } from "@binference/core";
 import { createManualClock, createMemoryLogger } from "@binference/core/testing";
 import type { EngineCaller, EnginePush } from "@binference/engine";
 import { createMemoryConfigJournal } from "@binference/engine/testing";
@@ -11,6 +11,7 @@ import { noPermissions } from "../e2e/test-host.js";
 import { createClosers } from "./closers.js";
 import { createConfigCell } from "./config-cell.js";
 import { createConfigChange } from "./config-change.js";
+import { createConfigProposals } from "./config-proposals.js";
 import { startConfigReload } from "./config-reload.js";
 
 const live = () => ({ signal: new AbortController().signal });
@@ -95,7 +96,7 @@ async function machine() {
     watched.onChange?.();
     await Promise.resolve();
   };
-  const change = createConfigChange({
+  const parts = {
     file,
     permissions: noPermissions,
     settings,
@@ -103,11 +104,13 @@ async function machine() {
     reload,
     readFile,
     writeFile,
-  });
+  };
+  const change = createConfigChange(parts);
+  const proposals = createConfigProposals(parts);
   const call = async (patch: ArgsOf<"config/change">["patch"], reason?: string) =>
     change({ args: reason === undefined ? { patch } : { patch, reason }, caller: cli, ...live() });
   const entries = async () => journal.list({ after: 0, limit: 10 }, live());
-  return { disk, writes, settings, clock, closers, pushes, call, entries };
+  return { disk, writes, settings, clock, closers, pushes, call, entries, proposals };
 }
 
 describe("config/change", () => {
@@ -224,6 +227,87 @@ describe("config/change", () => {
       error: "protocol.bad_args",
     });
     expect(test.writes).toStrictEqual([]);
+    await test.closers.closeAll(live().signal);
+  });
+});
+
+const owner = { by: "telegram", surface: "telegram" };
+
+// The value of an answer that must be a success; a refusal fails the test.
+function okValue<Value>(answer: Result<Value, string>): Value {
+  if (!answer.ok) {
+    throw new Error(`Expected a success, got ${answer.error}.`);
+  }
+  return answer.value;
+}
+const debug = { logging: { level: "debug" } };
+
+describe("a config change from a chat", () => {
+  it("previews each key the patch changes, before and after, and writes nothing", async () => {
+    const test = await machine();
+    const preview = await test.proposals.preview(debug, live());
+    expect(preview).toStrictEqual(
+      ok({
+        changes: [{ path: "logging.level", before: '"info"', after: '"debug"' }],
+        restartNeeded: false,
+      }),
+    );
+    expect(test.writes).toStrictEqual([]);
+    await test.closers.closeAll(live().signal);
+  });
+
+  it("refuses a secret written as text and a value the config refuses, before anything is written", async () => {
+    const test = await machine();
+    const inline = await test.proposals.preview({ telegram: { botToken: "123:abc" } }, live());
+    const wrong = await test.proposals.preview({ logging: { level: "loud" } }, live());
+    expect([inline, wrong]).toStrictEqual([err("config.secret_inline"), err("config.invalid")]);
+    await test.closers.closeAll(live().signal);
+  });
+
+  it("applies a confirmed change as the owner who tapped, with the reason, and only once", async () => {
+    const test = await machine();
+    const quote = {
+      changes: [{ path: "logging.level", before: '"info"', after: '"debug"' }],
+      restartNeeded: false,
+      quotedAtMs: 1,
+    };
+    const change = { patch: debug, quote, reason: "Find the stuck order." };
+    const applied = await test.proposals.apply(change, { author: owner, ...live() });
+    const again = await test.proposals.apply(change, { author: owner, ...live() });
+    expect([applied, again]).toStrictEqual([ok(undefined), ok(undefined)]);
+    expect(test.writes).toStrictEqual([golden.replace('level: "info"', 'level: "debug"')]);
+    const [entry] = await test.entries();
+    expect([entry?.by, entry?.surface, entry?.reason]).toStrictEqual([
+      "telegram",
+      "telegram",
+      "Find the stuck order.",
+    ]);
+    await test.closers.closeAll(live().signal);
+  });
+
+  it("refuses a change whose key moved after its card, and writes nothing", async () => {
+    const test = await machine();
+    const quote = {
+      changes: [{ path: "logging.level", before: '"warn"', after: '"debug"' }],
+      restartNeeded: false,
+      quotedAtMs: 1,
+    };
+    const applied = await test.proposals.apply(
+      { patch: debug, quote },
+      { author: owner, ...live() },
+    );
+    expect([applied, test.writes]).toStrictEqual([err("config_moved"), []]);
+    await test.closers.closeAll(live().signal);
+  });
+
+  it("shows a key with every secret as its kind and the rules under it, and refuses a path the config has not", async () => {
+    const test = await machine();
+    const telegram = okValue(await test.proposals.view("telegram", live()));
+    expect(telegram.value).toMatchObject({ botToken: "fromEnv" });
+    expect(telegram.rules.map(({ path }) => path)).toContain("telegram.botToken");
+    expect(await test.proposals.view("nowhere.at.all", live())).toStrictEqual(
+      err("protocol.bad_args"),
+    );
     await test.closers.closeAll(live().signal);
   });
 });

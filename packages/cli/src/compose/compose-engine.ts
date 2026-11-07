@@ -33,7 +33,6 @@ import {
 import type { HeldWallet } from "@binference/engine/executor";
 import { isNoticeMutedFor } from "@binference/engine/notices";
 import { createRiskCheck, type RiskCheck } from "@binference/engine/risk";
-import type { EngineShell } from "@binference/engine/shell";
 import type { EngineHandlerTable } from "@binference/engine/surfaces";
 import type { EngineState, OwnerInfo } from "@binference/protocol";
 import {
@@ -161,9 +160,11 @@ export interface ComposeEngineOptions extends EngineChainParts {
    */
   readonly webhooks?: Pick<EngineOptions, "secretRandom" | "webhookBase">;
   /** The agent's shell on this machine (decision 0378); off when absent. */
-  readonly shell?: EngineShell;
+  readonly shell?: EngineOptions["shell"];
   /** The images the agent views on this machine (decision 0385); none when absent. */
   readonly viewImages?: ViewImageSource;
+  /** The config file a confirmed config change writes (decision 0393). */
+  readonly configChanges?: EngineOptions["configChanges"];
   readonly logger: Logger;
 }
 
@@ -323,6 +324,7 @@ function engineOf(
     ...options.webhooks,
     ...(options.shell === undefined ? {} : { shell: options.shell }),
     ...(options.viewImages === undefined ? {} : { viewImages: options.viewImages }),
+    ...(options.configChanges === undefined ? {} : { configChanges: options.configChanges }),
     publish: given.publish,
     turns: given.turns,
     ownerTimeZone: () => options.owner().timezone,
