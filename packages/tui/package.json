@@ -23,6 +23,7 @@
     "@binference/core": "workspace:*",
     "@binference/i18n": "workspace:*",
     "@binference/protocol": "workspace:*",
+    "@binference/rich-text": "workspace:*",
     "string-width": "catalog:"
   }
 }

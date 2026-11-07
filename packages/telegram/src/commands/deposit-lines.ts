@@ -1,7 +1,7 @@
 import { accountRefParts } from "@binference/chain";
 import { displayOutsideText } from "@binference/i18n";
 import type { AgentMode, WalletView } from "@binference/protocol";
-import type { RichLine, RichRun } from "../format/rich-line.js";
+import type { RichLine, RichRun } from "@binference/rich-text";
 import type { CommandContext } from "./command-context.js";
 
 /** What a wallet is for, as `cmd.wallet.role` names it. */

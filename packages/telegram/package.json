@@ -29,6 +29,7 @@
     "@binference/engine": "workspace:*",
     "@binference/i18n": "workspace:*",
     "@binference/qr": "workspace:*",
+    "@binference/rich-text": "workspace:*",
     "grammy": "catalog:",
     "zod": "catalog:"
   }

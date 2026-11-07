@@ -1,6 +1,6 @@
 import type { ResultOf } from "@binference/protocol";
 import { callOptions, type ChatContext } from "./chat-context.js";
-import { failureText, saidLines } from "./chat-lines.js";
+import { agentSaidLines, failureText, saidLines } from "./chat-lines.js";
 
 type TranscriptMessage = ResultOf<"chat/messages">["items"][number];
 
@@ -86,7 +86,12 @@ export function createChatTranscript(context: ChatContext, you: string): ChatTra
       const shown = state.lastSeq === undefined ? said.slice(-openingMessages) : said;
       state.lastSeq = Math.max(state.lastSeq ?? -1, ...session.map((message) => message.seq));
       context.print(
-        shown.flatMap((message) => saidLines(speaker(message.role), message.text ?? "")),
+        shown.flatMap((message) =>
+          (message.role === "agent" ? agentSaidLines : saidLines)(
+            speaker(message.role),
+            message.text ?? "",
+          ),
+        ),
       );
     },
     printed: (role, turn) => {

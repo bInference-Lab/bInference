@@ -3,6 +3,7 @@ import { useNow } from "../app/use-now";
 import { MessageLine } from "../cards/card-line";
 import { useFormatter, useText } from "../i18n/console-text";
 import type { ChatEntry } from "./chat-entries";
+import { RichText } from "./rich-text";
 
 // A person's or the agent's text as it reads: each character a reader cannot see written out.
 function shownText(text: string): string {
@@ -44,7 +45,11 @@ function SaidEntry(props: {
       <span className="sr-only">
         {isOwner ? text("console.chat.fromOwner") : props.agentName}:{" "}
       </span>
-      <p className="break-words whitespace-pre-wrap">{shownText(entry.text)}</p>
+      {isOwner ? (
+        <p className="break-words whitespace-pre-wrap">{shownText(entry.text)}</p>
+      ) : (
+        <RichText text={entry.text} />
+      )}
       {images === 0 ? null : (
         <p className="text-xs text-muted-foreground">
           {text("console.chat.images", { count: images })}
@@ -56,7 +61,8 @@ function SaidEntry(props: {
 
 /**
  * The chat with one agent, oldest first: the owner's messages on the right, the agent's answers on
- * the left, and its status lines between them. Model text shows as text, never as markup. Screen
+ * the left, and its status lines between them. The agent's text shows its Markdown drawn as
+ * elements, never as HTML from the text (decision 0383); the owner's shows as written. Screen
  * readers hear each new entry.
  */
 export function ChatThread(props: {
@@ -103,7 +109,7 @@ export function WorkingLine(props: {
       {draft === undefined || draft.trim() === "" ? (
         <p className="text-muted-foreground">{text("console.chat.working", { seconds })}</p>
       ) : (
-        <p className="break-words whitespace-pre-wrap">{shownText(draft)}</p>
+        <RichText text={draft} />
       )}
     </div>
   );

@@ -1,9 +1,9 @@
+import type { RichLine } from "@binference/rich-text";
 import { type Api, InputFile } from "grammy";
 import { isEntitiesUnparsed } from "../api/bot-api-error.schema.js";
 import { callBotApi } from "../api/call-bot-api.js";
 import { unlessGone } from "../api/unless-gone.js";
 import { richHtmlOf, richPlainOf } from "../format/rich-html.js";
-import type { RichLine } from "../format/rich-line.js";
 import { splitRichLines } from "../split/split-rich-lines.js";
 import { splitText } from "../split/split-text.js";
 import type { ReplyTarget } from "./decide-update.js";

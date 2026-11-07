@@ -20,6 +20,7 @@
     "@binference/client": "workspace:*",
     "@binference/i18n": "workspace:*",
     "@binference/protocol": "workspace:*",
+    "@binference/rich-text": "workspace:*",
     "@fontsource-variable/hanken-grotesk": "catalog:",
     "@playwright/test": "catalog:",
     "@tailwindcss/vite": "catalog:",

@@ -1,4 +1,3 @@
-import { escapeHtml } from "./escape-html.js";
 import {
   isSameBlock,
   isSameMark,
@@ -6,7 +5,8 @@ import {
   type RichLine,
   type RichMark,
   type RichRun,
-} from "./rich-line.js";
+} from "@binference/rich-text";
+import { escapeHtml } from "./escape-html.js";
 
 // The only tags the agent's text ever shows in, each with its fixed opening and closing.
 const simpleTags = {

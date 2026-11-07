@@ -65,9 +65,9 @@ export function tableGridOf(
   rows: readonly (readonly string[])[],
 ): readonly string[] {
   const table = [header, ...rows].map((row) => row.map(plainOf));
-  const columns = Math.max(...table.map((row) => row.length));
-  const widths = Array.from({ length: columns }, (_, column) =>
-    Math.max(leastWidth, ...table.map((row) => widthOf(row[column] ?? ""))),
+  const columns = Math.max(...table.map((row: readonly string[]) => row.length));
+  const widths = [...Array.from({ length: columns }).keys()].map((column) =>
+    Math.max(leastWidth, ...table.map((row: readonly string[]) => widthOf(row[column] ?? ""))),
   );
   const line = (row: readonly string[]): string =>
     `| ${widths.map((width, column) => pad(row[column] ?? "", width)).join(" | ")} |`;

@@ -32,8 +32,9 @@ Rules for this package:
   Never build HTML from a value. The one other source of HTML is the agent's chat text (decision
   0370): `src/format/rich-html.ts` writes it from the fixed tags of `RichMark` and `RichBlock`
   (`b`, `i`, `s`, `code`, `tg-spoiler`, `pre` with a letters-and-digits `language-` class, `a` with an `http:`
-  or `https:` address, `blockquote`) around text it escapes itself. The Markdown readers in
-  `src/format/` make runs and lines, never HTML; a tag the model writes stays text.
+  or `https:` address, `blockquote`) around text it escapes itself. The Markdown reader,
+  `@binference/rich-text`, which the console and terminal chat share, makes runs and lines, never
+  HTML; a tag the model writes stays text.
 - A fast command (`src/commands/`) runs the engine's operations only through the `OwnerCalls`
   port, never a store or a model: the engine runs each for the owner's numeric Telegram id, as the
   owner on Telegram. A command is a message the owner typed: an edit or a forward runs nothing,

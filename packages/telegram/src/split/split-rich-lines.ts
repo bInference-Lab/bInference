@@ -1,6 +1,6 @@
+import { isBlankLine, type RichLine, type RichRun } from "@binference/rich-text";
 import { escapeHtml } from "../format/escape-html.js";
 import { blockTags, marksLength, richHtmlOf } from "../format/rich-html.js";
-import { isBlankLine, type RichLine, type RichRun } from "../format/rich-line.js";
 import { maxMessageLength } from "./split-text.js";
 
 // Cuts a line too long for one message into lines that each fit, at whole characters. Each run

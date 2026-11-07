@@ -1,8 +1,8 @@
 import { displayOutsideText } from "@binference/i18n";
+import { richLinesOf } from "@binference/rich-text";
+import type { RichLine } from "@binference/rich-text";
 import { escapeHtml } from "../format/escape-html.js";
-import { richLinesOf } from "../format/markdown-lines.js";
 import { richHtmlOf, richPlainOf } from "../format/rich-html.js";
-import type { RichLine } from "../format/rich-line.js";
 import { splitRichLines } from "../split/split-rich-lines.js";
 
 /** One message of the agent's text: as Telegram HTML, and as plain text if Telegram refuses it. */

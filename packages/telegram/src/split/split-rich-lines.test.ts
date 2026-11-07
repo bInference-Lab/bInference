@@ -1,5 +1,5 @@
+import { richLinesOf } from "@binference/rich-text";
 import { describe, expect, it } from "vitest";
-import { richLinesOf } from "../format/markdown-lines.js";
 import { richHtmlOf, richPlainOf } from "../format/rich-html.js";
 import { parseFakeHtml } from "../testing/fake-html.js";
 import { splitRichLines } from "./split-rich-lines.js";

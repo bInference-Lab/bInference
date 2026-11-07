@@ -90,7 +90,7 @@
       "httpListener": true
     },
     "telegram": {
-      "imports": ["core", "chain", "protocol", "i18n", "engine", "grammy", "qr"],
+      "imports": ["core", "chain", "protocol", "i18n", "engine", "grammy", "qr", "rich-text"],
       "userText": true
     },
     "client": {
@@ -118,7 +118,7 @@
       }
     },
     "tui": {
-      "imports": ["core", "client", "protocol", "i18n", "string-width"],
+      "imports": ["core", "client", "protocol", "i18n", "rich-text", "string-width"],
       "userText": true
     },
     "console": {
@@ -126,6 +126,7 @@
         "client",
         "protocol",
         "i18n",
+        "rich-text",
         "react",
         "react-dom",
         "@tanstack/react-router",
@@ -182,6 +183,10 @@
     },
     "qr": {
       "imports": ["qr"],
+      "pure": true
+    },
+    "rich-text": {
+      "imports": [],
       "pure": true
     }
   },

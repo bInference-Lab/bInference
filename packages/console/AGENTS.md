@@ -8,8 +8,10 @@ The web console: the owner's confirmations, ledger and limits in a browser, serv
 The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
 
 - It is a client like any other: it reaches the engine only through `@binference/client` over the
-  page's own `/ws`, and it decides nothing the engine decides. It imports `client`, `protocol`
-  and `i18n`, never `core` or another package.
+  page's own `/ws`, and it decides nothing the engine decides. It imports `client`, `protocol`,
+  `i18n` and `rich-text`, never `core` or another package. The agent's answers show their
+  Markdown through `rich-text`, the reader the Telegram bot uses, drawn as elements
+  (`src/chat/rich-text.tsx`, decision 0383).
 - The stack is React, Vite, Tailwind, shadcn on Base UI, TanStack Router and TanStack Query.
   Add a component with the shadcn CLI (`pnpm dlx shadcn@<version> add <name>` in this folder).
   `src/components/ui/` stays as the CLI writes it: lint, format, dead-code and duplicate checks

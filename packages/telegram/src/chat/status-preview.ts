@@ -1,5 +1,5 @@
 import { displayOutsideText } from "@binference/i18n";
-import type { RichLine, RichMark } from "../format/rich-line.js";
+import type { RichLine, RichMark } from "@binference/rich-text";
 import { type ChatHtml, chatHtmlOfLines, shownLinesOf } from "./chat-html.js";
 
 /**

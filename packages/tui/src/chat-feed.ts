@@ -1,7 +1,7 @@
 import { type ChatPush, chatPushOf, type PushFrame, questionPushOf } from "@binference/protocol";
 import type { AgentQuestion } from "./agent-question.js";
 import type { ChatContext } from "./chat-context.js";
-import { saidLines, statusLine } from "./chat-lines.js";
+import { agentSaidLines, statusLine } from "./chat-lines.js";
 import { type ChatState, withoutRunning } from "./chat-state.js";
 import type { ChatTranscript } from "./chat-transcript.js";
 import { depositLines } from "./deposit-lines.js";
@@ -56,7 +56,7 @@ function onChatPush(context: ChatContext, parts: ChatFeedParts, push: ChatPush):
         return;
       }
       parts.transcript.printed("agent", push.turn);
-      print(saidLines(context.agentName, push.text));
+      print(agentSaidLines(context.agentName, push.text));
       store.update(answered);
       return;
     case "chat/status":

@@ -11,7 +11,8 @@ interface Fence {
 
 /** The lines read so far, and the number for the next quote or code block. */
 interface Reading {
-  readonly lines: RichLine[];
+  /** Keeps lines read, in order. */
+  readonly add: (...lines: readonly RichLine[]) => void;
   readonly nextBlock: () => number;
 }
 
@@ -54,7 +55,7 @@ function readCode(source: readonly string[], at: number, reading: Reading): numb
   let next = at + 1;
   while (next < source.length && !closesFence(source[next] ?? "", fence)) {
     const text = source[next] ?? "";
-    reading.lines.push({ block, runs: text === "" ? [] : [{ text, marks: [] }] });
+    reading.add({ block, runs: text === "" ? [] : [{ text, marks: [] }] });
     next += 1;
   }
   return next + 1;
@@ -110,7 +111,7 @@ function paragraphLines(text: string, block: RichBlock): readonly RichLine[] {
       }
     });
   }
-  return lines.map((runs) => ({ block, runs }));
+  return lines.map((runs: readonly RichRun[]) => ({ block, runs }));
 }
 
 // Reads lines of text: each line that stands alone, and paragraphs of the lines between them.
@@ -118,7 +119,7 @@ function readFlow(source: readonly string[], block: RichBlock, reading: Reading)
   let paragraph: string[] = [];
   const endParagraph = () => {
     if (paragraph.length > 0) {
-      reading.lines.push(...paragraphLines(paragraph.join("\n"), block));
+      reading.add(...paragraphLines(paragraph.join("\n"), block));
       paragraph = [];
     }
   };
@@ -128,7 +129,7 @@ function readFlow(source: readonly string[], block: RichBlock, reading: Reading)
       paragraph.push(line);
     } else {
       endParagraph();
-      reading.lines.push({ block, runs });
+      reading.add({ block, runs });
     }
   }
   endParagraph();
@@ -163,7 +164,7 @@ function readTable(source: readonly string[], at: number, reading: Reading): num
   const rows = source.slice(at + 2, next).map(tableCellsOf);
   const block: RichBlock = { kind: "code", block: reading.nextBlock() };
   for (const text of tableGridOf(tableCellsOf(source[at] ?? ""), rows)) {
-    reading.lines.push({ block, runs: [{ text, marks: [] }] });
+    reading.add({ block, runs: [{ text, marks: [] }] });
   }
   return next;
 }
@@ -183,7 +184,7 @@ function readText(source: readonly string[], at: number, reading: Reading): numb
 }
 
 /**
- * Reads the agent's Markdown into lines for Telegram: fenced code blocks, quotes, tables as a code
+ * Reads the agent's Markdown into lines for every surface: fenced code blocks, quotes, tables as a code
  * block's fixed-width grid, headings as plain lines, bullet items as `•` lines and numbered items
  * with their numbers, nested items two spaces in per level, and paragraphs with their inline
  * styles. A fence left open runs to the end; anything that is no Markdown stays as its text.
@@ -191,7 +192,13 @@ function readText(source: readonly string[], at: number, reading: Reading): numb
 export function richLinesOf(text: string): readonly RichLine[] {
   const source = text.split("\n");
   let blocks = 0;
-  const reading: Reading = { lines: [], nextBlock: () => (blocks += 1) };
+  const read: RichLine[] = [];
+  const reading: Reading = {
+    add: (...lines) => {
+      read.push(...lines);
+    },
+    nextBlock: () => (blocks += 1),
+  };
   let at = 0;
   while (at < source.length) {
     const line = source[at] ?? "";
@@ -205,5 +212,5 @@ export function richLinesOf(text: string): readonly RichLine[] {
       at = readText(source, at, reading);
     }
   }
-  return reading.lines;
+  return read;
 }

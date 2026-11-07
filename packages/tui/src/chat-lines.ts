@@ -10,6 +10,7 @@ import {
   questionLimits,
   type QuestionView,
 } from "@binference/protocol";
+import { richLinesOf } from "@binference/rich-text";
 import type { ScreenLine } from "./chat-screen.js";
 
 // The most characters of the agent's name a line shows (spec 4, section 1).
@@ -39,6 +40,25 @@ function outsideLines(text: string, most = Number.POSITIVE_INFINITY): readonly s
   const characters = Array.from(text);
   const kept = characters.length > most ? `${characters.slice(0, most - 1).join("")}…` : text;
   return kept.split(/\r?\n/).map((line) => displayOutsideText(line, Number.POSITIVE_INFINITY));
+}
+
+// The agent's Markdown as a terminal shows it (decision 0383): read by the reader every surface
+// shares, its marks left out, a quote behind a bar and a code block indented.
+function plainOfMarkdown(text: string): string {
+  return richLinesOf(text)
+    .map((line) => {
+      const said = line.runs.map((run) => run.text).join("");
+      if (line.block.kind === "quote") {
+        return `│ ${said}`;
+      }
+      return line.block.kind === "code" ? `    ${said}` : said;
+    })
+    .join("\n");
+}
+
+/** What the agent said, its Markdown drawn as plain lines, under its name. */
+export function agentSaidLines(speaker: string, text: string): readonly ScreenLine[] {
+  return saidLines(speaker, plainOfMarkdown(text));
 }
 
 /** What the owner or the agent said, under the speaker's name, each further line indented. */
