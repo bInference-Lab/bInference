@@ -8,6 +8,14 @@ describe("the agent's instructions", () => {
     );
   });
 
+  it("let the agent run the owner's commands with shell, and keep binference's folder out", () => {
+    const text = agentInstructions("en");
+    expect(text).toContain(
+      "With shell you also run commands on the owner's machine when the owner asks",
+    );
+    expect(text).toContain("never try to reach its keys, token or databases another way");
+  });
+
   it("run the first chat on the owner's messages and end it with the agent's own tools", () => {
     const text = agentInstructions("zh");
     expect(text).toContain("follow it in a turn that answers the owner's own message");
