@@ -44,8 +44,7 @@ export type {
   ReadyFrame,
 } from "./frames/ready-frame.schema.js";
 export { type ReplyFrame, replyFrameSchema } from "./frames/reply-frame.schema.js";
-export { idPrefixes, protocolIdSchema } from "./ids/id-prefixes.js";
-export type { IdKind, ProtocolId } from "./ids/id-prefixes.js";
+export { idPrefixes, protocolIdSchema, type IdKind, type ProtocolId } from "./ids/id-prefixes.js";
 export { type Locale, localeSchema } from "./locale.js";
 export { type McpTool, mcpTools } from "./mcp/mcp-tools.js";
 export type {
@@ -72,6 +71,7 @@ export {
 } from "./operations/image-operations.schema.js";
 export type { ImageContentType, ImagePart } from "./operations/image-operations.schema.js";
 export { imageTypeOf } from "./values/image-type.js";
+export * as fileLimits from "./operations/file-limits.js";
 export { webPushSubscriptionSchema } from "./operations/web-push-operations.schema.js";
 export type { WebPushSubscription } from "./operations/web-push-operations.schema.js";
 export { repeatedResult, storableArgs, storableResult } from "./operations/storable-args.js";
@@ -103,8 +103,7 @@ export {
   workspaceFiles,
 } from "./operations/agent-operations.schema.js";
 export type { AgentEditableFile, WorkspaceFile } from "./operations/agent-operations.schema.js";
-export { liveFactsViewSchema } from "./views/live-facts-view.schema.js";
-export type { LiveFactsView } from "./views/live-facts-view.schema.js";
+export { liveFactsViewSchema, type LiveFactsView } from "./views/live-facts-view.schema.js";
 export { assetSearchTermsSchema } from "./operations/market-operations.schema.js";
 export type { AssetSearchTerms } from "./operations/market-operations.schema.js";
 export { stakingOptionsTermsSchema } from "./operations/staking-operations.schema.js";
@@ -170,8 +169,7 @@ export type { ToolSentences } from "./tools/tool-sentences.js";
 export { checkProtocolVersion, protocolVersion } from "./versions/protocol-version.js";
 export { agentModeSchema, agentViewSchema } from "./views/agent-view.schema.js";
 export type { AgentMode, AgentView } from "./views/agent-view.schema.js";
-export { activityItemSchema } from "./views/activity-item.schema.js";
-export type { ActivityItem } from "./views/activity-item.schema.js";
+export { activityItemSchema, type ActivityItem } from "./views/activity-item.schema.js";
 export {
   alertConditionSchema,
   alertFiredSchema,

@@ -71,6 +71,8 @@ const keysReadOnUse: readonly string[] = [
   "network",
   // Each shell command reads the switch and the time limit as it starts.
   "shell",
+  // Each file call reads where the file tools may reach as it starts.
+  "files",
 ];
 
 // The keys spec 2 marks live that no part reads yet, so no running part holds an older value: the

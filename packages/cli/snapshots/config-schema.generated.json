@@ -1,5 +1,5 @@
 {
-  "version": 17,
+  "version": 18,
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object",
@@ -1078,6 +1078,24 @@
             "type": "integer",
             "minimum": 0,
             "maximum": 86400
+          }
+        },
+        "additionalProperties": false
+      },
+      "files": {
+        "description": "Where the agent's file tools reach.",
+        "default": {},
+        "type": "object",
+        "properties": {
+          "workspaceOnly": {
+            "description": "true keeps the agent's file reads, writes and edits inside its workspace; false lets them reach any file but binference's own folder.",
+            "default": false,
+            "type": "boolean"
+          },
+          "patchWorkspaceOnly": {
+            "description": "true keeps the agent's patches inside its workspace; false lets them change any file but binference's own folder.",
+            "default": true,
+            "type": "boolean"
           }
         },
         "additionalProperties": false

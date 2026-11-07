@@ -65,6 +65,12 @@ export interface ShellConfig {
   readonly timeoutSeconds: number;
 }
 
+/** Where the agent's file tools reach (decision 0386); binference's own folder never. */
+export interface FilesConfig {
+  readonly workspaceOnly: boolean;
+  readonly patchWorkspaceOnly: boolean;
+}
+
 /** Each plugin's settings by plugin id, checked by the plugin's own schema when it loads. */
 export type PluginsConfig = Readonly<Record<string, JsonObject>>;
 
@@ -206,6 +212,27 @@ export const shellSchema: z.ZodType<ShellConfig> = z
   })
   .prefault({})
   .describe("The agent's shell.");
+
+/** Parses `files`. */
+export const filesSchema: z.ZodType<FilesConfig> = z
+  .strictObject({
+    workspaceOnly: z
+      .boolean()
+      .prefault(false)
+      .describe(
+        "true keeps the agent's file reads, writes and edits inside its workspace; false lets " +
+          "them reach any file but binference's own folder.",
+      ),
+    patchWorkspaceOnly: z
+      .boolean()
+      .prefault(true)
+      .describe(
+        "true keeps the agent's patches inside its workspace; false lets them change any file " +
+          "but binference's own folder.",
+      ),
+  })
+  .prefault({})
+  .describe("Where the agent's file tools reach.");
 
 /** Parses `plugins`. */
 export const pluginsSchema: z.ZodType<PluginsConfig> = z

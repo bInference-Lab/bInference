@@ -5,7 +5,7 @@ description: "Every config key in config.json5: what it takes, its default and i
 
 <!-- Generated from the code by pnpm docs:gen. Never edit this file: change the code, then run pnpm docs:gen. -->
 
-This binference reads `config.json5` version 17. Each config key is set in the file, by its variable, or by `--set <key>=<value>`, and a later layer wins. A secret is always a secret source, never the secret itself.
+This binference reads `config.json5` version 18. Each config key is set in the file, by its variable, or by `--set <key>=<value>`, and a later layer wins. A secret is always a secret source, never the secret itself.
 
 ## `version`
 
@@ -208,6 +208,13 @@ The agent's shell.
 
 - `shell.run`: any lets the agent run commands on this machine, away from binference's own folder; off runs none. Takes one of "off", "any". Default: `"any"`. Variable: `BINFERENCE_SHELL__RUN`.
 - `shell.timeoutSeconds`: A command's time limit in seconds when the agent names none; 0 for none. Takes a number from 0 to 86400. Default: `1800`. Variable: `BINFERENCE_SHELL__TIMEOUT_SECONDS`.
+
+## `files`
+
+Where the agent's file tools reach.
+
+- `files.workspaceOnly`: true keeps the agent's file reads, writes and edits inside its workspace; false lets them reach any file but binference's own folder. Takes true or false. Default: `false`. Variable: `BINFERENCE_FILES__WORKSPACE_ONLY`.
+- `files.patchWorkspaceOnly`: true keeps the agent's patches inside its workspace; false lets them change any file but binference's own folder. Takes true or false. Default: `true`. Variable: `BINFERENCE_FILES__PATCH_WORKSPACE_ONLY`.
 
 ## `plugins`
 

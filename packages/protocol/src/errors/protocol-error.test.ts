@@ -45,6 +45,7 @@ describe("protocolErrorCodes", () => {
       "remote",
       "token",
       "shell",
+      "file",
       "internal",
     ]);
   });

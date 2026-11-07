@@ -1,9 +1,10 @@
 import { homedir } from "node:os";
-import { isAbsolute, join, sep } from "node:path";
+import { isAbsolute, join } from "node:path";
 import { BinferenceError, err, type HttpDownload, ok, type Result } from "@binference/core";
 import type { ViewImageRefusal, ViewImageSource } from "@binference/engine/chat";
 import { readFileBytes, realPathOf, type WalledPaths } from "@binference/platform";
 import { maxImageBytes } from "@binference/protocol";
+import { isInside } from "./compose-files.js";
 
 /** What the viewed images are read through on this machine. */
 export interface ViewImageParts {
@@ -12,11 +13,6 @@ export interface ViewImageParts {
   /** binference's own folder, which no viewed file may be inside, and its workspace, which may. */
   readonly walled: WalledPaths;
   readonly homeDir?: string;
-}
-
-// A path under one of the folders, the folder itself included.
-function isInside(path: string, folders: readonly string[]): boolean {
-  return folders.some((folder) => path === folder || path.startsWith(`${folder}${sep}`));
 }
 
 // A path as the shell reads it: `~` and `~/` are the home folder, a relative one is under it.

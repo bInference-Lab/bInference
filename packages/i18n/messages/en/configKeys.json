@@ -127,6 +127,9 @@
   "shell": "The agent's shell.",
   "shell.run": "any lets the agent run commands on this machine, away from binference's own folder; off runs none.",
   "shell.timeoutSeconds": "A command's time limit in seconds when the agent names none; 0 for none.",
+  "files": "Where the agent's file tools reach.",
+  "files.workspaceOnly": "true keeps the agent's file reads, writes and edits inside its workspace; false lets them reach any file but binference's own folder.",
+  "files.patchWorkspaceOnly": "true keeps the agent's patches inside its workspace; false lets them change any file but binference's own folder.",
   "plugins": "Each plugin's settings, by plugin id.",
   "plugins.<plugin>.<setting>": "One plugin's settings, as its own schema reads them."
 }

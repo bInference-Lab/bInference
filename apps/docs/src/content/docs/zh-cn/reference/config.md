@@ -5,7 +5,7 @@ description: "config.json5 中的每个配置项：取值、默认值和环境�
 
 <!-- Generated from the code by pnpm docs:gen. Never edit this file: change the code, then run pnpm docs:gen. -->
 
-此版本的 binference 读取第 17 版的 `config.json5`。每个配置项可以在文件中、通过对应的变量或用 `--set <key>=<value>` 设置，后面的层优先。密钥始终写成密钥来源，从不写密钥本身。
+此版本的 binference 读取第 18 版的 `config.json5`。每个配置项可以在文件中、通过对应的变量或用 `--set <key>=<value>` 设置，后面的层优先。密钥始终写成密钥来源，从不写密钥本身。
 
 ## `version`
 
@@ -208,6 +208,13 @@ Agent 的命令行。
 
 - `shell.run`: any 让 Agent 在本机运行命令，不触及 binference 自己的文件夹；off 不运行任何命令。取值：以下之一："off", "any"。默认：`"any"`。变量：`BINFERENCE_SHELL__RUN`。
 - `shell.timeoutSeconds`: Agent 未指定时，一条命令的时限（秒）；0 表示不限。取值：0 到 86400 之间的数字。默认：`1800`。变量：`BINFERENCE_SHELL__TIMEOUT_SECONDS`。
+
+## `files`
+
+Agent 的文件工具能访问的范围。
+
+- `files.workspaceOnly`: true 让 Agent 的文件读取、写入和编辑只在其工作区内；false 允许访问 binference 自己的文件夹以外的任何文件。取值：true 或 false。默认：`false`。变量：`BINFERENCE_FILES__WORKSPACE_ONLY`。
+- `files.patchWorkspaceOnly`: true 让 Agent 的补丁只在其工作区内；false 允许修改 binference 自己的文件夹以外的任何文件。取值：true 或 false。默认：`true`。变量：`BINFERENCE_FILES__PATCH_WORKSPACE_ONLY`。
 
 ## `plugins`
 

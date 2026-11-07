@@ -7,10 +7,11 @@ import {
   type EngineShell,
   maskShellOutput,
 } from "@binference/engine/shell";
-import { isFolder, type ShellEnd, type ShellLauncher } from "@binference/platform";
+import { isFolder, type ShellEnd, type ShellLauncher, walledPaths } from "@binference/platform";
 import { english } from "viem/accounts";
 import type { BinferenceConfig } from "../config/schema/config.schema.js";
 import { asJson } from "../config/shown-config.js";
+import { machineFilesOf } from "./compose-files.js";
 import type { Opened, Opening } from "./open-engine-parts.js";
 
 /** What the agent's shell is built from on this machine. */
@@ -100,7 +101,8 @@ export function commandRunnerOf(parts: ShellParts): CommandRunner {
 /**
  * The agent's shell on this machine (decision 0378): commands in the owner's login shell through
  * the platform's launcher, behind its wall, with the engine's environment less binference's own
- * variables, starting in the owner's home folder, and the settings `shell` holds as each starts.
+ * variables, starting in the owner's home folder, and the settings `shell` holds as each starts;
+ * and the agent's files there, with the settings `files` holds at each call (decision 0386).
  */
 export function shellOf(opening: Opening, opened: Opened): EngineShell {
   const { host, platform } = opening;
@@ -111,5 +113,15 @@ export function shellOf(opening: Opening, opened: Opened): EngineShell {
     ...(host.homeDir === undefined ? {} : { homeDir: host.homeDir }),
     config,
   });
-  return { runner, settings: () => config().shell, logger: opened.log.logger };
+  const files = machineFilesOf({
+    walled: walledPaths(platform.stateFolder),
+    workspace: platform.stateFolder.workspace,
+    homeDir: host.homeDir ?? homedir(),
+  });
+  return {
+    runner,
+    settings: () => config().shell,
+    logger: opened.log.logger,
+    files: { files, settings: () => config().files },
+  };
 }

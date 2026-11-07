@@ -120,6 +120,14 @@ export const configMigrations: readonly ConfigMigration[] = [
       "the agent runs commands away from binference's own folder until the owner sets off.",
     edits: () => [],
   },
+  {
+    from: 17,
+    summary:
+      "Adds files, where the agent's file tools reach: reads, writes and edits anywhere but " +
+      "binference's own folder (workspaceOnly false), and patches inside the workspace " +
+      "(patchWorkspaceOnly true).",
+    edits: () => [],
+  },
 ];
 
 /** The version of `config.json5` this binference writes and reads. */

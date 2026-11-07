@@ -128,5 +128,8 @@
   "plugins.<plugin>.<setting>": "某个插件的设置，按该插件自己的格式读取。",
   "shell": "Agent 的命令行。",
   "shell.run": "any 让 Agent 在本机运行命令，不触及 binference 自己的文件夹；off 不运行任何命令。",
-  "shell.timeoutSeconds": "Agent 未指定时，一条命令的时限（秒）；0 表示不限。"
+  "shell.timeoutSeconds": "Agent 未指定时，一条命令的时限（秒）；0 表示不限。",
+  "files": "Agent 的文件工具能访问的范围。",
+  "files.workspaceOnly": "true 让 Agent 的文件读取、写入和编辑只在其工作区内；false 允许访问 binference 自己的文件夹以外的任何文件。",
+  "files.patchWorkspaceOnly": "true 让 Agent 的补丁只在其工作区内；false 允许修改 binference 自己的文件夹以外的任何文件。"
 }

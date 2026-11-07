@@ -1,0 +1,125 @@
+import { err, ok } from "@binference/core";
+import { imageTypeOf, type ProtocolErrorCode } from "@binference/protocol";
+import type { EngineHandler } from "../operations/engine-call.js";
+import { planEdits } from "./edit-plan.js";
+import type { FileSettings } from "./file-records.js";
+import { isBinary, maxFileBytes, readText, textOf } from "./file-text.js";
+import { runPatch } from "./patch-run.js";
+import type { FileRefusal, MachineFiles } from "./ports.js";
+import { readPage } from "./read-page.js";
+
+/** The handlers of the agent's file tools (protocol spec, section 7.11). */
+export interface FileHandlers {
+  readonly "file/read": EngineHandler<"file/read">;
+  readonly "file/write": EngineHandler<"file/write">;
+  readonly "file/edit": EngineHandler<"file/edit">;
+  readonly "file/patch": EngineHandler<"file/patch">;
+}
+
+/**
+ * The agent's files as the composition root gives them (decision 0386): the machine's files and
+ * the owner's settings as they are now. Without them every file call is `file.unreadable`.
+ */
+export interface EngineFiles {
+  readonly files: MachineFiles;
+  readonly settings: () => FileSettings;
+}
+
+const refusalCodes: Readonly<Record<FileRefusal | "binary", ProtocolErrorCode>> = {
+  not_found: "file.not_found",
+  walled: "file.walled",
+  outside_workspace: "file.outside_workspace",
+  too_large: "file.too_large",
+  is_folder: "file.is_folder",
+  unreadable: "file.unreadable",
+  unwritable: "file.unwritable",
+  exists: "file.exists",
+  binary: "file.binary",
+};
+
+const encoder = new TextEncoder();
+
+// The answer of every file call on an engine with no files.
+const none = async () => Promise.resolve(err("file.unreadable" as const));
+
+function readHandler({ files, settings }: EngineFiles): EngineHandler<"file/read"> {
+  return async ({ args, signal }) => {
+    const call = { signal, workspaceOnly: settings().workspaceOnly };
+    const read = await files.read(args.path, { ...call, maxBytes: maxFileBytes });
+    if (!read.ok) {
+      return err(refusalCodes[read.error]);
+    }
+    const { path, bytes } = read.value;
+    if (imageTypeOf(bytes) !== undefined) {
+      return ok({ kind: "image", path });
+    }
+    if (isBinary(bytes)) {
+      return err("file.binary");
+    }
+    const request = {
+      ...(args.offset === undefined ? {} : { offset: args.offset }),
+      ...(args.limit === undefined ? {} : { limit: args.limit }),
+    };
+    return readPage({ path, text: textOf(bytes).text }, request);
+  };
+}
+
+function writeHandler({ files, settings }: EngineFiles): EngineHandler<"file/write"> {
+  return async ({ args, signal }) => {
+    const bytes = encoder.encode(args.content);
+    const written = await files.write(args.path, bytes, {
+      signal,
+      workspaceOnly: settings().workspaceOnly,
+    });
+    return written.ok
+      ? ok({ path: written.value, changed: true, bytes: bytes.byteLength })
+      : err(refusalCodes[written.error]);
+  };
+}
+
+function editHandler({ files, settings }: EngineFiles): EngineHandler<"file/edit"> {
+  return async ({ args, signal }) => {
+    const call = { signal, workspaceOnly: settings().workspaceOnly };
+    const read = await readText(files, args.path, call);
+    if (!read.ok) {
+      return err(refusalCodes[read.error]);
+    }
+    const { path, text, bom } = read.value;
+    const plan = planEdits(bom + text, args.edits);
+    if (!plan.ok) {
+      return err(plan.error);
+    }
+    const bytes = encoder.encode(plan.value.text);
+    if (!plan.value.changed) {
+      return ok({ path, changed: false, bytes: bytes.byteLength, replaced: 0 });
+    }
+    const written = await files.write(args.path, bytes, call);
+    return written.ok
+      ? ok({ path, changed: true, bytes: bytes.byteLength, replaced: plan.value.replaced })
+      : err(refusalCodes[written.error]);
+  };
+}
+
+function patchHandler({ files, settings }: EngineFiles): EngineHandler<"file/patch"> {
+  return async ({ args, signal }) =>
+    ok(await runPatch(files, args.input, { signal, workspaceOnly: settings().patchWorkspaceOnly }));
+}
+
+/**
+ * The agent's file handlers (decision 0386): `file/read` pages a text file and names an image
+ * file for `image/view`; `file/write` writes a file whole; `file/edit` makes exact replacements;
+ * `file/patch` runs a patch, writing nothing until every change is found. Reads, writes and edits
+ * stay inside the workspace when the owner's `workspaceOnly` says so, patches when
+ * `patchWorkspaceOnly` does. Without files every call is `file.unreadable`.
+ */
+export function createFileHandlers(files: EngineFiles | undefined): FileHandlers {
+  if (files === undefined) {
+    return { "file/read": none, "file/write": none, "file/edit": none, "file/patch": none };
+  }
+  return {
+    "file/read": readHandler(files),
+    "file/write": writeHandler(files),
+    "file/edit": editHandler(files),
+    "file/patch": patchHandler(files),
+  };
+}

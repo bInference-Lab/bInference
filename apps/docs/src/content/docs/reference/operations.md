@@ -293,6 +293,15 @@ Every operation of the engine protocol, version 1, by domain. A client calls an 
 | `shell/run` | `agent` | read | any connection | engine |
 | `shell/job` | `agent` | read | any connection | engine |
 
+## `file`
+
+| Operation | Scope | Kind | Accepted | Answered by |
+| --- | --- | --- | --- | --- |
+| `file/read` | `agent` | read | any connection | engine |
+| `file/write` | `agent` | read | any connection | engine |
+| `file/edit` | `agent` | read | any connection | engine |
+| `file/patch` | `agent` | read | any connection | engine |
+
 ## `notes`
 
 | Operation | Scope | Kind | Accepted | Answered by |

@@ -35,6 +35,8 @@ import {
   remoteSchema,
   type ShellConfig,
   shellSchema,
+  filesSchema,
+  type FilesConfig,
   type TelemetryConfig,
   telemetrySchema,
   type UpdatesConfig,
@@ -74,6 +76,7 @@ export interface BinferenceConfig {
   readonly cex: CexConfig;
   readonly plugins: PluginsConfig;
   readonly shell: ShellConfig;
+  readonly files: FilesConfig;
 }
 
 /** What a cross-key rule adds to a zod issue, so it maps to a `required` problem. */
@@ -122,6 +125,7 @@ export const configSchema: z.ZodType<BinferenceConfig> = z
     logging: loggingSchema,
     cex: cexSchema,
     shell: shellSchema,
+    files: filesSchema,
     plugins: pluginsSchema,
   })
   .superRefine(requireTogether)

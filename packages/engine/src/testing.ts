@@ -161,6 +161,12 @@ export { createMemoryOwnerImages } from "./fakes/memory-owner-images.js";
 export { createMemoryLaunchImages } from "./fakes/memory-launch-images.js";
 export { createMemoryViewImages } from "./fakes/memory-view-images.js";
 export { viewImageSourceContract } from "./contracts/view-image-source-contract.js";
+export { createMemoryFiles, memoryFilePlaces } from "./fakes/memory-files.js";
+export { machineFilesContract } from "./contracts/machine-files-contract.js";
+export type {
+  MachineFilesHarness,
+  MachineFilesSubject,
+} from "./contracts/machine-files-contract.js";
 export type {
   ViewImageSourceHarness,
   ViewImageSourceSubject,

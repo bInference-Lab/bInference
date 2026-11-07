@@ -8,6 +8,7 @@ import { type BridgeOperationShapes, bridgeOperations } from "./bridge-operation
 import { type ChatOperationShapes, chatOperations } from "./chat-operations.schema.js";
 import { type DepositOperationShapes, depositOperations } from "./deposit-operations.schema.js";
 import { type EngineOperationShapes, engineOperations } from "./engine-operations.schema.js";
+import { type FileOperationShapes, fileOperations } from "./file-operations.schema.js";
 import { type ImageOperationShapes, imageOperations } from "./image-operations.schema.js";
 import { type IntentOperationShapes, intentOperations } from "./intent-operations.schema.js";
 import {
@@ -57,6 +58,7 @@ export interface OperationShapes
     ImageOperationShapes,
     ReasoningOperationShapes,
     ShellOperationShapes,
+    FileOperationShapes,
     DepositOperationShapes,
     QuestionOperationShapes,
     NoteOperationShapes,
@@ -93,6 +95,7 @@ export const operations: OperationTable<OperationShapes> = {
   ...imageOperations,
   ...reasoningOperations,
   ...shellOperations,
+  ...fileOperations,
   ...depositOperations,
   ...questionOperations,
   ...noteOperations,

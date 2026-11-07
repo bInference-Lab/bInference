@@ -9,6 +9,7 @@ import {
 } from "./chat-examples.js";
 import { depositExamples } from "./deposit-examples.js";
 import { agentExamples, engineExamples, walletExamples } from "./engine-examples.js";
+import { fileExamples } from "./file-examples.js";
 import {
   bridgeExamples,
   launchDraftExamples,
@@ -44,6 +45,7 @@ export const operationExamples: { readonly [N in OperationName]: WireExample } =
   ...imageExamples,
   ...reasoningExamples,
   ...shellExamples,
+  ...fileExamples,
   ...depositExamples,
   ...questionExamples,
   ...noteExamples,
