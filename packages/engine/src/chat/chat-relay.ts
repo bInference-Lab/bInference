@@ -15,6 +15,7 @@ import { createImageHold } from "./image-hold.js";
 import { createMadeImageHandlers, type MadeImageHandlers } from "./made-images.js";
 import { createOwnerChatHandlers, type OwnerChatHandlers } from "./owner-chat-handlers.js";
 import { createRuntimeChatHandlers, type RuntimeChatHandlers } from "./runtime-chat-handlers.js";
+import { createSentFileHandlers, type SentFileHandlers } from "./sent-files.js";
 import { createViewImageHandlers, type ViewImageHandlers } from "./view-image-handlers.js";
 
 /** The chat operations the engine answers itself; the routed ones reach the runtime. */
@@ -26,7 +27,8 @@ export interface ChatHandlers
     ViewImageHandlers,
     CredentialRequestHandlers,
     CredentialStoreHandlers,
-    MadeImageHandlers {}
+    MadeImageHandlers,
+    SentFileHandlers {}
 
 /** The engine's relay of chat between the surfaces and the agent runtime. */
 export interface ChatRelay {
@@ -115,6 +117,7 @@ export function createChatRelay(options: ChatRelayOptions): ChatRelay {
         ...(options.viewImages === undefined ? {} : { source: options.viewImages }),
       }),
       ...createMadeImageHandlers(options),
+      ...createSentFileHandlers(options),
       ...createCredentialRequestHandlers(options),
       ...createCredentialStoreHandlers(options),
     },

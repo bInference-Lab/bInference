@@ -1,10 +1,15 @@
 import { z } from "zod";
+import { maxSentFiles } from "../operations/file-limits.js";
 import {
   type ImageContentType,
   imageContentTypeSchema,
   maxImagePromptChars,
   maxImagesPerMessage,
 } from "../operations/image-operations.schema.js";
+import {
+  type SentFileView,
+  sentFileViewSchema,
+} from "../operations/sent-file-operations.schema.js";
 import { type AgentMode, agentModeSchema } from "./agent-view.schema.js";
 import { type PortableChart, portableChartSchema } from "./portable-chart.schema.js";
 import { type WalletView, walletViewSchema } from "./wallet-view.schema.js";
@@ -88,6 +93,14 @@ export type ChatPush =
       readonly images: readonly MadeImageView[];
     }
   | {
+      readonly kind: "chat/files";
+      readonly agent: string;
+      readonly turn: string;
+      /** The line the agent said the files are (decision 0400). */
+      readonly caption: string;
+      readonly files: readonly SentFileView[];
+    }
+  | {
       readonly kind: "chat/turnEnded";
       readonly agent: string;
       readonly turn: string;
@@ -148,6 +161,14 @@ const pushSchema = z.discriminatedUnion("kind", [
     }),
   }),
   z.looseObject({
+    kind: z.literal("chat/files"),
+    data: z.looseObject({
+      ...at,
+      caption: z.string().min(1).max(500),
+      files: z.array(sentFileViewSchema).min(1).max(maxSentFiles),
+    }),
+  }),
+  z.looseObject({
     kind: z.literal("chat/turnEnded"),
     data: z.looseObject({ ...at, failedTool: z.string().min(1).max(128).optional() }),
   }),
@@ -199,6 +220,10 @@ export function chatPushOf(push: {
   if (read.kind === "chat/images") {
     const { agent, turn, prompt, images } = read.data;
     return { kind: read.kind, agent, turn, prompt, images };
+  }
+  if (read.kind === "chat/files") {
+    const { agent, turn, caption, files } = read.data;
+    return { kind: read.kind, agent, turn, caption, files };
   }
   const { agent, turn, failedTool } = read.data;
   return { kind: read.kind, agent, turn, ...failedOf(failedTool) };

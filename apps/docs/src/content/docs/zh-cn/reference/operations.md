@@ -319,6 +319,8 @@ description: "引擎协议的每个操作：调用所需的权限范围、操作
 | `file/write` | `agent` | 读取 | 任何连接 | 引擎 |
 | `file/edit` | `agent` | 读取 | 任何连接 | 引擎 |
 | `file/patch` | `agent` | 读取 | 任何连接 | 引擎 |
+| `file/send` | `agent` | 读取 | 任何连接 | 引擎 |
+| `file/fetch` | `read` | 读取 | 任何连接 | 引擎 |
 
 ## `credential`
 

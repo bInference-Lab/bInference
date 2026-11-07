@@ -27,7 +27,8 @@ export interface EngineFiles {
   readonly settings: () => FileSettings;
 }
 
-const refusalCodes: Readonly<Record<FileRefusal | "binary", ProtocolErrorCode>> = {
+/** The error code each refusal of the machine's files answers with. */
+export const fileRefusalCodes: Readonly<Record<FileRefusal | "binary", ProtocolErrorCode>> = {
   not_found: "file.not_found",
   walled: "file.walled",
   outside_workspace: "file.outside_workspace",
@@ -49,7 +50,7 @@ function readHandler({ files, settings }: EngineFiles): EngineHandler<"file/read
     const call = { signal, workspaceOnly: settings().workspaceOnly };
     const read = await files.read(args.path, { ...call, maxBytes: maxFileBytes });
     if (!read.ok) {
-      return err(refusalCodes[read.error]);
+      return err(fileRefusalCodes[read.error]);
     }
     const { path, bytes } = read.value;
     if (imageTypeOf(bytes) !== undefined) {
@@ -80,7 +81,7 @@ function writeHandler({ files, settings }: EngineFiles): EngineHandler<"file/wri
     const written = await writeChecked(files, file, call);
     return written.ok
       ? ok({ path: written.value, changed: true, bytes: bytes.byteLength })
-      : err(refusalCodes[written.error]);
+      : err(fileRefusalCodes[written.error]);
   };
 }
 
@@ -89,7 +90,7 @@ function editHandler({ files, settings }: EngineFiles): EngineHandler<"file/edit
     const call = { signal, workspaceOnly: settings().workspaceOnly };
     const read = await readText(files, args.path, call);
     if (!read.ok) {
-      return err(refusalCodes[read.error]);
+      return err(fileRefusalCodes[read.error]);
     }
     const { path, text, bom } = read.value;
     const outcome = planEdits(bom + text, args.edits);
@@ -106,7 +107,7 @@ function editHandler({ files, settings }: EngineFiles): EngineHandler<"file/edit
     const written = await writeChecked(files, { path: args.path, bytes }, call);
     return written.ok
       ? ok({ path, changed: true, bytes: bytes.byteLength, replaced: plan.replaced })
-      : err(refusalCodes[written.error]);
+      : err(fileRefusalCodes[written.error]);
   };
 }
 

@@ -39,6 +39,7 @@ import {
   type ReasoningOperationShapes,
   reasoningOperations,
 } from "./reasoning-operations.schema.js";
+import { type SentFileOperationShapes, sentFileOperations } from "./sent-file-operations.schema.js";
 import { type SettingsOperationShapes, settingsOperations } from "./settings-operations.schema.js";
 import { type ShellOperationShapes, shellOperations } from "./shell-operations.schema.js";
 import { type StakingOperationShapes, stakingOperations } from "./staking-operations.schema.js";
@@ -69,6 +70,7 @@ export interface OperationShapes
     ReasoningOperationShapes,
     ShellOperationShapes,
     FileOperationShapes,
+    SentFileOperationShapes,
     ChartOperationShapes,
     CredentialOperationShapes,
     DepositOperationShapes,
@@ -109,6 +111,7 @@ export const operations: OperationTable<OperationShapes> = {
   ...reasoningOperations,
   ...shellOperations,
   ...fileOperations,
+  ...sentFileOperations,
   ...chartOperations,
   ...credentialOperations,
   ...depositOperations,

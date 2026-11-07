@@ -319,6 +319,8 @@ Every operation of the engine protocol, version 1, by domain. A client calls an 
 | `file/write` | `agent` | read | any connection | engine |
 | `file/edit` | `agent` | read | any connection | engine |
 | `file/patch` | `agent` | read | any connection | engine |
+| `file/send` | `agent` | read | any connection | engine |
+| `file/fetch` | `read` | read | any connection | engine |
 
 ## `credential`
 

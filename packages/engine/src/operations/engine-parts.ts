@@ -96,11 +96,13 @@ function budgetsOf(options: EngineOptions): {
 // views, where the images it makes are saved, and whether a community plugin speaks in its turns.
 function agentSideOf(
   options: EngineOptions,
-): Pick<ChatRelayOptions, "viewImages" | "madeImageFiles" | "communityPluginsOn"> {
+): Pick<ChatRelayOptions, "viewImages" | "madeImageFiles" | "sentFiles" | "communityPluginsOn"> {
   const { viewImages, shell, communityPluginsOn } = options;
   return {
     ...(viewImages === undefined ? {} : { viewImages }),
-    ...(shell?.files === undefined ? {} : { madeImageFiles: shell.files.files }),
+    ...(shell?.files === undefined
+      ? {}
+      : { madeImageFiles: shell.files.files, sentFiles: shell.files }),
     ...(communityPluginsOn === undefined ? {} : { communityPluginsOn }),
   };
 }

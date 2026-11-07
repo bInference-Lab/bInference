@@ -11,6 +11,7 @@ import type { EngineCall, EngineHandler } from "../operations/engine-call.js";
 import { type ChatRelayOptions, chatTopic } from "./chat-relay-parts.js";
 import { wakeWithMessage } from "./engine-message.js";
 import { imagePartOf } from "./image-part.js";
+import { keepBounded } from "./keep-bounded.js";
 import { showHandler } from "./shown-images.js";
 
 /** An image the agent made or showed, as `chat/images` names it. */
@@ -76,16 +77,6 @@ function madeText(prompt: string, made: readonly MadeImageView[], failed?: strin
 interface MadeState {
   readonly arriving: Map<string, Arriving>;
   readonly saved: Map<string, SavedImage>;
-}
-
-function keepBounded<T>(map: Map<string, T>, entry: readonly [string, T], most: number): void {
-  const [key, value] = entry;
-  map.delete(key);
-  map.set(key, value);
-  // A Map keeps the order its keys came in: the first is the oldest.
-  for (const oldest of [...map.keys()].slice(0, Math.max(0, map.size - most))) {
-    map.delete(oldest);
-  }
 }
 
 // The image's bytes so far with this part's bytes added, or why the part does not fit.
