@@ -4,7 +4,11 @@ import { toFile } from "openai";
 import type { RuntimeModels } from "../control/runtime-settings.schema.js";
 import type { ModelUsage } from "../loop/model-event.js";
 import { createChatClient } from "./chat-completions-transport.js";
-import { type ChatPoster, chatImageMaker, type ImageChatBody } from "./chat-image-making.js";
+import {
+  type GatewayImageBody,
+  type GatewayImageClient,
+  gatewayImageMaker,
+} from "./gateway-image-making.js";
 import { baseUrlOf } from "./model-transport-for.js";
 import type { StreamingHttp } from "./ports.js";
 
@@ -146,7 +150,7 @@ function makerOn(options: {
   };
 }
 
-// The bInference gateway serves image models through chat completions (decision 0397).
+// The bInference gateway makes images through its own image endpoint (decision 0398).
 function gatewayMakerOn(
   provider: RuntimeModels["providers"][string],
   names: { readonly name: string; readonly model: string },
@@ -160,16 +164,17 @@ function gatewayMakerOn(
     http: parts.http,
     clock: parts.clock,
   });
-  const poster: ChatPoster = {
-    post: async (body: ImageChatBody, signal) => client.post("/chat/completions", { body, signal }),
+  const images: GatewayImageClient = {
+    models: async (signal) => client.get("/images/models", { signal }),
+    create: async (body: GatewayImageBody, signal) => client.post("/images", { body, signal }),
   };
-  return chatImageMaker(names, poster, failureOf);
+  return gatewayImageMaker(names, images, failureOf);
 }
 
 /**
  * The model that makes the agent's images under the settings in force (decision 0392):
  * `models.imageMaking` on an `openai` provider through OpenAI's Images API, or on the bInference
- * gateway through chat completions that ask for image output (decision 0397), with the same
+ * gateway through its own image endpoint (decision 0398), with the same
  * official client and fetch as the agent's chats. Answers why there is none, in a line the agent
  * reads, when the setting is missing or names another kind of provider.
  */

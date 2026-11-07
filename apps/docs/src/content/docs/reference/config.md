@@ -62,7 +62,7 @@ Model providers and the models the agent uses.
 - `models.main`: The model that talks and proposes. Takes a model written as provider/model. Default: none. Variable: `BINFERENCE_MODELS__MAIN`.
 - `models.fast`: The model that writes summaries, compacts and classifies. Takes a model written as provider/model. Default: none. Variable: `BINFERENCE_MODELS__FAST`.
 - `models.vision`: The model that reads images when the main one cannot. Takes a model written as provider/model. Default: none. Variable: `BINFERENCE_MODELS__VISION`.
-- `models.imageMaking`: The model that makes images: on the bInference gateway, one whose output includes images; on an openai provider, an Images API model. Takes a model written as provider/model. Default: none. Variable: `BINFERENCE_MODELS__IMAGE_MAKING`.
+- `models.imageMaking`: The model that makes images: on the bInference gateway, one of its image models; on an openai provider, an Images API model. Takes a model written as provider/model. Default: none. Variable: `BINFERENCE_MODELS__IMAGE_MAKING`.
 - `models.imageInput`: The models that take images as input; any other model gets the vision model's description. Takes a list in which each item is a model written as provider/model. Default: `[]`. Variable: `BINFERENCE_MODELS__IMAGE_INPUT`.
 - `models.fallbacks.main`: Models tried in order when the main one fails. Takes a list in which each item is a model written as provider/model. Default: `[]`. Variable: `BINFERENCE_MODELS__FALLBACKS__MAIN`.
 - `models.fallbacks.fast`: Models tried in order when the fast one fails. Takes a list in which each item is a model written as provider/model. Default: `[]`. Variable: `BINFERENCE_MODELS__FALLBACKS__FAST`.

@@ -135,7 +135,7 @@ export const modelsSchema: z.ZodType<ModelsConfig> = z
     fast: modelRole("writes summaries, compacts and classifies"),
     vision: modelRole("reads images when the main one cannot"),
     imageMaking: modelRole(
-      "makes images: on the bInference gateway, one whose output includes images; on an openai provider, an Images API model",
+      "makes images: on the bInference gateway, one of its image models; on an openai provider, an Images API model",
     ),
     imageInput: z
       .array(modelSchema)

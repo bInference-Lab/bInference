@@ -76,6 +76,12 @@ async function bodyOf(init: RequestInit | undefined): Promise<SentBody> {
   return { bodyBytes: new Uint8Array(await encoded.arrayBuffer()), contentType };
 }
 
+// The provider's model lists, the only GETs a model client may send: the gateway's image models
+// say which fields each takes (decision 0398).
+function isModelList(url: string, prefix: string): boolean {
+  return url === `${prefix}models` || url === `${prefix}images/models`;
+}
+
 function signalOf(init: RequestInit | undefined): AbortSignal {
   const signal = init?.signal;
   if (signal === undefined || signal === null) {
@@ -86,7 +92,8 @@ function signalOf(init: RequestInit | undefined): AbortSignal {
 
 /**
  * The `fetch` a model client calls, over the {@link StreamingHttp} port: only POST requests under
- * the provider's base URL, with a JSON text body or a multipart form and the client's signal,
+ * the provider's base URL, and a GET of its model lists with no body, with a JSON text body or a
+ * multipart form and the client's signal,
  * carrying only the
  * client's `accept` and `content-type` and the headers the transport sets itself. Anything else is
  * refused with `runtime.model_request_refused` before it leaves. The answer streams as it arrives.
@@ -94,11 +101,20 @@ function signalOf(init: RequestInit | undefined): AbortSignal {
 export function createModelFetch(options: ModelFetchOptions): ModelFetch {
   const prefix = prefixOf(options.baseUrl);
   return async (input, init) => {
-    if ((init?.method ?? "GET").toUpperCase() !== "POST") {
-      throw refused("only POST requests are sent");
-    }
+    const method = (init?.method ?? "GET").toUpperCase();
     const url = checkedUrl(input, prefix);
     const signal = signalOf(init);
+    if (method === "GET" && isModelList(url, prefix)) {
+      const headers = headersOf(init, options);
+      const answer = await options.http.open({ method: "GET", url, headers, signal });
+      return new Response(ReadableStream.from(answer.body), {
+        status: answer.status,
+        headers: answer.headers,
+      });
+    }
+    if (method !== "POST") {
+      throw refused("only POST requests, and a GET of the model list, are sent");
+    }
     const sent = await bodyOf(init);
     const headers = headersOf(init, options);
     const answer = await options.http.open(

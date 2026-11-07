@@ -48,7 +48,7 @@ describe("createModelFetch", () => {
   it.each([
     ["an address outside the base URL", "https://elsewhere.test/v1/chat/completions", init()],
     ["a base URL's look-alike", "https://models.example.test/v10/chat", init()],
-    ["a GET request", `${baseUrl}/models`, init({ method: "GET" })],
+    ["a GET of anything but the model list", `${baseUrl}/models/gpt-5`, init({ method: "GET" })],
     ["a body that is not text", `${baseUrl}/chat/completions`, init({ body: new Uint8Array(2) })],
     ["a request with no signal", `${baseUrl}/chat/completions`, init({ signal: null })],
   ])("refuses %s before it leaves", async (_case, url, given) => {
@@ -57,6 +57,16 @@ describe("createModelFetch", () => {
       expect.objectContaining({ code: "runtime.model_request_refused" }),
     );
     expect(http.requests).toHaveLength(0);
+  });
+
+  it("sends a GET of the model list with no body, as the provider's own client asks", async () => {
+    const http = createRecordedHttp([{ status: 200, headers: {}, chunks: ["{}"] }]);
+    const modelFetch = createModelFetch({ http, baseUrl, headers: {} });
+    const listed = await modelFetch(`${baseUrl}/models`, init({ method: "GET", body: null }));
+    expect([listed.status, http.requests.map(({ method, url }) => [method, url])]).toStrictEqual([
+      200,
+      [["GET", `${baseUrl}/models`]],
+    ]);
   });
 
   it("answers a status without a body as an empty answer", async () => {

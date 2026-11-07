@@ -132,5 +132,5 @@
   "files": "Agent 的文件工具能访问的范围。",
   "files.workspaceOnly": "true 让 Agent 的文件读取、写入和编辑只在其工作区内；false 允许访问 binference 自己的文件夹以外的任何文件。",
   "files.patchWorkspaceOnly": "true 让 Agent 的补丁只在其工作区内；false 允许修改 binference 自己的文件夹以外的任何文件。",
-  "models.imageMaking": "生成图片的模型：在 bInference 网关上，选输出包含图片的模型；在 openai 服务商上，选支持 Images API 的模型。"
+  "models.imageMaking": "生成图片的模型：在 bInference 网关上，选它的图片模型之一；在 openai 服务商上，选支持 Images API 的模型。"
 }

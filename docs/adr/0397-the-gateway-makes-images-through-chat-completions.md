@@ -1,6 +1,6 @@
 # 0397. The gateway makes images through chat completions
 
-Status: Accepted
+Status: Amended by 0398
 
 Accepted by the tech lead on 2026-11-07. Amends [decision 0392](../DECISIONS.md#d0392).
 
