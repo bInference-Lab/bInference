@@ -127,6 +127,96 @@ describe("the agent's credential requests", () => {
     expect(test.pushes.at(-1)?.data).toMatchObject({ outcome: "expired" });
   });
 
+  it("closes a request at the time the agent named, with no read", async () => {
+    const test = await setUp();
+    expectOk(await test.ask({ timeoutSeconds: 30 }));
+    await test.clock.advance(29_999);
+    expect(test.kinds()).toStrictEqual(["chat/credentialRequest"]);
+    await test.clock.advance(1);
+    expect(test.kinds()).toStrictEqual(["chat/credentialRequest", "chat/credentialRequestClosed"]);
+    expect(test.pushes.at(-1)?.data).toMatchObject({ outcome: "expired" });
+  });
+
+  it("answers an open request when the owner stores a credential of its name with no request", async () => {
+    const test = await setUp();
+    expectOk(await test.ask());
+    expectOk(
+      await test.handlers["credential/set"](
+        testCall({ name: "DUNE_API_KEY", value: "v", allowedHosts: ["api.dune.com"] }, owner),
+      ),
+    );
+    expect(
+      test.pushes.find((push) => push.kind === "chat/credentialRequestClosed")?.data,
+    ).toMatchObject({
+      outcome: "stored",
+    });
+    expect(JSON.stringify(test.pushes.filter((push) => push.topic === "inbox"))).toContain(
+      "the owner stored the credential DUNE_API_KEY",
+    );
+    expect(
+      expectOk(
+        await test.handlers["chat/openCredentialRequest"](testCall({ agent: testAgent }, owner)),
+      ),
+    ).toStrictEqual({});
+  });
+
+  it("asks with no reason, wakes the agent with no host kept, and refuses an answer to a closed request", async () => {
+    const test = await setUp();
+    const request = expectOk(
+      await test.handlers["turn/credential"](
+        testCall({ agent: testAgent, session, turn, name: "X_KEY" }, testCallers.runtime),
+      ),
+    );
+    expect(request.reason).toBeUndefined();
+    const answer = { agent: testAgent, request: request.request, value: "v", allowedHosts: [] };
+    expectOk(await test.handlers["credential/answer"](testCall(answer, owner)));
+    expect(JSON.stringify(test.pushes.at(-1))).toContain("it may be sent to no host yet");
+    const skip = { agent: testAgent, request: request.request };
+    expect(await test.handlers["credential/skip"](testCall(skip, owner))).toStrictEqual({
+      ok: false,
+      error: "credential.closed",
+    });
+  });
+
+  it("refuses an answer for an agent the inbox does not hold", async () => {
+    const test = await setUp();
+    const other = idSchema("agt").parse("agt_0190f1c2-3a4b-7c5d-8e6f-0000000000ff");
+    const request = expectOk(
+      await test.handlers["turn/credential"](
+        testCall({ agent: other, session, turn, name: "X_KEY" }, testCallers.runtime),
+      ),
+    );
+    const answer = { agent: other, request: request.request, value: "v", allowedHosts: [] };
+    expect(await test.handlers["credential/answer"](testCall(answer, owner))).toStrictEqual({
+      ok: false,
+      error: "agent.not_found",
+    });
+  });
+
+  it("refuses an answer with busy while the agent's inbox is full, and stores nothing", async () => {
+    const test = await setUp();
+    const request = expectOk(await test.ask());
+    const posts = Array.from({ length: 200 }, async (_, n) =>
+      test.agentInbox.add(
+        {
+          id: idSchema("msg").parse(`msg_0190f1c2-3a4b-7c5d-8e6f-${String(n).padStart(12, "0")}`),
+          agentId: testAgent,
+          kind: "inbox/message",
+          payload: { text: `m${String(n)}`, surface: "cli" },
+          atMs: test.clock.now(),
+          opens: session,
+        },
+        { signal: new AbortController().signal },
+      ),
+    );
+    expect((await Promise.all(posts)).every((added) => added.ok)).toBe(true);
+    const skip = { agent: testAgent, request: request.request };
+    expect(await test.handlers["credential/skip"](testCall(skip, owner))).toStrictEqual({
+      ok: false,
+      error: "protocol.busy",
+    });
+  });
+
   it("answers only the current runtime, and refuses when no store holds credentials", async () => {
     const test = await setUp();
     const args = { agent: testAgent, session, turn, name: "X_KEY" };
@@ -139,6 +229,13 @@ describe("the agent's credential requests", () => {
     expect(expectOk(await bare.handlers["credential/list"](testCall({}, owner)))).toStrictEqual({
       items: [],
     });
+    const request = idSchema("crq").parse("crq_0190f1c2-3a4b-7c5d-8e6f-000000000009");
+    const answer = { agent: testAgent, request };
+    expect(
+      await bare.handlers["credential/answer"](
+        testCall({ ...answer, value: "v", allowedHosts: [] }, owner),
+      ),
+    ).toStrictEqual({ ok: false, error: "credential.unavailable" });
     const set = { name: "X_KEY", value: "v", allowedHosts: [] };
     expect(await bare.handlers["credential/set"](testCall(set, owner))).toStrictEqual({
       ok: false,

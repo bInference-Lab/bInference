@@ -5,7 +5,10 @@ import { type AgentTool, defineTool } from "./define-tool.js";
 import { answerOrRefusal } from "./tool-answer.js";
 import type { AgentToolParts } from "./tool-client.js";
 
-/** The args of `credentials`: one action, with what a request or a deletion names. */
+/**
+ * The args of `credentials`: one action, with what a request or a deletion names; a request's time
+ * is held to 30 to 3600 seconds.
+ */
 interface CredentialsArgs {
   readonly action: "request" | "list" | "delete";
   readonly name?: string;
@@ -24,7 +27,7 @@ const credentialsArgs: z.ZodType<CredentialsArgs> = z.strictObject({
 
 const refusals: Readonly<Record<string, string>> = {
   "protocol.bad_args":
-    "Name the credential in capitals, digits and underscores, starting with a letter, as an environment variable is named; hosts are exact lower-case host names such as api.example.com; a reason is at most 300 characters; timeoutSeconds is 30 to 3600.",
+    "Name the credential in capitals, digits and underscores, starting with a letter, as an environment variable is named; hosts are exact lower-case host names such as api.example.com; a reason is at most 300 characters; at most 16 hosts.",
   "credential.unavailable": "This engine keeps no credentials. Tell the owner.",
   "credential.not_found": "No credential of that name is stored.",
 };
@@ -39,10 +42,10 @@ async function listed(parts: AgentToolParts, signal: AbortSignal): Promise<ToolO
   if (items.length === 0) {
     return { text: "No credential is stored.", isError: false };
   }
-  const lines = items.map(
-    (item) =>
-      `${item.name}: hosts ${item.allowedHosts.length === 0 ? "none" : item.allowedHosts.join(", ")}`,
-  );
+  const lines = items.map((item) => {
+    const hosts = item.allowedHosts.length === 0 ? "none" : item.allowedHosts.join(", ");
+    return `${item.name}: hosts ${hosts}; stored ${new Date(item.updatedAt).toISOString()}`;
+  });
   return {
     text: ["Stored credentials (names and hosts only):", ...lines].join("\n"),
     isError: false,
@@ -65,12 +68,15 @@ async function requested(
       name,
       ...(reason === undefined ? {} : { reason }),
       ...(allowedHosts === undefined ? {} : { allowedHosts }),
-      ...(timeoutSeconds === undefined ? {} : { timeoutSeconds }),
+      ...(timeoutSeconds === undefined
+        ? {}
+        : { timeoutSeconds: Math.min(3_600, Math.max(30, timeoutSeconds)) }),
     },
     { signal },
   );
   const hosts = asked.allowedHosts.length === 0 ? "no host" : asked.allowedHosts.join(", ");
-  const text = `The owner now sees a request for ${name} with ${hosts} proposed, and answers it in a masked prompt; the turn ends here. Their answer starts your next turn: stored, or no credential. Never ask for the value in the chat.`;
+  const minutes = String(Math.round((asked.closesAt - asked.createdAt) / 60_000));
+  const text = `The owner now sees a request for ${name} with ${hosts} proposed, and answers it in a masked prompt within ${minutes} minutes; the turn ends here. Their answer starts your next turn: stored, or no credential. If the time runs out, no turn starts and nothing is stored; check with action list before you ask again. Never ask for the value in the chat.`;
   return { text, isError: false, endsTurn: true };
 }
 

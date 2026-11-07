@@ -12,6 +12,7 @@ export interface CredentialRequestHandlers {
   readonly "credential/answer": EngineHandler<"credential/answer">;
   readonly "credential/skip": EngineHandler<"credential/skip">;
   readonly "chat/openCredentialRequest": EngineHandler<"chat/openCredentialRequest">;
+  readonly "credential/set": EngineHandler<"credential/set">;
 }
 
 /** What the credential requests read, write and push through. */
@@ -46,7 +47,7 @@ function answerText(request: OpenRequest, hosts: readonly string[] | undefined):
 async function wake(
   options: CredentialRequestOptions,
   answer: { readonly request: OpenRequest; readonly hosts?: readonly string[] },
-  call: EngineCall<"credential/answer" | "credential/skip">,
+  call: Pick<EngineCall<"credential/answer" | "credential/set">, "caller" | "signal">,
 ): Promise<Result<{ readonly session: Id<"ses">; readonly turn: Id<"trn"> }, ProtocolErrorCode>> {
   const { ids, clock } = options;
   const turn = ids.next("trn");
@@ -116,13 +117,38 @@ function requestHandler(
   };
 }
 
+// Stores a credential the owner set with no request, and answers each open request of its name.
+function setHandler(
+  options: CredentialRequestOptions,
+  requests: ReturnType<typeof createCredentialRequests>,
+): EngineHandler<"credential/set"> {
+  return async (call) => {
+    const { credentials, clock } = options;
+    if (credentials === undefined) {
+      return err("credential.unavailable");
+    }
+    const atMs = clock.now();
+    const { name, value, allowedHosts } = call.args;
+    await credentials.put({ name, value, allowedHosts, atMs }, call);
+    for (const request of requests.named(name)) {
+      requests.close(request.request);
+      pushClosed(options, request, "stored");
+      // oxlint-disable-next-line eslint/no-await-in-loop -- one wake-up at a time, in order
+      await wake(options, { request, hosts: allowedHosts }, call);
+    }
+    return ok({ name, allowedHosts, updatedAt: atMs });
+  };
+}
+
 /**
  * Creates the agent's credential requests (decision 0388): `turn/credential`, from the current
  * runtime only, asks the owner for a credential, one open request per agent for its time (15
- * minutes unless the agent names 30 to 3600 seconds), and
- * pushes it on the agent's chat topic. `credential/answer` stores the owner's value with the hosts
- * the owner kept, and `credential/skip` declines; each closes the request and starts the agent's
- * next turn with what arrived, never the value. A request no longer open is `credential.closed`.
+ * minutes unless the agent names 30 to 3600 seconds), and pushes it on the
+ * agent's chat topic; at its time it closes, `expired`. `credential/answer` stores the owner's
+ * value with the hosts the owner kept, and `credential/skip` declines; each closes the request and
+ * starts the agent's next turn with what arrived, never the value. `credential/set`, the owner's
+ * own over IPC, stores a credential with no request, and answers as stored every open request of
+ * its name. A request no longer open is `credential.closed`.
  */
 export function createCredentialRequestHandlers(
   options: CredentialRequestOptions,
@@ -136,9 +162,12 @@ export function createCredentialRequestHandlers(
   return {
     "turn/credential": requestHandler(options, requests),
     async "credential/answer"(call) {
+      if (options.credentials === undefined) {
+        return err("credential.unavailable");
+      }
       const open = openRequest(requests, call);
-      if (!open.ok || options.credentials === undefined) {
-        return open.ok ? err("credential.unavailable") : open;
+      if (!open.ok) {
+        return open;
       }
       const { value, allowedHosts } = call.args;
       const { name } = open.value;
@@ -156,6 +185,7 @@ export function createCredentialRequestHandlers(
       pushClosed(options, open.value, "skipped");
       return wake(options, { request: open.value }, call);
     },
+    "credential/set": setHandler(options, requests),
     "chat/openCredentialRequest": async (call) => {
       const open = requests.openOf(call.args.agent);
       return Promise.resolve(ok(open === undefined ? {} : { request: open }));

@@ -8,7 +8,6 @@ import type { CredentialStore } from "./ports.js";
 export interface CredentialStoreHandlers {
   readonly "credential/list": EngineHandler<"credential/list">;
   readonly "credential/delete": EngineHandler<"credential/delete">;
-  readonly "credential/set": EngineHandler<"credential/set">;
 }
 
 function viewOf(entry: CredentialEntry) {
@@ -17,9 +16,8 @@ function viewOf(entry: CredentialEntry) {
 
 /**
  * Creates the stored credentials' handlers (decision 0388): `credential/list` reads every name and
- * its hosts, never a value; `credential/delete` removes one with its value; `credential/set`, the
- * owner's own over IPC, stores one with no request. Without a store, the list is empty and every
- * change is `credential.unavailable`.
+ * its hosts, never a value; `credential/delete` removes one with its value. Without a store, the
+ * list is empty and a removal is `credential.unavailable`.
  */
 export function createCredentialStoreHandlers(options: {
   readonly credentials?: CredentialStore;
@@ -38,15 +36,6 @@ export function createCredentialStoreHandlers(options: {
       const { name } = call.args;
       const removed = await credentials.remove(name, { atMs: clock.now(), signal: call.signal });
       return removed ? ok({ name }) : err("credential.not_found");
-    },
-    async "credential/set"(call) {
-      if (credentials === undefined) {
-        return err("credential.unavailable");
-      }
-      const atMs = clock.now();
-      const { name, value, allowedHosts } = call.args;
-      await credentials.put({ name, value, allowedHosts, atMs }, call);
-      return ok({ name, allowedHosts, updatedAt: atMs });
     },
   };
 }
