@@ -165,5 +165,9 @@
   "remote.not_operator": "Tailscale refused binference's change because this account may not change its settings, so nothing changed. On Linux, run `sudo tailscale set --operator=$USER` once; on Windows, run binference as the account signed in to Tailscale. Then run `binference expose` again.",
   "remote.not_applied": "Tailscale did not take binference's change, so binference took back what it set. Run `tailscale serve status` to see what Tailscale holds, then `binference expose` again.",
   "token.not_found": "No client token has this ID, so nothing was revoked. To remove a client, run `binference mcp setup --remove`.",
+  "shell.off": "The agent's shell is off in this install. Set `shell.run` to `any` in config.json5 to turn it on.",
+  "shell.no_wall": "This machine cannot keep commands away from binference's own folder, so the agent's shell does not run here. On Linux, install bubblewrap (`bwrap`); on Windows, run binference in its Docker image.",
+  "shell.folder_missing": "That folder does not exist, so the command did not run. Name a folder that exists, or leave it out to run in your home folder.",
+  "shell.job_not_found": "No running or recent command has this ID; finished commands are kept for 30 minutes. Run the command again.",
   "internal.error": "binference hit an internal error. Run `binference report` to make a support file without secrets."
 }

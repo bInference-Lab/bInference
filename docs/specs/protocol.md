@@ -64,6 +64,7 @@ below.
 | `tok_` | client token  | `con_` | connection       |
 | `job_` | long job      | `bkp_` | backup           |
 | `ntc_` | notice        | `plg_` | installed plugin |
+| `shj_` | shell job     |        |                  |
 | `msg_` | inbox message | `qst_` | agent question   |
 
 <a id="section-2"></a>
@@ -1109,6 +1110,24 @@ Decided in [decision 0080](../DECISIONS.md#d0080).
 | `binanceAgent/record`    | `read`                              | ✓     |       | `{ agent, from, to }` → the verified track record, or a CSV file              |
 | `binanceAgent/report`    | `agent`                             | ✓     |       | sent by the hooks over IPC: one trade or one refused call                     |
 
+<a id="section-7-11"></a>
+
+### 7.11 Shell
+
+Decided in [decision 0378](../DECISIONS.md#d0378). Only the current agent runtime calls these. A
+command runs in the owner's shell behind the command wall; every answer carries outside content.
+They take no idempotency key, so no answer, and no command's output, is ever stored.
+
+| Operation   | Scope   | Write | Local | Args → result                                                                                                                                                                                                                                                                          |
+| ----------- | ------- | ----- | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `shell/run` | `agent` |       |       | `{ agent, command, folder?, waitMs?, background?, timeoutSeconds? }` → `ShellJobView`: `ended` when the command ended within `waitMs` (10 to 50,000 ms, 10,000 by default), else `running`; `background` answers at once; refused `shell.off`, `shell.no_wall`, `shell.folder_missing` |
+| `shell/job` | `agent` |       |       | `{ agent, job, action: "poll" \| "stop", waitMs? }` → `ShellJobView` with the output printed since the last read; `stop` ends the command and everything it started; `shell.job_not_found` once it is gone                                                                             |
+
+`ShellJobView` is `{ job, status, command, folder, startedAt, endedAt?, exitCode?, signal?,
+timedOut, stopped, output, outputCut }`. `output` keeps the newest 200,000 characters, seed
+phrases and private key blocks masked; `outputCut` says earlier output was dropped. A finished
+command is kept 30 minutes.
+
 <a id="section-8"></a>
 
 ## 8. Shared shapes
@@ -1476,6 +1495,7 @@ later unchanged.
 | `telegram` | `not_running`, `unreachable`                                                                                                                                                                                                                                                                                                                                                                   |
 | `remote`   | `tailscale_missing`, `logged_out`, `https_off`, `funnel_denied`, `funnel_port`, `port_taken`, `same_port`, `not_operator`, `not_applied`                                                                                                                                                                                                                                                       |
 | `token`    | `not_found`                                                                                                                                                                                                                                                                                                                                                                                    |
+| `shell`    | `off`, `no_wall`, `folder_missing`, `job_not_found`                                                                                                                                                                                                                                                                                                                                            |
 | `internal` | `error` (with a `details.ref` to find the log line)                                                                                                                                                                                                                                                                                                                                            |
 
 Policy and risk refusals are intent states with reasons, not errors (section 7.4). Their reason

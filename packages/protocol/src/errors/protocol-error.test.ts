@@ -44,6 +44,7 @@ describe("protocolErrorCodes", () => {
       "telegram",
       "remote",
       "token",
+      "shell",
       "internal",
     ]);
   });

@@ -279,6 +279,13 @@ Every operation of the engine protocol, version 1, by domain. A client calls an 
 | `inbox/take` | `agent` | write | any connection | engine |
 | `inbox/readImage` | `agent` | read | any connection | engine |
 
+## `shell`
+
+| Operation | Scope | Kind | Accepted | Answered by |
+| --- | --- | --- | --- | --- |
+| `shell/run` | `agent` | read | any connection | engine |
+| `shell/job` | `agent` | read | any connection | engine |
+
 ## `notes`
 
 | Operation | Scope | Kind | Accepted | Answered by |

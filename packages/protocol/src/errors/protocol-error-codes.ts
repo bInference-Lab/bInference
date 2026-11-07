@@ -169,6 +169,10 @@ export const protocolErrorCodes = [
   "remote.not_operator",
   "remote.not_applied",
   "token.not_found",
+  "shell.off",
+  "shell.no_wall",
+  "shell.folder_missing",
+  "shell.job_not_found",
   "internal.error",
 ] as const;
 

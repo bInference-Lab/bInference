@@ -31,6 +31,7 @@ export const idPrefixes = {
   connection: "con",
   backup: "bkp",
   installedPlugin: "plg",
+  shellJob: "shj",
 } as const;
 
 /** A thing that carries a protocol id, such as `intent` or `connection`. */

@@ -584,6 +584,10 @@
         "remote.not_operator",
         "remote.not_applied",
         "token.not_found",
+        "shell.off",
+        "shell.no_wall",
+        "shell.folder_missing",
+        "shell.job_not_found",
         "internal.error"
       ]
     },
@@ -614,7 +618,8 @@
         "dev",
         "con",
         "bkp",
-        "plg"
+        "plg",
+        "shj"
       ]
     },
     "call/engine/status": {
@@ -39001,6 +39006,312 @@
         "result": {
           "type": "object",
           "properties": {}
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "result"
+      ]
+    },
+    "call/shell/run": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "op": {
+          "type": "string",
+          "const": "shell/run"
+        },
+        "args": {
+          "type": "object",
+          "properties": {
+            "agent": {
+              "type": "string",
+              "pattern": "^agt_"
+            },
+            "command": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 8000
+            },
+            "folder": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4096
+            },
+            "waitMs": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 50000
+            },
+            "background": {
+              "type": "boolean"
+            },
+            "timeoutSeconds": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 86400
+            }
+          },
+          "required": [
+            "agent",
+            "command"
+          ],
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "op",
+        "args"
+      ],
+      "scope": "agent",
+      "kind": "read",
+      "transport": "any",
+      "answeredBy": "engine",
+      "since": "2026.10.0"
+    },
+    "reply/shell/run": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "reply"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "job": {
+              "type": "string",
+              "pattern": "^shj_"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "running",
+                "ended"
+              ]
+            },
+            "command": {
+              "type": "string"
+            },
+            "folder": {
+              "type": "string"
+            },
+            "startedAt": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "endedAt": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "exitCode": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "signal": {
+              "type": "string"
+            },
+            "timedOut": {
+              "type": "boolean"
+            },
+            "stopped": {
+              "type": "boolean"
+            },
+            "output": {
+              "type": "string",
+              "maxLength": 200000
+            },
+            "outputCut": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "job",
+            "status",
+            "command",
+            "folder",
+            "startedAt",
+            "timedOut",
+            "stopped",
+            "output",
+            "outputCut"
+          ]
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "result"
+      ]
+    },
+    "call/shell/job": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "op": {
+          "type": "string",
+          "const": "shell/job"
+        },
+        "args": {
+          "type": "object",
+          "properties": {
+            "agent": {
+              "type": "string",
+              "pattern": "^agt_"
+            },
+            "job": {
+              "type": "string",
+              "pattern": "^shj_"
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "poll",
+                "stop"
+              ]
+            },
+            "waitMs": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 50000
+            }
+          },
+          "required": [
+            "agent",
+            "job",
+            "action"
+          ],
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "op",
+        "args"
+      ],
+      "scope": "agent",
+      "kind": "read",
+      "transport": "any",
+      "answeredBy": "engine",
+      "since": "2026.10.0"
+    },
+    "reply/shell/job": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "reply"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "job": {
+              "type": "string",
+              "pattern": "^shj_"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "running",
+                "ended"
+              ]
+            },
+            "command": {
+              "type": "string"
+            },
+            "folder": {
+              "type": "string"
+            },
+            "startedAt": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "endedAt": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 9007199254740991
+            },
+            "exitCode": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "signal": {
+              "type": "string"
+            },
+            "timedOut": {
+              "type": "boolean"
+            },
+            "stopped": {
+              "type": "boolean"
+            },
+            "output": {
+              "type": "string",
+              "maxLength": 200000
+            },
+            "outputCut": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "job",
+            "status",
+            "command",
+            "folder",
+            "startedAt",
+            "timedOut",
+            "stopped",
+            "output",
+            "outputCut"
+          ]
         }
       },
       "required": [
