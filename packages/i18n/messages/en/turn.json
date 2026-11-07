@@ -77,6 +77,7 @@
   "tool.showChart": "Drawing a chart…",
   "tool.makeImage": "Making an image…",
   "tool.showImages": "Showing images…",
+  "tool.sendFiles": "Sending files…",
   "tool.deposit": "Showing where to deposit…",
   "tool.notesGet": "Reading a note…",
   "tool.notesForget": "Forgetting a note…"

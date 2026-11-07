@@ -3,7 +3,7 @@ import { z } from "zod";
 import type { ToolOutcome } from "../loop/turn-records.js";
 import { agentToolTexts } from "./agent-tool-texts.js";
 import { type AgentTool, defineTool } from "./define-tool.js";
-import { imagePlaceOf } from "./image-places.js";
+import { filePathOf } from "./image-places.js";
 import { answerOrRefusal } from "./tool-answer.js";
 import type { AgentToolParts } from "./tool-client.js";
 
@@ -27,12 +27,6 @@ const showArgs = z.strictObject({
   paths: z.array(z.string().trim().min(1).max(4_096)).min(1).max(mostImages),
   caption: z.string().trim().min(1).max(500),
 });
-
-// A path as the agent may write it, with a leading @ or as a file:// address, as the engine reads it.
-function pathOf(written: string): string {
-  const place = imagePlaceOf(/^file:/iu.test(written) ? { url: written } : { path: written });
-  return "path" in place ? place.path : written;
-}
 
 // The paths in groups of as many as one message holds, in order.
 function groupsOf(paths: readonly string[]): readonly (readonly string[])[] {
@@ -72,7 +66,7 @@ export function showImagesTool({ agent, client, turn }: AgentToolParts): AgentTo
     args: showArgs,
     run: async ({ paths, caption }, { signal }) => {
       const shown: string[] = [];
-      for (const group of groupsOf(paths.map(pathOf))) {
+      for (const group of groupsOf(paths.map(filePathOf))) {
         const args = { agent, turn: turn.turn, paths: group, caption };
         // oxlint-disable-next-line eslint/no-await-in-loop -- the groups reach the chat in order, and a refusal stops the rest
         const answer = await answerOrRefusal({ tool: "show_images", refusals }, async () => {

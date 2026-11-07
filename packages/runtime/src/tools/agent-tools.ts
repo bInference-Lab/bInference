@@ -17,6 +17,7 @@ import { orderCancelTool } from "./order-cancel-tool.js";
 import { pluginTools } from "./plugin-tools.js";
 import { readTools } from "./read-tools.js";
 import { scheduleTools } from "./schedule-tools.js";
+import { sendFilesTool } from "./send-files-tool.js";
 import { settingsChangeTool, settingsReadTool } from "./settings-tools.js";
 import { shellTools } from "./shell-tools.js";
 import { showImagesTool } from "./show-images-tool.js";
@@ -75,6 +76,7 @@ export function agentTools(parts: AgentToolParts): readonly AgentTool[] {
     launchDraftTool(parts),
     depositTool(parts),
     showImagesTool(parts),
+    sendFilesTool(parts),
     chartTool(parts),
     ...(parts.imageMaking === undefined ? [] : [makeImageTool(parts, parts.imageMaking)]),
     ...shellTools(parts),

@@ -47,6 +47,12 @@ export function imagePlaceOf(written: {
   return url === undefined ? { path: (path ?? "").replace(/^@/u, "") } : { url };
 }
 
+/** A file's path as the agent may write it, with a leading @ or as a `file://` address. */
+export function filePathOf(written: string): string {
+  const place = imagePlaceOf(/^file:/iu.test(written) ? { url: written } : { path: written });
+  return "path" in place ? place.path : written;
+}
+
 // An image written inside a `data:` URL, as `image/view` would answer it.
 function dataImage(url: string): Result<PagedImage, string> {
   const base64 = /^data:image\/[a-z]+;base64,([A-Za-z0-9+/=]+)$/u.exec(url)?.[1];

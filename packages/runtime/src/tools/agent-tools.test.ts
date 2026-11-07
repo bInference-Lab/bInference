@@ -38,6 +38,9 @@ const launchTerms = {
   pairWith: coin,
 };
 
+const showArgs = { paths: ["a.png"], caption: "Made today." };
+const sendArgs = { paths: ["trades.csv"], caption: "The trades." };
+const turnOf = { turn: toolTurn.turn };
 const shellJob = "shj_0190f1c2-3a4b-7c5d-8e6f-000000000001";
 const shellView = {
   job: shellJob,
@@ -128,6 +131,9 @@ const answers: Readonly<Record<string, FakeAnswer>> = {
   "launch/draft": { draft: "c2hvd24tb25jZS1h", expiresAt: 600_001 },
   "shell/run": shellView,
   "image/show": { images: [{ image: "a1b2c3d4e5f60718", path: "a.png" }] },
+  "file/send": {
+    files: [{ file: "c3d4e5f607182930", name: "trades.csv", bytes: 10, path: "/w/trades.csv" }],
+  },
   "turn/deposit": {
     wallets: [
       {
@@ -414,16 +420,9 @@ const mappings: readonly (readonly [string, JsonValue, JsonValue])[] = [
     ],
   ],
   ["deposit_address", {}, [{ op: "turn/deposit", args: { agent, turn: toolTurn.turn } }]],
-  [
-    "show_images",
-    { paths: ["a.png"], caption: "Made today." },
-    [
-      {
-        op: "image/show",
-        args: { agent, turn: toolTurn.turn, paths: ["a.png"], caption: "Made today." },
-      },
-    ],
-  ],
+  ["show_images", showArgs, [{ op: "image/show", args: { agent, ...turnOf, ...showArgs } }]],
+  ["send_files", sendArgs, [{ op: "file/send", args: { agent, ...turnOf, ...sendArgs } }]],
+
   [
     "show_chart",
     { chartType: "pie", title: "x", segments: [{ label: "a", value: 1 }] },

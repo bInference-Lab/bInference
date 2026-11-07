@@ -135,6 +135,7 @@
   "tools.summary.notes_forget": "删除 Agent 的一条笔记。",
   "tools.summary.make_image": "用所有者的图片模型生成图片，例如代币的标志；图片稍后出现在对话中。",
   "tools.summary.show_images": "在对话中向所有者显示机器上已有的图片，例如 Agent 之前生成的图片。",
+  "tools.summary.send_files": "在对话中把机器上的文件作为文档发送给所有者保存，例如报告或 CSV。",
   "tools.summary.settings_read": "读取所有者的设置或其中一个键，密钥只显示其来源类型，并附上每个键的规则。",
   "tools.summary.settings_change": "在卡片中提出对所有者设置的更改，显示每项设置更改前后的值；所有者确认前不会有任何更改。"
 }
