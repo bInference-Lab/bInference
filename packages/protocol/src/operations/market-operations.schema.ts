@@ -93,6 +93,14 @@ interface AssetArgs {
   readonly asset: AssetRef;
 }
 
+/**
+ * The args of `risk/check`: the token, and the agent whose wallet, mode and limits the check
+ * quotes a sample buy with; the oldest agent not archived when left out.
+ */
+interface RiskCheckArgs extends AssetArgs {
+  readonly agent?: ProtocolId<"agent">;
+}
+
 /** What `asset/search` finds: the text to find on one chain. */
 export interface AssetSearchTerms {
   readonly chain: ChainRef;
@@ -186,7 +194,7 @@ export interface MarketOperationShapes {
     readonly result: ResolvedName;
   };
   readonly "quote/get": { readonly args: SwapRequest; readonly result: QuoteView };
-  readonly "risk/check": { readonly args: AssetArgs; readonly result: RiskView };
+  readonly "risk/check": { readonly args: RiskCheckArgs; readonly result: RiskView };
   readonly "market/scan": { readonly args: ScanArgs; readonly result: ScanView };
   readonly "market/chart": { readonly args: ChartArgs; readonly result: ChartView };
   readonly "launch/list": { readonly args: LaunchListArgs; readonly result: Page<LaunchView> };
@@ -293,7 +301,10 @@ export const marketOperations: OperationTable<MarketOperationShapes> = {
     ...readFlags,
     name: "risk/check",
     scope: "read",
-    args: assetArgs,
+    args: z.strictObject({
+      asset: assetRefSchema,
+      agent: protocolIdSchema("agent").exactOptional(),
+    }),
     result: riskViewSchema,
   },
   "market/scan": {

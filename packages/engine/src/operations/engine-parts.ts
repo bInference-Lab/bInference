@@ -10,16 +10,20 @@ import type { StoredIntents } from "../intents/create-stored-intents.js";
 import { createLaunchHandlers, type LaunchHandlers } from "../launches/launch-handlers.js";
 import { createLaunchpadHandlers, type LaunchpadHandlers } from "../launches/launchpad-handlers.js";
 import { type ActivityHandlers, createActivityHandlers } from "../leaders/activity-handlers.js";
+import type { PaperParts } from "../paper/paper-parts.js";
 import { createPolicyCheck } from "../policy/check-policy.js";
 import type { ModelBilling } from "../ports.js";
 import { createSafetyHandlers, type SafetyHandlers } from "../safety/safety-handlers.js";
 import { createScheduleQueue, type ScheduleQueue } from "../schedules/run-schedules.js";
 import { createScheduleHandlers, type ScheduleHandlers } from "../schedules/schedule-handlers.js";
+import { machineHandlersOf } from "../shell/engine-shell.js";
 import { ownerImagesOf } from "../uploads/owner-images.js";
 import { createUploadHandlers, type UploadHandlers } from "../uploads/upload-handlers.js";
 import { createUploadShelf } from "../uploads/upload-shelf.js";
 import type { EngineOptions } from "./create-engine.js";
+import { launchRoutingOf } from "./engine-intent-parts.js";
 import { intentViewOf } from "./intent-view-of.js";
+import { createTokenReadHandlers, type TokenReadHandlers } from "./token-read-handlers.js";
 
 /**
  * The chat operations the engine answers itself, `usage/get`, `upload/start`, the schedule and
@@ -254,4 +258,25 @@ function alertFiringOf(
     clock,
     publish,
   });
+}
+
+// The token reads, `asset/get`, `quote/get` and `risk/check`, on the money path's own parts.
+function tokenReadsOf(options: EngineOptions, paper: PaperParts): TokenReadHandlers {
+  const { stores, custody, host, chains, clock, readTokenFacts } = options;
+  const { wallets, holdings } = paper;
+  const launches = launchRoutingOf(options, paper);
+  const quotes = { custody, wallets, holdings, launches, host, chains, clock };
+  const { risk } = options;
+  return createTokenReadHandlers({ agents: stores.agents, chains, readTokenFacts, quotes, risk });
+}
+
+/**
+ * The engine's lookups that move nothing: a token's info and a quote, the agent's shell commands
+ * and the chain's names.
+ */
+export function lookupHandlersOf(
+  options: EngineOptions,
+  paper: PaperParts,
+): TokenReadHandlers & ReturnType<typeof machineHandlersOf> {
+  return { ...machineHandlersOf(options), ...tokenReadsOf(options, paper) };
 }

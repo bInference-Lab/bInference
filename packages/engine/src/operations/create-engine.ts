@@ -58,7 +58,7 @@ import type { PruneWork } from "../records/prune-records.js";
 import { createRescueAddressHandlers } from "../safety/rescue-address-handlers.js";
 import { rescueReadsOf, settleRescueCeilings } from "../safety/rescue-ceilings.js";
 import { createSendLevelHandlers } from "../send-levels/send-level-handlers.js";
-import { type EngineShell, machineHandlersOf } from "../shell/engine-shell.js";
+import type { EngineShell } from "../shell/engine-shell.js";
 import { type StakeWork, stakeWorkOf } from "../staking/engine-staking.js";
 import type { DailySummaries } from "../summaries/daily-summaries.js";
 import { createCardShowings } from "../surfaces/create-card-showings.js";
@@ -79,7 +79,7 @@ import {
 import { launchDraftsOf, withSharedParts } from "./engine-launch-drafts.js";
 import { moneyPathOf } from "./engine-money-path.js";
 import { cardTimerOf, copyOrdersOf, orderFillsOf, orderPartsOf } from "./engine-orders.js";
-import { engineChatOf, safetyHandlersOf } from "./engine-parts.js";
+import { engineChatOf, lookupHandlersOf, safetyHandlersOf } from "./engine-parts.js";
 import { startupWorkOf } from "./engine-repairs.js";
 import { dailySummariesOf } from "./engine-summaries.js";
 import { timedWorkOf } from "./engine-timers.js";
@@ -469,7 +469,7 @@ export function createEngineWithFills(given: EngineOptions): {
       ...safetyHandlersOf(options, { stored: intents.stored, relay: chat.relay }),
       ...chat.handlers,
       ...drafts.handlers,
-      ...machineHandlersOf(options),
+      ...lookupHandlersOf(options, paper),
       ...createIdentityHandlers({
         moneyPath: intents.moneyPath,
         identities: options.stores.identities,

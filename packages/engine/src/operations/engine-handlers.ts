@@ -15,6 +15,7 @@ import type { EngineChatHandlers } from "./engine-parts.js";
 import type { IntentHandlers } from "./intent-handlers.js";
 import type { LedgerHandlers } from "./ledger-handlers.js";
 import type { SettingsHandlers } from "./settings-handlers.js";
+import type { TokenReadHandlers } from "./token-read-handlers.js";
 
 /** The operation handlers the engine gives the protocol server, by operation name. */
 export interface EngineHandlers
@@ -35,4 +36,5 @@ export interface EngineHandlers
     NameHandlers,
     IdentityHandlers,
     WebhookRuleHandlers,
-    ShellHandlers {}
+    ShellHandlers,
+    TokenReadHandlers {}

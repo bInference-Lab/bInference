@@ -11531,6 +11531,10 @@
           "properties": {
             "asset": {
               "type": "string"
+            },
+            "agent": {
+              "type": "string",
+              "pattern": "^agt_"
             }
           },
           "required": [

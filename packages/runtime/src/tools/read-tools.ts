@@ -82,17 +82,17 @@ function tokenInfoTool({ client }: AgentToolParts): AgentTool {
   });
 }
 
-function tokenRiskTool({ client }: AgentToolParts): AgentTool {
+function tokenRiskTool({ agent, client }: AgentToolParts): AgentTool {
   return defineTool({
     name: "token_risk",
     kind: "read",
     parallel: true,
     addressSource: "engine",
     description: agentToolTexts.token_risk,
-    args: ops["risk/check"].args,
+    args: ops["asset/get"].args,
     run: async (args, { signal }) =>
       answerOrFailure("token_risk", async () => {
-        const view = await client.call("risk/check", args, { signal });
+        const view = await client.call("risk/check", { ...args, agent }, { signal });
         return answer(jsonOf(ops["risk/check"].result, view));
       }),
   });

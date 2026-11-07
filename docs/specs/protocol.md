@@ -379,7 +379,7 @@ Workspace files: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`
 | `asset/search`         | `read`           | `{ chain, query, agent? }` → `{ items, unlisted?, ambiguous? }`: matches from the registry and the held tokens only (below)                                     |
 | `name/resolve`         | `read`           | `{ name }` → `{ name, address, resolvedAt, smartAccount?, reverse? }` (`.bnb`, [decision 0071](../DECISIONS.md#d0071)); below                                   |
 | `quote/get`            | `read`           | a swap request (section 8.1) → `QuoteView`; creates no intent                                                                                                   |
-| `risk/check`           | `read`           | `{ asset }` → `RiskView`                                                                                                                                        |
+| `risk/check`           | `read`           | `{ asset, agent? }` → `RiskView`: the risk step on a sample buy for the agent, the oldest one when left out ([decision 0379](../DECISIONS.md#d0379))            |
 | `market/scan`          | `read`           | `{ chain, source: launches \| trending, filters?: LaunchFilter, limit? }` → `{ items: [ScanItem], assets }` (below)                                             |
 | `market/chart`         | `read`           | `{ asset, interval: 1m \| 5m \| 15m \| 1h \| 4h \| 1d, to?, limit? }` → `{ asset, interval, candles, priceScale?, source }` (below)                             |
 | `wallet/activity`      | `read`           | paging, `{ agent, account: AccountRef, from?, to? }` → `{ items: [ActivityItem], next?, assets }` of a tracked wallet (below)                                   |

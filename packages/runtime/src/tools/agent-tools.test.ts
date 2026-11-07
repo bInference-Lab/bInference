@@ -184,7 +184,7 @@ const mappings: readonly (readonly [string, JsonValue, JsonValue])[] = [
   ],
   ["portfolio", {}, [{ op: "portfolio/get", args: { agent } }]],
   ["token_info", { asset: coin }, [{ op: "asset/get", args: { asset: coin } }]],
-  ["token_risk", { asset: token }, [{ op: "risk/check", args: { asset: token } }]],
+  ["token_risk", { asset: token }, [{ op: "risk/check", args: { asset: token, agent } }]],
   ["quote", swapTerms, [{ op: "quote/get", args: { ...swapTerms, agent, kind: "swap" } }]],
   [
     "bridge_quote",
