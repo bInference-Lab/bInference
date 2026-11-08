@@ -364,7 +364,12 @@ new name here first, in the change that uses it.
   (cancel an order, set an alert or a schedule, write a note, ask the owner).
 - **machine tools**: `shell` and `shell_job`, which run commands on the owner's machine through
   the shell host ([decision 0378](DECISIONS.md#d0378)), and `file_write`, `file_edit` and
-  `file_patch`, which change its files ([decision 0386](DECISIONS.md#d0386)).
+  `file_patch`, which change its files ([decision 0386](DECISIONS.md#d0386)), and `browse`,
+  which drives the agent's browser ([decision 0401](DECISIONS.md#d0401)).
+- **agent's browser**: binference's own Chrome-family browser on the owner's machine, with its own
+  profile in the state folder, which the agent drives with `browse`; every request it makes is
+  checked first, so it never reaches binference itself ([decision 0401](DECISIONS.md#d0401)).
+- **snapshot ref**: the id, such as `e12`, a page snapshot gives an element, which an act names.
 - **file tools**: `file_read`, `file_write`, `file_edit` and `file_patch`, which read and change
   files on the owner's machine, relative paths in the workspace, behind the same wall as the shell.
 - **patch**: a change to several files at once, from `*** Begin Patch` to `*** End Patch`, written
@@ -748,6 +753,8 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | wall (of the shell)                         | 隔离墙                 |                              |
 | shell job                                   | 命令任务               |                              |
 | file tools                                  | 文件工具               | `file_read` and the others   |
+| agent's browser, browser (the agent drives) | 浏览器                 | `browse`                     |
+| snapshot ref                                | 快照引用               | `e12`                        |
 | patch (of files)                            | 补丁                   | `file_patch`                 |
 | made image                                  | 生成的图片             | `make_image`                 |
 | shown chart, chart (the agent shows)        | 图表                   | `show_chart`                 |

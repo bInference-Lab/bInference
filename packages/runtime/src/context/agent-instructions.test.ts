@@ -16,6 +16,12 @@ describe("the agent's instructions", () => {
     expect(text).toContain("never try to reach its keys, token or databases another way");
   });
 
+  it("let the agent drive its own browser, never with the owner's secrets", () => {
+    const text = agentInstructions("en");
+    expect(text).toContain("With browse you drive a browser of your own on the owner's machine");
+    expect(text).toContain("Never type the owner's passwords, keys or card numbers into a page");
+  });
+
   it("tell the agent never to repeat what a tool showed the owner", () => {
     expect(agentInstructions("en")).toContain(
       "the owner already sees: never repeat it in your answer",

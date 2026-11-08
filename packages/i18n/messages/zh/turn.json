@@ -69,6 +69,7 @@
   "tool.plugin": "正在询问插件 {plugin}…",
   "tool.shell": "正在运行命令…",
   "tool.shellJob": "正在查看命令…",
+  "tool.browse": "正在使用浏览器…",
   "tool.lookAtImage": "正在查看图片…",
   "tool.fileRead": "正在读取文件…",
   "tool.fileWrite": "正在写入文件…",

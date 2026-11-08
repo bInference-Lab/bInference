@@ -123,6 +123,7 @@
   "tools.summary.binference_ledger": "Reads an agent's ledger.",
   "tools.summary.shell": "Runs a command on the owner's machine, away from binference's own files, and reads its output.",
   "tools.summary.shell_job": "Reads a running command's new output, or stops it.",
+  "tools.summary.browse": "Drives a browser of the agent's own on the owner's machine: opens pages, reads them, clicks, types and takes screenshots.",
   "tools.summary.deposit_address": "Shows the owner each wallet's address and its QR code, to send funds to the agent.",
   "tools.summary.look_at_image": "Looks at a picture at a public address or in a file on the owner's machine and describes it.",
   "tools.summary.file_read": "Reads a text file on the owner's machine, a page at a time, or describes an image file.",

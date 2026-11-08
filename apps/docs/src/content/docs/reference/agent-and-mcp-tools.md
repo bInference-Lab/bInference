@@ -60,6 +60,7 @@ The tools the agent's model may call in a turn, in the order a turn offers them.
 - `make_image` (control): Makes images with the owner's image model, such as a token's logo; they arrive in the chat a little later.
 - `shell` (machine): Runs a command on the owner's machine, away from binference's own files, and reads its output.
 - `shell_job` (machine): Reads a running command's new output, or stops it.
+- `browse` (machine): Drives a browser of the agent's own on the owner's machine: opens pages, reads them, clicks, types and takes screenshots.
 - `file_read` (read): Reads a text file on the owner's machine, a page at a time, or describes an image file.
 - `file_write` (machine): Writes a file whole on the owner's machine, making its folders.
 - `file_edit` (machine): Makes exact replacements in a file on the owner's machine.

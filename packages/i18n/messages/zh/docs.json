@@ -123,6 +123,7 @@
   "tools.summary.binference_ledger": "读取一个 Agent 的账本。",
   "tools.summary.shell": "在所有者的机器上运行一条命令，不触及 binference 自己的文件，并读取输出。",
   "tools.summary.shell_job": "读取运行中命令的新输出，或停止它。",
+  "tools.summary.browse": "在所有者的机器上使用 Agent 自己的浏览器：打开页面、阅读、点击、输入和截图。",
   "tools.summary.deposit_address": "向所有者显示每个钱包的地址及其二维码，用于向 Agent 转账资金。",
   "tools.summary.look_at_image": "查看公开网址或所有者机器上文件中的图片，并描述其内容。",
   "tools.summary.file_read": "逐页读取所有者机器上的文本文件，或描述图片文件。",

@@ -42,6 +42,7 @@ const showArgs = { paths: ["a.png"], caption: "Made today." };
 const sendArgs = { paths: ["trades.csv"], caption: "The trades." };
 const turnOf = { turn: toolTurn.turn };
 const shellJob = "shj_0190f1c2-3a4b-7c5d-8e6f-000000000001";
+const navigate = { action: "navigate", url: "https://example.com/" } as const;
 const shellView = {
   job: shellJob,
   status: "ended",
@@ -130,6 +131,7 @@ const answers: Readonly<Record<string, FakeAnswer>> = {
   "launchpad/list": { items: [] },
   "launch/draft": { draft: "c2hvd24tb25jZS1h", expiresAt: 600_001 },
   "shell/run": shellView,
+  "browser/run": { running: true },
   "image/show": { images: [{ image: "a1b2c3d4e5f60718", path: "a.png" }] },
   "file/send": {
     files: [{ file: "c3d4e5f607182930", name: "trades.csv", bytes: 10, path: "/w/trades.csv" }],
@@ -443,6 +445,7 @@ const mappings: readonly (readonly [string, JsonValue, JsonValue])[] = [
     { job: shellJob, action: "poll" },
     [{ op: "shell/job", args: { agent, job: shellJob, action: "poll" } }],
   ],
+  ["browse", navigate, [{ op: "browser/run", args: { agent, request: navigate } }]],
   ["file_read", { path: "a.md" }, [{ op: "file/read", args: { agent, path: "a.md" } }]],
   [
     "file_write",
