@@ -62,6 +62,21 @@ interface ChatQueueTable {
   seq: Generated<number>;
 }
 
+/** `helpers` (agent migration 0006): flags as 0 or 1. */
+export interface HelpersTable {
+  id: string;
+  agent_id: string;
+  parent_session_id: string;
+  label: string;
+  model: string | null;
+  state: string;
+  started_at: number;
+  ended_at: number | null;
+  timeout_ms: number;
+  runs: number;
+  outside: Generated<number>;
+}
+
 /** `notes`; `notes_fts` indexes its text. */
 interface NotesTable {
   id: Generated<number>;
@@ -88,6 +103,7 @@ export interface AgentTables {
   turns: TurnsTable;
   transcript_events: TranscriptEventsTable;
   chat_queue: ChatQueueTable;
+  helpers: HelpersTable;
   notes: NotesTable;
   notes_fts: NotesFtsTable;
 }

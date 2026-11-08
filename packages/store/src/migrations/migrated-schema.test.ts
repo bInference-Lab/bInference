@@ -382,6 +382,12 @@ describe("the agent database", () => {
         ),
       },
       counters: { strict: true, columns: ["name", "last"] },
+      helpers: {
+        strict: true,
+        columns: names(
+          "id agent_id parent_session_id label model state started_at ended_at timeout_ms runs outside",
+        ),
+      },
       notes: {
         strict: true,
         columns: names("id agent_id text origin created_at changed_at deleted_at"),
@@ -401,5 +407,6 @@ describe("the agent database", () => {
       "unique|seq",
     ]);
     expect(primaryKeys(database, "chat_queue")).toStrictEqual(["message"]);
+    expect(describeIndexes(database, "helpers")).toStrictEqual(["index|agent_id,started_at"]);
   });
 });

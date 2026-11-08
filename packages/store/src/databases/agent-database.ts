@@ -1,5 +1,11 @@
 import { raiseFenceTask } from "../chats/fence-tasks.js";
 import {
+  getHelperTask,
+  listHelpersTask,
+  moveHelperTask,
+  startHelperTask,
+} from "../chats/helper-tasks.js";
+import {
   addQueuedTask,
   dropQueuedTask,
   takeQueuedTask,
@@ -53,6 +59,10 @@ export const agentDatabase: DatabaseDefinition = {
     waitingTask,
     takeQueuedTask,
     dropQueuedTask,
+    startHelperTask,
+    getHelperTask,
+    listHelpersTask,
+    moveHelperTask,
     writeNoteTask,
     deleteNoteTask,
     listNotesTask,

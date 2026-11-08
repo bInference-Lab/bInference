@@ -1,10 +1,12 @@
 import { afterAll, beforeAll, describe, expect, inject, it } from "vitest";
+import { helperStoreContract } from "../contracts/helper-store-contract.js";
 import { sessionStoreContract } from "../contracts/session-store-contract.js";
 import { writerFenceContract } from "../contracts/writer-fence-contract.js";
 import {
   createTestPostgresStores,
   type TestPostgresStores,
 } from "../testing/test-postgres-stores.js";
+import { createSqliteHelperStore } from "./sqlite-helper-store.js";
 import { createSqliteSessionStore } from "./sqlite-session-store.js";
 import { createSqliteWriterFence } from "./sqlite-writer-fence.js";
 
@@ -35,6 +37,21 @@ describe.runIf(url !== "")("the session store and writer fence on Postgres", () 
       },
     }),
   )("the session store follows the contract: $name", async ({ run }) => {
+    await expect(run()).resolves.toBeUndefined();
+  });
+
+  it.each(
+    helperStoreContract({
+      create: async () => {
+        const host = await stores.open("agent");
+        return {
+          store: createSqliteHelperStore(host),
+          sessions: createSqliteSessionStore(host),
+          fence: createSqliteWriterFence(host),
+        };
+      },
+    }),
+  )("the helper store follows the contract: $name", async ({ run }) => {
     await expect(run()).resolves.toBeUndefined();
   });
 });

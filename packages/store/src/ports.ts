@@ -1,6 +1,7 @@
 import type { Id, Result } from "@binference/core";
 import type { ChatPrune, ChatPruned } from "./chats/chat-prune.js";
 import type { FenceRefusal, Fenced } from "./chats/fenced.js";
+import type { HelperDraft, HelperMove, HelperQuery, HelperRecord } from "./chats/helper-record.js";
 import type {
   QueueDraft,
   QueueDrop,
@@ -80,6 +81,33 @@ export interface SessionStore {
   turn(id: Id<"trn">, options: StoreCall): Promise<TurnRecord | undefined>;
   /** The turns with no end, oldest first: those a crash left, which the next start repairs. */
   unfinishedTurns(options: StoreCall): Promise<readonly TurnRecord[]>;
+}
+
+/**
+ * Keeps the agent's helpers (decision 0403): each a session of its own, started from one of the
+ * agent's sessions, with its state and its latest run.
+ */
+export interface HelperStore {
+  /**
+   * Opens the helper's session and keeps the helper as `running`, in one write. An id in use is
+   * `exists`; a session it was started from that the store does not hold is `no_session`.
+   */
+  start(
+    draft: Fenced<HelperDraft>,
+    options: StoreCall,
+  ): Promise<Result<HelperRecord, FenceRefusal | "exists" | "no_session">>;
+  /** One helper. */
+  get(id: Id<"ses">, options: StoreCall): Promise<HelperRecord | undefined>;
+  /** The helpers the query names, the newest run's start first, at most `limit`. */
+  list(query: HelperQuery, options: StoreCall): Promise<readonly HelperRecord[]>;
+  /**
+   * Moves a helper from the state its mover read: `stale` when it stands elsewhere now. A new run
+   * counts one more run, starts now and has no end; an end keeps the outside mark once set.
+   */
+  move(
+    move: Fenced<HelperMove>,
+    options: StoreCall,
+  ): Promise<Result<HelperRecord, FenceRefusal | "not_found" | "stale">>;
 }
 
 /** Keeps each session's transcript, which only grows: no event ever changes. */

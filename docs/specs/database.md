@@ -379,6 +379,7 @@ deletes its ticket in the transaction that claims its launch
 | `chat_queue`        | `message` (`msg_…`), `agent_id`, `session_id`, `kind`, `payload JSON`, `received_at`, `turn_id` (the turn that took it), `dropped_at`, `drop_reason`, `seq` (its write-order key, from `counters`)                          | PK `message`, `(session_id, received_at)`, unique `seq` |
 | `transcript_events` | `id`, `session_id`, `turn_id`, `seq`, `role` (`owner`, `agent`, `tool`, `system`), `kind` (`text`, `tool_call`, `tool_result`, `image`, `summary`), `content JSON`, `outside` (outside content, spec 8 section 5.4), `at`   | unique `(session_id, seq)`                              |
 | `notes`             | `id`, `agent_id`, `text`, `origin` (`owner`, `agent`, `untrusted`, `system`), `created_at`, `changed_at`, `deleted_at`                                                                                                      | `(agent_id)`                                            |
+| `helpers`           | `id` (the helper's own session), `agent_id`, `parent_session_id`, `label`, `model`, `state` (`running`, `done`, `failed`, `stopped`, `timed_out`), `started_at`, `ended_at`, `timeout_ms`, `runs`, `outside`                | PK `id`, `(agent_id, started_at)`                       |
 | `notes_fts`         | FTS5 over `notes.text`, kept in step by triggers                                                                                                                                                                            |                                                         |
 | `counters`          | `name`, `last` (the last write-order key it gave)                                                                                                                                                                           | PK `name`                                               |
 
@@ -390,6 +391,12 @@ a `transcript_events` row, and every removal but the retention job's, which sets
 three characters or more finds a word inside Chinese text. `agent_inbox` in the engine
 database holds each message for the runtime until the runtime takes it into `chat_queue`
 ([spec 8, section 3.2](runtime.md#section-3-2)).
+
+A helper ([decision 0403](../DECISIONS.md#d0403)) works in a session of its own, which its row
+names and opens in the same write, with `surface` `helper`; its turns and transcript are that
+session's. `state` leaves `running` only for an end, which sets `ended_at`, and a follow-up moves
+it back to `running` with a new `started_at`, no `ended_at` and one more of `runs`. `outside` is
+set once any run of it read outside content, and never clears.
 
 Notes never hold a contract or token address as a source for actions
 ([rule 10](../ARCHITECTURE.md#rule-10)); the runtime does not pass note text to propose tools as an
@@ -609,6 +616,7 @@ In the agent schema:
 | ------------------- | ------------------ | --------- | ------------------------------------------------------ |
 | `chat_queue`        | `seq` (agent 0005) | `payload` |                                                        |
 | `counters`          |                    |           |                                                        |
+| `helpers`           |                    |           |                                                        |
 | `meta`              |                    |           | Holds `writer_fence` and `prune_before`, as on SQLite  |
 | `notes`             | `id`               |           | `pg_trgm` GIN index on `text`, in place of `notes_fts` |
 | `sessions`          |                    |           |                                                        |
@@ -762,6 +770,7 @@ In the agent schema:
 | Table               | Read               | Order                | Today                                               |
 | ------------------- | ------------------ | -------------------- | --------------------------------------------------- |
 | `chat_queue`        | A session's queue  | `seq`                | Write-order key since agent 0005                    |
+| `helpers`           | An agent's helpers | `started_at`, `id`   | Id tie                                              |
 | `notes`             | An agent's notes   | `id`                 | Write-order key                                     |
 | `notes`             | A search           | relevance, then `id` | The relevance is each adapter's own (decision 0366) |
 | `transcript_events` | A session's events | `seq`                | Unique per session                                  |

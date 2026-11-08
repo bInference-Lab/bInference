@@ -1,3 +1,4 @@
+import type { HelperRecord } from "../chats/helper-record.js";
 import type { QueuedMessage } from "../chats/queued-message.js";
 import type { SessionRecord } from "../chats/session-record.js";
 import type { TranscriptEvent } from "../chats/transcript-event.js";
@@ -34,6 +35,7 @@ export interface MemoryAgentDatabase {
   /** The last number given to an event; numbers are never reused, as SQLite's are not. */
   readonly eventIds: Counter;
   readonly queue: Map<string, QueuedMessage>;
+  readonly helpers: Map<string, HelperRecord>;
   readonly notes: Map<number, NoteRecord>;
   readonly noteIds: Counter;
 }
@@ -47,6 +49,7 @@ export function createMemoryAgentDatabase(): MemoryAgentDatabase {
     events: [],
     eventIds: createCounter(),
     queue: new Map(),
+    helpers: new Map(),
     notes: new Map(),
     noteIds: createCounter(),
   };

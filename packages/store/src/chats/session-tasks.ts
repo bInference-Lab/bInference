@@ -35,6 +35,22 @@ export function readSession(database: StoreConnection, id: string): SessionRecor
   return row === undefined ? undefined : toSession(row);
 }
 
+/** Writes a new session row, inside the caller's transaction, which checked it is new. */
+export function insertSession(database: StoreConnection, draft: SessionDraft): void {
+  const { kysely, execute } = createSyncKysely<AgentTables>(database);
+  execute(
+    kysely.insertInto("sessions").values({
+      id: draft.id,
+      agent_id: draft.agentId,
+      surface: draft.surface,
+      conversation: draft.conversation,
+      started_at: draft.startedAtMs,
+      cleared_at: null,
+      summary: null,
+    }),
+  );
+}
+
 /** Opens a session once. */
 export const openSessionTask: StoreTask<
   Fenced<SessionDraft>,
@@ -51,18 +67,7 @@ export const openSessionTask: StoreTask<
     if (readSession(database, draft.id) !== undefined) {
       return err("exists");
     }
-    const { kysely, execute } = createSyncKysely<AgentTables>(database);
-    execute(
-      kysely.insertInto("sessions").values({
-        id: draft.id,
-        agent_id: draft.agentId,
-        surface: draft.surface,
-        conversation: draft.conversation,
-        started_at: draft.startedAtMs,
-        cleared_at: null,
-        summary: null,
-      }),
-    );
+    insertSession(database, draft);
     return ok({ ...draft, version: 0 });
   },
 });
