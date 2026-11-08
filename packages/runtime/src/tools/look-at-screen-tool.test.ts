@@ -78,7 +78,7 @@ describe("the look_at_screen tool", () => {
     expect(looked.questions[0]).toContain("screenshot of the owner's screen");
   });
 
-  it("tells the agent which program the owner allows when the OS has not allowed it", async () => {
+  it("tells the agent which program to allow, and the owner too when the agent writes nothing", async () => {
     const { outcome, calls } = await look({
       shots: [],
       blocked: { program: "/usr/local/bin/node" },
@@ -87,6 +87,7 @@ describe("the look_at_screen tool", () => {
     expect(outcome.isError).toBe(true);
     expect(outcome.text).toContain("Screen Recording");
     expect(outcome.text).toContain("/usr/local/bin/node");
+    expect(outcome.closingLine).toBe("screenBlocked");
   });
 
   it.each<[`${string}.${string}`, string]>([

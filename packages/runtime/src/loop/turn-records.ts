@@ -69,7 +69,12 @@ export interface ToolOutcome {
  * their way (decision 0399) or a video (decision 0405), a line that shows only when the turn has no
  * text of its own.
  */
-export type ClosingLine = "firstChatDone" | "imageComing" | "imagesComing" | "videoComing";
+export type ClosingLine =
+  | "firstChatDone"
+  | "imageComing"
+  | "imagesComing"
+  | "videoComing"
+  | "screenBlocked";
 
 /** What a tool's run receives. */
 export interface ToolRunContext {

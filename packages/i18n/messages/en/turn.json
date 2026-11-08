@@ -26,6 +26,7 @@
   "imageComing": "Making the image. It shows here when it is ready.",
   "imagesComing": "Making the images. They show here when they are ready.",
   "videoComing": "Making the video. It shows here when it is ready, in a few minutes.",
+  "screenBlocked": "binference may not record your screen yet. Turn binference on in System Settings, Privacy and Security, Screen Recording, then restart binference with `binference stop` and `binference start`.",
   "tool.tokenSearch": "Searching tokens…",
   "tool.addresses": "Reading the address book…",
   "tool.wallets": "Reading the agent's wallets…",

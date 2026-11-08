@@ -89,7 +89,7 @@ export function lookAtScreenTool(parts: AgentToolParts): AgentTool {
         );
         if (view.shots.length === 0) {
           const program = view.blocked?.program ?? "binference";
-          return { text: blockedText(program), isError: true };
+          return { text: blockedText(program), isError: true, closingLine: "screenBlocked" };
         }
         const question = args.question ?? defaultQuestion;
         return shotLines(parts, view, { signal, look, question });
