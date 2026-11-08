@@ -320,6 +320,9 @@ new name here first, in the change that uses it.
   proposes, never asks the owner and never starts a helper; its result comes back to the agent as
   a message that starts the agent's next turn (`helper_start`, `helper_list`, `helper_read`,
   `helper_send`, `helper_stop`).
+- **chat model**: the model the agent set for the rest of its session with `agent_status`, in place
+  of the main model; `default` clears it. It changes no setting, and the daily model budget still
+  caps it ([decision 0404](DECISIONS.md#d0404)).
 - **agent inbox**: the engine's store of messages for the agent runtime (`msg_…`), kept until the
   runtime takes each into its chat queue.
 - **merge point**: a place in a turn where a waiting message joins it: before a later call of an
@@ -699,6 +702,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | model                                   | 模型                    |                             |
 | model budget                            | 模型预算                |                             |
 | helper (of an agent)                    | 助手                    |                             |
+| chat model                              | 对话模型                |                             |
 | fallback model                          | 备用模型                |                             |
 | prompt                                  | 提示词                  |                             |
 | answer, response                        | 回答                    |                             |
