@@ -345,6 +345,12 @@ description: "引擎协议的每个操作：调用所需的权限范围、操作
 | `credential/delete` | `propose` | 读取 | 任何连接 | 引擎 |
 | `credential/set` | `admin` | 读取 | 任何连接 | 引擎 |
 
+## `helper`
+
+| 操作 | 权限范围 | 类型 | 接受位置 | 回复方 |
+| --- | --- | --- | --- | --- |
+| `helper/ended` | `agent` | 读取 | 任何连接 | 引擎 |
+
 ## `notes`
 
 | 操作 | 权限范围 | 类型 | 接受位置 | 回复方 |

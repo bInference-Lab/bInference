@@ -345,6 +345,12 @@ Every operation of the engine protocol, version 1, by domain. A client calls an 
 | `credential/delete` | `propose` | read | any connection | engine |
 | `credential/set` | `admin` | read | any connection | engine |
 
+## `helper`
+
+| Operation | Scope | Kind | Accepted | Answered by |
+| --- | --- | --- | --- | --- |
+| `helper/ended` | `agent` | read | any connection | engine |
+
 ## `notes`
 
 | Operation | Scope | Kind | Accepted | Answered by |

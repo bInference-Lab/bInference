@@ -9,6 +9,8 @@ export interface EngineMessage {
   readonly text: string;
   /** The surface the owner answered or asked on, which the message names. */
   readonly surface: ChatSurface;
+  /** The words hold outside content, such as a helper's report: the turn they start is marked. */
+  readonly outsideContent?: boolean;
 }
 
 /**
@@ -30,7 +32,11 @@ export async function wakeWithMessage(
       agentId: message.agent,
       kind: "inbox/message",
       turnId: turn,
-      payload: { text: message.text, surface: message.surface },
+      payload: {
+        text: message.text,
+        surface: message.surface,
+        ...(message.outsideContent === true ? { outsideContent: true } : {}),
+      },
       atMs: clock.now(),
       opens: ids.next("ses"),
     },

@@ -36457,6 +36457,9 @@
                           "question",
                           "choice"
                         ]
+                      },
+                      "outsideContent": {
+                        "type": "boolean"
                       }
                     },
                     "required": [
@@ -45467,6 +45470,103 @@
           "required": [
             "wallets"
           ]
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "result"
+      ]
+    },
+    "call/helper/ended": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "op": {
+          "type": "string",
+          "const": "helper/ended"
+        },
+        "args": {
+          "type": "object",
+          "properties": {
+            "agent": {
+              "type": "string",
+              "pattern": "^agt_"
+            },
+            "helper": {
+              "type": "string",
+              "pattern": "^ses_"
+            },
+            "surface": {
+              "type": "string",
+              "enum": [
+                "telegram",
+                "console",
+                "cli",
+                "mini"
+              ]
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 8000
+            },
+            "outsideContent": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "agent",
+            "helper",
+            "surface",
+            "text",
+            "outsideContent"
+          ],
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "op",
+        "args"
+      ],
+      "scope": "agent",
+      "kind": "read",
+      "transport": "any",
+      "answeredBy": "engine",
+      "since": "2026.10.0"
+    },
+    "reply/helper/ended": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "reply"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "result": {
+          "type": "object",
+          "properties": {}
         }
       },
       "required": [

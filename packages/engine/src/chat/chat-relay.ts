@@ -12,6 +12,7 @@ import { createPdfHandlers, type PdfHandlers } from "../documents/pdf-handlers.j
 import type { EngineHandler } from "../operations/engine-call.js";
 import type { AgentInboxMessage } from "./agent-inbox-record.js";
 import { type ChatRelayOptions, pushInbox } from "./chat-relay-parts.js";
+import { createHelperEndHandlers, type HelperEndHandlers } from "./helper-ends.js";
 import { createImageHandlers, type ImageHandlers } from "./image-handlers.js";
 import { createImageHold } from "./image-hold.js";
 import { createMadeImageHandlers, type MadeImageHandlers } from "./made-images.js";
@@ -32,7 +33,8 @@ export interface ChatHandlers
     MadeImageHandlers,
     SentFileHandlers,
     BrowserHandlers,
-    PdfHandlers {}
+    PdfHandlers,
+    HelperEndHandlers {}
 
 /** The engine's relay of chat between the surfaces and the agent runtime. */
 export interface ChatRelay {
@@ -148,6 +150,7 @@ export function createChatRelay(options: ChatRelayOptions): ChatRelay {
       ...createSentFileHandlers(options),
       ...browserHandlersOf(options),
       ...pdfHandlersOf(options),
+      ...createHelperEndHandlers(options),
       ...createCredentialRequestHandlers(options),
       ...createCredentialStoreHandlers(options),
     },

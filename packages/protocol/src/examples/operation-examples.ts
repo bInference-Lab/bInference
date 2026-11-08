@@ -13,6 +13,7 @@ import { credentialExamples } from "./credential-examples.js";
 import { depositExamples } from "./deposit-examples.js";
 import { agentExamples, engineExamples, walletExamples } from "./engine-examples.js";
 import { fileExamples } from "./file-examples.js";
+import { helperExamples } from "./helper-examples.js";
 import { imageExamples } from "./image-examples.js";
 import {
   bridgeExamples,
@@ -59,6 +60,7 @@ export const operationExamples: { readonly [N in OperationName]: WireExample } =
   ...chartExamples,
   ...credentialExamples,
   ...depositExamples,
+  ...helperExamples,
   ...questionExamples,
   ...noteExamples,
   ...pluginExamples,

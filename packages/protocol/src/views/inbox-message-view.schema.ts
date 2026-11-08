@@ -33,6 +33,11 @@ interface InboxOwnerMessage extends InboxMessageBase {
   readonly surface: ChatSurface;
   /** The question a press of its button answers, and the place of the choice pressed. */
   readonly answer?: InboxAnswer;
+  /**
+   * The engine wrote it in the owner's place with words that hold outside content, such as a
+   * helper's report (decision 0403): the turn it starts is marked.
+   */
+  readonly outsideContent?: boolean;
 }
 
 /** A press of a question's button, as the message that answers it carries it. */
@@ -163,6 +168,7 @@ export const inboxMessageViewSchema: z.ZodType<InboxMessageView> = z.discriminat
     answer: z
       .object({ question: protocolIdSchema("question"), choice: z.int().min(0).max(3) })
       .exactOptional(),
+    outsideContent: z.boolean().exactOptional(),
   }),
   z.object({ ...base, kind: z.literal("inbox/intentSettled"), turn, intent: intentViewSchema }),
   z.object({ ...base, kind: z.literal("inbox/stop"), reason: z.enum(["owner", "freeze"]) }),

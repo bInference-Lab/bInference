@@ -23,6 +23,8 @@ export interface OwnerMessagePayload {
   readonly images?: readonly string[];
   readonly surface: ChatSurface;
   readonly answer?: { readonly question: Id<"qst">; readonly choice: number };
+  /** Words the engine wrote in the owner's place that hold outside content (decision 0403). */
+  readonly outsideContent?: boolean;
 }
 
 /** Parses an owner's message payload. */
@@ -31,6 +33,7 @@ export const ownerMessagePayloadSchema: z.ZodType<OwnerMessagePayload> = z.stric
   images: z.array(z.string().min(1)).min(1).max(4).exactOptional(),
   surface: chatSurfaceSchema,
   answer: z.strictObject({ question: idSchema("qst"), choice: choicePlaceSchema }).exactOptional(),
+  outsideContent: z.boolean().exactOptional(),
 });
 
 /** A settle message: the intent that ended. */
