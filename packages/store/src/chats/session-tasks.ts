@@ -1,4 +1,5 @@
 import { err, type Id, idSchema, ok, type Result } from "@binference/core";
+import { z } from "zod";
 import type { AgentTables, SessionRow } from "../databases/agent-tables.js";
 import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
@@ -11,6 +12,8 @@ import {
   sessionCloseSchema,
   type SessionDraft,
   sessionDraftSchema,
+  type SessionModel,
+  sessionModelSchema,
   type SessionRecord,
   sessionRecordSchema,
 } from "./session-record.js";
@@ -24,6 +27,7 @@ function toSession(row: SessionRow): SessionRecord {
     startedAtMs: row.started_at,
     ...(row.cleared_at === null ? {} : { clearedAtMs: row.cleared_at }),
     ...(row.summary === null ? {} : { summary: row.summary }),
+    ...(row.model === null ? {} : { model: row.model }),
     version: row.version,
   });
 }
@@ -113,5 +117,58 @@ export const closeSessionTask: StoreTask<
         .where("version", "=", close.version),
     );
     return ok({ ...stored, clearedAtMs: close.atMs, version: close.version + 1 });
+  },
+});
+
+/**
+ * Sets or clears an open session's own model (decision 0404). It leaves the session's version as
+ * it is: a close at the version its closer read still applies.
+ */
+export const setSessionModelTask: StoreTask<
+  Fenced<SessionModel>,
+  Result<SessionRecord, FenceRefusal | "not_found" | "closed">
+> = defineTask({
+  name: "chats.set_session_model",
+  access: "write",
+  input: sessionModelSchema,
+  output: resultSchema(sessionRecordSchema, ["fenced", "not_found", "closed"]),
+  run(database, change) {
+    const stored = readSession(database, change.session);
+    if (!holdsFence(database, change.fence)) {
+      return err("fenced");
+    }
+    if (stored === undefined) {
+      return err("not_found");
+    }
+    if (stored.clearedAtMs !== undefined) {
+      return err("closed");
+    }
+    const { kysely, execute } = createSyncKysely<AgentTables>(database);
+    execute(
+      kysely
+        .updateTable("sessions")
+        .set({ model: change.model ?? null })
+        .where("id", "=", change.session),
+    );
+    const changed = readSession(database, change.session);
+    return changed === undefined ? err("not_found") : ok(changed);
+  },
+});
+
+/** How many turns a session holds, ended or not. */
+export const countTurnsTask: StoreTask<Id<"ses">, number> = defineTask({
+  name: "chats.count_turns",
+  access: "read",
+  input: idSchema("ses"),
+  output: z.int().nonnegative(),
+  run(database, session) {
+    const { kysely, takeFirst } = createSyncKysely<AgentTables>(database);
+    const row = takeFirst(
+      kysely
+        .selectFrom("turns")
+        .select((builder) => builder.fn.countAll<number>().as("count"))
+        .where("session_id", "=", session),
+    );
+    return row?.count ?? 0;
   },
 });

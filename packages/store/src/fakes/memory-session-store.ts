@@ -1,5 +1,6 @@
-import { err, ok, type Result } from "@binference/core";
+import { err, type Id, ok, type Result } from "@binference/core";
 import type { Fenced, FenceRefusal } from "../chats/fenced.js";
+import type { SessionRecord } from "../chats/session-record.js";
 import type { TurnRecord, TurnRef } from "../chats/turn-record.js";
 import type { SessionStore } from "../ports.js";
 import { holdsFence, inMemory, type MemoryAgentDatabase } from "./memory-agent-database.js";
@@ -27,6 +28,21 @@ function changeTurn(
   return ok(structuredClone(changed));
 }
 
+// An open session under the current fence: one a clear closed is `closed`.
+function openSession(
+  database: MemoryAgentDatabase,
+  ref: { readonly fence: number; readonly session: Id<"ses"> },
+): Result<SessionRecord, FenceRefusal | "not_found" | "closed"> {
+  const stored = database.sessions.get(ref.session);
+  if (!holdsFence(database, ref.fence)) {
+    return err("fenced");
+  }
+  if (stored === undefined) {
+    return err("not_found");
+  }
+  return stored.clearedAtMs === undefined ? ok(stored) : err("closed");
+}
+
 function sessionMethods(
   database: MemoryAgentDatabase,
 ): Pick<SessionStore, "open" | "get" | "close"> {
@@ -46,16 +62,11 @@ function sessionMethods(
     get: async (id, options) => inMemory(options, () => structuredClone(sessions.get(id))),
     close: async ({ fence, session, atMs, version }, options) =>
       inMemory(options, () => {
-        const stored = sessions.get(session);
-        if (!holdsFence(database, fence)) {
-          return err("fenced");
+        const open = openSession(database, { fence, session });
+        if (!open.ok) {
+          return open;
         }
-        if (stored === undefined) {
-          return err("not_found");
-        }
-        if (stored.clearedAtMs !== undefined) {
-          return err("closed");
-        }
+        const stored = open.value;
         if (stored.version !== version) {
           return err("stale");
         }
@@ -66,11 +77,36 @@ function sessionMethods(
   };
 }
 
+function modelMethods(
+  database: MemoryAgentDatabase,
+): Pick<SessionStore, "setModel" | "countTurns"> {
+  const { sessions, turns } = database;
+  return {
+    setModel: async ({ fence, session, model }, options) =>
+      inMemory(options, () => {
+        const open = openSession(database, { fence, session });
+        if (!open.ok) {
+          return open;
+        }
+        const { model: _replaced, ...rest } = open.value;
+        const changed = model === undefined ? rest : { ...rest, model };
+        sessions.set(session, changed);
+        return ok(structuredClone(changed));
+      }),
+    countTurns: async (session, options) =>
+      inMemory(
+        options,
+        () => [...turns.values()].filter((turn) => turn.sessionId === session).length,
+      ),
+  };
+}
+
 /** The {@link SessionStore} of an in-memory agent database. */
 export function createMemorySessionStore(database: MemoryAgentDatabase): SessionStore {
   const { turns } = database;
   return {
     ...sessionMethods(database),
+    ...modelMethods(database),
     startTurn: async ({ fence, ...draft }, options) =>
       inMemory(options, () => {
         if (!holdsFence(database, fence)) {

@@ -363,7 +363,9 @@ describe("the agent database", () => {
       meta: { strict: true, columns: ["key", "value"] },
       sessions: {
         strict: true,
-        columns: names("id agent_id surface conversation started_at cleared_at summary version"),
+        columns: names(
+          "id agent_id surface conversation started_at cleared_at summary version model",
+        ),
       },
       turns: {
         strict: true,

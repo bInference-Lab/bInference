@@ -1,6 +1,12 @@
 import type { SessionStore } from "../ports.js";
 import { bindTask, type StoreHost } from "../tasks/store-host.js";
-import { closeSessionTask, getSessionTask, openSessionTask } from "./session-tasks.js";
+import {
+  closeSessionTask,
+  countTurnsTask,
+  getSessionTask,
+  openSessionTask,
+  setSessionModelTask,
+} from "./session-tasks.js";
 import {
   commitTurnTask,
   endTurnTask,
@@ -17,6 +23,8 @@ export function createSqliteSessionStore(host: StoreHost): SessionStore {
     open: bindTask(host, openSessionTask),
     get: bindTask(host, getSessionTask),
     close: bindTask(host, closeSessionTask),
+    setModel: bindTask(host, setSessionModelTask),
+    countTurns: bindTask(host, countTurnsTask),
     startTurn: bindTask(host, startTurnTask),
     commitTurn: bindTask(host, commitTurnTask),
     markOutside: bindTask(host, markOutsideTask),

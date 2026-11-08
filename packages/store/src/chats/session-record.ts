@@ -15,6 +15,11 @@ export interface SessionRecord {
   readonly clearedAtMs?: number;
   /** The latest summary compaction wrote. */
   readonly summary?: string;
+  /**
+   * The chat's own model, `<provider>/<model>`, which the agent set for the rest of the chat
+   * (decision 0404); absent, the chat runs on the configured model.
+   */
+  readonly model?: string;
   readonly version: number;
 }
 
@@ -23,6 +28,12 @@ export type SessionDraft = Pick<
   SessionRecord,
   "id" | "agentId" | "surface" | "conversation" | "startedAtMs"
 >;
+
+/** Sets a session's own model, or clears it when `model` is absent (decision 0404). */
+export interface SessionModel {
+  readonly session: Id<"ses">;
+  readonly model?: string;
+}
 
 /** Closes a session at the version its closer read. */
 export interface SessionClose {
@@ -43,6 +54,7 @@ export const sessionRecordSchema: z.ZodType<SessionRecord> = z.strictObject({
   startedAtMs: epochMs,
   clearedAtMs: epochMs.exactOptional(),
   summary: z.string().max(16_000).exactOptional(),
+  model: nameSchema.exactOptional(),
   version: z.int().nonnegative(),
 });
 
@@ -53,6 +65,13 @@ export const sessionDraftSchema: z.ZodType<Fenced<SessionDraft>> = z.strictObjec
   surface: z.string().min(1).max(32),
   conversation: nameSchema,
   startedAtMs: epochMs,
+  fence: fenceSchema,
+});
+
+/** Parses a fenced change of a session's own model. */
+export const sessionModelSchema: z.ZodType<Fenced<SessionModel>> = z.strictObject({
+  session: idSchema("ses"),
+  model: nameSchema.exactOptional(),
   fence: fenceSchema,
 });
 

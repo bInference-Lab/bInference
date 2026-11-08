@@ -19,6 +19,7 @@ interface SessionsTable {
   cleared_at: number | null;
   summary: string | null;
   version: Generated<number>;
+  model: string | null;
 }
 
 /** `turns`: flags as 0 or 1. */

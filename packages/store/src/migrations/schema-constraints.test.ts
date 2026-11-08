@@ -239,8 +239,9 @@ describe("the agent database's constraints", () => {
     const { database } = databases.open(agentDatabase);
     run(
       database,
-      "INSERT INTO sessions VALUES ('ses_1', 'agt_1', 'telegram', 'telegram:1:0', 1, NULL, NULL, 0)",
+      "INSERT INTO sessions (id, agent_id, surface, conversation, started_at, cleared_at, summary, version) VALUES ('ses_1', 'agt_1', 'telegram', 'telegram:1:0', 1, NULL, NULL, 0)",
     );
+    expect(() => run(database, "UPDATE sessions SET model = ''")).toThrow(/CHECK/);
     expect(() =>
       run(
         database,
@@ -260,7 +261,7 @@ describe("the agent database's constraints", () => {
     const { database } = databases.open(agentDatabase);
     run(
       database,
-      "INSERT INTO sessions VALUES ('ses_1', 'agt_1', 'telegram', 'telegram:1:0', 1, NULL, NULL, 0)",
+      "INSERT INTO sessions (id, agent_id, surface, conversation, started_at, cleared_at, summary, version) VALUES ('ses_1', 'agt_1', 'telegram', 'telegram:1:0', 1, NULL, NULL, 0)",
     );
     run(
       database,

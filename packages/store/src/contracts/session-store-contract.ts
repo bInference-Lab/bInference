@@ -57,6 +57,40 @@ async function closesSessions({ store }: SessionStoreSubject, fence: number): Pr
   assert.deepEqual(await store.get(draft.id, go()), closed);
 }
 
+async function keepsModels({ store }: SessionStoreSubject, fence: number): Promise<void> {
+  const draft = nthSession(1);
+  await store.open({ ...draft, fence }, go());
+  const change = { session: draft.id, model: "router/big", fence };
+  const set = { ...draft, model: "router/big", version: 0 };
+  assert.deepEqual(await store.setModel(change, go()), { ok: true, value: set });
+  assert.deepEqual(await store.get(draft.id, go()), set);
+  const cleared = { ...draft, version: 0 };
+  assert.deepEqual(await store.setModel({ session: draft.id, fence }, go()), {
+    ok: true,
+    value: cleared,
+  });
+  assert.deepEqual(await store.get(draft.id, go()), cleared);
+  await store.setModel(change, go());
+  await store.close({ session: draft.id, atMs: 5_000, version: 0, fence }, go());
+  assert.deepEqual(await store.setModel(change, go()), { ok: false, error: "closed" });
+  const unknown = { ...change, session: nthId("ses", 9) };
+  assert.deepEqual(await store.setModel(unknown, go()), { ok: false, error: "not_found" });
+}
+
+async function countsTurns({ store }: SessionStoreSubject, fence: number): Promise<void> {
+  await store.open({ ...nthSession(1), fence }, go());
+  await store.open({ ...nthSession(2), fence }, go());
+  assert.equal(await store.countTurns(nthId("ses", 1), go()), 0);
+  await store.startTurn({ ...nthTurn(1), fence }, go());
+  await store.startTurn({ ...nthTurn(2), fence }, go());
+  await store.startTurn({ ...nthTurn(3, 2), fence }, go());
+  const end = { turn: nthId("trn", 1), atMs: 20_000, outcome: "ok", heldBack: 0, fence } as const;
+  await store.endTurn(end, go());
+  assert.equal(await store.countTurns(nthId("ses", 1), go()), 2);
+  assert.equal(await store.countTurns(nthId("ses", 2), go()), 1);
+  assert.equal(await store.countTurns(nthId("ses", 9), go()), 0);
+}
+
 async function startsTurns({ store }: SessionStoreSubject, fence: number): Promise<void> {
   assert.deepEqual(await store.startTurn({ ...nthTurn(1), fence }, go()), {
     ok: false,
@@ -125,6 +159,8 @@ async function refusesStaleFence(subject: SessionStoreSubject, old: number): Pro
   assert.deepEqual(await store.open({ ...nthSession(2), fence: old }, go()), fenced);
   const close = { session: nthId("ses", 1), atMs: 1, version: 0, fence: old };
   assert.deepEqual(await store.close(close, go()), fenced);
+  const model = { session: nthId("ses", 1), model: "router/big", fence: old };
+  assert.deepEqual(await store.setModel(model, go()), fenced);
   assert.deepEqual(await store.startTurn({ ...nthTurn(2), fence: old }, go()), fenced);
   const turn = { turn: nthId("trn", 1), fence: old };
   assert.deepEqual(await store.commitTurn(turn, go()), fenced);
@@ -145,6 +181,9 @@ async function refusesAborted({ store }: SessionStoreSubject, fence: number): Pr
   await rejectsAborted(async (options) => store.get(nthId("ses", 1), options));
   const close = { session: nthId("ses", 1), atMs: 1, version: 0, fence };
   await rejectsAborted(async (options) => store.close(close, options));
+  const model = { session: nthId("ses", 1), model: "router/big", fence };
+  await rejectsAborted(async (options) => store.setModel(model, options));
+  await rejectsAborted(async (options) => store.countTurns(nthId("ses", 1), options));
   await rejectsAborted(async (options) => store.startTurn({ ...nthTurn(1), fence }, options));
   const turn = { turn: nthId("trn", 1), fence };
   await rejectsAborted(async (options) => store.commitTurn(turn, options));
@@ -162,6 +201,8 @@ export function sessionStoreContract(harness: SessionStoreHarness): readonly Con
   return [
     fencedCheck("opens a session once and reads it back", create, keepsSessions),
     fencedCheck("closes a session once, at the version its closer read", create, closesSessions),
+    fencedCheck("sets and clears an open session's own model", create, keepsModels),
+    fencedCheck("counts the turns of each session", create, countsTurns),
     fencedCheck("starts a turn once, in a session it holds", create, startsTurns),
     fencedCheck("sets a turn's committed and outside marks, which never clear", create, marksTurns),
     fencedCheck("ends a turn once and lists the turns that never ended", create, endsTurns),

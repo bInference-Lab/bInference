@@ -9,7 +9,12 @@ import type {
   QueueTake,
   WaitingQuery,
 } from "./chats/queued-message.js";
-import type { SessionClose, SessionDraft, SessionRecord } from "./chats/session-record.js";
+import type {
+  SessionClose,
+  SessionDraft,
+  SessionModel,
+  SessionRecord,
+} from "./chats/session-record.js";
 import type {
   CommittingAppend,
   EventAppend,
@@ -57,6 +62,16 @@ export interface SessionStore {
     close: Fenced<SessionClose>,
     options: StoreCall,
   ): Promise<Result<SessionRecord, FenceRefusal | "not_found" | "stale" | "closed">>;
+  /**
+   * Sets an open session's own model, or clears it when the change names none (decision 0404);
+   * `closed` once a clear closed it. The session's version stays as it was.
+   */
+  setModel(
+    change: Fenced<SessionModel>,
+    options: StoreCall,
+  ): Promise<Result<SessionRecord, FenceRefusal | "not_found" | "closed">>;
+  /** How many turns the session holds, ended or not; 0 for a session the store does not hold. */
+  countTurns(session: Id<"ses">, options: StoreCall): Promise<number>;
   /** Starts a turn in an open session; an id in use is `exists`. */
   startTurn(
     draft: Fenced<TurnDraft>,
