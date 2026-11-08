@@ -323,6 +323,13 @@ new name here first, in the change that uses it.
 - **chat model**: the model the agent set for the rest of its session with `agent_status`, in place
   of the main model; `default` clears it. It changes no setting, and the daily model budget still
   caps it ([decision 0404](DECISIONS.md#d0404)).
+- **goal**: an objective set for one chat, by the owner's `/goal` or by the agent on the owner's
+  request (`goal_set`), that the agent keeps working on turn after turn until it is complete,
+  blocked, paused or out of budget; at most one per chat ([decision 0407](DECISIONS.md#d0407)).
+- **goal turn**: a turn binference starts on its own for the chat's active goal once the chat rests;
+  at most 50 per goal, and the owner's messages go first.
+- **progress note**: the agent's one status of substantial work in a chat, a short markdown and a
+  plan of steps, replaced whole each time and shown beside the chat (`progress_note`).
 - **agent inbox**: the engine's store of messages for the agent runtime (`msg_…`), kept until the
   runtime takes each into its chat queue.
 - **merge point**: a place in a turn where a waiting message joins it: before a later call of an
@@ -706,6 +713,9 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | model budget                            | 模型预算                |                             |
 | helper (of an agent)                    | 助手                    |                             |
 | chat model                              | 对话模型                |                             |
+| goal (of a chat)                        | 目标                    |                             |
+| goal turn                               | 目标轮                  |                             |
+| progress note                           | 进度说明                |                             |
 | fallback model                          | 备用模型                |                             |
 | prompt                                  | 提示词                  |                             |
 | answer, response                        | 回答                    |                             |
