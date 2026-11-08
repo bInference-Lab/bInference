@@ -47,6 +47,7 @@ describe("protocolErrorCodes", () => {
       "shell",
       "file",
       "credential",
+      "browser",
       "internal",
     ]);
   });

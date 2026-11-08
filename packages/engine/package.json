@@ -108,10 +108,15 @@
       "@binference/source": "./src/shell.ts",
       "types": "./dist/shell.d.mts",
       "default": "./dist/shell.mjs"
+    },
+    "./browser": {
+      "@binference/source": "./src/browser.ts",
+      "types": "./dist/browser.d.mts",
+      "default": "./dist/browser.mjs"
     }
   },
   "scripts": {
-    "build": "tsdown src/index.ts src/testing.ts src/wallet-queue.ts src/simulation.ts src/risk.ts src/approval.ts src/surfaces.ts src/install.ts src/executor.ts src/sends.ts src/audit.ts src/safety.ts src/outflows.ts src/notices.ts src/backups.ts src/access.ts src/chat.ts src/market.ts src/orders.ts src/shell.ts --format esm --dts --tsconfig tsconfig.json"
+    "build": "tsdown src/index.ts src/testing.ts src/wallet-queue.ts src/simulation.ts src/risk.ts src/approval.ts src/surfaces.ts src/install.ts src/executor.ts src/sends.ts src/audit.ts src/safety.ts src/outflows.ts src/notices.ts src/backups.ts src/access.ts src/chat.ts src/market.ts src/orders.ts src/shell.ts src/browser.ts --format esm --dts --tsconfig tsconfig.json"
   },
   "dependencies": {
     "@binference/chain": "workspace:*",

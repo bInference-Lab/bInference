@@ -1,6 +1,7 @@
 import type { Clock, IdSource, Random } from "@binference/core";
 import type { ProtocolId, PushTopic } from "@binference/protocol";
 import type { ModelBudget } from "../billing/model-budget.js";
+import type { EngineBrowser } from "../browse/browser-handlers.js";
 import type { CredentialStore } from "../credentials/ports.js";
 import type { EngineFiles } from "../files/file-handlers.js";
 import type { MachineFiles } from "../files/ports.js";
@@ -35,6 +36,8 @@ export interface ChatRelayOptions {
   readonly madeImageFiles?: Pick<MachineFiles, "read" | "write">;
   /** The agent's files with the owner's settings, which files it sends are read from (decision 0400). */
   readonly sentFiles?: EngineFiles;
+  /** The agent's browser (decision 0401); without it `browser/run` is `browser.off`. */
+  readonly browser?: EngineBrowser;
   /** The owner's credentials (decision 0388); without them, a request is refused. */
   readonly credentials?: CredentialStore;
   /**

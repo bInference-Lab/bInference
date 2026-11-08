@@ -196,6 +196,13 @@ export const protocolErrorCodes = [
   "credential.not_found",
   "credential.closed",
   "credential.unavailable",
+  "browser.off",
+  "browser.not_found",
+  "browser.start_failed",
+  "browser.proxy_held",
+  "browser.address_refused",
+  "browser.tab_not_found",
+  "browser.evaluate_off",
   "internal.error",
 ] as const;
 

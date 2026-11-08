@@ -11864,6 +11864,7 @@
         "packages/engine/src/approval.ts",
         "packages/engine/src/audit.ts",
         "packages/engine/src/backups.ts",
+        "packages/engine/src/browser.ts",
         "packages/engine/src/chat.ts",
         "packages/engine/src/executor.ts",
         "packages/engine/src/index.ts",

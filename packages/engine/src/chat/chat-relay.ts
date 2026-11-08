@@ -1,4 +1,5 @@
 import type { Id, JsonValue } from "@binference/core";
+import { type BrowserHandlers, createBrowserHandlers } from "../browse/browser-handlers.js";
 import {
   type CredentialRequestHandlers,
   createCredentialRequestHandlers,
@@ -28,7 +29,8 @@ export interface ChatHandlers
     CredentialRequestHandlers,
     CredentialStoreHandlers,
     MadeImageHandlers,
-    SentFileHandlers {}
+    SentFileHandlers,
+    BrowserHandlers {}
 
 /** The engine's relay of chat between the surfaces and the agent runtime. */
 export interface ChatRelay {
@@ -96,6 +98,18 @@ function imageHandlersOf(options: ChatRelayOptions): ImageHandlers {
   return createImageHandlers({ agentInbox, turns, ...hold });
 }
 
+// `browser/run`, its captures saved in the files the made images are saved in.
+function browserHandlersOf(options: ChatRelayOptions): BrowserHandlers {
+  const { browser, turns, madeImageFiles, clock, random } = options;
+  return createBrowserHandlers({
+    turns,
+    clock,
+    random,
+    ...(browser === undefined ? {} : { browser }),
+    ...(madeImageFiles === undefined ? {} : { files: madeImageFiles }),
+  });
+}
+
 /** Creates the {@link ChatRelay} over the agent inbox, the agents and the running turns. */
 export function createChatRelay(options: ChatRelayOptions): ChatRelay {
   const stopFrozen = async (agent: Id<"agt"> | undefined, signal: AbortSignal) => {
@@ -118,6 +132,7 @@ export function createChatRelay(options: ChatRelayOptions): ChatRelay {
       }),
       ...createMadeImageHandlers(options),
       ...createSentFileHandlers(options),
+      ...browserHandlersOf(options),
       ...createCredentialRequestHandlers(options),
       ...createCredentialStoreHandlers(options),
     },

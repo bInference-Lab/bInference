@@ -611,6 +611,13 @@
         "credential.not_found",
         "credential.closed",
         "credential.unavailable",
+        "browser.off",
+        "browser.not_found",
+        "browser.start_failed",
+        "browser.proxy_held",
+        "browser.address_refused",
+        "browser.tab_not_found",
+        "browser.evaluate_off",
         "internal.error"
       ]
     },
@@ -42211,6 +42218,863 @@
             "stopped",
             "output",
             "outputCut"
+          ]
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "result"
+      ]
+    },
+    "call/browser/run": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "op": {
+          "type": "string",
+          "const": "browser/run"
+        },
+        "args": {
+          "type": "object",
+          "properties": {
+            "agent": {
+              "type": "string",
+              "pattern": "^agt_"
+            },
+            "request": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "action": {
+                      "type": "string",
+                      "const": "status"
+                    }
+                  },
+                  "required": [
+                    "action"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "action": {
+                      "type": "string",
+                      "const": "start"
+                    }
+                  },
+                  "required": [
+                    "action"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "action": {
+                      "type": "string",
+                      "const": "stop"
+                    }
+                  },
+                  "required": [
+                    "action"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "action": {
+                      "type": "string",
+                      "const": "tabs"
+                    }
+                  },
+                  "required": [
+                    "action"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "action": {
+                      "type": "string",
+                      "const": "open"
+                    },
+                    "url": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 2048
+                    }
+                  },
+                  "required": [
+                    "action",
+                    "url"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "action": {
+                      "type": "string",
+                      "const": "focus"
+                    },
+                    "tab": {
+                      "type": "string",
+                      "pattern": "^t\\d{1,6}$"
+                    }
+                  },
+                  "required": [
+                    "action",
+                    "tab"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "action": {
+                      "type": "string",
+                      "const": "close"
+                    },
+                    "tab": {
+                      "type": "string",
+                      "pattern": "^t\\d{1,6}$"
+                    }
+                  },
+                  "required": [
+                    "action"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "action": {
+                      "type": "string",
+                      "const": "navigate"
+                    },
+                    "url": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 2048
+                    },
+                    "timeoutMs": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 25000
+                    },
+                    "tab": {
+                      "type": "string",
+                      "pattern": "^t\\d{1,6}$"
+                    }
+                  },
+                  "required": [
+                    "action",
+                    "url"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "action": {
+                      "type": "string",
+                      "const": "snapshot"
+                    },
+                    "interactive": {
+                      "type": "boolean"
+                    },
+                    "query": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    },
+                    "tab": {
+                      "type": "string",
+                      "pattern": "^t\\d{1,6}$"
+                    }
+                  },
+                  "required": [
+                    "action"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "action": {
+                      "type": "string",
+                      "const": "screenshot"
+                    },
+                    "fullPage": {
+                      "type": "boolean"
+                    },
+                    "ref": {
+                      "type": "string",
+                      "pattern": "^(?:f\\d{1,4})?e\\d{1,7}$"
+                    },
+                    "tab": {
+                      "type": "string",
+                      "pattern": "^t\\d{1,6}$"
+                    }
+                  },
+                  "required": [
+                    "action"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "action": {
+                      "type": "string",
+                      "const": "text"
+                    },
+                    "selector": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 1000
+                    },
+                    "maxChars": {
+                      "type": "integer",
+                      "minimum": 100,
+                      "maximum": 9000
+                    },
+                    "tab": {
+                      "type": "string",
+                      "pattern": "^t\\d{1,6}$"
+                    }
+                  },
+                  "required": [
+                    "action"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "action": {
+                      "type": "string",
+                      "const": "console"
+                    },
+                    "limit": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 50
+                    },
+                    "tab": {
+                      "type": "string",
+                      "pattern": "^t\\d{1,6}$"
+                    }
+                  },
+                  "required": [
+                    "action"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "action": {
+                      "type": "string",
+                      "const": "pdf"
+                    },
+                    "tab": {
+                      "type": "string",
+                      "pattern": "^t\\d{1,6}$"
+                    }
+                  },
+                  "required": [
+                    "action"
+                  ],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "action": {
+                      "type": "string",
+                      "const": "act"
+                    },
+                    "act": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "const": "click"
+                            },
+                            "ref": {
+                              "type": "string",
+                              "pattern": "^(?:f\\d{1,4})?e\\d{1,7}$"
+                            },
+                            "doubleClick": {
+                              "type": "boolean"
+                            },
+                            "button": {
+                              "type": "string",
+                              "enum": [
+                                "left",
+                                "right",
+                                "middle"
+                              ]
+                            },
+                            "modifiers": {
+                              "readOnly": true,
+                              "maxItems": 4,
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "enum": [
+                                  "Alt",
+                                  "Control",
+                                  "Meta",
+                                  "Shift"
+                                ]
+                              }
+                            },
+                            "timeoutMs": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 25000
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "ref"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "const": "type"
+                            },
+                            "ref": {
+                              "type": "string",
+                              "pattern": "^(?:f\\d{1,4})?e\\d{1,7}$"
+                            },
+                            "text": {
+                              "type": "string",
+                              "maxLength": 10000
+                            },
+                            "submit": {
+                              "type": "boolean"
+                            },
+                            "slowly": {
+                              "type": "boolean"
+                            },
+                            "timeoutMs": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 25000
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "ref",
+                            "text"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "const": "press"
+                            },
+                            "key": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 64
+                            },
+                            "ref": {
+                              "type": "string",
+                              "pattern": "^(?:f\\d{1,4})?e\\d{1,7}$"
+                            },
+                            "timeoutMs": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 25000
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "key"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "const": "hover"
+                            },
+                            "ref": {
+                              "type": "string",
+                              "pattern": "^(?:f\\d{1,4})?e\\d{1,7}$"
+                            },
+                            "timeoutMs": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 25000
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "ref"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "const": "select"
+                            },
+                            "ref": {
+                              "type": "string",
+                              "pattern": "^(?:f\\d{1,4})?e\\d{1,7}$"
+                            },
+                            "values": {
+                              "readOnly": true,
+                              "minItems": 1,
+                              "maxItems": 50,
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 1000
+                              }
+                            },
+                            "timeoutMs": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 25000
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "ref",
+                            "values"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "const": "fill"
+                            },
+                            "fields": {
+                              "readOnly": true,
+                              "minItems": 1,
+                              "maxItems": 50,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "ref": {
+                                    "type": "string",
+                                    "pattern": "^(?:f\\d{1,4})?e\\d{1,7}$"
+                                  },
+                                  "value": {
+                                    "type": "string",
+                                    "maxLength": 10000
+                                  }
+                                },
+                                "required": [
+                                  "ref",
+                                  "value"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "timeoutMs": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 25000
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "fields"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "const": "scrollIntoView"
+                            },
+                            "ref": {
+                              "type": "string",
+                              "pattern": "^(?:f\\d{1,4})?e\\d{1,7}$"
+                            },
+                            "timeoutMs": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 25000
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "ref"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "const": "drag"
+                            },
+                            "startRef": {
+                              "type": "string",
+                              "pattern": "^(?:f\\d{1,4})?e\\d{1,7}$"
+                            },
+                            "endRef": {
+                              "type": "string",
+                              "pattern": "^(?:f\\d{1,4})?e\\d{1,7}$"
+                            },
+                            "timeoutMs": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 25000
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "startRef",
+                            "endRef"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "const": "wait"
+                            },
+                            "timeMs": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 25000
+                            },
+                            "text": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 1000
+                            },
+                            "textGone": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 1000
+                            },
+                            "selector": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 1000
+                            },
+                            "url": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 2048
+                            },
+                            "loadState": {
+                              "type": "string",
+                              "enum": [
+                                "load",
+                                "domcontentloaded",
+                                "networkidle"
+                              ]
+                            },
+                            "timeoutMs": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 25000
+                            }
+                          },
+                          "required": [
+                            "kind"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "const": "evaluate"
+                            },
+                            "fn": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 20000
+                            },
+                            "ref": {
+                              "type": "string",
+                              "pattern": "^(?:f\\d{1,4})?e\\d{1,7}$"
+                            },
+                            "timeoutMs": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 25000
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "fn"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "const": "resize"
+                            },
+                            "width": {
+                              "type": "integer",
+                              "minimum": 200,
+                              "maximum": 8192
+                            },
+                            "height": {
+                              "type": "integer",
+                              "minimum": 200,
+                              "maximum": 8192
+                            }
+                          },
+                          "required": [
+                            "kind",
+                            "width",
+                            "height"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "const": "close"
+                            }
+                          },
+                          "required": [
+                            "kind"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    },
+                    "tab": {
+                      "type": "string",
+                      "pattern": "^t\\d{1,6}$"
+                    }
+                  },
+                  "required": [
+                    "action",
+                    "act"
+                  ],
+                  "additionalProperties": false
+                }
+              ]
+            }
+          },
+          "required": [
+            "agent",
+            "request"
+          ],
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "op",
+        "args"
+      ],
+      "scope": "agent",
+      "kind": "read",
+      "transport": "any",
+      "answeredBy": "engine",
+      "since": "2026.10.0"
+    },
+    "reply/browser/run": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "reply"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "running": {
+              "type": "boolean"
+            },
+            "headless": {
+              "type": "boolean"
+            },
+            "tab": {
+              "type": "object",
+              "properties": {
+                "tab": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 16
+                },
+                "url": {
+                  "type": "string",
+                  "maxLength": 8192
+                },
+                "title": {
+                  "type": "string",
+                  "maxLength": 1000
+                }
+              },
+              "required": [
+                "tab",
+                "url",
+                "title"
+              ]
+            },
+            "tabs": {
+              "readOnly": true,
+              "maxItems": 20,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "tab": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 16
+                  },
+                  "url": {
+                    "type": "string",
+                    "maxLength": 8192
+                  },
+                  "title": {
+                    "type": "string",
+                    "maxLength": 1000
+                  }
+                },
+                "required": [
+                  "tab",
+                  "url",
+                  "title"
+                ]
+              }
+            },
+            "snapshot": {
+              "type": "string",
+              "maxLength": 9000
+            },
+            "text": {
+              "type": "string",
+              "maxLength": 9000
+            },
+            "cut": {
+              "type": "boolean"
+            },
+            "console": {
+              "readOnly": true,
+              "maxItems": 50,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "level": {
+                    "type": "string",
+                    "maxLength": 32
+                  },
+                  "text": {
+                    "type": "string",
+                    "maxLength": 300
+                  }
+                },
+                "required": [
+                  "level",
+                  "text"
+                ]
+              }
+            },
+            "file": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4096
+                },
+                "contentType": {
+                  "type": "string",
+                  "enum": [
+                    "image/png",
+                    "image/jpeg",
+                    "application/pdf"
+                  ]
+                },
+                "bytes": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "path",
+                "contentType",
+                "bytes"
+              ]
+            },
+            "value": {
+              "type": "string",
+              "maxLength": 4000
+            },
+            "problem": {
+              "type": "string",
+              "maxLength": 1000
+            }
+          },
+          "required": [
+            "running"
           ]
         }
       },

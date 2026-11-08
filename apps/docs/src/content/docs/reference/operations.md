@@ -311,6 +311,12 @@ Every operation of the engine protocol, version 1, by domain. A client calls an 
 | `shell/run` | `agent` | read | any connection | engine |
 | `shell/job` | `agent` | read | any connection | engine |
 
+## `browser`
+
+| Operation | Scope | Kind | Accepted | Answered by |
+| --- | --- | --- | --- | --- |
+| `browser/run` | `agent` | read | any connection | engine |
+
 ## `file`
 
 | Operation | Scope | Kind | Accepted | Answered by |

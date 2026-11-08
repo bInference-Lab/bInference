@@ -72,6 +72,20 @@ export {
 export type { ImageContentType, ImagePart } from "./operations/image-operations.schema.js";
 export { imageTypeOf } from "./values/image-type.js";
 export * as fileLimits from "./operations/file-limits.js";
+export * as browserLimits from "./operations/browser-limits.js";
+export { browserActSchema, browserRequestSchema } from "./requests/browser-request.schema.js";
+export type {
+  BrowserAct,
+  BrowserRequest,
+  FilledField,
+  KeyModifier,
+} from "./requests/browser-request.schema.js";
+export type {
+  BrowserFileView,
+  BrowserTabView,
+  BrowserView,
+  ConsoleMessageView,
+} from "./views/browser-view.schema.js";
 export type { PortableChart } from "./views/portable-chart.schema.js";
 export * as credentialPushes from "./views/credential-push.schema.js";
 export { webPushSubscriptionSchema } from "./operations/web-push-operations.schema.js";

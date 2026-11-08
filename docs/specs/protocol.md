@@ -1163,6 +1163,25 @@ timedOut, stopped, output, outputCut }`. `output` keeps the newest 200,000 chara
 phrases and private key blocks masked; `outputCut` says earlier output was dropped. A finished
 command is kept 30 minutes.
 
+<a id="section-7-12"></a>
+
+### 7.12 Browser
+
+Decided in [decision 0401](../DECISIONS.md#d0401). Only the current agent runtime calls it. The
+browser is binference's own, with its own profile in the state folder; every request it makes is
+checked first, and every answer carries outside content. It takes no idempotency key, so no page
+is ever stored.
+
+| Operation     | Scope   | Write | Local | Args → result                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| ------------- | ------- | ----- | ----- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `browser/run` | `agent` |       |       | `{ agent, request }` → `BrowserView`; `request.action` is `status`, `start`, `stop`, `tabs`, `open`, `focus`, `close`, `navigate`, `snapshot`, `screenshot`, `text`, `console`, `pdf` or `act`, with `act.kind` `click`, `type`, `press`, `hover`, `select`, `fill`, `scrollIntoView`, `drag`, `wait`, `evaluate`, `resize` or `close`; every action but `status` and `stop` starts the browser; refused `browser.off`, `browser.not_found`, `browser.start_failed`, `browser.proxy_held`, `browser.address_refused`, `browser.tab_not_found`, `browser.evaluate_off` |
+
+`BrowserView` is `{ running, headless?, tab?, tabs?, snapshot?, text?, cut?, console?, file?,
+value?, problem? }`. `snapshot` is the page's accessibility tree with a ref (`e12`) on each element
+an act names, at most 9,000 characters; `navigate` answers its interactive elements. `file` names a
+screenshot or a PDF the engine saved under the workspace's `media/browser/<date>/`. `problem` says
+why an action ran and failed, such as a ref no element holds now.
+
 <a id="section-8"></a>
 
 ## 8. Shared shapes
@@ -1540,6 +1559,7 @@ later unchanged.
 | `shell`      | `off`, `no_wall`, `folder_missing`, `job_not_found`                                                                                                                                                                                                                                                                                                                                            |
 | `file`       | `not_found`, `walled`, `outside_workspace`, `too_large`, `is_folder`, `binary`, `exists`, `unreadable`, `unwritable`, `no_match`, `many_matches`, `overlap`, `offset_past_end`, `bad_patch`                                                                                                                                                                                                    |
 | `credential` | `not_found`, `closed`, `unavailable`                                                                                                                                                                                                                                                                                                                                                           |
+| `browser`    | `off`, `not_found`, `start_failed`, `proxy_held`, `address_refused`, `tab_not_found`, `evaluate_off`                                                                                                                                                                                                                                                                                           |
 | `internal`   | `error` (with a `details.ref` to find the log line)                                                                                                                                                                                                                                                                                                                                            |
 
 Policy and risk refusals are intent states with reasons, not errors (section 7.4). Their reason

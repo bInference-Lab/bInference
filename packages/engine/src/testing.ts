@@ -4,6 +4,11 @@ export type {
   BotUpdateSourceSubject,
 } from "./contracts/bot-update-source-contract.js";
 export { ceilingEditorContract } from "./contracts/ceiling-editor-contract.js";
+export { browserDriverContract } from "./contracts/browser-driver-contract.js";
+export type {
+  BrowserDriverHarness,
+  BrowserDriverSubject,
+} from "./contracts/browser-driver-contract.js";
 export { commandRunnerContract } from "./contracts/command-runner-contract.js";
 export type {
   CommandRunnerHarness,
@@ -64,6 +69,12 @@ export type {
 export { createCreditBilling } from "./fakes/credit-billing.js";
 export type { CreditAccount } from "./fakes/credit-billing.js";
 export { createFakeCeilingEditor, fakeOwnerKeyCode } from "./fakes/fake-ceiling-editor.js";
+export { createFakeBrowserDriver } from "./fakes/fake-browser-driver.js";
+export type {
+  FakeBrowserDriver,
+  FakeBrowserOptions,
+  FakePage,
+} from "./fakes/fake-browser-driver.js";
 export { createFakeCommandRunner } from "./fakes/fake-command-runner.js";
 export type { FakeCommand, FakeCommandRunner } from "./fakes/fake-command-runner.js";
 export type {

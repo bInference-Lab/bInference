@@ -192,5 +192,12 @@
   "credential.not_found": "No credential of that name is stored. List them with binference credential list.",
   "credential.closed": "That credential request is no longer open: it was answered, skipped, replaced or ran out of time. Ask the agent again if it still needs it.",
   "credential.unavailable": "This engine keeps no credentials. Update binference, then try again.",
+  "browser.off": "The agent's browser is off in this install. Set `browser.enabled` to true in config.json5 to turn it on.",
+  "browser.not_found": "No Chrome-family browser was found on this machine, so the agent's browser did not start. Install Google Chrome, Microsoft Edge, Brave or Chromium, or set `browser.executablePath` in config.json5 to the browser's program.",
+  "browser.start_failed": "The agent's browser could not start. Check that the program `browser.executablePath` names, or the browser found on this machine, opens on its own, then try again.",
+  "browser.proxy_held": "`network.proxy` names a proxy that cannot be read or is no http or https URL, so the agent's browser does not start. Run `binference check` to fix the proxy.",
+  "browser.address_refused": "That address is refused to the agent's browser: binference's own engine, console and folder are never opened, and addresses on this machine or a private network only when `browser.allowPrivateNetwork` is true in config.json5.",
+  "browser.tab_not_found": "The agent's browser has no tab with this ID. List the tabs and use one of their IDs.",
+  "browser.evaluate_off": "Scripts in pages are off for the agent's browser. Set `browser.evaluate` to true in config.json5 to allow them.",
   "internal.error": "binference hit an internal error. Run `binference report` to make a support file without secrets."
 }

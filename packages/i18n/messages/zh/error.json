@@ -192,5 +192,12 @@
   "credential.not_found": "没有存储该名称的凭据。用 binference credential list 查看。",
   "credential.closed": "该凭据请求已不再开放：已被回答、跳过、替换或超时。如果 Agent 仍需要，请让它再次请求。",
   "credential.unavailable": "此引擎不保存凭据。请更新 binference 后重试。",
+  "browser.off": "此安装中 Agent 的浏览器已关闭。在 config.json5 中将 `browser.enabled` 设为 true 以开启。",
+  "browser.not_found": "本机未找到 Chrome 系浏览器，Agent 的浏览器未能启动。请安装 Google Chrome、Microsoft Edge、Brave 或 Chromium，或在 config.json5 中将 `browser.executablePath` 设为浏览器程序的路径。",
+  "browser.start_failed": "Agent 的浏览器无法启动。请确认 `browser.executablePath` 指定的程序或本机找到的浏览器能够单独打开，然后重试。",
+  "browser.proxy_held": "`network.proxy` 指定的代理无法读取，或不是 http 或 https 地址，因此 Agent 的浏览器不会启动。请运行 `binference check` 修正代理。",
+  "browser.address_refused": "Agent 的浏览器拒绝打开该地址：binference 自己的引擎、控制台和文件夹永远不会被打开；本机或私有网络上的地址只有在 config.json5 中 `browser.allowPrivateNetwork` 为 true 时才能打开。",
+  "browser.tab_not_found": "Agent 的浏览器没有此 ID 的标签页。请列出标签页并使用其中一个 ID。",
+  "browser.evaluate_off": "Agent 的浏览器已关闭页面脚本。在 config.json5 中将 `browser.evaluate` 设为 true 以允许。",
   "internal.error": "binference 遇到内部错误。请运行 `binference report` 生成不含密钥的支持文件。"
 }
