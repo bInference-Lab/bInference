@@ -80,6 +80,7 @@ describe("the fast commands in Chinese", () => {
       ["spend", "今日及本月的模型花费与预算"],
       ["ai", "Agent 的模型，可用按钮选择其他模型"],
       ["clear", "与 Agent 开始新的对话"],
+      ["goal", "给 Agent 设定要推进的目标，或查看、暂停、恢复、清除目标"],
       ["schedules", "Agent 的定时轮"],
       ["console", "在 Telegram 中打开控制台"],
       ["replies", "Agent 回复和推理在此对话中的显示方式"],

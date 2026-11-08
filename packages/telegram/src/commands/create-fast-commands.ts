@@ -18,6 +18,7 @@ import type { CommandContext, CommandRun, PressContext } from "./command-context
 import { commandArgs, commandOf, type FastCommandName, fastCommandNames } from "./command-of.js";
 import { runConfig, runRestart } from "./config-command.js";
 import { runConsole } from "./console-command.js";
+import { runGoal } from "./goal-command.js";
 import { runLang, runLanguage } from "./lang-command.js";
 import { runOrders } from "./orders-command.js";
 import { runBalance } from "./portfolio-commands.js";
@@ -105,6 +106,7 @@ const runs: Readonly<Record<FastCommandName, CommandRun>> = {
   spend: runSpend,
   ai: runAi,
   clear: runClear,
+  goal: runGoal,
   schedules: runSchedules,
   console: runConsole,
   replies: runReplies,

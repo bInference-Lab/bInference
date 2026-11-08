@@ -10,6 +10,7 @@ import type { ChatRepliesOptions, ReplySettings } from "./chat-replies-options.j
 import type { Call, Parts, TurnShowing } from "./chat-replies-parts.js";
 import { startTyping } from "./chat-typing.js";
 import { showCredentialRequest } from "./credential-message.js";
+import { createGoalMessages } from "./goal-message.js";
 import { otherReplyOf } from "./other-reply.js";
 import { reasoningHtmlOf } from "./reasoning-html.js";
 import { isShownPush, type ShownPush, showShown } from "./shown-push.js";
@@ -328,7 +329,8 @@ function noteOtherReply(parts: Parts, push: { readonly kind: string; readonly da
  * one the bot's throttler drops rather than delay an answer or a card; an answer Telegram refuses
  * leaves the status message saying so, and a turn that ends with nothing says so. The model's
  * reasoning shows as the owner chose. Model text shows its Markdown as Telegram's rich text from
- * a fixed set of tags over escaped text, split at 4,000 characters.
+ * a fixed set of tags over escaped text, split at 4,000 characters. A chat's goal shows each change
+ * as a status line and its progress note as one message edited in place (decision 0407).
  */
 export function createChatReplies(options: ChatRepliesOptions): ChatReplies {
   const formatters = createOwnerFormatters();
@@ -339,6 +341,7 @@ export function createChatReplies(options: ChatRepliesOptions): ChatReplies {
     turns: new Map(),
     removals: new Map(),
   };
+  const goals = createGoalMessages({ options, formatter: parts.formatter });
   return {
     async show(given, call) {
       const push = chatPushOf(given);
@@ -347,11 +350,12 @@ export function createChatReplies(options: ChatRepliesOptions): ChatReplies {
       }
       const owner = async () => ownerChat(parts, call);
       await showCredentialRequest({ ...parts, owner }, given, call.signal);
+      await goals.show(given, call);
       noteOtherReply(parts, given);
     },
     async idle() {
       const turns = [...parts.turns.values()].map(async (showing) => showing.status.idle());
-      await Promise.all([...turns, ...parts.removals.keys()]);
+      await Promise.all([...turns, ...parts.removals.keys(), goals.idle()]);
     },
     close() {
       for (const showing of parts.turns.values()) {
@@ -361,6 +365,7 @@ export function createChatReplies(options: ChatRepliesOptions): ChatReplies {
       for (const message of parts.removals.values()) {
         message.close();
       }
+      goals.close();
     },
   };
 }

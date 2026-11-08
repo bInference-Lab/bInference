@@ -14,6 +14,7 @@
   "menu.spend": "今日及本月的模型花费与预算",
   "menu.ai": "Agent 的模型，可用按钮选择其他模型",
   "menu.clear": "与 Agent 开始新的对话",
+  "menu.goal": "给 Agent 设定要推进的目标，或查看、暂停、恢复、清除目标",
   "menu.schedules": "Agent 的定时轮",
   "menu.console": "在 Telegram 中打开控制台",
   "menu.lang": "binference 与你沟通使用的语言",
