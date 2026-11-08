@@ -72,6 +72,7 @@
   "tool.shellJob": "Checking a command…",
   "tool.browse": "Using the browser…",
   "tool.lookAtImage": "Looking at an image…",
+  "tool.lookAtScreen": "Looking at your screen…",
   "tool.readPdf": "Reading a PDF…",
   "tool.fileRead": "Reading a file…",
   "tool.fileWrite": "Writing a file…",

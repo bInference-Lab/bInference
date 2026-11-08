@@ -384,6 +384,9 @@ new name here first, in the change that uses it.
   only once every change is found.
 - **image look**: a model of the turn that takes images describing an image a tool read, with the
   agent's question (`look_at_image`, [decision 0385](DECISIONS.md#d0385)).
+- **screen look**: a screenshot of the owner's screen the agent takes only when the owner asks,
+  saved in the workspace and described by the image look; it never clicks or types
+  (`look_at_screen`, [decision 0406](DECISIONS.md#d0406)).
 - **scanned page**: a page of a PDF with fewer than 200 characters of text, which `read_pdf` reads
   from a picture of the page ([decision 0402](DECISIONS.md#d0402)).
 - **credential**: a secret such as an API key the owner stores for the agents, by a name like an

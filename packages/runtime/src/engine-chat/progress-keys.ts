@@ -56,6 +56,7 @@ const toolKeys: Readonly<Record<AgentToolName, string | undefined>> = {
   shell_job: "turn.tool.shellJob",
   browse: "turn.tool.browse",
   look_at_image: "turn.tool.lookAtImage",
+  look_at_screen: "turn.tool.lookAtScreen",
   read_pdf: "turn.tool.readPdf",
   file_read: "turn.tool.fileRead",
   file_write: "turn.tool.fileWrite",

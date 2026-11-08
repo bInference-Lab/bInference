@@ -44,6 +44,7 @@ const sendArgs = { paths: ["trades.csv"], caption: "The trades." };
 const turnOf = { turn: toolTurn.turn };
 const shellJob = "shj_0190f1c2-3a4b-7c5d-8e6f-000000000001";
 const navigate = { action: "navigate", url: "https://example.com/" } as const;
+const viewShot = { op: "image/view", args: { agent, path: "/x.png" } };
 const shellView = {
   job: shellJob,
   status: "ended",
@@ -112,6 +113,7 @@ const answers: Readonly<Record<string, FakeAnswer>> = {
   "alert/create": alertWire(),
   "schedule/list": { items: [scheduleWire()] },
   "image/view": { contentType: "image/png", bytes: 4, offset: 0, data: "iVBORw==" },
+  "screen/capture": { shots: [{ path: "/x.png", contentType: "image/png", bytes: 4 }] },
   "pdf/read": pdfReadWire,
   "file/read": {
     kind: "text",
@@ -285,7 +287,8 @@ const mappings: readonly (readonly [string, JsonValue, JsonValue])[] = [
     ],
   ],
   ["schedule_list", {}, [{ op: "schedule/list", args: { agent } }]],
-  ["look_at_image", { path: "/x.png" }, [{ op: "image/view", args: { agent, path: "/x.png" } }]],
+  ["look_at_image", { path: "/x.png" }, [viewShot]],
+  ["look_at_screen", {}, [{ op: "screen/capture", args: { agent } }, viewShot]],
   ["read_pdf", { pdf: "/x.pdf" }, [{ op: "pdf/read", args: { agent, path: "/x.pdf" } }]],
   [
     "notes_search",

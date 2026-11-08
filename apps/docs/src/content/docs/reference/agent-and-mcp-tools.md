@@ -28,6 +28,7 @@ The tools the agent's model may call in a turn, in the order a turn offers them.
 - `read_page` (read): Reads one public web page.
 - `search_x` (read): Searches recent posts on X.
 - `look_at_image` (read): Looks at a picture at a public address or in a file on the owner's machine and describes it.
+- `look_at_screen` (read): Takes a screenshot of the owner's screen when the owner asks and describes it; it never clicks or types.
 - `read_pdf` (read): Reads PDFs at a public address or on the owner's machine, scanned pages too, and answers a question about them.
 - `notes_search` (read): Searches the agent's notes.
 - `notes_get` (read): Reads one of the agent's notes in full.
