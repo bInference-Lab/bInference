@@ -4,6 +4,7 @@
   "help.send": "Enter sends your message; a pasted text stays one message.",
   "help.stop": "Esc, or /stop, stops the agent's answer. Anything you already confirmed still goes through.",
   "help.clear": "/clear starts a new chat. The agent forgets this conversation; its notes and files stay.",
+  "help.goal": "/goal and an objective gives the agent a goal it works on turn after turn; /goal alone shows it; /goal pause, /goal resume and /goal clear change it.",
   "help.card": "Ctrl+Y confirms the card shown at the bottom, Ctrl+N cancels it. A card waits 60 seconds.",
   "help.question": "While your line is empty, a number key picks an answer to the agent's question; a written message answers it too.",
   "help.exit": "Ctrl+C, or Ctrl+D on an empty line, leaves the chat.",

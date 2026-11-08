@@ -4,6 +4,7 @@ import {
   type ChatPush,
   chatPushOf,
   credentialPushes,
+  goalPushOf,
   type PushFrame,
   questionPushOf,
 } from "@binference/protocol";
@@ -15,6 +16,7 @@ import { type ChatState, withoutRunning } from "./chat-state.js";
 import type { ChatTranscript } from "./chat-transcript.js";
 import type { CredentialEntry } from "./credential-entry.js";
 import { depositLines } from "./deposit-lines.js";
+import { goalPushLines } from "./goal-lines.js";
 
 /** The parts the agent's chat topic feeds. */
 export interface ChatFeedParts {
@@ -154,8 +156,9 @@ function onChatPush(context: ChatContext, parts: ChatFeedParts, push: ChatPush):
 
 /**
  * Follows the agent's chat topic: the running turn and its answer so far in the live area, each
- * final answer and status line printed as it comes, the agent's question, and its credential
- * request, which opens the masked entry. A turn that starts,
+ * final answer and status line printed as it comes, each change of the chat's goal and its
+ * progress note (decision 0407), the agent's question, and its credential request, which opens the
+ * masked entry. A turn that starts,
  * and a gap in the topic, read the transcript on, so the owner's messages from other surfaces
  * show too. Answers how to stop following.
  */
@@ -165,6 +168,15 @@ export function followChat(context: ChatContext, parts: ChatFeedParts): () => vo
       const chat = chatPushOf(push);
       if (chat !== undefined) {
         onChatPush(context, parts, chat);
+        return;
+      }
+      const goal = goalPushOf(push);
+      if (goal !== undefined) {
+        const lines = goalPushLines(context, goal);
+        parts.queue(async () => {
+          context.print(lines);
+          return Promise.resolve();
+        });
         return;
       }
       const credential = credentialPushes.credentialPushOf(push);

@@ -5,6 +5,7 @@ import type { ChatAction } from "./chat-keys.js";
 import { failureText, saidLines } from "./chat-lines.js";
 import type { ScreenLine } from "./chat-screen.js";
 import type { ChatTranscript } from "./chat-transcript.js";
+import { goalWordsOf, runGoalCommand } from "./goal-lines.js";
 
 /** What the owner's keys reach. */
 export interface ChatInputParts {
@@ -17,7 +18,7 @@ export interface ChatInputParts {
   readonly leave: () => void;
 }
 
-const helpKeys = ["send", "stop", "clear", "card", "question", "exit"] as const;
+const helpKeys = ["send", "stop", "clear", "goal", "card", "question", "exit"] as const;
 // The commands that would attach an image, which the terminal cannot send.
 const imageCommands: ReadonlySet<string> = new Set(["/image", "/images", "/photo", "/picture"]);
 
@@ -58,7 +59,10 @@ async function stop(context: ChatContext): Promise<void> {
 function sent(context: ChatContext, parts: ChatInputParts, line: string): void {
   const { words } = context;
   const command = line.toLowerCase();
-  if (command === "/clear") {
+  const goal = goalWordsOf(line);
+  if (goal !== undefined) {
+    parts.queue(async () => runGoalCommand(context, goal));
+  } else if (command === "/clear") {
     parts.queue(async () => clear(context, parts));
   } else if (command === "/stop") {
     parts.queue(async () => stop(context));
@@ -129,8 +133,8 @@ const handlers: Readonly<Record<ChatAction["kind"], ActionHandler>> = {
 };
 
 /**
- * Acts on one key: edits the typed line, sends it (a line of its own, `/clear`, `/stop`, `/help`
- * or an image command, is the chat's own), stops the agent's answer, answers the first card or the
+ * Acts on one key: edits the typed line, sends it (a line of its own, `/clear`, `/stop`, `/goal`,
+ * `/help` or an image command, is the chat's own), stops the agent's answer, answers the first card or the
  * question, follows a paste, or leaves.
  */
 export function onAction(context: ChatContext, parts: ChatInputParts, action: ChatAction): void {

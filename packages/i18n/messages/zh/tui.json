@@ -4,6 +4,7 @@
   "help.send": "Enter 发送消息；粘贴的文字作为一条消息发送。",
   "help.stop": "Esc 或 /stop 停止 Agent 的回答。你已确认的操作仍会执行。",
   "help.clear": "/clear 开始新对话。Agent 会忘记这段对话，它的笔记和文件仍然保留。",
+  "help.goal": "/goal 加上目标，让 Agent 一轮接一轮地推进；只输入 /goal 查看目标；/goal pause、/goal resume、/goal clear 分别暂停、恢复、清除目标。",
   "help.card": "Ctrl+Y 确认底部显示的卡片，Ctrl+N 取消它。卡片等待 60 秒。",
   "help.question": "输入行为空时，按数字键选择 Agent 问题的答案；直接发送消息也可以回答。",
   "help.exit": "Ctrl+C，或在空行按 Ctrl+D，退出对话。",
