@@ -315,6 +315,11 @@ new name here first, in the change that uses it.
   (**after**).
 - **session**: one conversation between the owner and an agent, with an id `ses_…`. An agent has
   one open session, shared by every surface.
+- **helper**: a model run the agent starts in the background for one bounded task, in a session of
+  its own (`ses_…`) that starts with only that task. It reads and works on the machine, never
+  proposes, never asks the owner and never starts a helper; its result comes back to the agent as
+  a message that starts the agent's next turn (`helper_start`, `helper_list`, `helper_read`,
+  `helper_send`, `helper_stop`).
 - **agent inbox**: the engine's store of messages for the agent runtime (`msg_…`), kept until the
   runtime takes each into its chat queue.
 - **merge point**: a place in a turn where a waiting message joins it: before a later call of an
@@ -693,6 +698,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | plugin                                  | 插件                    |                             |
 | model                                   | 模型                    |                             |
 | model budget                            | 模型预算                |                             |
+| helper (of an agent)                    | 助手                    |                             |
 | fallback model                          | 备用模型                |                             |
 | prompt                                  | 提示词                  |                             |
 | answer, response                        | 回答                    |                             |
