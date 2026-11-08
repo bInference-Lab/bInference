@@ -76,6 +76,14 @@ const readsAndShoots: Check = async ({ driver, page }) => {
   assert.deepEqual([...(shot.value.capture?.bytes.subarray(0, 4) ?? [])], [137, 80, 78, 71]);
 };
 
+const missesSelector: Check = async ({ driver, page }) => {
+  await driver.run({ action: "navigate", url: page.url }, { signal });
+  const read = await driver.run({ action: "text", selector: "#none-matches" }, { signal });
+  assert.ok(read.ok);
+  assert.equal(read.value.view.text, undefined);
+  assert.ok((read.value.view.problem ?? "") !== "");
+};
+
 const refuses: Check = async ({ driver, refusedUrl }) => {
   const went = await driver.run({ action: "navigate", url: refusedUrl }, { signal });
   assert.deepEqual(went, { ok: false, error: "address_refused" });
@@ -87,6 +95,7 @@ const checks: readonly (readonly [string, Check])[] = [
   ["presses a button by its snapshot ref", presses],
   ["answers a problem for a ref no element holds", missesRef],
   ["reads the page's prose and takes a PNG screenshot", readsAndShoots],
+  ["answers a problem at once for a selector no element matches", missesSelector],
   ["refuses an address its check refuses", refuses],
 ];
 

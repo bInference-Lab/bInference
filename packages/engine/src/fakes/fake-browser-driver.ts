@@ -8,6 +8,8 @@ export interface FakePage {
   readonly title: string;
   readonly text: string;
   readonly clickedTitle?: string;
+  /** The selectors an element of the page matches, besides its article, main and body. */
+  readonly selectors?: readonly string[];
 }
 
 /** A fake browser driver, which keeps every request it took. */
@@ -45,6 +47,7 @@ interface FakeContext {
 type Ran = Result<BrowserOutcome, BrowserRefusal>;
 
 const blank: FakePage = { title: "", text: "" };
+const proseParts: ReadonlySet<string> = new Set(["article", "main", "body"]);
 const pngBytes = Uint8Array.of(0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0);
 const pdfBytes = new TextEncoder().encode("%PDF-1.7\n%%EOF\n");
 
@@ -142,7 +145,15 @@ const onTab: Readonly<Record<string, TabRun>> = {
     return answer(context, { snapshot: snapshotOf(page) });
   },
   snapshot: (context, tab) => answer(context, { snapshot: snapshotOf(pageOf(context, tab)) }),
-  text: (context, tab) => answer(context, { text: pageOf(context, tab).text }),
+  text: (context, tab, request) => {
+    const page = pageOf(context, tab);
+    const selector = request.action === "text" ? request.selector : undefined;
+    const matched =
+      selector === undefined || proseParts.has(selector) || page.selectors?.includes(selector);
+    return matched === true
+      ? answer(context, { text: page.text })
+      : answer(context, { problem: `No element matches ${selector ?? ""}.` });
+  },
   console: (context) => answer(context, { console: [] }),
   screenshot: (context) => captured(context, { bytes: pngBytes, contentType: "image/png" }),
   pdf: (context) => captured(context, { bytes: pdfBytes, contentType: "application/pdf" }),

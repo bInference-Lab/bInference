@@ -4,18 +4,18 @@ import type { Page } from "playwright-core";
 import { z } from "zod";
 import { cutAtLine } from "./page-snapshot.js";
 
-/** A page's prose cut to fit, and whether anything was cut. */
-export interface PageText {
-  readonly text: string;
-  readonly cut: boolean;
-}
+/** A page's prose cut to fit and whether anything was cut, or why there is none. */
+export type PageText =
+  | { readonly text: string; readonly cut: boolean }
+  | { readonly problem: string };
 
 // The parts of a page that hold its prose, in the order they are tried.
 const proseParts = ["article", "main", "body"] as const;
 
 /**
  * The prose of the first element the selector finds, else of the page's article, main or body,
- * blank lines folded and cut to `maxChars`.
+ * blank lines folded and cut to `maxChars`. A selector no element matches answers at once that
+ * none does, rather than wait for one to appear.
  */
 export async function pageText(
   page: Page,
@@ -25,6 +25,9 @@ export async function pageText(
     call.maxChars ?? browserLimits.maxPageTextChars,
     browserLimits.maxPageTextChars,
   );
+  if (call.selector !== undefined && (await page.locator(call.selector).count()) === 0) {
+    return { problem: `No element matches ${call.selector}: take a snapshot to see the page.` };
+  }
   const counts = await Promise.all(proseParts.map(async (part) => page.locator(part).count()));
   const part = call.selector ?? proseParts.find((_, at) => (counts[at] ?? 0) > 0) ?? "body";
   const raw = await page.locator(part).first().innerText({ timeout: call.timeoutMs });
