@@ -11,6 +11,7 @@ import { chatEntries } from "./chat-entries";
 import { ChatThread, WorkingLine } from "./chat-thread";
 import type { PickedImage } from "./composer-images";
 import { CredentialRequestCard } from "./credential-request-card";
+import { GoalPanel } from "./goal-panel";
 import { LaunchDraftCard } from "./launch-draft-card";
 import { NewChatButton } from "./new-chat-button";
 import { uploadImage } from "./upload-image";
@@ -146,9 +147,10 @@ function ChatBottom(props: {
 }
 
 /**
- * The chat with one agent: the thread, the running turn, the agent's question with its answer
- * buttons, the agent's cards inline with Confirm and Cancel, and the composer. New chat asks
- * once more, then starts a new session; the agent keeps its notes and files.
+ * The chat with one agent: its goal and progress note (decision 0407), the thread, the running
+ * turn, the agent's question with its answer buttons, the agent's cards inline with Confirm and
+ * Cancel, and the composer. New chat asks once more, then starts a new session; the agent keeps
+ * its notes and files.
  */
 export function AgentChat(props: {
   readonly agent: ProtocolId<"agent">;
@@ -164,6 +166,7 @@ export function AgentChat(props: {
   return (
     <div className="flex flex-col gap-4">
       <ChatTop actions={actions} canChat={canChat} historyError={transcript.error} />
+      <GoalPanel agent={agent} canChange={canChat} />
       <ChatThread
         entries={chatEntries(transcript.data ?? [], live.lines)}
         agent={agent}
