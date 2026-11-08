@@ -4,7 +4,7 @@ import type { BinferenceConfig } from "../config/schema/config.schema.js";
 import type { SecretSource } from "../config/schema/secret-source.schema.js";
 import type { SecretReader } from "../config/secrets/secret-reader.js";
 
-type RuntimeConfig = Pick<BinferenceConfig, "models" | "chats" | "search" | "owner">;
+type RuntimeConfig = Pick<BinferenceConfig, "models" | "chats" | "search" | "owner" | "speech">;
 
 /** The config keys the runtime's settings hold: a change to one sends the runtime new settings. */
 export const runtimeKeys: readonly string[] = [
@@ -13,6 +13,7 @@ export const runtimeKeys: readonly string[] = [
   "search",
   "owner",
   "network",
+  "speech",
 ];
 
 interface ReadCall {
@@ -106,5 +107,6 @@ export async function runtimeSettingsOf(
     search,
     owner: { locale: config.owner.locale, timezone: config.owner.timezone },
     network: networkOf(call.proxy),
+    ...(config.speech.voice === undefined ? {} : { speech: { voice: config.speech.voice } }),
   };
 }

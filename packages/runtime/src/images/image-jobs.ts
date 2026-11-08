@@ -12,19 +12,19 @@ export interface RunningImageJob {
  * started it has answered, so the turn ends while the model works. A job holds its place until its
  * work ends, however it ends.
  */
-export interface ImageJobs {
+export interface ImageJobs<Job = RunningImageJob> {
   /** The job that runs for the agent now, if any. */
-  running(agent: Id<"agt">): RunningImageJob | undefined;
+  running(agent: Id<"agt">): Job | undefined;
   /**
    * Runs `work` as the agent's job; false, running nothing, while another job of the agent runs.
    * A fault of the work is swallowed: the work tells the engine how its job ended itself.
    */
-  start(agent: Id<"agt">, job: RunningImageJob, work: () => Promise<void>): boolean;
+  start(agent: Id<"agt">, job: Job, work: () => Promise<void>): boolean;
 }
 
-/** Creates the {@link ImageJobs} of one runtime process. */
-export function createImageJobs(): ImageJobs {
-  const jobs = new Map<string, RunningImageJob>();
+/** Creates the {@link ImageJobs} of one runtime process, of images or of another kind of job. */
+export function createImageJobs<Job = RunningImageJob>(): ImageJobs<Job> {
+  const jobs = new Map<string, Job>();
   return {
     running: (agent) => jobs.get(agent),
     start: (agent, job, work) => {

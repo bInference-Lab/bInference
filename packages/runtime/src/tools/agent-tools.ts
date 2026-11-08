@@ -14,6 +14,7 @@ import { launchDraftTool } from "./launch-draft-tool.js";
 import { launchpadsTool } from "./launchpads-tool.js";
 import { lookAtImageTool } from "./look-at-image-tool.js";
 import { makeImageTool } from "./make-image-tool.js";
+import { makeVideoTool } from "./make-video-tool.js";
 import { marketTools } from "./market-tools.js";
 import { noteTools } from "./note-tools.js";
 import { orderCancelTool } from "./order-cancel-tool.js";
@@ -26,6 +27,7 @@ import { settingsChangeTool, settingsReadTool } from "./settings-tools.js";
 import { shellTools } from "./shell-tools.js";
 import { showImagesTool } from "./show-images-tool.js";
 import { openSkillTool } from "./skill-tools.js";
+import { speakTool } from "./speak-tool.js";
 import type { AgentToolParts } from "./tool-client.js";
 import { tradeTools } from "./trade-tools.js";
 import { webTools } from "./web-tools.js";
@@ -52,7 +54,8 @@ export const hiddenToolArgs: ReadonlyMap<string, readonly string[]> = new Map([
  * `launch_draft`, which drafts a token launch the owner starts (decision 0285),
  * then `deposit_address`, which shows the owner where to send funds (decision 0380), `show_chart`,
  * which shows the owner a chart (decision 0387), with image parts `make_image`, which makes images
- * in the background (decision 0392), with helper parts the helper tools (decision 0403), the machine
+ * in the background (decision 0392), with video parts `make_video` and with speech parts `speak`
+ * (decision 0405), with helper parts the helper tools (decision 0403), the machine
  * tools `shell` and `shell_job` (decision 0378), `browse` (decision 0401) and the file tools (decision 0386), `credentials`, which asks the owner for a credential and ends
  * the turn (decision 0388), then `ask_owner`, which asks the
  * owner in the turn the tools serve and ends it after its batch.
@@ -90,6 +93,8 @@ export function agentTools(parts: AgentToolParts): readonly AgentTool[] {
     sendFilesTool(parts),
     chartTool(parts),
     ...(parts.imageMaking === undefined ? [] : [makeImageTool(parts, parts.imageMaking)]),
+    ...(parts.videoMaking === undefined ? [] : [makeVideoTool(parts, parts.videoMaking)]),
+    ...(parts.speaking === undefined ? [] : [speakTool(parts, parts.speaking)]),
     ...(parts.helpers === undefined ? [] : helperTools(parts, parts.helpers)),
     ...shellTools(parts),
     browseTool(parts),

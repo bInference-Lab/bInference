@@ -60,6 +60,8 @@ The tools the agent's model may call in a turn, in the order a turn offers them.
 - `send_files` (control): Sends the owner files on the machine in the chat as documents to save, such as a report or a CSV.
 - `show_chart` (control): Shows the owner a pie, bar, area or line chart in the chat, or its text where no chart is drawn.
 - `make_image` (control): Makes images with the owner's image model, such as a token's logo; they arrive in the chat a little later.
+- `make_video` (control): Makes a short video with the owner's video model on the bInference gateway; it arrives in the chat a few minutes later.
+- `speak` (control): Speaks words as a voice note in the chat, only when the owner asks to hear them.
 - `helper_start` (control): Starts a helper: a model run in the background for one bounded task, whose result the agent answers from in a later turn.
 - `helper_list` (read): Lists the agent's helpers with their state and times.
 - `helper_read` (read): Reads one of the agent's helpers: what it does now, its report and its newest messages.

@@ -36,7 +36,10 @@ export interface StatusFacts {
   readonly chat?: ChatStanding;
   readonly turn: TurnState;
   readonly helpers: StatusHelpers;
-  readonly models: Pick<RuntimeModels, "main" | "fast" | "vision" | "imageMaking">;
+  readonly models: Pick<
+    RuntimeModels,
+    "main" | "fast" | "vision" | "imageMaking" | "videoMaking" | "speech"
+  >;
   /** The chat model the next turn runs on: the stored one while its provider is configured. */
   readonly chatModel?: string;
   readonly version: string;
@@ -66,7 +69,7 @@ function modelsLine({ models, chat, chatModel }: StatusFacts): string {
     chat?.model !== undefined && chatModel === undefined
       ? ` This chat's model ${chat.model} is ignored: its provider is no longer in models.providers.`
       : "";
-  return `Models in force: main ${named(models.main)}, fast ${named(models.fast)}, vision ${named(models.vision)}, image making ${named(models.imageMaking)}.${own}${ignored}`;
+  return `Models in force: main ${named(models.main)}, fast ${named(models.fast)}, vision ${named(models.vision)}, image making ${named(models.imageMaking)}, video making ${named(models.videoMaking)}, speech ${named(models.speech)}.${own}${ignored}`;
 }
 
 function spendLine(status: StatusFacts, formatter: Formatter): string {

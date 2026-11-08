@@ -43,6 +43,7 @@ import {
   type UpdatesConfig,
   updatesSchema,
 } from "./operations.schema.js";
+import { type SpeechConfig, speechSchema } from "./speech.schema.js";
 import {
   type ModelsConfig,
   modelsSchema,
@@ -79,6 +80,7 @@ export interface BinferenceConfig {
   readonly shell: ShellConfig;
   readonly files: FilesConfig;
   readonly browser: BrowserConfig;
+  readonly speech: SpeechConfig;
 }
 
 /** What a cross-key rule adds to a zod issue, so it maps to a `required` problem. */
@@ -129,6 +131,7 @@ export const configSchema: z.ZodType<BinferenceConfig> = z
     shell: shellSchema,
     files: filesSchema,
     browser: browserSchema,
+    speech: speechSchema,
     plugins: pluginsSchema,
   })
   .superRefine(requireTogether)

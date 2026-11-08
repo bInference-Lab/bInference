@@ -32,6 +32,13 @@ export interface RuntimeModels {
   readonly vision?: string;
   /** The model that makes images (decision 0392); the agent makes none without it. */
   readonly imageMaking?: string;
+  /** The model that makes videos, on the bInference gateway (decision 0405); none without it. */
+  readonly videoMaking?: string;
+  /**
+   * What speaks the agent's words (decision 0405): a model on an `openai` provider, or `local`
+   * for the voice of the engine's machine; the agent speaks not at all without it.
+   */
+  readonly speech?: string;
   /** The models that take images as input (decision 0227); the vision model reads them by its role. */
   readonly imageInput: readonly string[];
   readonly fallbacks: { readonly main: readonly string[]; readonly fast: readonly string[] };
@@ -98,6 +105,8 @@ export interface RuntimeSettings {
   readonly network: RuntimeNetwork;
   /** The enabled community plugins and their tools; none when absent (decision 0349). */
   readonly plugins?: readonly RuntimePlugin[];
+  /** How the agent speaks (decision 0405): the voice it speaks with, its model's own when absent. */
+  readonly speech?: { readonly voice?: string };
 }
 
 /** A {@link RuntimeModelPrice} as JSON carries it, prices as decimal strings. */
@@ -144,6 +153,8 @@ const modelsSchema = z.strictObject({
   fast: nameSchema.exactOptional(),
   vision: nameSchema.exactOptional(),
   imageMaking: nameSchema.exactOptional(),
+  videoMaking: nameSchema.exactOptional(),
+  speech: nameSchema.exactOptional(),
   imageInput: z.array(nameSchema).max(64),
   fallbacks: z.strictObject({
     main: z.array(nameSchema).max(16),
@@ -201,4 +212,5 @@ export const runtimeSettingsSchema: z.ZodType<RuntimeSettings, RuntimeSettingsWi
       noProxy: z.array(z.string().min(1).max(300)).max(256),
     }),
     plugins: z.array(pluginSchema).max(64).exactOptional(),
+    speech: z.strictObject({ voice: z.string().min(1).max(64).exactOptional() }).exactOptional(),
   });

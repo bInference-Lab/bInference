@@ -5,14 +5,18 @@ import type { TurnSetup } from "../chats/chat-context.js";
 import { defaultContextTokens } from "../compaction/turn-history.js";
 import { agentInstructions } from "../context/agent-instructions.js";
 import { helperInstructions } from "../context/helper-instructions.js";
+import type { SettingsFacts } from "../context/live-facts-text.js";
 import type { RuntimeSettings } from "../control/runtime-settings.schema.js";
 import { createImageJobs, type ImageJobs } from "../images/image-jobs.js";
 import { turnLimits } from "../loop/turn-run.js";
 import { imageMakerFor } from "../providers/image-making.js";
 import { type ChainParts, modelChainFor } from "../providers/model-transport-for.js";
+import { speechSourceFor } from "../providers/speech-making.js";
+import { videoMakerFor } from "../providers/video-making.js";
 import type { TurnPlace } from "../sessions/turn-place.js";
 import { agentToolBox, helperToolBox } from "../tools/agent-tools.js";
 import type { ImageMakingToolParts } from "../tools/make-image-tool.js";
+import type { RunningVideoJob } from "../tools/make-video-tool.js";
 import type { AgentToolParts } from "../tools/tool-client.js";
 import { modelPriceOf } from "../usage/model-price.js";
 import { connectEngine } from "./engine-link.js";
@@ -57,6 +61,36 @@ function imageMakingOf(
   };
 }
 
+// The video and speech tools' parts under the settings in force (decision 0405).
+function mediaMakingOf(
+  parts: ChainParts,
+  settings: RuntimeSettings,
+  jobs: ImageJobs<RunningVideoJob>,
+): Pick<AgentToolParts, "videoMaking" | "speaking"> {
+  const { random } = processPorts;
+  const voice = settings.speech?.voice;
+  return {
+    videoMaking: { jobs, maker: videoMakerFor(settings.models, parts), random, clock: parts.clock },
+    speaking: {
+      source: speechSourceFor(settings.models, parts),
+      ...(voice === undefined ? {} : { voice }),
+      random,
+    },
+  };
+}
+
+// The models in force as the turn starts, which its live facts name.
+function settingsFactsOf(place: TurnPlace, settings: RuntimeSettings): SettingsFacts {
+  const { imageMaking, videoMaking, speech } = settings.models;
+  const mainModel = chatModelOf(place, settings) ?? settings.models.main;
+  return {
+    ...(mainModel === undefined ? {} : { mainModel }),
+    ...(imageMaking === undefined ? {} : { imageMakingModel: imageMaking }),
+    ...(videoMaking === undefined ? {} : { videoMakingModel: videoMaking }),
+    ...(speech === undefined ? {} : { speechModel: speech }),
+  };
+}
+
 /** What a helper's setup is made from: its place, the settings, the chains' parts and its tools'. */
 interface HelperSetupContext {
   readonly place: TurnPlace;
@@ -91,6 +125,7 @@ function helperSetupOf(agentSetup: TurnSetup, context: HelperSetupContext): Turn
 function builtTurnSetup(parts: ChainParts): RuntimeHost["turnSetup"] {
   // The agents' image jobs outlive the turns that start them.
   const jobs = createImageJobs();
+  const videoJobs = createImageJobs<RunningVideoJob>();
   return (place, settings, link) => {
     const { agent } = place;
     const { main, summarizer, vision } = turnModelsOf(place, settings, parts);
@@ -101,17 +136,13 @@ function builtTurnSetup(parts: ChainParts): RuntimeHost["turnSetup"] {
       web: { http: parts.http, lookup, clock: parts.clock, search: settings.search },
       plugins: settings.plugins ?? [],
       imageMaking: imageMakingOf(parts, settings, jobs),
+      ...mediaMakingOf(parts, settings, videoJobs),
       status: { chats: link.chats, settings, version: manifest.version, clock: parts.clock },
       ...(link.helpers === undefined ? {} : { helpers: link.helpers }),
     };
-    const imageMakingModel = settings.models.imageMaking;
-    const mainModel = chatModelOf(place, settings) ?? settings.models.main;
     const setup: TurnSetup = {
       models: main,
-      settings: {
-        ...(mainModel === undefined ? {} : { mainModel }),
-        ...(imageMakingModel === undefined ? {} : { imageMakingModel }),
-      },
+      settings: settingsFactsOf(place, settings),
       ...(vision === undefined ? {} : { vision }),
       compaction: {
         summarizer,

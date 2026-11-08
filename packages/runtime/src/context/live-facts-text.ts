@@ -6,11 +6,15 @@ type AssetRef = Amount["asset"];
 
 /**
  * The settings in force as a turn starts that the agent's work depends on, so a turn never acts on
- * an earlier turn's settings: the model it talks with and the one that makes images.
+ * an earlier turn's settings: the model it talks with, and those that make images and videos and
+ * speak.
  */
 export interface SettingsFacts {
   readonly mainModel?: string;
   readonly imageMakingModel?: string;
+  readonly videoMakingModel?: string;
+  /** A speech model, or `local` for the voice of the engine's machine. */
+  readonly speechModel?: string;
 }
 
 /** What the volatile tail says: the live facts when they could be read, and the budget left. */
@@ -72,10 +76,12 @@ function factLines(facts: LiveFactsView): readonly string[] {
 }
 
 // The models in force now; an earlier turn may have run on others, so its failures may not hold.
-function settingsLine({ mainModel, imageMakingModel }: SettingsFacts): string {
-  const main = mainModel ?? "none set";
-  const images = imageMakingModel ?? "none set";
-  return `- Models in force now: talks with ${main}; makes images with ${images}. Settings may have changed since earlier turns, so an earlier failure does not hold now.`;
+function settingsLine(settings: SettingsFacts): string {
+  const main = settings.mainModel ?? "none set";
+  const images = settings.imageMakingModel ?? "none set";
+  const videos = settings.videoMakingModel ?? "none set";
+  const speech = settings.speechModel ?? "none set";
+  return `- Models in force now: talks with ${main}; makes images with ${images}; makes videos with ${videos}; speaks with ${speech}. Settings may have changed since earlier turns, so an earlier failure does not hold now.`;
 }
 
 /**

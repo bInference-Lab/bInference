@@ -5,7 +5,7 @@ description: "config.json5 中的每个配置项：取值、默认值和环境�
 
 <!-- Generated from the code by pnpm docs:gen. Never edit this file: change the code, then run pnpm docs:gen. -->
 
-此版本的 binference 读取第 21 版的 `config.json5`。每个配置项可以在文件中、通过对应的变量或用 `--set <key>=<value>` 设置，后面的层优先。密钥始终写成密钥来源，从不写密钥本身。
+此版本的 binference 读取第 22 版的 `config.json5`。每个配置项可以在文件中、通过对应的变量或用 `--set <key>=<value>` 设置，后面的层优先。密钥始终写成密钥来源，从不写密钥本身。
 
 ## `version`
 
@@ -63,6 +63,8 @@ description: "config.json5 中的每个配置项：取值、默认值和环境�
 - `models.fast`: 负责写摘要、压缩上下文和分类的模型。取值：写作 provider/model 的模型，即服务商名加模型名。默认：无。变量：`BINFERENCE_MODELS__FAST`。
 - `models.vision`: 主模型无法读取图片时，负责读取图片的模型。取值：写作 provider/model 的模型，即服务商名加模型名。默认：无。变量：`BINFERENCE_MODELS__VISION`。
 - `models.imageMaking`: 生成图片的模型：在 bInference 网关上，选它的图片模型之一；在 openai 服务商上，选支持 Images API 的模型。取值：写作 provider/model 的模型，即服务商名加模型名。默认：无。变量：`BINFERENCE_MODELS__IMAGE_MAKING`。
+- `models.videoMaking`: 生成视频的模型：bInference 网关的视频模型之一。取值：写作 provider/model 的模型，即服务商名加模型名。默认：无。变量：`BINFERENCE_MODELS__VIDEO_MAKING`。
+- `models.speech`: 所有者要求语音时朗读 Agent 话语的方式：openai 服务商上的语音模型，或在 macOS 上用 local 表示本机自带的语音。取值："local"或写作 provider/model 的模型，即服务商名加模型名。默认：无。变量：`BINFERENCE_MODELS__SPEECH`。
 - `models.imageInput`: 能以图片作为输入的模型；其他模型收到视觉模型写的图片描述。取值：列表，每一项为写作 provider/model 的模型，即服务商名加模型名。默认：`[]`。变量：`BINFERENCE_MODELS__IMAGE_INPUT`。
 - `models.fallbacks.main`: 主模型失败时依次尝试的备用模型。取值：列表，每一项为写作 provider/model 的模型，即服务商名加模型名。默认：`[]`。变量：`BINFERENCE_MODELS__FALLBACKS__MAIN`。
 - `models.fallbacks.fast`: 快速模型失败时依次尝试的备用模型。取值：列表，每一项为写作 provider/model 的模型，即服务商名加模型名。默认：`[]`。变量：`BINFERENCE_MODELS__FALLBACKS__FAST`。
@@ -226,6 +228,12 @@ Agent 的浏览器。
 - `browser.executablePath`: Agent 使用的 Chrome 系浏览器的程序；未设置时，使用本机找到的 Google Chrome、Microsoft Edge、Brave 或 Chromium。取值：绝对路径，或以 ~/ 开头的路径。默认：无。变量：`BINFERENCE_BROWSER__EXECUTABLE_PATH`。
 - `browser.evaluate`: 让 Agent 在其浏览器打开的页面中运行脚本。取值：true 或 false。默认：`true`。变量：`BINFERENCE_BROWSER__EVALUATE`。
 - `browser.allowPrivateNetwork`: 让 Agent 的浏览器打开本机和私有网络上的地址；binference 自己的引擎、控制台和文件夹仍被拒绝。取值：true 或 false。默认：`false`。变量：`BINFERENCE_BROWSER__ALLOW_PRIVATE_NETWORK`。
+
+## `speech`
+
+所有者要求语音时 Agent 如何朗读。
+
+- `speech.voice`: Agent 朗读用的语音：语音模型的语音之一，例如 alloy，或使用 local 时本机的语音之一，例如 Samantha；未设置时用模型或本机的默认语音。取值：文本。默认：无。变量：`BINFERENCE_SPEECH__VOICE`。
 
 ## `plugins`
 

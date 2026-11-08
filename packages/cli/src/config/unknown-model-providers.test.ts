@@ -28,6 +28,19 @@ describe("models a change adds", () => {
     ]);
   });
 
+  it("names a video model off the gateway and a speech model off an openai provider", () => {
+    const oa = { kind: "openai" } as const;
+    const withOpenai: ModelsConfig = { ...models, providers: { ...models.providers, oa } };
+    expect([
+      unknownModelProviders(withOpenai, { ...withOpenai, videoMaking: "oa/sora" }),
+      unknownModelProviders(withOpenai, { ...withOpenai, videoMaking: "binference/alibaba/wan" }),
+      unknownModelProviders(withOpenai, { ...withOpenai, speech: "binference/openai/tts" }),
+      unknownModelProviders(withOpenai, { ...withOpenai, speech: "oa/gpt-4o-mini-tts" }),
+      unknownModelProviders(withOpenai, { ...withOpenai, speech: "local" }),
+      unknownModelProviders(withOpenai, { ...withOpenai, speech: "none/tts" }),
+    ]).toStrictEqual([["oa/sora"], [], ["binference/openai/tts"], [], [], ["none/tts"]]);
+  });
+
   it("leaves a model the config named before, so an older file takes other changes", () => {
     const dangling = { ...models, fast: "gone/model" };
     expect(unknownModelProviders(dangling, { ...dangling, cooldownMs: 2 })).toStrictEqual([]);

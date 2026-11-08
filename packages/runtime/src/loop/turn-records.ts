@@ -66,9 +66,10 @@ export interface ToolOutcome {
 
 /**
  * A status line a tool's work gives a turn that ends well: the first chat ended, or images are on
- * their way (decision 0399), a line that shows only when the turn has no text of its own.
+ * their way (decision 0399) or a video (decision 0405), a line that shows only when the turn has no
+ * text of its own.
  */
-export type ClosingLine = "firstChatDone" | "imageComing" | "imagesComing";
+export type ClosingLine = "firstChatDone" | "imageComing" | "imagesComing" | "videoComing";
 
 /** What a tool's run receives. */
 export interface ToolRunContext {

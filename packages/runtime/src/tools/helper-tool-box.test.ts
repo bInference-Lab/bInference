@@ -33,6 +33,13 @@ async function fullParts(): Promise<AgentToolParts> {
       random: { bytes: neverCalled },
       clock,
     },
+    videoMaking: {
+      jobs: { running: neverCalled, start: neverCalled },
+      maker: "set",
+      random: { bytes: neverCalled },
+      clock,
+    },
+    speaking: { source: { kind: "local" }, random: { bytes: neverCalled } },
     helpers: { desk: rig.desk, clock },
   };
 }
@@ -62,10 +69,15 @@ describe("the tools of a helper's turn", () => {
     );
     const never = ["swap", "send", "order_create", "settings_change", "ask_owner", "credentials"];
     const others = ["make_image", "show_images", "send_files", "deposit_address", "alert_create"];
+    const media = ["make_video", "speak"];
     const own = ["schedule_list", "schedule_create", "helper_start", "helper_list", "helper_read"];
-    expect(names.filter((name) => [...never, ...others, ...own].includes(name))).toStrictEqual([]);
+    expect(
+      names.filter((name) => [...never, ...others, ...media, ...own].includes(name)),
+    ).toStrictEqual([]);
     // The agent itself keeps every one of them.
-    expect([...never, ...others, ...own].filter((name) => !kinds.has(name))).toStrictEqual([]);
+    expect(
+      [...never, ...others, ...media, ...own].filter((name) => !kinds.has(name)),
+    ).toStrictEqual([]);
   });
 
   it("never runs a proposal a helper's model writes: the box holds no such tool", async () => {

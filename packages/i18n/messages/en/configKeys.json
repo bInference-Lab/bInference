@@ -34,6 +34,8 @@
   "models.fast": "The model that writes summaries, compacts and classifies.",
   "models.vision": "The model that reads images when the main one cannot.",
   "models.imageMaking": "The model that makes images: on the bInference gateway, one of its image models; on an openai provider, an Images API model.",
+  "models.videoMaking": "The model that makes videos: one of the bInference gateway's video models.",
+  "models.speech": "What speaks the agent's words when the owner asks for voice: a speech model on an openai provider, or local for this machine's own voice on macOS.",
   "models.imageInput": "The models that take images as input; any other model gets the vision model's description.",
   "models.fallbacks.main": "Models tried in order when the main one fails.",
   "models.fallbacks.fast": "Models tried in order when the fast one fails.",
@@ -137,6 +139,8 @@
   "browser.executablePath": "The program of the Chrome-family browser the agent drives; unset, Google Chrome, Microsoft Edge, Brave or Chromium as found on this machine.",
   "browser.evaluate": "Lets the agent run scripts in the pages its browser opens.",
   "browser.allowPrivateNetwork": "Lets the agent's browser open addresses on this machine and private networks; binference's own engine, console and folder stay refused.",
+  "speech": "How the agent speaks when the owner asks for voice.",
+  "speech.voice": "The voice the agent speaks with: one of the speech model's voices, such as alloy, or with local one of this machine's, such as Samantha; the model's or the machine's own when unset.",
   "plugins": "Each plugin's settings, by plugin id.",
   "plugins.<plugin>.<setting>": "One plugin's settings, as its own schema reads them."
 }

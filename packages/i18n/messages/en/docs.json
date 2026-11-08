@@ -136,6 +136,8 @@
   "tools.summary.notes_get": "Reads one of the agent's notes in full.",
   "tools.summary.notes_forget": "Forgets one of the agent's notes.",
   "tools.summary.make_image": "Makes images with the owner's image model, such as a token's logo; they arrive in the chat a little later.",
+  "tools.summary.make_video": "Makes a short video with the owner's video model on the bInference gateway; it arrives in the chat a few minutes later.",
+  "tools.summary.speak": "Speaks words as a voice note in the chat, only when the owner asks to hear them.",
   "tools.summary.show_images": "Shows the owner, in the chat, pictures already on the machine, such as images the agent made before.",
   "tools.summary.send_files": "Sends the owner files on the machine in the chat as documents to save, such as a report or a CSV.",
   "tools.summary.helper_start": "Starts a helper: a model run in the background for one bounded task, whose result the agent answers from in a later turn.",

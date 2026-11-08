@@ -173,7 +173,7 @@ describe("agent_status", () => {
     expect(outcome).toStrictEqual({
       text: [
         `Agent: Scout (${agent}). Mode paper, not frozen, approval mode manual.`,
-        "Models in force: main router/main, fast router/fast, vision none set, image making none set.",
+        "Models in force: main router/main, fast router/fast, vision none set, image making none set, video making none set, speech none set.",
         "Model spend today: $0.50 of the $3.00 daily budget, $2.50 left; it resets at Nov 9, 2026, 00:00:00.",
         "This chat: started Nov 8, 2026, 09:05:00, 14 turns so far, this one among them. This turn calls router/main. The context holds about 23k of 128k tokens (18%). This turn holds outside content, so its proposals carry a warning.",
         `Helpers: 1 running: "scan launches" (ses_0190f1c2-3a4b-7c5d-8e6f-000000000101); 1 more ended, which helper_list lists.`,
@@ -188,7 +188,7 @@ describe("agent_status", () => {
     const { text } = await callStatus(parts);
     expect(text.split("\n").slice(0, 4)).toStrictEqual([
       "Agent: name could not be read now. Mode, freeze and approval mode could not be read now.",
-      "Models in force: main router/main, fast router/fast, vision none set, image making none set.",
+      "Models in force: main router/main, fast router/fast, vision none set, image making none set, video making none set, speech none set.",
       "Model spend today could not be read now. $1.25 was left when binference last answered. The budget resets at Nov 9, 2026, 00:00:00.",
       "This chat: its start and turns could not be read now. This turn calls router/main. The context holds about 23k of 128k tokens (18%). This turn holds outside content, so its proposals carry a warning.",
     ]);
@@ -201,7 +201,7 @@ describe("agent_status", () => {
     expect(set.text.split("\n").slice(0, 3)).toStrictEqual([
       "This chat talks with router/big from its next turn until it is cleared; the daily model budget still caps its spend, and default puts the configured model back.",
       `Agent: Scout (${agent}). Mode paper, not frozen, approval mode manual.`,
-      "Models in force: main router/main, fast router/fast, vision none set, image making none set. This chat talks with its own model, router/big.",
+      "Models in force: main router/main, fast router/fast, vision none set, image making none set, video making none set, speech none set. This chat talks with its own model, router/big.",
     ]);
     const cleared = await callStatus(partsOf(chats.source), { model: "default" });
     expect(cleared.text.split("\n")[0]).toBe(
@@ -233,7 +233,7 @@ describe("agent_status", () => {
     const stale = chatsOf({ chat: { ...chat, model: "openai/gpt-5" } });
     const { text } = await callStatus(partsOf(stale.source));
     expect(text.split("\n")[1]).toBe(
-      "Models in force: main router/main, fast router/fast, vision none set, image making none set. This chat's model openai/gpt-5 is ignored: its provider is no longer in models.providers.",
+      "Models in force: main router/main, fast router/fast, vision none set, image making none set, video making none set, speech none set. This chat's model openai/gpt-5 is ignored: its provider is no longer in models.providers.",
     );
   });
 });

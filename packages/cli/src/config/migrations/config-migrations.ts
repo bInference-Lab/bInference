@@ -150,6 +150,14 @@ export const configMigrations: readonly ConfigMigration[] = [
       "(allowPrivateNetwork false), a window where the machine has a desktop.",
     edits: () => [],
   },
+  {
+    from: 21,
+    summary:
+      "Adds models.videoMaking, the model that makes the agent's videos on the bInference " +
+      "gateway, models.speech, what speaks its words, and speech.voice, all unset: the agent " +
+      "makes no video and speaks not at all until the owner names them.",
+    edits: () => [],
+  },
 ];
 
 /** The version of `config.json5` this binference writes and reads. */

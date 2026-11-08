@@ -138,5 +138,9 @@
   "browser.executablePath": "Agent 使用的 Chrome 系浏览器的程序；未设置时，使用本机找到的 Google Chrome、Microsoft Edge、Brave 或 Chromium。",
   "browser.evaluate": "让 Agent 在其浏览器打开的页面中运行脚本。",
   "browser.allowPrivateNetwork": "让 Agent 的浏览器打开本机和私有网络上的地址；binference 自己的引擎、控制台和文件夹仍被拒绝。",
-  "models.imageMaking": "生成图片的模型：在 bInference 网关上，选它的图片模型之一；在 openai 服务商上，选支持 Images API 的模型。"
+  "models.imageMaking": "生成图片的模型：在 bInference 网关上，选它的图片模型之一；在 openai 服务商上，选支持 Images API 的模型。",
+  "models.videoMaking": "生成视频的模型：bInference 网关的视频模型之一。",
+  "models.speech": "所有者要求语音时朗读 Agent 话语的方式：openai 服务商上的语音模型，或在 macOS 上用 local 表示本机自带的语音。",
+  "speech": "所有者要求语音时 Agent 如何朗读。",
+  "speech.voice": "Agent 朗读用的语音：语音模型的语音之一，例如 alloy，或使用 local 时本机的语音之一，例如 Samantha；未设置时用模型或本机的默认语音。"
 }

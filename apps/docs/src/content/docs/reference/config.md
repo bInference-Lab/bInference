@@ -5,7 +5,7 @@ description: "Every config key in config.json5: what it takes, its default and i
 
 <!-- Generated from the code by pnpm docs:gen. Never edit this file: change the code, then run pnpm docs:gen. -->
 
-This binference reads `config.json5` version 21. Each config key is set in the file, by its variable, or by `--set <key>=<value>`, and a later layer wins. A secret is always a secret source, never the secret itself.
+This binference reads `config.json5` version 22. Each config key is set in the file, by its variable, or by `--set <key>=<value>`, and a later layer wins. A secret is always a secret source, never the secret itself.
 
 ## `version`
 
@@ -63,6 +63,8 @@ Model providers and the models the agent uses.
 - `models.fast`: The model that writes summaries, compacts and classifies. Takes a model written as provider/model. Default: none. Variable: `BINFERENCE_MODELS__FAST`.
 - `models.vision`: The model that reads images when the main one cannot. Takes a model written as provider/model. Default: none. Variable: `BINFERENCE_MODELS__VISION`.
 - `models.imageMaking`: The model that makes images: on the bInference gateway, one of its image models; on an openai provider, an Images API model. Takes a model written as provider/model. Default: none. Variable: `BINFERENCE_MODELS__IMAGE_MAKING`.
+- `models.videoMaking`: The model that makes videos: one of the bInference gateway's video models. Takes a model written as provider/model. Default: none. Variable: `BINFERENCE_MODELS__VIDEO_MAKING`.
+- `models.speech`: What speaks the agent's words when the owner asks for voice: a speech model on an openai provider, or local for this machine's own voice on macOS. Takes "local" or a model written as provider/model. Default: none. Variable: `BINFERENCE_MODELS__SPEECH`.
 - `models.imageInput`: The models that take images as input; any other model gets the vision model's description. Takes a list in which each item is a model written as provider/model. Default: `[]`. Variable: `BINFERENCE_MODELS__IMAGE_INPUT`.
 - `models.fallbacks.main`: Models tried in order when the main one fails. Takes a list in which each item is a model written as provider/model. Default: `[]`. Variable: `BINFERENCE_MODELS__FALLBACKS__MAIN`.
 - `models.fallbacks.fast`: Models tried in order when the fast one fails. Takes a list in which each item is a model written as provider/model. Default: `[]`. Variable: `BINFERENCE_MODELS__FALLBACKS__FAST`.
@@ -226,6 +228,12 @@ The agent's browser.
 - `browser.executablePath`: The program of the Chrome-family browser the agent drives; unset, Google Chrome, Microsoft Edge, Brave or Chromium as found on this machine. Takes an absolute path, or one that starts with ~/. Default: none. Variable: `BINFERENCE_BROWSER__EXECUTABLE_PATH`.
 - `browser.evaluate`: Lets the agent run scripts in the pages its browser opens. Takes true or false. Default: `true`. Variable: `BINFERENCE_BROWSER__EVALUATE`.
 - `browser.allowPrivateNetwork`: Lets the agent's browser open addresses on this machine and private networks; binference's own engine, console and folder stay refused. Takes true or false. Default: `false`. Variable: `BINFERENCE_BROWSER__ALLOW_PRIVATE_NETWORK`.
+
+## `speech`
+
+How the agent speaks when the owner asks for voice.
+
+- `speech.voice`: The voice the agent speaks with: one of the speech model's voices, such as alloy, or with local one of this machine's, such as Samantha; the model's or the machine's own when unset. Takes text. Default: none. Variable: `BINFERENCE_SPEECH__VOICE`.
 
 ## `plugins`
 

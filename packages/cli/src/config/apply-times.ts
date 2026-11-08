@@ -76,6 +76,8 @@ const keysReadOnUse: readonly string[] = [
   // Each browser call reads its switches as it starts; the program, the window and the proxy
   // apply at the browser's next start.
   "browser",
+  // The runtime gets the voice in its settings, applied from its next call of `speak`.
+  "speech",
 ];
 
 // The keys spec 2 marks live that no part reads yet, so no running part holds an older value: the

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { gatewayModelEntry } from "./gateway-model-list.schema.js";
 
 /** What the gateway's image endpoint takes for one model (decision 0398). */
 export interface GatewayImageModel {
@@ -20,7 +21,6 @@ const entrySchema = z.looseObject({
   reads_images: z.boolean().optional(),
   parameters: z.record(z.string(), z.unknown()).optional(),
 });
-const listSchema = z.looseObject({ data: z.array(z.unknown()) });
 
 function valuesOf(parameters: Readonly<Record<string, unknown>>, name: string): readonly string[] {
   const field = enumField.safeParse(parameters[name]);
@@ -32,18 +32,14 @@ function valuesOf(parameters: Readonly<Record<string, unknown>>, name: string): 
  * `undefined` when the list does not hold it or does not read.
  */
 export function gatewayImageModelOf(list: unknown, model: string): GatewayImageModel | undefined {
-  const read = listSchema.safeParse(list);
-  const entries = read.success ? read.data.data : [];
-  const entry = entries
-    .map((item) => entrySchema.safeParse(item))
-    .find((item) => item.success && item.data.id === model);
-  if (entry?.success !== true) {
+  const entry = gatewayModelEntry(list, model, entrySchema);
+  if (entry === undefined) {
     return undefined;
   }
-  const parameters = entry.data.parameters ?? {};
+  const parameters = entry.parameters ?? {};
   const count = rangeField.safeParse(parameters["n"]);
   return {
-    readsImages: entry.data.reads_images === true,
+    readsImages: entry.reads_images === true,
     maxCount: count.success ? count.data.max : 1,
     resolutions: valuesOf(parameters, "resolution"),
     aspectRatios: valuesOf(parameters, "aspect_ratio"),

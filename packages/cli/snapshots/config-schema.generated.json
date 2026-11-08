@@ -1,5 +1,5 @@
 {
-  "version": 21,
+  "version": 22,
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object",
@@ -259,6 +259,26 @@
             "type": "string",
             "pattern": "^[^\\s/]+\\/\\S+$",
             "valueFormat": "model"
+          },
+          "videoMaking": {
+            "description": "The model that makes videos: one of the bInference gateway's video models.",
+            "type": "string",
+            "pattern": "^[^\\s/]+\\/\\S+$",
+            "valueFormat": "model"
+          },
+          "speech": {
+            "description": "What speaks the agent's words when the owner asks for voice: a speech model on an openai provider, or local for this machine's own voice on macOS.",
+            "anyOf": [
+              {
+                "type": "string",
+                "const": "local"
+              },
+              {
+                "type": "string",
+                "pattern": "^[^\\s/]+\\/\\S+$",
+                "valueFormat": "model"
+              }
+            ]
           },
           "imageInput": {
             "description": "The models that take images as input; any other model gets the vision model's description.",
@@ -1135,6 +1155,19 @@
             "description": "Lets the agent's browser open addresses on this machine and private networks; binference's own engine, console and folder stay refused.",
             "default": false,
             "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "speech": {
+        "description": "How the agent speaks when the owner asks for voice.",
+        "default": {},
+        "type": "object",
+        "properties": {
+          "voice": {
+            "description": "The voice the agent speaks with: one of the speech model's voices, such as alloy, or with local one of this machine's, such as Samantha; the model's or the machine's own when unset.",
+            "type": "string",
+            "pattern": "^[\\p{L}\\p{N}][\\p{L}\\p{N} ._()'-]{0,63}$"
           }
         },
         "additionalProperties": false

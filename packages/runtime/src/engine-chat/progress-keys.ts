@@ -63,6 +63,8 @@ const toolKeys: Readonly<Record<AgentToolName, string | undefined>> = {
   file_patch: "turn.tool.filePatch",
   show_chart: "turn.tool.showChart",
   make_image: "turn.tool.makeImage",
+  make_video: "turn.tool.makeVideo",
+  speak: "turn.tool.speak",
   show_images: "turn.tool.showImages",
   send_files: "turn.tool.sendFiles",
   credentials: "turn.tool.credentials",

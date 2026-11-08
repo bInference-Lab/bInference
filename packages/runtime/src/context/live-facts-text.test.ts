@@ -74,12 +74,14 @@ describe("the live facts as the model reads them", () => {
       settings: {
         mainModel: "binference/openai/gpt-6-luna",
         imageMakingModel: "binference/openai/gpt-6-luna",
+        videoMakingModel: "binference/alibaba/wan-3.0",
+        speechModel: "local",
       },
     });
     const none = liveFactsText({ settings: {} });
     expect([named.split("\n").at(-1), none.split("\n").at(-1)]).toStrictEqual([
-      "- Models in force now: talks with binference/openai/gpt-6-luna; makes images with binference/openai/gpt-6-luna. Settings may have changed since earlier turns, so an earlier failure does not hold now.",
-      "- Models in force now: talks with none set; makes images with none set. Settings may have changed since earlier turns, so an earlier failure does not hold now.",
+      "- Models in force now: talks with binference/openai/gpt-6-luna; makes images with binference/openai/gpt-6-luna; makes videos with binference/alibaba/wan-3.0; speaks with local. Settings may have changed since earlier turns, so an earlier failure does not hold now.",
+      "- Models in force now: talks with none set; makes images with none set; makes videos with none set; speaks with none set. Settings may have changed since earlier turns, so an earlier failure does not hold now.",
     ]);
   });
 

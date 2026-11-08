@@ -5,6 +5,8 @@ import type { TurnPlace } from "../sessions/turn-place.js";
 import type { AgentStatusParts } from "./agent-status-tool.js";
 import type { HelperToolParts } from "./helper-tools.js";
 import type { ImageMakingToolParts } from "./make-image-tool.js";
+import type { VideoMakingToolParts } from "./make-video-tool.js";
+import type { SpeakingToolParts } from "./speak-tool.js";
 import type { WebToolParts } from "./web-tools.js";
 
 /** The protocol client calls an agent's tools make, over the runtime's connection to the engine. */
@@ -30,6 +32,10 @@ export interface AgentToolParts {
   readonly plugins?: readonly RuntimePlugin[];
   /** What `make_image` runs on (decision 0392); without it, the agent has no image tool. */
   readonly imageMaking?: ImageMakingToolParts;
+  /** What `make_video` runs on (decision 0405); without it, the agent has no video tool. */
+  readonly videoMaking?: VideoMakingToolParts;
+  /** What `speak` runs on (decision 0405); without it, the agent has no speech tool. */
+  readonly speaking?: SpeakingToolParts;
   /** What the helper tools run on (decision 0403); without it, the agent has no helper tools. */
   readonly helpers?: HelperToolParts;
   /** What `agent_status` reads (decision 0404); without it, the agent has no status tool. */

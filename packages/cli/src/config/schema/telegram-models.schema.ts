@@ -59,6 +59,10 @@ export interface ModelsConfig {
   readonly imageMaking?: string;
   /** The models that take images as input, each `<provider>/<model>` (decision 0227). */
   readonly imageInput: readonly string[];
+  /** The model that makes videos, on the bInference gateway (decision 0405). */
+  readonly videoMaking?: string;
+  /** What speaks: a model on an openai provider, or `local` for this machine's voice (decision 0405). */
+  readonly speech?: string;
   readonly fallbacks: FallbackConfig;
   readonly idleTimeoutMs: number;
   readonly cooldownMs: number;
@@ -137,6 +141,13 @@ export const modelsSchema: z.ZodType<ModelsConfig> = z
     imageMaking: modelRole(
       "makes images: on the bInference gateway, one of its image models; on an openai provider, an Images API model",
     ),
+    videoMaking: modelRole("makes videos: one of the bInference gateway's video models"),
+    speech: z
+      .union([z.literal("local"), modelSchema])
+      .exactOptional()
+      .describe(
+        "What speaks the agent's words when the owner asks for voice: a speech model on an openai provider, or local for this machine's own voice on macOS.",
+      ),
     imageInput: z
       .array(modelSchema)
       .prefault([])

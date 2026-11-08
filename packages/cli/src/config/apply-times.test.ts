@@ -68,6 +68,8 @@ describe("when a config change applies", () => {
     ["shell.timeoutSeconds", 60, "now"],
     ["browser.enabled", false, "now"],
     ["browser.headless", true, "now"],
+    ["speech.voice", "Samantha", "now"],
+    ["models.speech", "local", "now"],
     ["a.key.no.entry.covers", 1, "restart"],
   ])("judges %s set to %j as %s", (path, after, time) => {
     expect(applyTimeOf({ path, after }, started)).toBe(time);

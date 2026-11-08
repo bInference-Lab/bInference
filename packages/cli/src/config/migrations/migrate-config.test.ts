@@ -318,6 +318,16 @@ describe("migrate config", () => {
     });
   });
 
+  it("moves a version 21 file to version 22 unchanged, no video or speech model named", () => {
+    const twentyFirst: JsonObject = { version: 21, models: { imageMaking: "binference/x/y" } };
+    const migrated = migrateConfig(twentyFirst, configMigrations.slice(0, 21));
+    expect(migrated).toMatchObject({
+      ok: true,
+      file: { version: 22, models: { imageMaking: "binference/x/y" } },
+      steps: [{ from: 21, to: 22, edits: [] }],
+    });
+  });
+
   it("keeps the shipped migrations in order, one version each", () => {
     expect(() => {
       assertMigrationOrder(configMigrations);
