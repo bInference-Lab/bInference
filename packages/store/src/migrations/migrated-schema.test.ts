@@ -390,6 +390,16 @@ describe("the agent database", () => {
           "id agent_id parent_session_id label model state started_at ended_at timeout_ms runs outside",
         ),
       },
+      goals: {
+        strict: true,
+        columns: names(
+          "session_id agent_id objective status pause_reason note budget_micros spent_micros goal_turns strikes started_at updated_at version",
+        ),
+      },
+      progress_notes: {
+        strict: true,
+        columns: names("session_id agent_id markdown plan updated_at"),
+      },
       notes: {
         strict: true,
         columns: names("id agent_id text origin created_at changed_at deleted_at"),

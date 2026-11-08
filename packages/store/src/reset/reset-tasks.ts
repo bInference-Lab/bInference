@@ -105,6 +105,8 @@ export const clearAgentStateTask: StoreTask<null, AgentStateCleared> = defineTas
     const turns = changedRows(execute(kysely.deleteFrom("turns")));
     // A helper names its sessions, so it goes before them.
     execute(kysely.deleteFrom("helpers"));
+    execute(kysely.deleteFrom("goals"));
+    execute(kysely.deleteFrom("progress_notes"));
     const sessions = changedRows(execute(kysely.deleteFrom("sessions")));
     const notes = changedRows(execute(kysely.deleteFrom("notes")));
     execute(kysely.deleteFrom("meta").where("key", "=", pruneKey));

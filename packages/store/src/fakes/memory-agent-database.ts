@@ -1,3 +1,4 @@
+import type { GoalRecord, ProgressNoteRecord } from "../chats/goal-record.js";
 import type { HelperRecord } from "../chats/helper-record.js";
 import type { QueuedMessage } from "../chats/queued-message.js";
 import type { SessionRecord } from "../chats/session-record.js";
@@ -36,6 +37,8 @@ export interface MemoryAgentDatabase {
   readonly eventIds: Counter;
   readonly queue: Map<string, QueuedMessage>;
   readonly helpers: Map<string, HelperRecord>;
+  readonly goals: Map<string, GoalRecord>;
+  readonly progressNotes: Map<string, ProgressNoteRecord>;
   readonly notes: Map<number, NoteRecord>;
   readonly noteIds: Counter;
 }
@@ -50,6 +53,8 @@ export function createMemoryAgentDatabase(): MemoryAgentDatabase {
     eventIds: createCounter(),
     queue: new Map(),
     helpers: new Map(),
+    goals: new Map(),
+    progressNotes: new Map(),
     notes: new Map(),
     noteIds: createCounter(),
   };

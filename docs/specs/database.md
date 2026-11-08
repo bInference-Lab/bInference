@@ -371,17 +371,19 @@ deletes its ticket in the transaction that claims its launch
 
 ## 3. Agent database
 
-| Table               | Columns                                                                                                                                                                                                                     | Keys and indexes                                        |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| `meta`              | `key`, `value`                                                                                                                                                                                                              | PK `key`                                                |
-| `sessions`          | `id`, `agent_id`, `surface`, `conversation` (for example `telegram:<chat>:<topic>`), `started_at`, `cleared_at`, `summary`, `version`, `model` (the chat's own model, [decision 0404](../DECISIONS.md#d0404))               | `(agent_id, conversation)`                              |
-| `turns`             | `id`, `session_id`, `started_at`, `ended_at`, `outcome` (`ok`, `stopped`, `failed`, `budget`, `loop`), `committed`, `outside_content`, `held_back` (propose calls not run, [decision 0167](../DECISIONS.md#d0167)), `model` | `(session_id, started_at)`                              |
-| `chat_queue`        | `message` (`msg_…`), `agent_id`, `session_id`, `kind`, `payload JSON`, `received_at`, `turn_id` (the turn that took it), `dropped_at`, `drop_reason`, `seq` (its write-order key, from `counters`)                          | PK `message`, `(session_id, received_at)`, unique `seq` |
-| `transcript_events` | `id`, `session_id`, `turn_id`, `seq`, `role` (`owner`, `agent`, `tool`, `system`), `kind` (`text`, `tool_call`, `tool_result`, `image`, `summary`), `content JSON`, `outside` (outside content, spec 8 section 5.4), `at`   | unique `(session_id, seq)`                              |
-| `notes`             | `id`, `agent_id`, `text`, `origin` (`owner`, `agent`, `untrusted`, `system`), `created_at`, `changed_at`, `deleted_at`                                                                                                      | `(agent_id)`                                            |
-| `helpers`           | `id` (the helper's own session), `agent_id`, `parent_session_id`, `label`, `model`, `state` (`running`, `done`, `failed`, `stopped`, `timed_out`), `started_at`, `ended_at`, `timeout_ms`, `runs`, `outside`                | PK `id`, `(agent_id, started_at)`                       |
-| `notes_fts`         | FTS5 over `notes.text`, kept in step by triggers                                                                                                                                                                            |                                                         |
-| `counters`          | `name`, `last` (the last write-order key it gave)                                                                                                                                                                           | PK `name`                                               |
+| Table               | Columns                                                                                                                                                                                                                                   | Keys and indexes                                        |
+| ------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| `meta`              | `key`, `value`                                                                                                                                                                                                                            | PK `key`                                                |
+| `sessions`          | `id`, `agent_id`, `surface`, `conversation` (for example `telegram:<chat>:<topic>`), `started_at`, `cleared_at`, `summary`, `version`, `model` (the chat's own model, [decision 0404](../DECISIONS.md#d0404))                             | `(agent_id, conversation)`                              |
+| `turns`             | `id`, `session_id`, `started_at`, `ended_at`, `outcome` (`ok`, `stopped`, `failed`, `budget`, `loop`), `committed`, `outside_content`, `held_back` (propose calls not run, [decision 0167](../DECISIONS.md#d0167)), `model`               | `(session_id, started_at)`                              |
+| `chat_queue`        | `message` (`msg_…`), `agent_id`, `session_id`, `kind`, `payload JSON`, `received_at`, `turn_id` (the turn that took it), `dropped_at`, `drop_reason`, `seq` (its write-order key, from `counters`)                                        | PK `message`, `(session_id, received_at)`, unique `seq` |
+| `transcript_events` | `id`, `session_id`, `turn_id`, `seq`, `role` (`owner`, `agent`, `tool`, `system`), `kind` (`text`, `tool_call`, `tool_result`, `image`, `summary`), `content JSON`, `outside` (outside content, spec 8 section 5.4), `at`                 | unique `(session_id, seq)`                              |
+| `notes`             | `id`, `agent_id`, `text`, `origin` (`owner`, `agent`, `untrusted`, `system`), `created_at`, `changed_at`, `deleted_at`                                                                                                                    | `(agent_id)`                                            |
+| `helpers`           | `id` (the helper's own session), `agent_id`, `parent_session_id`, `label`, `model`, `state` (`running`, `done`, `failed`, `stopped`, `timed_out`), `started_at`, `ended_at`, `timeout_ms`, `runs`, `outside`                              | PK `id`, `(agent_id, started_at)`                       |
+| `goals`             | `session_id` (the chat's session), `agent_id`, `objective`, `status` (`active`, `paused`, `blocked`, `complete`), `pause_reason`, `note`, `budget_micros`, `spent_micros`, `goal_turns`, `strikes`, `started_at`, `updated_at`, `version` | PK `session_id`                                         |
+| `progress_notes`    | `session_id`, `agent_id`, `markdown`, `plan JSON` (each step's `text` and `state`: `done`, `doing`, `todo`), `updated_at`                                                                                                                 | PK `session_id`                                         |
+| `notes_fts`         | FTS5 over `notes.text`, kept in step by triggers                                                                                                                                                                                          |                                                         |
+| `counters`          | `name`, `last` (the last write-order key it gave)                                                                                                                                                                                         | PK `name`                                               |
 
 `meta` holds the writer fence (`writer_fence`), raised at each runtime start and checked by every
 transcript write ([spec 8, section 2.3](runtime.md#section-2-3)). Triggers refuse every change of
@@ -397,6 +399,12 @@ names and opens in the same write, with `surface` `helper`; its turns and transc
 session's. `state` leaves `running` only for an end, which sets `ended_at`, and a follow-up moves
 it back to `running` with a new `started_at`, no `ended_at` and one more of `runs`. `outside` is
 set once any run of it read outside content, and never clears.
+
+A chat has at most one goal and one progress note ([decision 0407](../DECISIONS.md#d0407)), each
+under its session's id. `pause_reason` is set exactly while the goal is `paused`; `budget_micros`
+and `spent_micros` are decimal micro-dollars, `strikes` counts goal turns in a row that made no
+progress, and each write raises `version` from the one its writer read. A progress note is replaced
+whole, and one with no markdown and no step is removed.
 
 Notes never hold a contract or token address as a source for actions
 ([rule 10](../ARCHITECTURE.md#rule-10)); the runtime does not pass note text to propose tools as an
@@ -616,9 +624,11 @@ In the agent schema:
 | ------------------- | ------------------ | --------- | ------------------------------------------------------ |
 | `chat_queue`        | `seq` (agent 0005) | `payload` |                                                        |
 | `counters`          |                    |           |                                                        |
+| `goals`             |                    |           | Money in `numeric(78,0)`                               |
 | `helpers`           |                    |           |                                                        |
 | `meta`              |                    |           | Holds `writer_fence` and `prune_before`, as on SQLite  |
 | `notes`             | `id`               |           | `pg_trgm` GIN index on `text`, in place of `notes_fts` |
+| `progress_notes`    |                    | `plan`    |                                                        |
 | `sessions`          |                    |           |                                                        |
 | `transcript_events` | `id`               | `content` | Refuse-change triggers (section 6.3)                   |
 | `turns`             |                    |           |                                                        |

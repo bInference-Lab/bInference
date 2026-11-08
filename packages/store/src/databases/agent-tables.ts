@@ -78,6 +78,32 @@ export interface HelpersTable {
   outside: Generated<number>;
 }
 
+/** `goals` (agent migration 0008): money as decimal text, read back as text on both databases. */
+export interface GoalsTable {
+  session_id: string;
+  agent_id: string;
+  objective: string;
+  status: string;
+  pause_reason: string | null;
+  note: string | null;
+  budget_micros: string | null;
+  spent_micros: string;
+  goal_turns: number;
+  strikes: number;
+  started_at: number;
+  updated_at: number;
+  version: number;
+}
+
+/** `progress_notes` (agent migration 0008): the plan as JSON text. */
+export interface ProgressNotesTable {
+  session_id: string;
+  agent_id: string;
+  markdown: string;
+  plan: string;
+  updated_at: number;
+}
+
 /** `notes`; `notes_fts` indexes its text. */
 interface NotesTable {
   id: Generated<number>;
@@ -105,6 +131,8 @@ export interface AgentTables {
   transcript_events: TranscriptEventsTable;
   chat_queue: ChatQueueTable;
   helpers: HelpersTable;
+  goals: GoalsTable;
+  progress_notes: ProgressNotesTable;
   notes: NotesTable;
   notes_fts: NotesFtsTable;
 }

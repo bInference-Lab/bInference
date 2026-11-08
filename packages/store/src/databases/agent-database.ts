@@ -1,5 +1,14 @@
 import { raiseFenceTask } from "../chats/fence-tasks.js";
 import {
+  activeGoalsTask,
+  clearGoalTask,
+  getGoalTask,
+  getProgressNoteTask,
+  putProgressNoteTask,
+  setGoalTask,
+  writeGoalTask,
+} from "../chats/goal-tasks.js";
+import {
   getHelperTask,
   listHelpersTask,
   moveHelperTask,
@@ -71,6 +80,13 @@ export const agentDatabase: DatabaseDefinition = {
     getHelperTask,
     listHelpersTask,
     moveHelperTask,
+    getGoalTask,
+    activeGoalsTask,
+    setGoalTask,
+    writeGoalTask,
+    clearGoalTask,
+    getProgressNoteTask,
+    putProgressNoteTask,
     writeNoteTask,
     deleteNoteTask,
     listNotesTask,

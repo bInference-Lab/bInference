@@ -1,6 +1,7 @@
 import type { Id, Result } from "@binference/core";
 import type { ChatPrune, ChatPruned } from "./chats/chat-prune.js";
 import type { FenceRefusal, Fenced } from "./chats/fenced.js";
+import type { GoalDraft, GoalRecord, GoalWrite, ProgressNoteRecord } from "./chats/goal-record.js";
 import type { HelperDraft, HelperMove, HelperQuery, HelperRecord } from "./chats/helper-record.js";
 import type {
   QueueDraft,
@@ -123,6 +124,44 @@ export interface HelperStore {
     move: Fenced<HelperMove>,
     options: StoreCall,
   ): Promise<Result<HelperRecord, FenceRefusal | "not_found" | "stale">>;
+}
+
+/**
+ * Keeps each chat's goal and progress note (decision 0407): at most one of each per session.
+ */
+export interface GoalStore {
+  /** The chat's goal. */
+  get(session: Id<"ses">, options: StoreCall): Promise<GoalRecord | undefined>;
+  /** The `active` goals of every chat, the oldest set first, at most 100. */
+  active(options: StoreCall): Promise<readonly GoalRecord[]>;
+  /**
+   * Sets the chat's goal, `active` with nothing spent: `exists` when the chat has one, of any
+   * status, and `no_session` for a session the store does not hold.
+   */
+  set(
+    draft: Fenced<GoalDraft>,
+    options: StoreCall,
+  ): Promise<Result<GoalRecord, FenceRefusal | "exists" | "no_session">>;
+  /** Writes the goal from the version its writer read: `stale` once another write raised it. */
+  write(
+    write: Fenced<GoalWrite>,
+    options: StoreCall,
+  ): Promise<Result<GoalRecord, FenceRefusal | "not_found" | "stale">>;
+  /** Removes the chat's goal; answers whether it had one. */
+  clear(
+    clear: Fenced<{ readonly sessionId: Id<"ses"> }>,
+    options: StoreCall,
+  ): Promise<Result<boolean, FenceRefusal>>;
+  /** The chat's progress note. */
+  note(session: Id<"ses">, options: StoreCall): Promise<ProgressNoteRecord | undefined>;
+  /**
+   * Replaces the chat's progress note whole, and answers it; one with no markdown and no step
+   * removes it, and answers none.
+   */
+  putNote(
+    note: Fenced<ProgressNoteRecord>,
+    options: StoreCall,
+  ): Promise<Result<ProgressNoteRecord | undefined, FenceRefusal | "no_session">>;
 }
 
 /** Keeps each session's transcript, which only grows: no event ever changes. */

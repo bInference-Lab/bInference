@@ -6,6 +6,7 @@ import { migration as runtimeChats } from "./0004_runtime_chats.js";
 import { migration as chatQueueSeq } from "./0005_chat_queue_seq.js";
 import { migration as helpers } from "./0006_helpers.js";
 import { migration as sessionModel } from "./0007_session_model.js";
+import { migration as goals } from "./0008_goals.js";
 
 /** The agent database's migrations, oldest first. Released files never change. */
 export const agentMigrations: readonly Migration[] = [
@@ -16,4 +17,5 @@ export const agentMigrations: readonly Migration[] = [
   chatQueueSeq,
   helpers,
   sessionModel,
+  goals,
 ];

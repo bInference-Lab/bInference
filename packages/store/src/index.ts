@@ -1,11 +1,23 @@
 export type { ChatPrune, ChatPruned } from "./chats/chat-prune.js";
 export { createSqliteChatQueueStore } from "./chats/sqlite-chat-queue-store.js";
 export { createSqliteChatRetention } from "./chats/sqlite-chat-retention.js";
+export { createSqliteGoalStore } from "./chats/sqlite-goal-store.js";
 export { createSqliteHelperStore } from "./chats/sqlite-helper-store.js";
 export { createSqliteSessionStore } from "./chats/sqlite-session-store.js";
 export { createSqliteTranscriptStore } from "./chats/sqlite-transcript-store.js";
 export { createSqliteWriterFence } from "./chats/sqlite-writer-fence.js";
 export type { Fenced, FenceRefusal } from "./chats/fenced.js";
+export { goalTextLimit, maxPlanSteps } from "./chats/goal-record.js";
+export type {
+  GoalDraft,
+  GoalRecord,
+  GoalState,
+  GoalStatus,
+  GoalWrite,
+  PlanStep,
+  PlanStepState,
+  ProgressNoteRecord,
+} from "./chats/goal-record.js";
 export type {
   HelperDraft,
   HelperMove,
@@ -49,6 +61,7 @@ export type {
 export type {
   ChatQueueStore,
   ChatRetention,
+  GoalStore,
   HelperStore,
   NoteStore,
   SessionStore,
