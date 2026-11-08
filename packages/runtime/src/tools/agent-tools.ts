@@ -16,7 +16,7 @@ import { marketTools } from "./market-tools.js";
 import { noteTools } from "./note-tools.js";
 import { orderCancelTool } from "./order-cancel-tool.js";
 import { pluginTools } from "./plugin-tools.js";
-import { readPdfTool } from "./read-pdf-tool.js";
+import { readPdfHiddenArgs, readPdfTool } from "./read-pdf-tool.js";
 import { readTools } from "./read-tools.js";
 import { scheduleTools } from "./schedule-tools.js";
 import { sendFilesTool } from "./send-files-tool.js";
@@ -28,6 +28,11 @@ import type { AgentToolParts } from "./tool-client.js";
 import { tradeTools } from "./trade-tools.js";
 import { webTools } from "./web-tools.js";
 import { workspaceTools } from "./workspace-tools.js";
+
+/** The arguments of each tool, by its name, that the transcript keeps hidden. */
+export const hiddenToolArgs: ReadonlyMap<string, readonly string[]> = new Map([
+  ["read_pdf", readPdfHiddenArgs],
+]);
 
 /**
  * The agent's tools for one agent (runtime spec, section 5.1): the reads `addresses`, `wallets`,

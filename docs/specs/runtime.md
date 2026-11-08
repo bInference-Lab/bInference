@@ -402,7 +402,9 @@ engine holds these wallets for the agent, so its answer is never outside content
   always ordered.
 - Each call is written to the transcript before it runs, and its result after. A call that never
   ran still gets a result, so the transcript stays valid for every provider: "not run" with the
-  reason (a merge, a stop, a cap, a held-back proposal, a restart).
+  reason (a merge, a stop, a cap, a held-back proposal, a restart). An argument its tool hides,
+  `read_pdf`'s `password`, is written as `(hidden)`, in the call and in the response's replay
+  alike ([decision 0402](../DECISIONS.md#d0402)).
 - An abort lets a running call finish or stop as it can, and gives every call not started its "not
   run" result. A turn abort never reaches an intent.
 

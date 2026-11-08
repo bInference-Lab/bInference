@@ -11,8 +11,10 @@ import type { ReadImage } from "../loop/turn-records.js";
 import type { TurnParts } from "../loop/turn-run.js";
 import { written } from "../sessions/agent-stores.js";
 import { loadConversation } from "../sessions/conversation.js";
+import { withHiddenArgs } from "../sessions/hidden-args.js";
 import { createSessionJournal } from "../sessions/session-journal.js";
 import type { TurnPhoto, TurnPlace } from "../sessions/turn-place.js";
+import { hiddenToolArgs } from "../tools/agent-tools.js";
 import type { ChatContext, TurnSetup } from "./chat-context.js";
 import { messagesPerTurn, createQueueMerge } from "./queue-merge.js";
 import { isWakeUp, noteOf, ownerMessageOf, turnMessageOf } from "./queued-view.js";
@@ -263,7 +265,7 @@ function turnPartsOf(
   return {
     models: setup.models,
     tools: setup.tools,
-    journal: createSessionJournal(stores, place, clock),
+    journal: withHiddenArgs(createSessionJournal(stores, place, clock), hiddenToolArgs),
     engine,
     merge: mergeOf(context, place),
     facts: createEngineLiveFacts(context.turnContext, place.agent),

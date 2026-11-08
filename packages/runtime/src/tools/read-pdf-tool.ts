@@ -31,6 +31,9 @@ const readPdfArgs: z.ZodType<ReadPdfArgs> = z.strictObject({
 
 const defaultPrompt = "Analyze this PDF document.";
 
+/** The arguments of `read_pdf` its transcript never keeps: a PDF's password (decision 0402). */
+export const readPdfHiddenArgs: readonly string[] = ["password"];
+
 // Every PDF a call names, each once, in the order named.
 function namesOf(args: ReadPdfArgs): readonly string[] {
   return [...new Set([...(args.pdf === undefined ? [] : [args.pdf]), ...(args.pdfs ?? [])])];
