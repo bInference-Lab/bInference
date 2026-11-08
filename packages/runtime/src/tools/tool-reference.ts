@@ -19,9 +19,9 @@ function neverCalled(): never {
 }
 
 // Parts that only declare the tools: no call reaches the engine, the web, a model or a helper. The
-// X key, the image, video and speech parts, the helper parts and the status parts are set so the
-// reference lists search_x, make_image, make_video, speak, the helper tools and agent_status with
-// its model, which the agent has whenever the owner set them, helpers run, or its own turn runs.
+// X key, the image, video and speech parts, the helper, goal and status parts are set so the
+// reference lists search_x, make_image, make_video, speak, the helper and goal tools and
+// agent_status with its model, which the agent has whenever the owner set them or its own turn runs.
 const declaringParts: AgentToolParts = {
   agent: idSchema("agt").parse("agt_00000000-0000-7000-8000-000000000000"),
   client: { call: neverCalled },
@@ -60,6 +60,20 @@ const declaringParts: AgentToolParts = {
       stop: neverCalled,
     },
     clock: { now: neverCalled, sleep: neverCalled },
+  },
+  goals: {
+    desk: {
+      read: neverCalled,
+      active: neverCalled,
+      set: neverCalled,
+      move: neverCalled,
+      write: neverCalled,
+      pause: neverCalled,
+      clear: neverCalled,
+      forget: neverCalled,
+      request: neverCalled,
+      putNote: neverCalled,
+    },
   },
   status: {
     chats: { read: neverCalled, setModel: neverCalled, budgetLeft: neverCalled },

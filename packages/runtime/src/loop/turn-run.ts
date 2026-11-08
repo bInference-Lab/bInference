@@ -15,7 +15,7 @@ import type {
 import type { TurnFeed } from "./turn-feed.js";
 import type { TurnHalt } from "./turn-halt.js";
 import type { ReadImage } from "./turn-records.js";
-import type { TurnTail } from "./turn-tail.js";
+import type { GoalLineReader, TurnTail } from "./turn-tail.js";
 import type { TurnTally } from "./turn-tally.js";
 
 /** What one turn works with, bound to that turn by the composition. */
@@ -30,6 +30,11 @@ export interface TurnParts {
   readonly facts: LiveFactsReader;
   /** The settings in force as the turn starts, which the live facts name (decision 0395). */
   readonly settings?: SettingsFacts;
+  /**
+   * The line of the chat's goal as it stands now, read before each model call so a call after
+   * `goal_update` reads the goal it left (decision 0407); none when the chat has no goal.
+   */
+  readonly goalLine?: GoalLineReader;
   readonly clock: Clock;
   /** Reads the images of the messages the turn takes; without it, none can be read. */
   readonly readImage?: ReadImage;

@@ -147,6 +147,10 @@
   "tools.summary.helper_send": "Sends a helper a follow-up, which starts another run of it.",
   "tools.summary.helper_stop": "Stops one of the agent's running helpers.",
   "tools.summary.agent_status": "Reads the agent's own state: its models, model budget, chat, helpers and the time; in its own chat it can switch that chat's model.",
+  "tools.summary.goal_set": "Sets this chat's goal on the owner's request: an objective the agent keeps working on, turn after turn, until it is done.",
+  "tools.summary.goal_read": "Reads this chat's goal, its goal turns and spend, and the progress note.",
+  "tools.summary.goal_update": "Marks this chat's goal complete or blocked, with a short note.",
+  "tools.summary.progress_note": "Keeps this chat's progress note: a short status and a plan of steps the owner reads beside the chat.",
   "tools.summary.settings_read": "Reads the owner's settings, or one key, with secrets shown only as their kind and the rules of each key.",
   "tools.summary.settings_change": "Proposes a change to the owner's settings in a card that shows each setting before and after; nothing changes until the owner confirms."
 }

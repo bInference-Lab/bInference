@@ -9,6 +9,7 @@ import { credentialsTool } from "./credentials-tool.js";
 import type { AgentTool } from "./define-tool.js";
 import { depositTool } from "./deposit-tool.js";
 import { fileTools } from "./file-tools.js";
+import { goalTools } from "./goal-tools.js";
 import { helperTools } from "./helper-tools.js";
 import { launchDraftTool } from "./launch-draft-tool.js";
 import { launchpadsTool } from "./launchpads-tool.js";
@@ -56,7 +57,8 @@ export const hiddenToolArgs: ReadonlyMap<string, readonly string[]> = new Map([
  * then `deposit_address`, which shows the owner where to send funds (decision 0380), `show_chart`,
  * which shows the owner a chart (decision 0387), with image parts `make_image`, which makes images
  * in the background (decision 0392), with video parts `make_video` and with speech parts `speak`
- * (decision 0405), with helper parts the helper tools (decision 0403), the machine
+ * (decision 0405), with helper parts the helper tools (decision 0403), with goal parts the goal
+ * tools `goal_set`, `goal_read`, `goal_update` and `progress_note` (decision 0407), the machine
  * tools `shell` and `shell_job` (decision 0378), `browse` (decision 0401) and the file tools (decision 0386), `credentials`, which asks the owner for a credential and ends
  * the turn (decision 0388), then `ask_owner`, which asks the
  * owner in the turn the tools serve and ends it after its batch.
@@ -98,6 +100,7 @@ export function agentTools(parts: AgentToolParts): readonly AgentTool[] {
     ...(parts.videoMaking === undefined ? [] : [makeVideoTool(parts, parts.videoMaking)]),
     ...(parts.speaking === undefined ? [] : [speakTool(parts, parts.speaking)]),
     ...(parts.helpers === undefined ? [] : helperTools(parts, parts.helpers)),
+    ...(parts.goals === undefined ? [] : goalTools(parts, parts.goals)),
     ...shellTools(parts),
     browseTool(parts),
     ...fileTools(parts),

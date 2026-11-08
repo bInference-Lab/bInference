@@ -55,6 +55,15 @@ export function turnMessageOf(message: QueuedMessage): TurnMessage | undefined {
   return "turn" in view ? view : undefined;
 }
 
+/**
+ * Whether a queued message is binference's words for a chat's next goal turn (decision 0407): it
+ * starts a turn only alone, and never joins a running one.
+ */
+export function isGoalTurn(message: QueuedMessage): boolean {
+  const view = turnMessageOf(message);
+  return view?.kind === "inbox/message" && view.goalTurn === true;
+}
+
 // A settle message reaches the model as one line that names the intent, its kind and its state
 // (decision 0174).
 function settleText(view: Extract<TurnMessage, { readonly kind: "inbox/intentSettled" }>): string {

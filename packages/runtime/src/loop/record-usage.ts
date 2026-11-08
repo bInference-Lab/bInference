@@ -22,7 +22,7 @@ export async function recordAttempt(
 ): Promise<void> {
   const usage = response.usage ?? nothingUsed;
   const cost = usageCost(usage, model?.price);
-  const attempt = run.tally.countAttempt();
+  const attempt = run.tally.countAttempt(cost.usdMicros);
   const record = {
     model: model?.name ?? "unknown/none",
     inputTokens: usage.inputTokens,

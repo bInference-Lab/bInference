@@ -31,6 +31,8 @@ describe("createChatTurn", () => {
       heldBack: 0,
       toolCalls: 0,
       modelCalls: 1,
+      outside: false,
+      spentMicros: 0n,
     });
     expect(recorder.steps).toStrictEqual([
       { kind: "start", messages: ["msg_1"], outside: false },

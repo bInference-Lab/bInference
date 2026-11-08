@@ -2,7 +2,7 @@ import type { Id } from "@binference/core";
 import type { OwnerMessage } from "../loop/model-message.js";
 import type { MergeSource } from "../loop/ports.js";
 import { type AgentStores, written } from "../sessions/agent-stores.js";
-import { ownerMessageOf, turnMessageOf } from "./queued-view.js";
+import { isGoalTurn, ownerMessageOf, turnMessageOf } from "./queued-view.js";
 
 /** The chat mode that decides whether a waiting message joins a running turn. */
 export type NewMessageMode = "merge" | "after";
@@ -30,9 +30,13 @@ async function takeWaiting(
     { sessionId: session, limit: messagesPerTurn },
     { signal },
   );
+  // binference's words for a goal turn never join one: they wait for a turn of their own
+  // (decision 0407).
   const readable = waiting.flatMap((message) => {
     const view = turnMessageOf(message);
-    return view === undefined ? [] : [{ id: message.message, owner: ownerMessageOf(view) }];
+    return view === undefined || isGoalTurn(message)
+      ? []
+      : [{ id: message.message, owner: ownerMessageOf(view) }];
   });
   // A message with images starts a turn of its own, and every message after it waits with it.
   const firstWithImages = readable.findIndex(({ owner }) => owner.images !== undefined);
@@ -48,8 +52,8 @@ async function takeWaiting(
 /**
  * The chat queue's side of one running turn (runtime spec, section 3.4): in `merge` mode, the
  * session's waiting messages, oldest first and at most 20, taken by the turn as they join it, up
- * to the first that holds images, which starts the next turn (decision 0227); in `after` mode
- * none, so they start the next turn.
+ * to the first that holds images, which starts the next turn (decision 0227), and never the words
+ * of a goal turn (decision 0407); in `after` mode none, so they start the next turn.
  */
 export function createQueueMerge(options: QueueMergeOptions): MergeSource {
   return {

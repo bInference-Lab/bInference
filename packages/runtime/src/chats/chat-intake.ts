@@ -3,8 +3,10 @@ import { type InboxMessageView, inboxMessageViewSchema } from "@binference/proto
 import type { QueuedMessage } from "@binference/store";
 import { written } from "../sessions/agent-stores.js";
 import type { ChatContext } from "./chat-context.js";
+import { dropMessages } from "./drop-messages.js";
+import { goalStopped } from "./goal-pace.js";
 import { payloadOf, startsTurns, turnMessageOf } from "./queued-view.js";
-import { closeSession, dropMessages, kickAgent, kickAll } from "./turn-starts.js";
+import { closeSession, kickAgent, kickAll } from "./turn-starts.js";
 
 /** The most messages the chat queue holds waiting for one agent (runtime spec, section 3.4). */
 const maxWaiting = 200;
@@ -40,6 +42,7 @@ async function endWaiting(context: ChatContext, view: Control): Promise<void> {
   const reason = view.kind === "inbox/stop" ? view.reason : "clear";
   context.chats.running.get(view.agent)?.turn.stop(reason);
   context.onStop?.(view.agent);
+  await goalStopped(context, view);
   context.chats.resumesAt.delete(view.agent);
   const waiting = await waitingIn(context, view.session);
   const ended = waiting.filter(

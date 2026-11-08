@@ -4,6 +4,7 @@ import { createManualClock, createSeededRandom } from "@binference/core/testing"
 import {
   createMemoryAgentDatabase,
   createMemoryChatQueueStore,
+  createMemoryGoalStore,
   createMemoryHelperStore,
   createMemoryNoteStore,
   createMemorySessionStore,
@@ -100,6 +101,7 @@ function memoryDatabase(database: MemoryAgentDatabase): AgentDatabase {
     transcript: createMemoryTranscriptStore(database),
     queue: createMemoryChatQueueStore(database),
     helpers: createMemoryHelperStore(database),
+    goals: createMemoryGoalStore(database),
     notes: createMemoryNoteStore(database),
     schemaVersion: 0,
     close: async () => Promise.resolve(),
@@ -201,10 +203,16 @@ function chatHost(
   return {
     transports,
     openAgentDatabase: async () => memoryDatabase(database),
-    turnSetup: (place, settings, { client, helpers }) => {
+    turnSetup: (place, settings, { client, helpers, goals }) => {
       const { agent } = place;
       recorded.setups.push({ agent, settings });
-      const parts = { agent, client, turn: place, ...(helpers === undefined ? {} : { helpers }) };
+      const parts = {
+        agent,
+        client,
+        turn: place,
+        ...(helpers === undefined ? {} : { helpers }),
+        ...(goals === undefined ? {} : { goals }),
+      };
       const linked = place.helper === undefined ? agentToolBox(parts) : helperToolBox(parts);
       return {
         models,

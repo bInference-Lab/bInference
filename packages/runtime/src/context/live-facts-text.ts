@@ -21,6 +21,8 @@ export interface SettingsFacts {
 export interface TailFacts {
   readonly facts?: LiveFactsView;
   readonly settings?: SettingsFacts;
+  /** The line of the chat's goal, read for this call (decision 0407). */
+  readonly goal?: string;
   /** What is left of today's model budget, in micro-dollars, as the engine last answered. */
   readonly budgetLeftMicros?: bigint;
 }
@@ -100,5 +102,6 @@ export function liveFactsText(tail: TailFacts): string {
   const facts =
     tail.facts === undefined ? ["- The live facts could not be read now."] : factLines(tail.facts);
   const settings = tail.settings === undefined ? [] : [settingsLine(tail.settings)];
-  return [heading, ...facts, ...settings, ...budget].join("\n");
+  const goal = tail.goal === undefined ? [] : [tail.goal];
+  return [heading, ...facts, ...settings, ...goal, ...budget].join("\n");
 }

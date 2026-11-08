@@ -1,28 +1,23 @@
 import { BinferenceError, type Clock, createIdSource, type Random } from "@binference/core";
 import type { TurnSetup } from "../chats/chat-context.js";
 import {
-  answerMessagesRoute,
-  isMessagesRoute,
-  type MessageRouteParts,
-} from "../chats/message-routes.js";
-import {
   type EngineLine,
   engineLineSchema,
-  type RouteLine,
   type RuntimeLine,
   type StartLine,
 } from "../control/control-line.schema.js";
 import { readControlLines } from "../control/read-control-lines.js";
 import type { RuntimeSettings } from "../control/runtime-settings.schema.js";
 import type { ContextSource, EngineChat, OwnerImageReader } from "../engine-chat/ports.js";
+import { createGoalDesk, type GoalDesk } from "../goals/goal-desk.js";
 import { type BudgetMemory, createBudgetMemory } from "../helpers/budget-memory.js";
 import { createHelperDesk, type HelperRunner } from "../helpers/helper-desk.js";
-import { answerNoteRoute, isNoteRoute, type NoteRouteParts } from "../notes/note-routes.js";
 import { createChatStatusSources } from "../sessions/chat-status-sources.js";
 import type { TurnPlace } from "../sessions/turn-place.js";
 import type { HelperToolParts } from "../tools/helper-tools.js";
 import type { ToolClient } from "../tools/tool-client.js";
 import type { AgentDatabase } from "./agent-database.js";
+import { answerRoute, type RouteParts } from "./answer-route.js";
 import { type PreparedChat, prepareChat, type RuntimeChat, startChat } from "./runtime-chat.js";
 import type { TurnLink } from "./turn-link.js";
 
@@ -91,19 +86,6 @@ function parseLine(text: string): EngineLine | undefined {
   }
 }
 
-// A routed operation the runtime does not serve yet is refused as one it does not know.
-function refusedRoute(route: RouteLine): RuntimeLine {
-  return {
-    t: "routeReply",
-    id: route.id,
-    error: {
-      code: "protocol.unknown_op",
-      message: `The agent runtime does not serve ${route.op}.`,
-      retryable: false,
-    },
-  };
-}
-
 async function writeHealth(
   host: RuntimeHost,
   chat: RuntimeChat,
@@ -116,20 +98,8 @@ async function writeHealth(
 type NextLine = IteratorResult<string, undefined>;
 
 /** What the runtime answers the engine's lines after the start with. */
-interface LineContext {
+interface LineContext extends RouteParts {
   readonly apply: (settings: RuntimeSettings) => void;
-  readonly notes: NoteRouteParts;
-  readonly messages: MessageRouteParts;
-  readonly lifetime: AbortSignal;
-}
-
-async function answerRoute(route: RouteLine, context: LineContext): Promise<RuntimeLine> {
-  if (isMessagesRoute(route)) {
-    return answerMessagesRoute(route, context.messages, context.lifetime);
-  }
-  return isNoteRoute(route)
-    ? answerNoteRoute(route, context.notes, context.lifetime)
-    : refusedRoute(route);
 }
 
 // Answers one line after the start; answers how the runtime ends when the line ends it.
@@ -235,6 +205,7 @@ interface Turns {
   readonly setup: (place: TurnPlace) => TurnSetup;
   readonly helpers: HelperRunner;
   readonly budgets: BudgetMemory;
+  readonly goals: GoalDesk;
 }
 
 // Every turn runs under the settings in force, and starts marked while a community plugin offers
@@ -245,6 +216,13 @@ function turnsOf(host: RuntimeHost, connected: Connected, settings: () => Runtim
   const { link, prepared, database, lifetime } = connected;
   const holder: { helpers?: HelperToolParts } = {};
   const chats = createChatStatusSources({ stores: prepared.stores, budgets });
+  const { fence } = prepared.stores;
+  const goals = createGoalDesk({
+    goals: database.goals,
+    fence,
+    client: link.client,
+    clock: host.clock,
+  });
   const setup = (place: TurnPlace): TurnSetup => {
     const current = settings();
     const isAgent = place.helper === undefined;
@@ -253,6 +231,7 @@ function turnsOf(host: RuntimeHost, connected: Connected, settings: () => Runtim
       client: link.client,
       chats: isAgent ? chats.agent : chats.helper,
       ...(helpers === undefined ? {} : { helpers }),
+      ...(isAgent ? { goals: { desk: goals } } : {}),
     };
     return {
       ...host.turnSetup(place, current, turnLink),
@@ -273,7 +252,7 @@ function turnsOf(host: RuntimeHost, connected: Connected, settings: () => Runtim
     providers: () => Object.keys(settings().models.providers),
   });
   holder.helpers = { desk: helpers, clock: host.clock };
-  return { setup, helpers, budgets };
+  return { setup, helpers, budgets, goals };
 }
 
 // Starts the chat, writes `ready` and the health, and serves the engine's lines; on the way out
@@ -294,6 +273,7 @@ async function serveConnected(host: RuntimeHost, connected: Connected): Promise<
     lifetime,
     helpers: turns.helpers,
     budgets: turns.budgets,
+    goals: turns.goals,
   });
   try {
     const { schemaVersion } = connected.database;
@@ -306,7 +286,15 @@ async function serveConnected(host: RuntimeHost, connected: Connected): Promise<
     const { database, prepared } = connected;
     const notes = { notes: database.notes, fence: prepared.stores.fence, clock: host.clock };
     const messages = { sessions: prepared.stores.sessions, transcript: prepared.stores.transcript };
-    const context = { apply, notes, messages, lifetime, read: await connected.reading };
+    const goals = {
+      desk: turns.goals,
+      sessions: prepared.stores.sessions,
+      fence: prepared.stores.fence,
+      clock: host.clock,
+      follow: (goalChat: Parameters<RuntimeChat["runner"]["followGoal"]>[0]) =>
+        void chat.runner.followGoal(goalChat).catch(() => undefined),
+    };
+    const context = { apply, notes, messages, goals, lifetime, read: await connected.reading };
     return await serve(host, connected.lines, context);
   } finally {
     chat.unwatch();

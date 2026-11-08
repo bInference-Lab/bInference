@@ -68,6 +68,10 @@ The tools the agent's model may call in a turn, in the order a turn offers them.
 - `helper_read` (read): Reads one of the agent's helpers: what it does now, its report and its newest messages.
 - `helper_send` (control): Sends a helper a follow-up, which starts another run of it.
 - `helper_stop` (control): Stops one of the agent's running helpers.
+- `goal_set` (control): Sets this chat's goal on the owner's request: an objective the agent keeps working on, turn after turn, until it is done.
+- `goal_read` (read): Reads this chat's goal, its goal turns and spend, and the progress note.
+- `goal_update` (control): Marks this chat's goal complete or blocked, with a short note.
+- `progress_note` (control): Keeps this chat's progress note: a short status and a plan of steps the owner reads beside the chat.
 - `shell` (machine): Runs a command on the owner's machine, away from binference's own files, and reads its output.
 - `shell_job` (machine): Reads a running command's new output, or stops it.
 - `browse` (machine): Drives a browser of the agent's own on the owner's machine: opens pages, reads them, clicks, types and takes screenshots.

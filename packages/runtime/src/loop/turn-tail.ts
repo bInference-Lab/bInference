@@ -16,8 +16,18 @@ export interface TurnTail {
   stale(): void;
 }
 
-/** Creates a turn's {@link TurnTail} over its facts reader; nothing is read until the first call. */
-export function createTurnTail(reader: LiveFactsReader, settings?: SettingsFacts): TurnTail {
+/** Reads the line of the chat's goal as it stands now, or none. */
+export type GoalLineReader = (signal: AbortSignal) => Promise<string | undefined>;
+
+/**
+ * Creates a turn's {@link TurnTail} over its facts reader; nothing is read until the first call.
+ * The goal's line is read again for every call, since the turn's own tools move the goal.
+ */
+export function createTurnTail(
+  reader: LiveFactsReader,
+  settings?: SettingsFacts,
+  goalLine?: GoalLineReader,
+): TurnTail {
   const state: { isStale: boolean; facts?: LiveFactsView; budgetLeftMicros?: bigint } = {
     isStale: true,
   };
@@ -33,9 +43,11 @@ export function createTurnTail(reader: LiveFactsReader, settings?: SettingsFacts
         }
       }
       const { facts, budgetLeftMicros } = state;
+      const goal = await goalLine?.(signal);
       return liveFactsText({
         ...(facts === undefined ? {} : { facts }),
         ...(settings === undefined ? {} : { settings }),
+        ...(goal === undefined ? {} : { goal }),
         ...(budgetLeftMicros === undefined ? {} : { budgetLeftMicros }),
       });
     },

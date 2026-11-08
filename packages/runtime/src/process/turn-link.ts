@@ -1,4 +1,5 @@
 import type { ChatStatusSource } from "../tools/agent-status-tool.js";
+import type { GoalToolParts } from "../tools/goal-tools.js";
 import type { HelperToolParts } from "../tools/helper-tools.js";
 import type { ToolClient } from "../tools/tool-client.js";
 
@@ -9,4 +10,6 @@ export interface TurnLink {
   readonly helpers?: HelperToolParts;
   /** What `agent_status` reads; a helper's turn gets one that sets no model (decision 0404). */
   readonly chats: ChatStatusSource;
+  /** The goal tools' parts (decision 0407); a helper's turn gets none. */
+  readonly goals?: GoalToolParts;
 }

@@ -2,6 +2,7 @@ import type { Clock, Id } from "@binference/core";
 import type { TurnCompaction } from "../compaction/turn-history.js";
 import type { SettingsFacts } from "../context/live-facts-text.js";
 import type { ContextSource, EngineChat, OwnerImageReader } from "../engine-chat/ports.js";
+import type { GoalDesk } from "../goals/goal-desk.js";
 import type { BudgetMemory } from "../helpers/budget-memory.js";
 import type { ModelChain, ToolBox } from "../loop/ports.js";
 import type { TurnLimits } from "../loop/turn-run.js";
@@ -54,6 +55,11 @@ export interface ChatRunnerOptions {
    * its running turn (decision 0403).
    */
   readonly onStop?: (agent: Id<"agt">) => void;
+  /**
+   * Each chat's goal (decision 0407): the next goal turn follows a turn while it is active, and a
+   * stop pauses it. Without it, no chat has a goal.
+   */
+  readonly goals?: GoalDesk;
   /** Turns that run at once in the install; 4. */
   readonly maxRunning?: number;
   /** The wait before a turn the engine could not start is tried again; 30 seconds. */

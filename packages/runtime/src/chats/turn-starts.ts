@@ -15,6 +15,8 @@ import { createSessionJournal } from "../sessions/session-journal.js";
 import type { TurnPlace } from "../sessions/turn-place.js";
 import { hiddenToolArgs } from "../tools/agent-tools.js";
 import type { ChatContext, TurnSetup } from "./chat-context.js";
+import { dropMessages } from "./drop-messages.js";
+import { admitGoalTurns, afterGoalTurn, goalLineOf } from "./goal-pace.js";
 import { messagesPerTurn, createQueueMerge } from "./queue-merge.js";
 import {
   isWakeUp,
@@ -50,26 +52,6 @@ function mayStart(context: ChatContext, agent: Id<"agt">): boolean {
     (resumesAt === undefined || resumesAt <= context.clock.now()) &&
     chats.running.size < (context.maxRunning ?? maxRunningDefault)
   );
-}
-
-/** Drops waiting messages with a reason; one no longer waiting is left as it is. */
-export async function dropMessages(
-  context: ChatContext,
-  messages: readonly Id<"msg">[],
-  reason: string,
-): Promise<void> {
-  const { queue, fence } = context.stores;
-  const signal = context.lifetime;
-  for (const message of messages) {
-    // oxlint-disable-next-line eslint/no-await-in-loop -- one write at a time, in order
-    const dropped = await queue.drop(
-      { message, atMs: context.clock.now(), reason, fence },
-      { signal },
-    );
-    if (!dropped.ok && dropped.error === "fenced") {
-      written(dropped, "drop");
-    }
-  }
 }
 
 /** Closes a session a clear ended, at the version it holds now; one already closed stays so. */
@@ -123,6 +105,7 @@ async function afterRefusal(context: ChatContext, agent: Id<"agt">, ended: TurnE
 
 /** How a turn ended, the engine's refusal if it refused it, and the messages it took. */
 interface TurnEnded {
+  readonly session: Id<"ses">;
   readonly report: TurnReport;
   readonly refused: Refused | undefined;
   readonly taken: readonly Waiting[];
@@ -134,6 +117,7 @@ async function afterTurn(context: ChatContext, agent: Id<"agt">, ended: TurnEnde
   if (ended.report.state === "refused") {
     await afterRefusal(context, agent, ended);
   }
+  await afterGoalTurn(context, { agent, ...ended, refusal: ended.refused?.refusal });
   const closing = chats.closing.get(agent);
   chats.closing.delete(agent);
   if (closing !== undefined) {
@@ -177,7 +161,7 @@ async function startNext(context: ChatContext, agent: Id<"agt">): Promise<void> 
   if (session === undefined || !mayStart(context, agent)) {
     return;
   }
-  const taken = await waitingOf(context, session);
+  const taken = await admitGoalTurns(context, session, await waitingOf(context, session));
   const turn = taken.find((waiting) => waiting.turn !== undefined)?.turn;
   if (turn === undefined) {
     return;
@@ -282,9 +266,28 @@ function turnPartsOf(
     merge: mergeOf(context, place),
     facts: createEngineLiveFacts(context.turnContext, place.agent),
     ...(setup.settings === undefined ? {} : { settings: setup.settings }),
+    ...goalLineOf(context, place.session),
     clock,
     ...imagePartsOf(context, { agent: place.agent, setup, taken }),
   };
+}
+
+// The turn's setup for where it runs: its surface, the photos it took and the chat's own model
+// (decision 0404).
+async function setupOf(
+  context: ChatContext,
+  place: TurnPlace,
+  taken: readonly Waiting[],
+): Promise<TurnSetup> {
+  const { stores, lifetime } = context;
+  const surface = surfaceOf(taken.map(({ queued }) => queued));
+  const chatModel = (await stores.sessions.get(place.session, { signal: lifetime }))?.model;
+  return context.setup({
+    ...place,
+    photos: photosOf(taken.map(({ owner }) => owner)),
+    ...(surface === undefined ? {} : { surface }),
+    ...(chatModel === undefined ? {} : { chatModel }),
+  });
 }
 
 async function runTurn(
@@ -293,14 +296,7 @@ async function runTurn(
   taken: readonly Waiting[],
 ): Promise<void> {
   const { stores, lifetime } = context;
-  const surface = surfaceOf(taken.map(({ queued }) => queued));
-  const chatModel = (await stores.sessions.get(place.session, { signal: lifetime }))?.model;
-  const setup = context.setup({
-    ...place,
-    photos: photosOf(taken.map(({ owner }) => owner)),
-    ...(surface === undefined ? {} : { surface }),
-    ...(chatModel === undefined ? {} : { chatModel }),
-  });
+  const setup = await setupOf(context, place, taken);
   const prefix = await prefixOf(context, { agent: place.agent, instructions: setup.instructions });
   if (prefix === undefined) {
     return;
@@ -321,13 +317,16 @@ async function runTurn(
       ? {}
       : { compaction: { setup: setup.compaction, stored: history } }),
   });
-  const done = turn
-    .run()
-    .then(async (report) =>
-      context.serial(async () =>
-        afterTurn(context, place.agent, { report, refused: refusals[0], taken }),
-      ),
-    );
+  const done = turn.run().then(async (report) =>
+    context.serial(async () =>
+      afterTurn(context, place.agent, {
+        report,
+        refused: refusals[0],
+        taken,
+        session: place.session,
+      }),
+    ),
+  );
   context.chats.running.set(place.agent, { turn, done });
   context.track(done);
 }

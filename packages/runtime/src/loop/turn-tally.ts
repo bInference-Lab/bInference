@@ -41,6 +41,8 @@ interface TurnMarks {
   readonly shown: readonly string[];
   /** The tool whose last call failed, until a later call of it succeeds. */
   readonly failedTool?: string;
+  /** What the turn's attempts cost so far, in micro-dollars. */
+  readonly spentMicros: bigint;
 }
 
 /** How the engine answered a proposal it heard: a card waits for the owner, or it was refused. */
@@ -55,8 +57,8 @@ export interface TurnTally {
   commit(): void;
   holdBack(): void;
   countToolCalls(count: number): void;
-  /** Counts one attempt of a model call and answers its number in the turn, from 1. */
-  countAttempt(): number;
+  /** Counts one attempt of a model call, at its cost, and answers its number in the turn, from 1. */
+  countAttempt(usdMicros?: bigint): number;
   /** Marks the budget spent, with when it resumes when the engine said. */
   spendBudget(resumesAt?: number): void;
   markLooped(): void;
@@ -110,6 +112,7 @@ const unstarted: TurnMarks = {
   looped: false,
   lastText: "",
   shown: [],
+  spentMicros: 0n,
 };
 
 /** A new turn's tally: `starting`, marked when its context already holds outside content. */
@@ -132,8 +135,9 @@ export function createTurnTally(options: { readonly outside: boolean }): TurnTal
     countToolCalls(count) {
       marks = { ...marks, toolCalls: marks.toolCalls + count };
     },
-    countAttempt() {
-      marks = { ...marks, attempts: marks.attempts + 1 };
+    countAttempt(usdMicros = 0n) {
+      const spentMicros = marks.spentMicros + usdMicros;
+      marks = { ...marks, attempts: marks.attempts + 1, spentMicros };
       return marks.attempts;
     },
     spendBudget(resumesAt) {

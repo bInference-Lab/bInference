@@ -20,6 +20,8 @@ export interface AgentChats {
   readonly resumesAt: Map<Id<"agt">, number>;
   /** Agents whose chat queue held 200 messages, so one stayed in the engine's inbox. */
   readonly full: Set<Id<"agt">>;
+  /** The wait before each agent's next goal turn, which a stop or another wait ends. */
+  readonly goalWaits: Map<Id<"agt">, AbortController>;
 }
 
 /** Creates the chats of an install with no agent seen yet. */
@@ -30,5 +32,6 @@ export function createAgentChats(): AgentChats {
     closing: new Map(),
     resumesAt: new Map(),
     full: new Set(),
+    goalWaits: new Map(),
   };
 }

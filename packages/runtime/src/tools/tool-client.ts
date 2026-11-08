@@ -3,6 +3,7 @@ import type { Id } from "@binference/core";
 import type { RuntimePlugin } from "../control/runtime-settings.schema.js";
 import type { TurnPlace } from "../sessions/turn-place.js";
 import type { AgentStatusParts } from "./agent-status-tool.js";
+import type { GoalToolParts } from "./goal-tools.js";
 import type { HelperToolParts } from "./helper-tools.js";
 import type { ImageMakingToolParts } from "./make-image-tool.js";
 import type { VideoMakingToolParts } from "./make-video-tool.js";
@@ -40,4 +41,6 @@ export interface AgentToolParts {
   readonly helpers?: HelperToolParts;
   /** What `agent_status` reads (decision 0404); without it, the agent has no status tool. */
   readonly status?: AgentStatusParts;
+  /** What the goal tools run on (decision 0407); without it, the agent has no goal tools. */
+  readonly goals?: GoalToolParts;
 }

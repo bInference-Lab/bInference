@@ -6,6 +6,7 @@ export { addressPartOf, shortAddress } from "./cards/short-address.js";
 export { reasonText } from "./cards/reason-text.js";
 export { reasonNamesOf, type ReasonNames, unsentReceiptText } from "./cards/unsent-receipt-text.js";
 export { createFormatter } from "./format/create-formatter.js";
+export { goalChangeLine, goalLines, progressNoteLines } from "./goals/goal-lines.js";
 export { limitLines, limitUnits } from "./limits/limit-lines.js";
 export type {
   GasReserveLine,

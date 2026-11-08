@@ -147,6 +147,10 @@
   "tools.summary.helper_send": "给助手发送后续消息，开始它的又一次运行。",
   "tools.summary.helper_stop": "停止 Agent 的一个正在运行的助手。",
   "tools.summary.agent_status": "读取 Agent 自身的状态：模型、模型预算、对话、助手和当前时间；在自己的对话中可以切换该对话的模型。",
+  "tools.summary.goal_set": "按所有者的请求设定此对话的目标：Agent 会一轮接一轮地推进，直到完成。",
+  "tools.summary.goal_read": "读取此对话的目标、目标轮、花费和进度说明。",
+  "tools.summary.goal_update": "将此对话的目标标记为已完成或受阻，并附上简短说明。",
+  "tools.summary.progress_note": "维护此对话的进度说明：所有者在对话旁看到的简短状态和步骤计划。",
   "tools.summary.settings_read": "读取所有者的设置或其中一个键，密钥只显示其来源类型，并附上每个键的规则。",
   "tools.summary.settings_change": "在卡片中提出对所有者设置的更改，显示每项设置更改前后的值；所有者确认前不会有任何更改。"
 }

@@ -1,7 +1,9 @@
+import type { Id } from "@binference/core";
 import type { InboxMessageView } from "@binference/protocol";
 import { createAgentChats } from "./agent-chats.js";
 import { type ChatRunnerOptions, createSerial, createTracker } from "./chat-context.js";
 import { receiveMessage, resumeWaiting } from "./chat-intake.js";
+import { followGoal } from "./goal-pace.js";
 
 /** What the runtime's health line counts. */
 interface ChatCounts {
@@ -20,6 +22,11 @@ export interface ChatRunner {
   stop(): Promise<void>;
   /** Settles once the runner rests: no message being taken, no turn running or about to start. */
   rested(): Promise<void>;
+  /**
+   * Follows a chat's goal that changed outside a turn, or that a start found active (decision
+   * 0407): an active one asks for its next goal turn once the chat rests; any other stops asking.
+   */
+  followGoal(chat: { readonly agent: Id<"agt">; readonly session: Id<"ses"> }): Promise<void>;
 }
 
 /**
@@ -50,5 +57,6 @@ export function createChatRunner(options: ChatRunnerOptions): ChatRunner {
       await Promise.allSettled(running.map(async ({ done }) => done));
     },
     rested: async () => tracker.settled(),
+    followGoal: async (chat) => context.serial(async () => followGoal(context, chat)),
   };
 }

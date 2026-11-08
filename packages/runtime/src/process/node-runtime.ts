@@ -139,6 +139,7 @@ function builtTurnSetup(parts: ChainParts): RuntimeHost["turnSetup"] {
       ...mediaMakingOf(parts, settings, videoJobs),
       status: { chats: link.chats, settings, version: manifest.version, clock: parts.clock },
       ...(link.helpers === undefined ? {} : { helpers: link.helpers }),
+      ...(link.goals === undefined ? {} : { goals: link.goals }),
     };
     const setup: TurnSetup = {
       models: main,

@@ -46,15 +46,16 @@ function sonnetPriceOf() {
 const sonnetPrice = sonnetPriceOf();
 
 describe("the usage of a turn's model calls", () => {
-  it("records each call's cost with cached tokens before the loop acts on it", async () => {
+  it("records each call's cost with cached tokens before the loop acts on it, and sums the turn's", async () => {
     const { turn, recorder } = createTestTurn({
       replies: [withUsage(sameCall(1), cachedUsage), withUsage(textReply("Done."), cachedUsage)],
       tools: [tokenInfo],
       model: { name: sonnet, price: sonnetPrice },
     });
 
-    await turn.run();
+    const report = await turn.run();
 
+    expect(report).toMatchObject({ state: "ended", spentMicros: 46_800n });
     // $0.006 plain + $0.0075 written + $0.0024 read + $0.0075 output: $0.0234, worked by hand.
     expect(usageSteps(recorder.steps)).toStrictEqual([
       { kind: "usage", model: sonnet, usdMicros: 23_400n, key: `${testTurnId}.usage.1` },

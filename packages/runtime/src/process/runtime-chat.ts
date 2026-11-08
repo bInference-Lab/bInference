@@ -3,6 +3,7 @@ import type { TurnSetup } from "../chats/chat-context.js";
 import { type ChatRunner, createChatRunner } from "../chats/chat-runner.js";
 import type { RuntimeSettings } from "../control/runtime-settings.schema.js";
 import type { ContextSource, EngineChat, OwnerImageReader } from "../engine-chat/ports.js";
+import type { GoalDesk } from "../goals/goal-desk.js";
 import type { BudgetMemory } from "../helpers/budget-memory.js";
 import type { HelperRunner } from "../helpers/helper-desk.js";
 import type { AgentStores } from "../sessions/agent-stores.js";
@@ -50,6 +51,8 @@ export interface ChatStart {
   readonly helpers?: HelperRunner;
   /** What the engine answers of each agent's budget, which its helpers read. */
   readonly budgets?: BudgetMemory;
+  /** Each chat's goal (decision 0407); a start picks up every active one. */
+  readonly goals?: GoalDesk;
   readonly clock: Clock;
   readonly lifetime: AbortSignal;
 }
@@ -89,12 +92,20 @@ async function listAll(engine: EngineChat, runner: ChatRunner, signal: AbortSign
   }
 }
 
+// Every goal a stop left active asks for its next goal turn once its chat rests (decision 0407).
+async function pickUpGoals(start: ChatStart, runner: ChatRunner): Promise<void> {
+  const active = (await start.goals?.active(start.lifetime).catch(() => [])) ?? [];
+  await Promise.all(
+    active.map(async (goal) => runner.followGoal({ agent: goal.agentId, session: goal.sessionId })),
+  );
+}
+
 /**
  * Starts the runtime's chat once it is connected (runtime spec, section 2.1): the repaired turns'
  * ends go to the engine, each helper a stop left running ends `stopped` and its agent hears it,
  * the chat queue's waiting messages start their turns, every untaken message is read with
- * `inbox/list`, and the `inbox` topic is watched, read again after a gap; a stop or clear of an
- * agent's chat stops its helpers.
+ * `inbox/list`, every active goal asks for its next goal turn, and the `inbox` topic is watched,
+ * read again after a gap; a stop or clear of an agent's chat stops its helpers.
  */
 export async function startChat(start: ChatStart): Promise<RuntimeChat> {
   const { engine, lifetime } = start;
@@ -112,12 +123,14 @@ export async function startChat(start: ChatStart): Promise<RuntimeChat> {
     lifetime,
     onRoom: relist,
     ...(start.budgets === undefined ? {} : { budgets: start.budgets }),
+    ...(start.goals === undefined ? {} : { goals: start.goals }),
     ...(start.helpers === undefined
       ? {}
       : { onStop: (agent: Id<"agt">) => start.helpers?.stopAgent(agent) }),
   });
   await runner.resume();
   await listAll(engine, runner, lifetime);
+  await pickUpGoals(start, runner);
   const unwatch = engine.watchInbox({
     onMessage: (view) => void runner.receive(view).catch(() => undefined),
     refetch: async (signal) => listAll(engine, runner, signal),

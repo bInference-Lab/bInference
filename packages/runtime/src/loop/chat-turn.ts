@@ -58,6 +58,12 @@ interface EndedTurn {
   readonly heldBack: number;
   readonly toolCalls: number;
   readonly modelCalls: number;
+  /** The turn's context held outside content by its end. */
+  readonly outside: boolean;
+  /** The tool whose last call failed, with no later success of it. */
+  readonly failedTool?: string;
+  /** What the turn's model calls cost, in micro-dollars, retries and fallbacks included. */
+  readonly spentMicros: bigint;
 }
 
 /** A turn the engine refused to start. */
@@ -171,7 +177,7 @@ export function createChatTurn(options: ChatTurnOptions): ChatTurn {
     parts: { ...options.parts, journal },
     limits,
     prefix: options.prefix,
-    tail: createTurnTail(options.parts.facts, options.parts.settings),
+    tail: createTurnTail(options.parts.facts, options.parts.settings, options.parts.goalLine),
     messages: [
       ...options.history,
       ...options.taken.map((message) => ({ role: "owner" as const, text: message.text })),
