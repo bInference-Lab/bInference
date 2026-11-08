@@ -151,4 +151,27 @@ describe("createRoutedHandlers", () => {
     expect(answer).toStrictEqual({ ok: true, value: { items: [] } });
     expect(sent).toStrictEqual([]);
   });
+
+  it("names the open chat in a goal call, and finds no goal or refuses a change without one", async () => {
+    const sent: RouteRequest[] = [];
+    const route = async (request: RouteRequest) => {
+      sent.push(request);
+      return { ok: true as const, value: {} };
+    };
+    const open = createRoutedHandlers(route, createRunningTurns(), async () =>
+      Promise.resolve(session),
+    );
+    await open["goal/change"]?.({ args: { agent, action: "pause" }, caller, signal });
+    expect(sent).toStrictEqual([
+      { op: "goal/change", args: { agent, action: "pause", session }, origin: "owner" },
+    ]);
+    const none = createRoutedHandlers(route, createRunningTurns(), noSession);
+    const read = await none["goal/get"]?.({ args: { agent }, caller, signal });
+    const set = await none["goal/set"]?.({ args: { agent, objective: "x" }, caller, signal });
+    expect([read, set]).toStrictEqual([
+      { ok: true, value: {} },
+      { ok: false, error: "goal.no_chat" },
+    ]);
+    expect(sent).toHaveLength(1);
+  });
 });

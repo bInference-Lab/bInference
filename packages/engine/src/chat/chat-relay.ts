@@ -13,6 +13,7 @@ import type { EngineHandler } from "../operations/engine-call.js";
 import { createScreenHandlers, type ScreenHandlers } from "../screen/screen-handlers.js";
 import type { AgentInboxMessage } from "./agent-inbox-record.js";
 import { type ChatRelayOptions, pushInbox } from "./chat-relay-parts.js";
+import { createGoalTurnHandlers, type GoalTurnHandlers } from "./goal-turns.js";
 import { createHelperEndHandlers, type HelperEndHandlers } from "./helper-ends.js";
 import { createImageHandlers, type ImageHandlers } from "./image-handlers.js";
 import { createImageHold } from "./image-hold.js";
@@ -38,7 +39,8 @@ export interface ChatHandlers
     BrowserHandlers,
     ScreenHandlers,
     PdfHandlers,
-    HelperEndHandlers {}
+    HelperEndHandlers,
+    GoalTurnHandlers {}
 
 /** The engine's relay of chat between the surfaces and the agent runtime. */
 export interface ChatRelay {
@@ -169,6 +171,7 @@ export function createChatRelay(options: ChatRelayOptions): ChatRelay {
       ...screenHandlersOf(options),
       ...pdfHandlersOf(options),
       ...createHelperEndHandlers(options),
+      ...createGoalTurnHandlers(options),
       ...createCredentialRequestHandlers(options),
       ...createCredentialStoreHandlers(options),
     },

@@ -221,5 +221,9 @@
   "screen.no_display": "没有这个编号的显示器，或者这台机器的截图程序无法只截取一个显示器。请改为截取整个屏幕。",
   "screen.too_large": "截图仍超过 5 MiB，而这台机器的截图程序无法把它变小。请只截取一个显示器，或降低屏幕分辨率。",
   "screen.failed": "无法截图。请确认屏幕已打开且未锁定，然后再试。",
+  "goal.exists": "此对话已有目标。请先用 /goal clear 清除，再设定新目标。",
+  "goal.none": "此对话没有目标。请用 /goal 加上要 Agent 完成的事来设定。",
+  "goal.no_chat": "Agent 还没有打开的对话。请先给它发一条消息，再设定目标。",
+  "goal.done": "此目标已完成。请用 /goal clear 清除后再设定新目标。",
   "internal.error": "binference 遇到内部错误。请运行 `binference report` 生成不含密钥的支持文件。"
 }

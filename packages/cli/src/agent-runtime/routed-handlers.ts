@@ -23,6 +23,9 @@ export const routedOperations = [
   "notes/delete",
   "notes/get",
   "notes/forget",
+  "goal/get",
+  "goal/set",
+  "goal/change",
 ] as const;
 
 type RoutedName = (typeof routedOperations)[number];
@@ -99,11 +102,33 @@ function messagesOf(
   };
 }
 
+type GoalOp = "goal/get" | "goal/set" | "goal/change";
+
+// A goal call names the agent's open chat when it names none (decision 0407): with no chat open,
+// a read finds no goal and a change is `goal.no_chat`.
+function goalOf<N extends GoalOp>(
+  name: N,
+  parts: { readonly route: Route; readonly turns: RunningTurns },
+  openSession: OpenSession,
+): EngineHandler<N> {
+  const route = routed(name, parts);
+  return async (call) => {
+    if (call.args.session !== undefined) {
+      return route(call);
+    }
+    const session = await openSession(call.args.agent, call.signal);
+    if (session === undefined) {
+      return name === "goal/get" ? ok({}) : err("goal.no_chat");
+    }
+    return route({ ...call, args: { ...call.args, session } });
+  };
+}
+
 /**
  * The engine's handlers of the routed operations: each passes its call to the runtime with the
  * origin its caller and the runtime's running turns set, and answers the runtime's result as the
  * operation's schema reads it. A result that breaks the schema fails `internal.error`.
- * `chat/messages` with no session reads the agent's open one.
+ * `chat/messages` and the goal calls with no session name the agent's open one.
  */
 export function createRoutedHandlers(
   route: Route,
@@ -119,5 +144,8 @@ export function createRoutedHandlers(
     "notes/delete": routed("notes/delete", parts),
     "notes/get": routed("notes/get", parts),
     "notes/forget": routed("notes/forget", parts),
+    "goal/get": goalOf("goal/get", parts, openSession),
+    "goal/set": goalOf("goal/set", parts, openSession),
+    "goal/change": goalOf("goal/change", parts, openSession),
   };
 }

@@ -25,6 +25,8 @@ export interface OwnerMessagePayload {
   readonly answer?: { readonly question: Id<"qst">; readonly choice: number };
   /** Words the engine wrote in the owner's place that hold outside content (decision 0403). */
   readonly outsideContent?: boolean;
+  /** binference's words that start the chat's next goal turn (decision 0407). */
+  readonly goalTurn?: boolean;
 }
 
 /** Parses an owner's message payload. */
@@ -34,6 +36,7 @@ export const ownerMessagePayloadSchema: z.ZodType<OwnerMessagePayload> = z.stric
   surface: chatSurfaceSchema,
   answer: z.strictObject({ question: idSchema("qst"), choice: choicePlaceSchema }).exactOptional(),
   outsideContent: z.boolean().exactOptional(),
+  goalTurn: z.boolean().exactOptional(),
 });
 
 /** A settle message: the intent that ended. */

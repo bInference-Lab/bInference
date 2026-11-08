@@ -19,6 +19,7 @@ import {
 import { type DepositOperationShapes, depositOperations } from "./deposit-operations.schema.js";
 import { type EngineOperationShapes, engineOperations } from "./engine-operations.schema.js";
 import { type FileOperationShapes, fileOperations } from "./file-operations.schema.js";
+import { type GoalOperationShapes, goalOperations } from "./goal-operations.schema.js";
 import { type HelperOperationShapes, helperOperations } from "./helper-operations.schema.js";
 import { type ImageOperationShapes, imageOperations } from "./image-operations.schema.js";
 import { type IntentOperationShapes, intentOperations } from "./intent-operations.schema.js";
@@ -84,6 +85,7 @@ export interface OperationShapes
     CredentialOperationShapes,
     DepositOperationShapes,
     HelperOperationShapes,
+    GoalOperationShapes,
     QuestionOperationShapes,
     NoteOperationShapes,
     PluginOperationShapes,
@@ -130,6 +132,7 @@ export const operations: OperationTable<OperationShapes> = {
   ...credentialOperations,
   ...depositOperations,
   ...helperOperations,
+  ...goalOperations,
   ...questionOperations,
   ...noteOperations,
   ...pluginOperations,

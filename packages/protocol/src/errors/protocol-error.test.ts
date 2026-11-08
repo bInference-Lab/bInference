@@ -52,6 +52,7 @@ describe("protocolErrorCodes", () => {
       "media",
       "speech",
       "screen",
+      "goal",
       "internal",
     ]);
   });

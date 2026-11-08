@@ -225,6 +225,10 @@ export const protocolErrorCodes = [
   "screen.no_display",
   "screen.too_large",
   "screen.failed",
+  "goal.exists",
+  "goal.none",
+  "goal.no_chat",
+  "goal.done",
   "internal.error",
 ] as const;
 

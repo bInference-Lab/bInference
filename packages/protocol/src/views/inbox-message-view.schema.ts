@@ -38,6 +38,11 @@ interface InboxOwnerMessage extends InboxMessageBase {
    * helper's report (decision 0403): the turn it starts is marked.
    */
   readonly outsideContent?: boolean;
+  /**
+   * binference wrote it in the owner's place to start the chat's next goal turn (decision 0407):
+   * it starts a turn only when no other message waits.
+   */
+  readonly goalTurn?: boolean;
 }
 
 /** A press of a question's button, as the message that answers it carries it. */
@@ -169,6 +174,7 @@ export const inboxMessageViewSchema: z.ZodType<InboxMessageView> = z.discriminat
       .object({ question: protocolIdSchema("question"), choice: z.int().min(0).max(3) })
       .exactOptional(),
     outsideContent: z.boolean().exactOptional(),
+    goalTurn: z.boolean().exactOptional(),
   }),
   z.object({ ...base, kind: z.literal("inbox/intentSettled"), turn, intent: intentViewSchema }),
   z.object({ ...base, kind: z.literal("inbox/stop"), reason: z.enum(["owner", "freeze"]) }),

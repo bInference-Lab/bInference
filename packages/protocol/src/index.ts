@@ -64,6 +64,9 @@ export { maxDisplayNumber, maxScreenShots } from "./operations/screen-operations
 export type { ScreenCaptureView, ScreenShotView } from "./operations/screen-operations.schema.js";
 export type { PortableChart } from "./views/portable-chart.schema.js";
 export * as credentialPushes from "./views/credential-push.schema.js";
+export * from "./views/goal-push.schema.js";
+export * from "./views/goal-view.schema.js";
+export type { GoalAction, GoalChange, GoalRead } from "./operations/goal-operations.schema.js";
 export { webPushSubscriptionSchema } from "./operations/web-push-operations.schema.js";
 export type { WebPushSubscription } from "./operations/web-push-operations.schema.js";
 export * from "./operations/storable-args.js";

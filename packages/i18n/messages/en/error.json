@@ -221,5 +221,9 @@
   "screen.no_display": "No display has that number, or this machine's screenshot program cannot pick one display. Ask for the whole screen instead.",
   "screen.too_large": "The screenshot stays over 5 MiB, and this machine's screenshot program cannot make it smaller. Ask for one display, or lower the screen's resolution.",
   "screen.failed": "The screenshot could not be taken. Check that the screen is on and unlocked, then try again.",
+  "goal.exists": "This chat already has a goal. Clear it with /goal clear, then set the new one.",
+  "goal.none": "This chat has no goal. Set one with /goal and what the agent should achieve.",
+  "goal.no_chat": "The agent has no chat open yet. Write to it once, then set the goal.",
+  "goal.done": "This goal is complete. Clear it with /goal clear to set another.",
   "internal.error": "binference hit an internal error. Run `binference report` to make a support file without secrets."
 }

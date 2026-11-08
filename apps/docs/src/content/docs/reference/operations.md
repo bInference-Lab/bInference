@@ -372,6 +372,16 @@ Every operation of the engine protocol, version 1, by domain. A client calls an 
 | --- | --- | --- | --- | --- |
 | `helper/ended` | `agent` | read | any connection | engine |
 
+## `goal`
+
+| Operation | Scope | Kind | Accepted | Answered by |
+| --- | --- | --- | --- | --- |
+| `goal/get` | `read` | read | any connection | agent runtime |
+| `goal/set` | `chat` | write | any connection | agent runtime |
+| `goal/change` | `chat` | write | any connection | agent runtime |
+| `goal/continue` | `agent` | read | any connection | engine |
+| `goal/show` | `agent` | read | any connection | engine |
+
 ## `notes`
 
 | Operation | Scope | Kind | Accepted | Answered by |

@@ -11,6 +11,8 @@ export interface EngineMessage {
   readonly surface: ChatSurface;
   /** The words hold outside content, such as a helper's report: the turn they start is marked. */
   readonly outsideContent?: boolean;
+  /** The words start the chat's next goal turn (decision 0407). */
+  readonly goalTurn?: boolean;
 }
 
 /**
@@ -36,6 +38,7 @@ export async function wakeWithMessage(
         text: message.text,
         surface: message.surface,
         ...(message.outsideContent === true ? { outsideContent: true } : {}),
+        ...(message.goalTurn === true ? { goalTurn: true } : {}),
       },
       atMs: clock.now(),
       opens: ids.next("ses"),

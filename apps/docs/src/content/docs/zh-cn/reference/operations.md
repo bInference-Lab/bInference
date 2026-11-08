@@ -372,6 +372,16 @@ description: "引擎协议的每个操作：调用所需的权限范围、操作
 | --- | --- | --- | --- | --- |
 | `helper/ended` | `agent` | 读取 | 任何连接 | 引擎 |
 
+## `goal`
+
+| 操作 | 权限范围 | 类型 | 接受位置 | 回复方 |
+| --- | --- | --- | --- | --- |
+| `goal/get` | `read` | 读取 | 任何连接 | Agent 运行时 |
+| `goal/set` | `chat` | 写入 | 任何连接 | Agent 运行时 |
+| `goal/change` | `chat` | 写入 | 任何连接 | Agent 运行时 |
+| `goal/continue` | `agent` | 读取 | 任何连接 | 引擎 |
+| `goal/show` | `agent` | 读取 | 任何连接 | 引擎 |
+
 ## `notes`
 
 | 操作 | 权限范围 | 类型 | 接受位置 | 回复方 |

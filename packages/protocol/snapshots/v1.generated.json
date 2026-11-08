@@ -640,6 +640,10 @@
         "screen.no_display",
         "screen.too_large",
         "screen.failed",
+        "goal.exists",
+        "goal.none",
+        "goal.no_chat",
+        "goal.done",
         "internal.error"
       ]
     },
@@ -36471,6 +36475,9 @@
                       },
                       "outsideContent": {
                         "type": "boolean"
+                      },
+                      "goalTurn": {
+                        "type": "boolean"
                       }
                     },
                     "required": [
@@ -46276,6 +46283,921 @@
       "since": "2026.10.0"
     },
     "reply/helper/ended": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "reply"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "result": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "result"
+      ]
+    },
+    "call/goal/get": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "op": {
+          "type": "string",
+          "const": "goal/get"
+        },
+        "args": {
+          "type": "object",
+          "properties": {
+            "agent": {
+              "type": "string",
+              "pattern": "^agt_"
+            },
+            "session": {
+              "type": "string",
+              "pattern": "^ses_"
+            }
+          },
+          "required": [
+            "agent"
+          ],
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "op",
+        "args"
+      ],
+      "scope": "read",
+      "kind": "read",
+      "transport": "any",
+      "answeredBy": "runtime",
+      "since": "2026.10.0"
+    },
+    "reply/goal/get": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "reply"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "goal": {
+              "type": "object",
+              "properties": {
+                "agent": {
+                  "type": "string",
+                  "pattern": "^agt_"
+                },
+                "session": {
+                  "type": "string",
+                  "pattern": "^ses_"
+                },
+                "objective": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2000
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "active",
+                    "paused",
+                    "blocked",
+                    "complete"
+                  ]
+                },
+                "pauseReason": {
+                  "type": "string",
+                  "enum": [
+                    "owner",
+                    "stopped",
+                    "frozen",
+                    "budget",
+                    "goal_budget",
+                    "turn_limit",
+                    "no_progress"
+                  ]
+                },
+                "note": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2000
+                },
+                "budgetUsdMicros": {
+                  "type": "string",
+                  "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                },
+                "spentUsdMicros": {
+                  "type": "string",
+                  "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                },
+                "goalTurns": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "startedAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "updatedAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "agent",
+                "session",
+                "objective",
+                "status",
+                "spentUsdMicros",
+                "goalTurns",
+                "startedAt",
+                "updatedAt"
+              ]
+            },
+            "note": {
+              "type": "object",
+              "properties": {
+                "agent": {
+                  "type": "string",
+                  "pattern": "^agt_"
+                },
+                "session": {
+                  "type": "string",
+                  "pattern": "^ses_"
+                },
+                "markdown": {
+                  "type": "string",
+                  "maxLength": 2000
+                },
+                "plan": {
+                  "maxItems": 12,
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "text": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      "state": {
+                        "type": "string",
+                        "enum": [
+                          "done",
+                          "doing",
+                          "todo"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "text",
+                      "state"
+                    ]
+                  }
+                },
+                "updatedAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "agent",
+                "session",
+                "markdown",
+                "plan",
+                "updatedAt"
+              ]
+            }
+          }
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "result"
+      ]
+    },
+    "call/goal/set": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "op": {
+          "type": "string",
+          "const": "goal/set"
+        },
+        "args": {
+          "type": "object",
+          "properties": {
+            "agent": {
+              "type": "string",
+              "pattern": "^agt_"
+            },
+            "session": {
+              "type": "string",
+              "pattern": "^ses_"
+            },
+            "objective": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2000
+            },
+            "budgetUsdMicros": {
+              "type": "string",
+              "pattern": "^(?:0|[1-9]\\d{0,77})$"
+            }
+          },
+          "required": [
+            "agent",
+            "objective"
+          ],
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "op",
+        "args",
+        "key"
+      ],
+      "scope": "chat",
+      "kind": "write",
+      "transport": "any",
+      "answeredBy": "runtime",
+      "since": "2026.10.0"
+    },
+    "reply/goal/set": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "reply"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "goal": {
+              "type": "object",
+              "properties": {
+                "agent": {
+                  "type": "string",
+                  "pattern": "^agt_"
+                },
+                "session": {
+                  "type": "string",
+                  "pattern": "^ses_"
+                },
+                "objective": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2000
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "active",
+                    "paused",
+                    "blocked",
+                    "complete"
+                  ]
+                },
+                "pauseReason": {
+                  "type": "string",
+                  "enum": [
+                    "owner",
+                    "stopped",
+                    "frozen",
+                    "budget",
+                    "goal_budget",
+                    "turn_limit",
+                    "no_progress"
+                  ]
+                },
+                "note": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2000
+                },
+                "budgetUsdMicros": {
+                  "type": "string",
+                  "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                },
+                "spentUsdMicros": {
+                  "type": "string",
+                  "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                },
+                "goalTurns": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "startedAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "updatedAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "agent",
+                "session",
+                "objective",
+                "status",
+                "spentUsdMicros",
+                "goalTurns",
+                "startedAt",
+                "updatedAt"
+              ]
+            }
+          },
+          "required": [
+            "goal"
+          ]
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "result"
+      ]
+    },
+    "call/goal/change": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "op": {
+          "type": "string",
+          "const": "goal/change"
+        },
+        "args": {
+          "type": "object",
+          "properties": {
+            "agent": {
+              "type": "string",
+              "pattern": "^agt_"
+            },
+            "session": {
+              "type": "string",
+              "pattern": "^ses_"
+            },
+            "action": {
+              "type": "string",
+              "enum": [
+                "pause",
+                "resume",
+                "clear"
+              ]
+            }
+          },
+          "required": [
+            "agent",
+            "action"
+          ],
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "op",
+        "args",
+        "key"
+      ],
+      "scope": "chat",
+      "kind": "write",
+      "transport": "any",
+      "answeredBy": "runtime",
+      "since": "2026.10.0"
+    },
+    "reply/goal/change": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "reply"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "goal": {
+              "type": "object",
+              "properties": {
+                "agent": {
+                  "type": "string",
+                  "pattern": "^agt_"
+                },
+                "session": {
+                  "type": "string",
+                  "pattern": "^ses_"
+                },
+                "objective": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2000
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "active",
+                    "paused",
+                    "blocked",
+                    "complete"
+                  ]
+                },
+                "pauseReason": {
+                  "type": "string",
+                  "enum": [
+                    "owner",
+                    "stopped",
+                    "frozen",
+                    "budget",
+                    "goal_budget",
+                    "turn_limit",
+                    "no_progress"
+                  ]
+                },
+                "note": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2000
+                },
+                "budgetUsdMicros": {
+                  "type": "string",
+                  "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                },
+                "spentUsdMicros": {
+                  "type": "string",
+                  "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                },
+                "goalTurns": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "startedAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "updatedAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "agent",
+                "session",
+                "objective",
+                "status",
+                "spentUsdMicros",
+                "goalTurns",
+                "startedAt",
+                "updatedAt"
+              ]
+            },
+            "note": {
+              "type": "object",
+              "properties": {
+                "agent": {
+                  "type": "string",
+                  "pattern": "^agt_"
+                },
+                "session": {
+                  "type": "string",
+                  "pattern": "^ses_"
+                },
+                "markdown": {
+                  "type": "string",
+                  "maxLength": 2000
+                },
+                "plan": {
+                  "maxItems": 12,
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "text": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      "state": {
+                        "type": "string",
+                        "enum": [
+                          "done",
+                          "doing",
+                          "todo"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "text",
+                      "state"
+                    ]
+                  }
+                },
+                "updatedAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "agent",
+                "session",
+                "markdown",
+                "plan",
+                "updatedAt"
+              ]
+            }
+          }
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "result"
+      ]
+    },
+    "call/goal/continue": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "op": {
+          "type": "string",
+          "const": "goal/continue"
+        },
+        "args": {
+          "type": "object",
+          "properties": {
+            "agent": {
+              "type": "string",
+              "pattern": "^agt_"
+            },
+            "session": {
+              "type": "string",
+              "pattern": "^ses_"
+            },
+            "surface": {
+              "type": "string",
+              "enum": [
+                "telegram",
+                "console",
+                "cli",
+                "mini"
+              ]
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2500
+            },
+            "outsideContent": {
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "agent",
+            "session",
+            "surface",
+            "text",
+            "outsideContent"
+          ],
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "op",
+        "args"
+      ],
+      "scope": "agent",
+      "kind": "read",
+      "transport": "any",
+      "answeredBy": "engine",
+      "since": "2026.10.0"
+    },
+    "reply/goal/continue": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "reply"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "result": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "result"
+      ]
+    },
+    "call/goal/show": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "op": {
+          "type": "string",
+          "const": "goal/show"
+        },
+        "args": {
+          "type": "object",
+          "properties": {
+            "agent": {
+              "type": "string",
+              "pattern": "^agt_"
+            },
+            "session": {
+              "type": "string",
+              "pattern": "^ses_"
+            },
+            "change": {
+              "type": "string",
+              "enum": [
+                "set",
+                "paused",
+                "resumed",
+                "complete",
+                "blocked",
+                "cleared",
+                "note"
+              ]
+            },
+            "goal": {
+              "type": "object",
+              "properties": {
+                "agent": {
+                  "type": "string",
+                  "pattern": "^agt_"
+                },
+                "session": {
+                  "type": "string",
+                  "pattern": "^ses_"
+                },
+                "objective": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2000
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "active",
+                    "paused",
+                    "blocked",
+                    "complete"
+                  ]
+                },
+                "pauseReason": {
+                  "type": "string",
+                  "enum": [
+                    "owner",
+                    "stopped",
+                    "frozen",
+                    "budget",
+                    "goal_budget",
+                    "turn_limit",
+                    "no_progress"
+                  ]
+                },
+                "note": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 2000
+                },
+                "budgetUsdMicros": {
+                  "type": "string",
+                  "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                },
+                "spentUsdMicros": {
+                  "type": "string",
+                  "pattern": "^(?:0|[1-9]\\d{0,77})$"
+                },
+                "goalTurns": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "startedAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "updatedAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "agent",
+                "session",
+                "objective",
+                "status",
+                "spentUsdMicros",
+                "goalTurns",
+                "startedAt",
+                "updatedAt"
+              ]
+            },
+            "note": {
+              "type": "object",
+              "properties": {
+                "agent": {
+                  "type": "string",
+                  "pattern": "^agt_"
+                },
+                "session": {
+                  "type": "string",
+                  "pattern": "^ses_"
+                },
+                "markdown": {
+                  "type": "string",
+                  "maxLength": 2000
+                },
+                "plan": {
+                  "maxItems": 12,
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "text": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      "state": {
+                        "type": "string",
+                        "enum": [
+                          "done",
+                          "doing",
+                          "todo"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "text",
+                      "state"
+                    ]
+                  }
+                },
+                "updatedAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "agent",
+                "session",
+                "markdown",
+                "plan",
+                "updatedAt"
+              ]
+            }
+          },
+          "required": [
+            "agent",
+            "session",
+            "change"
+          ],
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "op",
+        "args"
+      ],
+      "scope": "agent",
+      "kind": "read",
+      "transport": "any",
+      "answeredBy": "engine",
+      "since": "2026.10.0"
+    },
+    "reply/goal/show": {
       "$schema": "https://json-schema.org/draft/2020-12/schema",
       "type": "object",
       "properties": {
