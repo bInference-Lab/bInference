@@ -96,6 +96,21 @@ export interface ToolRunContext {
     document: DocumentContent,
     request: string,
   ) => Promise<Result<DocumentAnswer, "failed">>;
+  /** Where the turn stands as the tool runs, which a tool that reports it reads (decision 0404). */
+  readonly turnState: () => TurnState;
+}
+
+/** Where a running turn stands. */
+export interface TurnState {
+  /** The chain's model the turn calls now, `<provider>/<model>`: a fallback, once it took over. */
+  readonly model: string;
+  /** The turn's context holds outside content. */
+  readonly outside: boolean;
+  /**
+   * The estimated input of the turn's next model call and its model's context window, in tokens;
+   * absent for a turn that never compacts, which knows no window.
+   */
+  readonly context?: { readonly usedTokens: number; readonly windowTokens: number };
 }
 
 /**

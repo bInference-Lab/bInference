@@ -21,7 +21,7 @@ import { createNodeStreamingHttp } from "./node-streaming-http.js";
 import { processPorts } from "./process-ports.js";
 import { type RuntimeHost, runRuntime } from "./run-runtime.js";
 import { openSqliteAgentDatabase } from "./sqlite-agent-database.js";
-import { turnModelsOf } from "./turn-models.js";
+import { chatModelOf, turnModelsOf } from "./turn-models.js";
 
 const healthEveryMs = 10_000;
 // Started from its TypeScript source, the runtime's store workers need its loader options too.
@@ -93,7 +93,7 @@ function builtTurnSetup(parts: ChainParts): RuntimeHost["turnSetup"] {
   const jobs = createImageJobs();
   return (place, settings, link) => {
     const { agent } = place;
-    const { main, summarizer, vision } = turnModelsOf(agent, settings, parts);
+    const { main, summarizer, vision } = turnModelsOf(place, settings, parts);
     const toolParts = {
       agent,
       client: link.client,
@@ -101,13 +101,15 @@ function builtTurnSetup(parts: ChainParts): RuntimeHost["turnSetup"] {
       web: { http: parts.http, lookup, clock: parts.clock, search: settings.search },
       plugins: settings.plugins ?? [],
       imageMaking: imageMakingOf(parts, settings, jobs),
+      status: { chats: link.chats, settings, version: manifest.version, clock: parts.clock },
       ...(link.helpers === undefined ? {} : { helpers: link.helpers }),
     };
     const imageMakingModel = settings.models.imageMaking;
+    const mainModel = chatModelOf(place, settings) ?? settings.models.main;
     const setup: TurnSetup = {
       models: main,
       settings: {
-        ...(settings.models.main === undefined ? {} : { mainModel: settings.models.main }),
+        ...(mainModel === undefined ? {} : { mainModel }),
         ...(imageMakingModel === undefined ? {} : { imageMakingModel }),
       },
       ...(vision === undefined ? {} : { vision }),

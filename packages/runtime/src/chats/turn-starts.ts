@@ -294,10 +294,12 @@ async function runTurn(
 ): Promise<void> {
   const { stores, lifetime } = context;
   const surface = surfaceOf(taken.map(({ queued }) => queued));
+  const chatModel = (await stores.sessions.get(place.session, { signal: lifetime }))?.model;
   const setup = context.setup({
     ...place,
     photos: photosOf(taken.map(({ owner }) => owner)),
     ...(surface === undefined ? {} : { surface }),
+    ...(chatModel === undefined ? {} : { chatModel }),
   });
   const prefix = await prefixOf(context, { agent: place.agent, instructions: setup.instructions });
   if (prefix === undefined) {

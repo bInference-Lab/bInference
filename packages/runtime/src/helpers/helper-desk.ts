@@ -1,6 +1,7 @@
 import { err, type Id, ok, type Result } from "@binference/core";
 import type { HelperRecord } from "@binference/store";
 import type { ModelMessage } from "../loop/model-message.js";
+import { isConfiguredModel } from "../providers/model-ref.js";
 import { written } from "../sessions/agent-stores.js";
 import { loadConversation } from "../sessions/conversation.js";
 import type { TurnPlace } from "../sessions/turn-place.js";
@@ -121,12 +122,7 @@ function msOf(minutes: number | undefined): number {
 }
 
 function knownModel(options: HelperDeskOptions, model: string | undefined): boolean {
-  if (model === undefined) {
-    return true;
-  }
-  const slash = model.indexOf("/");
-  const provider = model.slice(0, slash);
-  return slash > 0 && slash < model.length - 1 && options.providers().includes(provider);
+  return model === undefined || isConfiguredModel(model, options.providers());
 }
 
 // Why a start or a follow-up of the agent may not run now, or nothing.

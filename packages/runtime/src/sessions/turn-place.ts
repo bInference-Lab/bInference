@@ -19,6 +19,11 @@ export interface TurnPlace {
   readonly turn: Id<"trn">;
   readonly photos?: readonly TurnPhoto[];
   readonly surface?: ChatSurface;
+  /**
+   * The session's chat model, `<provider>/<model>`, which the agent set for the rest of the
+   * session (decision 0404); absent, the turn runs on the configured model.
+   */
+  readonly chatModel?: string;
   /** The turn is a run of one of the agent's helpers, in the helper's own session (decision 0403). */
   readonly helper?: HelperTurn;
 }

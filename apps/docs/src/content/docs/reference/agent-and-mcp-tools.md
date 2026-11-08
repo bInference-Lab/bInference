@@ -32,6 +32,7 @@ The tools the agent's model may call in a turn, in the order a turn offers them.
 - `notes_search` (read): Searches the agent's notes.
 - `notes_get` (read): Reads one of the agent's notes in full.
 - `settings_read` (read): Reads the owner's settings, or one key, with secrets shown only as their kind and the rules of each key.
+- `agent_status` (read): Reads the agent's own state: its models, model budget, chat, helpers and the time; in its own chat it can switch that chat's model.
 - `open_skill` (read): Opens one of the agent's skills.
 - `swap` (proposal): Proposes a swap of one token for another.
 - `buy` (proposal): Proposes a buy of a token.

@@ -5,6 +5,7 @@ import { modelPriceOf } from "../usage/model-price.js";
 import { createChatCompletionsTransport } from "./chat-completions-transport.js";
 import { createMessagesTransport } from "./messages-transport.js";
 import { createModelChain } from "./model-chain.js";
+import { splitModel } from "./model-ref.js";
 import type { StreamingHttp } from "./ports.js";
 
 /** What a model transport reaches the network and the time through. */
@@ -30,17 +31,6 @@ function refusedTransport(message: string): ModelTransport {
       yield { type: "error", failure: "request", message } as const;
     },
   };
-}
-
-// `<provider>/<model>`: the provider's name ends at the first slash, and the model's id, which may
-// hold slashes of its own (`anthropic/claude-sonnet-4.5`), is the rest.
-function splitModel(
-  ref: string,
-): { readonly provider: string; readonly model: string } | undefined {
-  const slash = ref.indexOf("/");
-  return slash <= 0 || slash === ref.length - 1
-    ? undefined
-    : { provider: ref.slice(0, slash), model: ref.slice(slash + 1) };
 }
 
 /** The provider's base URL, or the API its kind calls when it names none. */

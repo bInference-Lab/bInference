@@ -2,7 +2,7 @@ import type { Clock } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import type { RuntimeModels } from "../control/runtime-settings.schema.js";
 import { createRecordedHttp } from "../testing/recorded-http.js";
-import { turnModelsOf } from "./turn-models.js";
+import { chatModelOf, turnModelsOf } from "./turn-models.js";
 
 const clock: Clock = { now: () => 0, sleep: async () => Promise.resolve() };
 const parts = { http: createRecordedHttp([]), clock, rests: new Map<string, number>() };
@@ -26,7 +26,7 @@ const models: RuntimeModels = {
 };
 
 function namesOf(agent: string, settings: RuntimeModels = models) {
-  const { main, summarizer } = turnModelsOf(agent, { models: settings }, parts);
+  const { main, summarizer } = turnModelsOf({ agent }, { models: settings }, parts);
   return {
     main: main.models.map((model) => model.name),
     summarizer: summarizer.models.map((model) => model.name),
@@ -57,18 +57,37 @@ describe("turnModelsOf", () => {
     });
   });
 
+  it("runs a chat model alone, over the owner's pick, in that chat only", () => {
+    const chat = { agent: "agt_picked", chatModel: "router/big" };
+    const { main, summarizer } = turnModelsOf(chat, { models }, parts);
+    expect(main.models.map(({ name }) => name)).toStrictEqual(["router/big"]);
+    expect(summarizer.models.map(({ name }) => name)).toStrictEqual([
+      "router/fast",
+      "router/fast-backup",
+    ]);
+    expect(namesOf("agt_picked").main).toStrictEqual(["router/picked"]);
+  });
+
+  it("ignores a chat model whose provider the settings no longer configure", () => {
+    const gone = { agent: "agt_other", chatModel: "openai/gpt-5" };
+    expect(chatModelOf(gone, { models })).toBeUndefined();
+    const { main } = turnModelsOf(gone, { models }, parts);
+    expect(main.models.map(({ name }) => name)).toStrictEqual(["router/main", "router/backup"]);
+    expect(chatModelOf({ chatModel: "router/big" }, { models })).toBe("router/big");
+  });
+
   it("reads images on the models imageInput names, and on the vision model by its role", () => {
     const declared = { ...models, imageInput: ["router/backup"], vision: "router/vision" };
-    const { main, vision } = turnModelsOf("agt_other", { models: declared }, parts);
+    const { main, vision } = turnModelsOf({ agent: "agt_other" }, { models: declared }, parts);
     expect(main.models.map((model) => model.readsImages === true)).toStrictEqual([false, true]);
     expect(vision?.models.map((model) => [model.name, model.readsImages])).toStrictEqual([
       ["router/vision", true],
     ]);
-    const picked = turnModelsOf("agt_eyes", { models: declared }, parts).vision;
+    const picked = turnModelsOf({ agent: "agt_eyes" }, { models: declared }, parts).vision;
     expect(picked?.models.map((model) => model.name)).toStrictEqual(["router/eyes"]);
   });
 
   it("has no vision model when neither the config nor the agent's pick names one", () => {
-    expect(turnModelsOf("agt_other", { models }, parts).vision).toBeUndefined();
+    expect(turnModelsOf({ agent: "agt_other" }, { models }, parts).vision).toBeUndefined();
   });
 });

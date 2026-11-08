@@ -459,6 +459,27 @@ describe("createChatRunner", () => {
     expect(turnsStarted(rig)).toStrictEqual([first.turn, second.turn, fourth.turn]);
   });
 
+  it("hands each turn's setup the chat model its session holds as the turn starts", async () => {
+    const rig = await startChatRig({
+      replies: [textReply("one"), textReply("two"), textReply("three")],
+    });
+    const first = await rig.post("hi");
+    await rig.runner.rested();
+    const { fence, sessions } = rig.stores;
+    const change = { session: first.session, model: "router/big", fence };
+    expect((await sessions.setModel(change, live())).ok).toBe(true);
+    await rig.post("think harder");
+    await rig.runner.rested();
+    await sessions.setModel({ session: first.session, fence }, live());
+    await rig.post("back to normal");
+    await rig.runner.rested();
+    expect(rig.places.map(({ chatModel }) => chatModel)).toStrictEqual([
+      undefined,
+      "router/big",
+      undefined,
+    ]);
+  });
+
   it("hands the turn's setup the photos the owner sent the bot, in order", async () => {
     const rig = await startChatRig({ replies: [textReply("one")] });
     const posted = await rig.post("launch this", ["tg:cat", "upl_moon", "tg:dog"]);

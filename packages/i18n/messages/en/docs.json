@@ -143,6 +143,7 @@
   "tools.summary.helper_read": "Reads one of the agent's helpers: what it does now, its report and its newest messages.",
   "tools.summary.helper_send": "Sends a helper a follow-up, which starts another run of it.",
   "tools.summary.helper_stop": "Stops one of the agent's running helpers.",
+  "tools.summary.agent_status": "Reads the agent's own state: its models, model budget, chat, helpers and the time; in its own chat it can switch that chat's model.",
   "tools.summary.settings_read": "Reads the owner's settings, or one key, with secrets shown only as their kind and the rules of each key.",
   "tools.summary.settings_change": "Proposes a change to the owner's settings in a card that shows each setting before and after; nothing changes until the owner confirms."
 }

@@ -18,11 +18,13 @@ import type { ContextSource, EngineChat, OwnerImageReader } from "../engine-chat
 import { type BudgetMemory, createBudgetMemory } from "../helpers/budget-memory.js";
 import { createHelperDesk, type HelperRunner } from "../helpers/helper-desk.js";
 import { answerNoteRoute, isNoteRoute, type NoteRouteParts } from "../notes/note-routes.js";
+import { createChatStatusSources } from "../sessions/chat-status-sources.js";
 import type { TurnPlace } from "../sessions/turn-place.js";
 import type { HelperToolParts } from "../tools/helper-tools.js";
 import type { ToolClient } from "../tools/tool-client.js";
 import type { AgentDatabase } from "./agent-database.js";
 import { type PreparedChat, prepareChat, type RuntimeChat, startChat } from "./runtime-chat.js";
+import type { TurnLink } from "./turn-link.js";
 
 /** The runtime's signed-in link to the engine. */
 export interface EngineLink {
@@ -36,13 +38,6 @@ export interface EngineLink {
   readonly client: ToolClient;
   /** Closes the connection; the runtime holds no other. */
   close(): void;
-}
-
-/** What an agent's tools reach beyond their turn: the engine, and the agent's helpers. */
-interface TurnLink {
-  readonly client: ToolClient;
-  /** The helper tools' parts; a helper's own turn gets none, so it starts no helper. */
-  readonly helpers?: HelperToolParts;
 }
 
 /** What the runtime's entry hands over from Node: its pipes, how it reaches the engine, its timer. */
@@ -249,10 +244,16 @@ function turnsOf(host: RuntimeHost, connected: Connected, settings: () => Runtim
   const budgets = createBudgetMemory();
   const { link, prepared, database, lifetime } = connected;
   const holder: { helpers?: HelperToolParts } = {};
+  const chats = createChatStatusSources({ stores: prepared.stores, budgets });
   const setup = (place: TurnPlace): TurnSetup => {
     const current = settings();
-    const helpers = place.helper === undefined ? holder.helpers : undefined;
-    const turnLink = { client: link.client, ...(helpers === undefined ? {} : { helpers }) };
+    const isAgent = place.helper === undefined;
+    const helpers = isAgent ? holder.helpers : undefined;
+    const turnLink = {
+      client: link.client,
+      chats: isAgent ? chats.agent : chats.helper,
+      ...(helpers === undefined ? {} : { helpers }),
+    };
     return {
       ...host.turnSetup(place, current, turnLink),
       hasOutsideTools: (current.plugins ?? []).some(({ tools }) => tools.length > 0),

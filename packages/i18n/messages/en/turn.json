@@ -85,6 +85,7 @@
   "tool.helperRead": "Reading a helper's work…",
   "tool.helperSend": "Sending a helper a follow-up…",
   "tool.helperStop": "Stopping a helper…",
+  "tool.agentStatus": "Checking the agent's status…",
   "tool.deposit": "Showing where to deposit…",
   "tool.notesGet": "Reading a note…",
   "tool.notesForget": "Forgetting a note…"

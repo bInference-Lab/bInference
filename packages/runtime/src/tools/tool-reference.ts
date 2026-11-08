@@ -19,8 +19,9 @@ function neverCalled(): never {
 }
 
 // Parts that only declare the tools: no call reaches the engine, the web, an image model or a
-// helper. The X key, the image parts and the helper parts are set so the reference lists search_x,
-// make_image and the helper tools, which the agent has whenever the owner set them or helpers run.
+// helper. The X key, the image parts, the helper parts and the status parts are set so the
+// reference lists search_x, make_image, the helper tools and agent_status with its model, which
+// the agent has whenever the owner set them, helpers run, or its own turn runs.
 const declaringParts: AgentToolParts = {
   agent: idSchema("agt").parse("agt_00000000-0000-7000-8000-000000000000"),
   client: { call: neverCalled },
@@ -48,6 +49,24 @@ const declaringParts: AgentToolParts = {
       send: neverCalled,
       stop: neverCalled,
     },
+    clock: { now: neverCalled, sleep: neverCalled },
+  },
+  status: {
+    chats: { read: neverCalled, setModel: neverCalled, budgetLeft: neverCalled },
+    settings: {
+      models: {
+        providers: {},
+        imageInput: [],
+        fallbacks: { main: [], fast: [] },
+        idleTimeoutMs: 1,
+        cooldownMs: 1,
+        maxToolCallsPerTurn: 1,
+        loopDetection: true,
+        prices: {},
+      },
+      owner: { locale: "en", timezone: "UTC" },
+    },
+    version: "declared",
     clock: { now: neverCalled, sleep: neverCalled },
   },
 };

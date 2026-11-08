@@ -85,6 +85,7 @@
   "tool.helperRead": "正在读取助手的工作…",
   "tool.helperSend": "正在给助手发送后续消息…",
   "tool.helperStop": "正在停止助手…",
+  "tool.agentStatus": "正在查看 Agent 的状态…",
   "tool.deposit": "正在显示充值地址…",
   "tool.notesGet": "正在读取笔记…",
   "tool.notesForget": "正在删除笔记…"

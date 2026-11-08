@@ -9,6 +9,7 @@ import { createStopGrace } from "./stop-grace.js";
 import { haltOf } from "./turn-halt.js";
 import type { ReadyCall, ToolOutcome, ToolRunContext } from "./turn-records.js";
 import type { TurnRun } from "./turn-run.js";
+import { turnStateOf } from "./turn-state.js";
 
 /** A call of a batch with its number in the turn, from 1, which names its proposal's key. */
 export interface NumberedCall {
@@ -62,6 +63,7 @@ function contextOf(run: TurnRun, signal: AbortSignal, idempotencyKey: string): T
     idempotencyKey,
     look: async (images, question) => lookAtImage(run, images, question),
     askAbout: async (document, request) => answerDocument(run, document, request),
+    turnState: () => turnStateOf(run),
   };
 }
 

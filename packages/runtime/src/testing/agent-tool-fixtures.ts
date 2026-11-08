@@ -88,6 +88,7 @@ export const context: ToolRunContext = {
   look: async () => Promise.resolve(ok("A price chart.")),
   askAbout: async () =>
     Promise.resolve(ok({ text: "A whitepaper.", picturesSeen: 0, readsImages: false })),
+  turnState: () => ({ model: "router/main", outside: false }),
 };
 
 /** An intent of `owner` in `state`, as the engine answers it. */
