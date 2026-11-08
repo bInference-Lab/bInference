@@ -8,6 +8,7 @@ import type { EngineFiles } from "../files/file-handlers.js";
 import type { MachineFiles } from "../files/ports.js";
 import type { AgentStore } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
+import type { ScreenCapture } from "../screen/ports.js";
 import type { LocalVoice } from "../speech/ports.js";
 import type { AgentInboxMessage } from "./agent-inbox-record.js";
 import { inboxPushData, inboxViewOf, type IntentViewOf } from "./inbox-views.js";
@@ -40,6 +41,8 @@ export interface ChatRelayOptions {
   readonly sentFiles?: EngineFiles;
   /** The machine's own voice (decision 0405); without it `speech/local` is refused. */
   readonly localVoice?: LocalVoice;
+  /** The owner's screen (decision 0406); without it `screen/capture` is `screen.no_screen`. */
+  readonly screen?: ScreenCapture;
   /** The agent's browser (decision 0401); without it `browser/run` is `browser.off`. */
   readonly browser?: EngineBrowser;
   /** What reads the PDFs the agent reads (decision 0402); without it `pdf/read` refuses. */

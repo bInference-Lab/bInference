@@ -324,6 +324,12 @@ Every operation of the engine protocol, version 1, by domain. A client calls an 
 | `pdf/read` | `agent` | read | any connection | engine |
 | `pdf/pageImage` | `agent` | read | any connection | engine |
 
+## `screen`
+
+| Operation | Scope | Kind | Accepted | Answered by |
+| --- | --- | --- | --- | --- |
+| `screen/capture` | `agent` | read | any connection | engine |
+
 ## `file`
 
 | Operation | Scope | Kind | Accepted | Answered by |

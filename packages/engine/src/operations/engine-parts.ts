@@ -92,18 +92,31 @@ function budgetsOf(options: EngineOptions): {
   return { billing, budget: budgetOf(options, billing) };
 }
 
-// What the agent's shell gives its chat on this machine: its browser, its PDF reader, the
-// machine's voice, and the files made images and media are saved in and sent files read from.
-function shellSideOf(
+// The parts of the agent's chat its shell gives.
+type ShellSide = "madeImageFiles" | "sentFiles" | "browser" | "pdfReader" | "localVoice" | "screen";
+
+// The machine's own voice and the owner's screen, when the shell gives them.
+function machineSenseOf(
   shell: EngineOptions["shell"],
-): Pick<ChatRelayOptions, "madeImageFiles" | "sentFiles" | "browser" | "pdfReader" | "localVoice"> {
+): Pick<ChatRelayOptions, "localVoice" | "screen"> {
+  const localVoice = shell?.voice;
+  const screen = shell?.screen;
+  return {
+    ...(localVoice === undefined ? {} : { localVoice }),
+    ...(screen === undefined ? {} : { screen }),
+  };
+}
+
+// What the agent's shell gives its chat on this machine: its browser, its PDF reader, the
+// machine's voice, the owner's screen, and the files made images and media are saved in and sent
+// files read from.
+function shellSideOf(shell: EngineOptions["shell"]): Pick<ChatRelayOptions, ShellSide> {
   const browser = shell?.browser;
   const pdfReader = shell?.pdfReader;
-  const localVoice = shell?.voice;
   return {
     ...(browser === undefined ? {} : { browser }),
     ...(pdfReader === undefined ? {} : { pdfReader }),
-    ...(localVoice === undefined ? {} : { localVoice }),
+    ...machineSenseOf(shell),
     ...(shell?.files === undefined
       ? {}
       : { madeImageFiles: shell.files.files, sentFiles: shell.files }),
@@ -116,13 +129,7 @@ function agentSideOf(
   options: EngineOptions,
 ): Pick<
   ChatRelayOptions,
-  | "viewImages"
-  | "madeImageFiles"
-  | "sentFiles"
-  | "communityPluginsOn"
-  | "browser"
-  | "pdfReader"
-  | "localVoice"
+  "viewImages" | "madeImageFiles" | "sentFiles" | "communityPluginsOn" | ShellSide
 > {
   const { viewImages, shell, communityPluginsOn } = options;
   return {

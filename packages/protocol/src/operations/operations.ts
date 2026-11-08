@@ -43,6 +43,7 @@ import {
   type ReasoningOperationShapes,
   reasoningOperations,
 } from "./reasoning-operations.schema.js";
+import { type ScreenOperationShapes, screenOperations } from "./screen-operations.schema.js";
 import { type SentFileOperationShapes, sentFileOperations } from "./sent-file-operations.schema.js";
 import { type SettingsOperationShapes, settingsOperations } from "./settings-operations.schema.js";
 import { type ShellOperationShapes, shellOperations } from "./shell-operations.schema.js";
@@ -75,6 +76,7 @@ export interface OperationShapes
     ShellOperationShapes,
     BrowserOperationShapes,
     PdfOperationShapes,
+    ScreenOperationShapes,
     FileOperationShapes,
     SentFileOperationShapes,
     MediaOperationShapes,
@@ -120,6 +122,7 @@ export const operations: OperationTable<OperationShapes> = {
   ...shellOperations,
   ...browserOperations,
   ...pdfOperations,
+  ...screenOperations,
   ...fileOperations,
   ...sentFileOperations,
   ...mediaOperations,

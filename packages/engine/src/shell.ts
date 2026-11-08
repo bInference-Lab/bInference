@@ -7,3 +7,5 @@ export type { EngineFiles } from "./files/file-handlers.js";
 export type { FileCall, FileSettings, ReadFile } from "./files/file-records.js";
 export type { FileRefusal, MachineFiles } from "./files/ports.js";
 export type { LocalVoice, LocalVoiceRefusal } from "./speech/ports.js";
+export type { ScreenCapture } from "./screen/ports.js";
+export type { ScreenRefusal, ScreenShot } from "./screen/screen-records.js";

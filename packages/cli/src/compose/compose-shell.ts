@@ -10,12 +10,14 @@ import {
 } from "@binference/engine/shell";
 import { createPdfReader } from "@binference/pdf";
 import {
+  findProgram,
   isFolder,
   runCommandWithin,
   type ShellEnd,
   type ShellLauncher,
   walledPaths,
 } from "@binference/platform";
+import { maxImageBytes } from "@binference/protocol";
 import { english } from "viem/accounts";
 import type { BinferenceConfig } from "../config/schema/config.schema.js";
 import { asJson } from "../config/shown-config.js";
@@ -114,7 +116,9 @@ export function commandRunnerOf(parts: ShellParts): CommandRunner {
  * variables, starting in the owner's home folder, and the settings `shell` holds as each starts;
  * the agent's files there, with the settings `files` holds at each call (decision 0386); and the
  * agent's browser (decision 0401); its PDF reader, each read in a worker thread of its own
- * (decision 0402); and the machine's own voice, working in the workspace (decision 0405).
+ * (decision 0402); the machine's own voice, working in the workspace (decision 0405); and the
+ * owner's screen, its shots taken in the workspace, named after the program binference runs as
+ * (decision 0406).
  */
 export function shellOf(opening: Opening, opened: Opened): EngineShell {
   const { host, platform } = opening;
@@ -138,6 +142,14 @@ export function shellOf(opening: Opening, opened: Opened): EngineShell {
       permissions: platform.permissions,
       run: host.runProgram ?? runCommandWithin,
       random: host.random,
+    }),
+    screen: platform.screenCapture({
+      folder: join(platform.stateFolder.workspace, "media", "screen", ".work"),
+      permissions: platform.permissions,
+      maxBytes: maxImageBytes,
+      run: host.runProgram ?? runCommandWithin,
+      program: host.entry.node,
+      findProgram: async (name) => findProgram(name, host.env),
     }),
   };
 }

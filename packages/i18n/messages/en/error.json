@@ -216,5 +216,10 @@
   "media.unreadable": "The video or speech could not be saved in the agent's workspace. Check that binference may write to its workspace folder, then try again.",
   "speech.local_unavailable": "This machine has no voice binference speaks with: only macOS does. Set `models.speech` in config.json5 to a model of an OpenAI-compatible provider.",
   "speech.failed": "The machine's voice could not speak the words. Check that `speech.voice` names one of its voices, then try again.",
+  "screen.no_screen": "This machine shows no screen binference can look at, such as a server or a container. Ask the agent to look from a machine with a desktop.",
+  "screen.no_program": "No screenshot program binference runs is installed. On Linux, install grim, gnome-screenshot or scrot, then try again.",
+  "screen.no_display": "No display has that number, or this machine's screenshot program cannot pick one display. Ask for the whole screen instead.",
+  "screen.too_large": "The screenshot stays over 5 MiB, and this machine's screenshot program cannot make it smaller. Ask for one display, or lower the screen's resolution.",
+  "screen.failed": "The screenshot could not be taken. Check that the screen is on and unlocked, then try again.",
   "internal.error": "binference hit an internal error. Run `binference report` to make a support file without secrets."
 }

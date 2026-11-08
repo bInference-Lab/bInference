@@ -60,6 +60,8 @@ export * as fileLimits from "./operations/file-limits.js";
 export * as browserLimits from "./operations/browser-limits.js";
 export * from "./requests/browser-request.schema.js";
 export type * from "./views/browser-view.schema.js";
+export { maxDisplayNumber, maxScreenShots } from "./operations/screen-operations.schema.js";
+export type { ScreenCaptureView, ScreenShotView } from "./operations/screen-operations.schema.js";
 export type { PortableChart } from "./views/portable-chart.schema.js";
 export * as credentialPushes from "./views/credential-push.schema.js";
 export { webPushSubscriptionSchema } from "./operations/web-push-operations.schema.js";

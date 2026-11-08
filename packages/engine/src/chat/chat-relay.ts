@@ -10,6 +10,7 @@ import {
 } from "../credentials/credential-store-handlers.js";
 import { createPdfHandlers, type PdfHandlers } from "../documents/pdf-handlers.js";
 import type { EngineHandler } from "../operations/engine-call.js";
+import { createScreenHandlers, type ScreenHandlers } from "../screen/screen-handlers.js";
 import type { AgentInboxMessage } from "./agent-inbox-record.js";
 import { type ChatRelayOptions, pushInbox } from "./chat-relay-parts.js";
 import { createHelperEndHandlers, type HelperEndHandlers } from "./helper-ends.js";
@@ -35,6 +36,7 @@ export interface ChatHandlers
     MadeMediaHandlers,
     SentFileHandlers,
     BrowserHandlers,
+    ScreenHandlers,
     PdfHandlers,
     HelperEndHandlers {}
 
@@ -116,6 +118,18 @@ function browserHandlersOf(options: ChatRelayOptions): BrowserHandlers {
   });
 }
 
+// `screen/capture`, its shots saved in the files the made images are saved in.
+function screenHandlersOf(options: ChatRelayOptions): ScreenHandlers {
+  const { screen, turns, madeImageFiles, clock, random } = options;
+  return createScreenHandlers({
+    turns,
+    clock,
+    random,
+    ...(screen === undefined ? {} : { screen }),
+    ...(madeImageFiles === undefined ? {} : { files: madeImageFiles }),
+  });
+}
+
 // `pdf/read` and `pdf/pageImage`, a PDF's bytes read as a viewed image's are.
 function pdfHandlersOf(options: ChatRelayOptions): PdfHandlers {
   const { turns, clock, random, viewImages, pdfReader } = options;
@@ -152,6 +166,7 @@ export function createChatRelay(options: ChatRelayOptions): ChatRelay {
       ...createMadeMediaHandlers(options),
       ...createSentFileHandlers(options),
       ...browserHandlersOf(options),
+      ...screenHandlersOf(options),
       ...pdfHandlersOf(options),
       ...createHelperEndHandlers(options),
       ...createCredentialRequestHandlers(options),

@@ -51,6 +51,7 @@ describe("protocolErrorCodes", () => {
       "pdf",
       "media",
       "speech",
+      "screen",
       "internal",
     ]);
   });

@@ -1209,6 +1209,25 @@ document's end or past the 20 read; `imagesCut` says a page's picture was left o
 since the pictures of one PDF share 4 million pixels. The password reaches the engine's PDF reader
 alone and is never logged or answered.
 
+<a id="section-7-14"></a>
+
+### 7.14 Screen
+
+Decided in [decision 0406](../DECISIONS.md#d0406). Only the current agent runtime calls it, for
+`look_at_screen`. The engine takes a screenshot of the owner's screen with the OS's own program and
+saves it; it never moves the mouse, presses a key or touches a window. It takes no idempotency key,
+and every shot carries outside content.
+
+| Operation        | Scope   | Write | Local | Args → result                                                                                                                                                                                                                                                                                        |
+| ---------------- | ------- | ----- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `screen/capture` | `agent` |       |       | `{ agent, display? }` → `{ shots, blocked? }`: every display, or the one `display` numbers from 1 to 16; each shot `{ path, contentType, bytes, display? }`, at most 4; refused `screen.no_screen`, `screen.no_program`, `screen.no_display`, `screen.too_large`, `screen.failed`, `file.unwritable` |
+
+Each shot is a PNG, or a JPEG once a PNG passed 5 MiB, saved in the workspace at
+`media/screen/<date>/<id>.png` or `.jpg`; the runtime reads it as `image/view` reads a path. On
+macOS one shot shows each display, up to four; elsewhere one shot shows every display. When the OS
+has not allowed binference to record the screen, the answer holds no shot and `blocked.program`
+names the program the owner allows under System Settings, Privacy and Security, Screen Recording.
+
 <a id="section-8"></a>
 
 ## 8. Shared shapes

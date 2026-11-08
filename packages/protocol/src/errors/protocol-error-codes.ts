@@ -220,6 +220,11 @@ export const protocolErrorCodes = [
   "media.unreadable",
   "speech.local_unavailable",
   "speech.failed",
+  "screen.no_screen",
+  "screen.no_program",
+  "screen.no_display",
+  "screen.too_large",
+  "screen.failed",
   "internal.error",
 ] as const;
 

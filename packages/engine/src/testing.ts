@@ -77,6 +77,13 @@ export { localVoiceContract } from "./contracts/local-voice-contract.js";
 export type { LocalVoiceHarness, LocalVoiceSubject } from "./contracts/local-voice-contract.js";
 export { createFakeLocalVoice, fakeVoiceBytes } from "./fakes/fake-local-voice.js";
 export type { FakeLocalVoice } from "./fakes/fake-local-voice.js";
+export { screenCaptureContract } from "./contracts/screen-capture-contract.js";
+export type {
+  ScreenCaptureMachines,
+  ScreenCaptureSetup,
+} from "./contracts/screen-capture-contract.js";
+export { createFakeScreenCapture, fakeScreenBytes } from "./fakes/fake-screen-capture.js";
+export type { FakeScreenCapture } from "./fakes/fake-screen-capture.js";
 export type { PdfReaderHarness, PdfReaderSubject } from "./contracts/pdf-reader-contract.js";
 export type {
   FakeBrowserDriver,

@@ -216,5 +216,10 @@
   "media.unreadable": "无法把该视频或语音保存到 Agent 工作区。请确认 binference 可以写入其工作区文件夹，然后再试。",
   "speech.local_unavailable": "这台机器没有 binference 可用的语音：只有 macOS 可以。请在 config.json5 中把 `models.speech` 设为某个 OpenAI 兼容服务商的模型。",
   "speech.failed": "这台机器的语音无法朗读这些文字。请确认 `speech.voice` 是它的某个语音名称，然后再试。",
+  "screen.no_screen": "这台机器没有 binference 可以查看的屏幕，例如服务器或容器。请让 Agent 在有桌面的机器上查看。",
+  "screen.no_program": "没有安装 binference 可用的截图程序。在 Linux 上请安装 grim、gnome-screenshot 或 scrot，然后再试。",
+  "screen.no_display": "没有这个编号的显示器，或者这台机器的截图程序无法只截取一个显示器。请改为截取整个屏幕。",
+  "screen.too_large": "截图仍超过 5 MiB，而这台机器的截图程序无法把它变小。请只截取一个显示器，或降低屏幕分辨率。",
+  "screen.failed": "无法截图。请确认屏幕已打开且未锁定，然后再试。",
   "internal.error": "binference 遇到内部错误。请运行 `binference report` 生成不含密钥的支持文件。"
 }

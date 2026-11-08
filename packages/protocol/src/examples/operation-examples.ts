@@ -24,6 +24,7 @@ import {
 import { intentExamples, marketExamples, orderExamples } from "./market-examples.js";
 import { mediaExamples } from "./media-examples.js";
 import { pdfExamples } from "./pdf-examples.js";
+import { screenExamples } from "./screen-examples.js";
 import { sentFileExamples } from "./sent-file-examples.js";
 import {
   accessExamples,
@@ -56,6 +57,7 @@ export const operationExamples: { readonly [N in OperationName]: WireExample } =
   ...shellExamples,
   ...browserExamples,
   ...pdfExamples,
+  ...screenExamples,
   ...fileExamples,
   ...sentFileExamples,
   ...mediaExamples,
