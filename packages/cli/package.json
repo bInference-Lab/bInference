@@ -58,6 +58,7 @@
     "@binference/lista": "workspace:*",
     "@binference/mcp": "workspace:*",
     "@binference/okx": "workspace:*",
+    "@binference/pdf": "workspace:*",
     "@binference/platform": "workspace:*",
     "@binference/plugin-host": "workspace:*",
     "@binference/plugin-sdk": "workspace:*",

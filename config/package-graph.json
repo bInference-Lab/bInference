@@ -208,6 +208,9 @@
     "browser": {
       "imports": ["core", "protocol", "engine", "platform", "playwright-core"],
       "fileSystem": true
+    },
+    "pdf": {
+      "imports": ["core", "protocol", "engine", "pdfjs-dist", "@napi-rs/canvas"]
     }
   },
   "plugins": {

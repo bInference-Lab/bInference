@@ -8,6 +8,7 @@ import {
   type EngineShell,
   maskShellOutput,
 } from "@binference/engine/shell";
+import { createPdfReader } from "@binference/pdf";
 import { isFolder, type ShellEnd, type ShellLauncher, walledPaths } from "@binference/platform";
 import { english } from "viem/accounts";
 import type { BinferenceConfig } from "../config/schema/config.schema.js";
@@ -105,7 +106,8 @@ export function commandRunnerOf(parts: ShellParts): CommandRunner {
  * the platform's launcher, behind its wall, with the engine's environment less binference's own
  * variables, starting in the owner's home folder, and the settings `shell` holds as each starts;
  * the agent's files there, with the settings `files` holds at each call (decision 0386); and the
- * agent's browser (decision 0401).
+ * agent's browser (decision 0401); and its PDF reader, each read in a worker thread of its own
+ * (decision 0402).
  */
 export function shellOf(opening: Opening, opened: Opened): EngineShell {
   const { host, platform } = opening;
@@ -122,6 +124,7 @@ export function shellOf(opening: Opening, opened: Opened): EngineShell {
     logger: opened.log.logger,
     files: agentFilesOf(opening, opened),
     browser: browserOf(opening, opened),
+    pdfReader: createPdfReader({ clock: host.clock, execArgv: host.workerExecArgv ?? [] }),
   };
 }
 

@@ -17,6 +17,7 @@ catalog:
   "@hpke/core": 1.9.0
   "@modelcontextprotocol/client": 2.3.0
   "@modelcontextprotocol/server": 2.3.0
+  "@napi-rs/canvas": 1.1.0
   "@napi-rs/keyring": 2.1.0
   "@noble/curves": 2.4.0
   "@playwright/test": 1.63.0
@@ -59,6 +60,7 @@ catalog:
   oxfmt: 0.71.0
   oxlint: 1.86.0
   oxlint-tsgolint: 7.0.2003
+  pdfjs-dist: 6.4.299
   pg: 8.23.1
   playwright-core: 1.63.0
   qr: 0.7.2
