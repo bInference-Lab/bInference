@@ -210,5 +210,11 @@
   "pdf.no_pages": "None of the pages asked for are in that PDF. Ask for pages the document has.",
   "pdf.timed_out": "Reading that PDF took longer than 30 seconds, so it was stopped. Ask for fewer pages.",
   "pdf.gone": "The engine no longer holds that PDF's page pictures. Read the PDF again.",
+  "media.not_found": "The engine no longer holds that video or speech. Ask the agent to make it again.",
+  "media.too_large": "binference keeps videos of at most 100 MiB and speech of at most 20 MiB. Ask for a shorter or smaller one.",
+  "media.format": "binference keeps videos as MP4 and speech as Ogg, MP3 or M4A, and this is none of them. Try another model.",
+  "media.unreadable": "The video or speech could not be saved in the agent's workspace. Check that binference may write to its workspace folder, then try again.",
+  "speech.local_unavailable": "This machine has no voice binference speaks with: only macOS does. Set `models.speech` in config.json5 to a model of an OpenAI-compatible provider.",
+  "speech.failed": "The machine's voice could not speak the words. Check that `speech.voice` names one of its voices, then try again.",
   "internal.error": "binference hit an internal error. Run `binference report` to make a support file without secrets."
 }

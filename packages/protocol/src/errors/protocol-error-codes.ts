@@ -214,6 +214,12 @@ export const protocolErrorCodes = [
   "pdf.no_pages",
   "pdf.timed_out",
   "pdf.gone",
+  "media.not_found",
+  "media.too_large",
+  "media.format",
+  "media.unreadable",
+  "speech.local_unavailable",
+  "speech.failed",
   "internal.error",
 ] as const;
 

@@ -8,6 +8,7 @@ import {
 } from "@binference/protocol";
 import type { MachineFiles } from "../files/ports.js";
 import type { EngineCall, EngineHandler } from "../operations/engine-call.js";
+import { addPart, type Arriving } from "./arriving-parts.js";
 import { type ChatRelayOptions, chatTopic } from "./chat-relay-parts.js";
 import { wakeWithMessage } from "./engine-message.js";
 import { imagePartOf } from "./image-part.js";
@@ -40,13 +41,6 @@ interface SavedImage {
   readonly view: MadeImageView;
   /** Whether it was saved in the workspace, or shown from where it already was (decision 0399). */
   readonly kept: "workspace" | "shown";
-}
-
-/** An image whose parts are arriving. */
-interface Arriving {
-  readonly bytes: Uint8Array;
-  readonly received: number;
-  readonly untilMs: number;
 }
 
 // How many images arrive at once, how long one may take, and how many saved ones keep an id.
@@ -85,29 +79,8 @@ function arrived(
   args: ArgsOf<"image/store">,
   nowMs: number,
 ): Result<Arriving, ProtocolErrorCode> {
-  const key = `${args.agent}/${args.job}/${String(args.place)}`;
-  const before = state.arriving.get(key);
-  const current =
-    before === undefined || before.untilMs <= nowMs || args.offset === 0
-      ? { bytes: new Uint8Array(args.total), received: 0, untilMs: nowMs + arrivingMs }
-      : before;
-  const part = Buffer.from(args.data, "base64");
-  const fits =
-    current.bytes.byteLength === args.total &&
-    args.offset === current.received &&
-    args.offset + part.byteLength <= args.total;
-  if (!fits) {
-    state.arriving.delete(key);
-    return err("protocol.bad_args");
-  }
-  current.bytes.set(part, args.offset);
-  const next = { ...current, received: current.received + part.byteLength };
-  if (next.received < args.total) {
-    keepBounded(state.arriving, [key, next], mostArriving);
-  } else {
-    state.arriving.delete(key);
-  }
-  return ok(next);
+  const arrival = { key: `${args.agent}/${args.job}/${String(args.place)}`, part: args };
+  return addPart(state.arriving, arrival, { nowMs, arrivingMs, mostArriving });
 }
 
 // Saves a whole made image in the agent's workspace and gives it an id.

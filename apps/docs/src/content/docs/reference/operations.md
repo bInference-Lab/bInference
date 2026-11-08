@@ -335,6 +335,21 @@ Every operation of the engine protocol, version 1, by domain. A client calls an 
 | `file/send` | `agent` | read | any connection | engine |
 | `file/fetch` | `read` | read | any connection | engine |
 
+## `media`
+
+| Operation | Scope | Kind | Accepted | Answered by |
+| --- | --- | --- | --- | --- |
+| `media/store` | `agent` | read | any connection | engine |
+| `media/made` | `agent` | read | any connection | engine |
+| `media/send` | `agent` | read | any connection | engine |
+| `media/read` | `read` | read | any connection | engine |
+
+## `speech`
+
+| Operation | Scope | Kind | Accepted | Answered by |
+| --- | --- | --- | --- | --- |
+| `speech/local` | `agent` | read | any connection | engine |
+
 ## `credential`
 
 | Operation | Scope | Kind | Accepted | Answered by |

@@ -629,6 +629,12 @@
         "pdf.no_pages",
         "pdf.timed_out",
         "pdf.gone",
+        "media.not_found",
+        "media.too_large",
+        "media.format",
+        "media.unreadable",
+        "speech.local_unavailable",
+        "speech.failed",
         "internal.error"
       ]
     },
@@ -44193,6 +44199,589 @@
             "offset",
             "data"
           ]
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "result"
+      ]
+    },
+    "call/media/store": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "op": {
+          "type": "string",
+          "const": "media/store"
+        },
+        "args": {
+          "type": "object",
+          "properties": {
+            "agent": {
+              "type": "string",
+              "pattern": "^agt_"
+            },
+            "job": {
+              "type": "string",
+              "pattern": "^[a-z0-9]{8,64}$"
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "video",
+                "voice"
+              ]
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 104857600
+            },
+            "total": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 104857600
+            },
+            "data": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 699052,
+              "format": "base64",
+              "contentEncoding": "base64",
+              "pattern": "^$|^(?:[0-9a-zA-Z+/]{4})*(?:(?:[0-9a-zA-Z+/]{2}==)|(?:[0-9a-zA-Z+/]{3}=))?$"
+            }
+          },
+          "required": [
+            "agent",
+            "job",
+            "kind",
+            "offset",
+            "total",
+            "data"
+          ],
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "op",
+        "args"
+      ],
+      "scope": "agent",
+      "kind": "read",
+      "transport": "any",
+      "answeredBy": "engine",
+      "since": "2026.10.0"
+    },
+    "reply/media/store": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "reply"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "media": {
+              "type": "object",
+              "properties": {
+                "media": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9]{8,64}$"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "video",
+                    "voice"
+                  ]
+                },
+                "contentType": {
+                  "type": "string",
+                  "enum": [
+                    "video/mp4",
+                    "audio/ogg",
+                    "audio/mpeg",
+                    "audio/mp4"
+                  ]
+                },
+                "bytes": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 104857600
+                },
+                "path": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4096
+                }
+              },
+              "required": [
+                "media",
+                "kind",
+                "contentType",
+                "bytes",
+                "path"
+              ]
+            }
+          }
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "result"
+      ]
+    },
+    "call/media/made": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "op": {
+          "type": "string",
+          "const": "media/made"
+        },
+        "args": {
+          "type": "object",
+          "properties": {
+            "agent": {
+              "type": "string",
+              "pattern": "^agt_"
+            },
+            "session": {
+              "type": "string",
+              "pattern": "^ses_"
+            },
+            "turn": {
+              "type": "string",
+              "pattern": "^trn_"
+            },
+            "surface": {
+              "type": "string",
+              "enum": [
+                "telegram",
+                "console",
+                "cli",
+                "mini"
+              ]
+            },
+            "prompt": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2000
+            },
+            "media": {
+              "type": "string",
+              "pattern": "^[a-z0-9]{8,64}$"
+            },
+            "failed": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            }
+          },
+          "required": [
+            "agent",
+            "session",
+            "turn",
+            "surface",
+            "prompt"
+          ],
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "op",
+        "args"
+      ],
+      "scope": "agent",
+      "kind": "read",
+      "transport": "any",
+      "answeredBy": "engine",
+      "since": "2026.10.0"
+    },
+    "reply/media/made": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "reply"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "result": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "result"
+      ]
+    },
+    "call/media/send": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "op": {
+          "type": "string",
+          "const": "media/send"
+        },
+        "args": {
+          "type": "object",
+          "properties": {
+            "agent": {
+              "type": "string",
+              "pattern": "^agt_"
+            },
+            "turn": {
+              "type": "string",
+              "pattern": "^trn_"
+            },
+            "media": {
+              "type": "string",
+              "pattern": "^[a-z0-9]{8,64}$"
+            }
+          },
+          "required": [
+            "agent",
+            "turn",
+            "media"
+          ],
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "op",
+        "args"
+      ],
+      "scope": "agent",
+      "kind": "read",
+      "transport": "any",
+      "answeredBy": "engine",
+      "since": "2026.10.0"
+    },
+    "reply/media/send": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "reply"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "result": {
+          "type": "object",
+          "properties": {}
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "result"
+      ]
+    },
+    "call/media/read": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "op": {
+          "type": "string",
+          "const": "media/read"
+        },
+        "args": {
+          "type": "object",
+          "properties": {
+            "agent": {
+              "type": "string",
+              "pattern": "^agt_"
+            },
+            "media": {
+              "type": "string",
+              "pattern": "^[a-z0-9]{8,64}$"
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 104857600
+            }
+          },
+          "required": [
+            "agent",
+            "media"
+          ],
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "op",
+        "args"
+      ],
+      "scope": "read",
+      "kind": "read",
+      "transport": "any",
+      "answeredBy": "engine",
+      "since": "2026.10.0"
+    },
+    "reply/media/read": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "reply"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "contentType": {
+              "type": "string",
+              "enum": [
+                "video/mp4",
+                "audio/ogg",
+                "audio/mpeg",
+                "audio/mp4"
+              ]
+            },
+            "bytes": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 104857600
+            },
+            "offset": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 104857600
+            },
+            "data": {
+              "type": "string",
+              "maxLength": 699052,
+              "format": "base64",
+              "contentEncoding": "base64",
+              "pattern": "^$|^(?:[0-9a-zA-Z+/]{4})*(?:(?:[0-9a-zA-Z+/]{2}==)|(?:[0-9a-zA-Z+/]{3}=))?$"
+            },
+            "next": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 104857600
+            }
+          },
+          "required": [
+            "contentType",
+            "bytes",
+            "offset",
+            "data"
+          ]
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "result"
+      ]
+    },
+    "call/speech/local": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "op": {
+          "type": "string",
+          "const": "speech/local"
+        },
+        "args": {
+          "type": "object",
+          "properties": {
+            "agent": {
+              "type": "string",
+              "pattern": "^agt_"
+            },
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4000
+            },
+            "voice": {
+              "type": "string",
+              "pattern": "^[\\p{L}\\p{N}][\\p{L}\\p{N} ._()'-]{0,63}$"
+            }
+          },
+          "required": [
+            "agent",
+            "text"
+          ],
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "op",
+        "args"
+      ],
+      "scope": "agent",
+      "kind": "read",
+      "transport": "any",
+      "answeredBy": "engine",
+      "since": "2026.10.0"
+    },
+    "reply/speech/local": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "reply"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "media": {
+              "type": "object",
+              "properties": {
+                "media": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9]{8,64}$"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "video",
+                    "voice"
+                  ]
+                },
+                "contentType": {
+                  "type": "string",
+                  "enum": [
+                    "video/mp4",
+                    "audio/ogg",
+                    "audio/mpeg",
+                    "audio/mp4"
+                  ]
+                },
+                "bytes": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 104857600
+                },
+                "path": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 4096
+                }
+              },
+              "required": [
+                "media",
+                "kind",
+                "contentType",
+                "bytes",
+                "path"
+              ]
+            }
+          }
         }
       },
       "required": [

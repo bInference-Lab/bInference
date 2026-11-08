@@ -92,24 +92,42 @@ function budgetsOf(options: EngineOptions): {
   return { billing, budget: budgetOf(options, billing) };
 }
 
+// What the agent's shell gives its chat on this machine: its browser, its PDF reader, the
+// machine's voice, and the files made images and media are saved in and sent files read from.
+function shellSideOf(
+  shell: EngineOptions["shell"],
+): Pick<ChatRelayOptions, "madeImageFiles" | "sentFiles" | "browser" | "pdfReader" | "localVoice"> {
+  const browser = shell?.browser;
+  const pdfReader = shell?.pdfReader;
+  const localVoice = shell?.voice;
+  return {
+    ...(browser === undefined ? {} : { browser }),
+    ...(pdfReader === undefined ? {} : { pdfReader }),
+    ...(localVoice === undefined ? {} : { localVoice }),
+    ...(shell?.files === undefined
+      ? {}
+      : { madeImageFiles: shell.files.files, sentFiles: shell.files }),
+  };
+}
+
 // What the agent's chat reaches on this machine, when the composition root gives it: the images it
-// views, where the images it makes are saved, and whether a community plugin speaks in its turns.
+// views, its shell's parts, and whether a community plugin speaks in its turns.
 function agentSideOf(
   options: EngineOptions,
 ): Pick<
   ChatRelayOptions,
-  "viewImages" | "madeImageFiles" | "sentFiles" | "communityPluginsOn" | "browser" | "pdfReader"
+  | "viewImages"
+  | "madeImageFiles"
+  | "sentFiles"
+  | "communityPluginsOn"
+  | "browser"
+  | "pdfReader"
+  | "localVoice"
 > {
   const { viewImages, shell, communityPluginsOn } = options;
-  const browser = shell?.browser;
-  const pdfReader = shell?.pdfReader;
   return {
     ...(viewImages === undefined ? {} : { viewImages }),
-    ...(browser === undefined ? {} : { browser }),
-    ...(pdfReader === undefined ? {} : { pdfReader }),
-    ...(shell?.files === undefined
-      ? {}
-      : { madeImageFiles: shell.files.files, sentFiles: shell.files }),
+    ...shellSideOf(shell),
     ...(communityPluginsOn === undefined ? {} : { communityPluginsOn }),
   };
 }

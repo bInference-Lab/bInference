@@ -16,6 +16,7 @@ import { createHelperEndHandlers, type HelperEndHandlers } from "./helper-ends.j
 import { createImageHandlers, type ImageHandlers } from "./image-handlers.js";
 import { createImageHold } from "./image-hold.js";
 import { createMadeImageHandlers, type MadeImageHandlers } from "./made-images.js";
+import { createMadeMediaHandlers, type MadeMediaHandlers } from "./made-media.js";
 import { createOwnerChatHandlers, type OwnerChatHandlers } from "./owner-chat-handlers.js";
 import { createRuntimeChatHandlers, type RuntimeChatHandlers } from "./runtime-chat-handlers.js";
 import { createSentFileHandlers, type SentFileHandlers } from "./sent-files.js";
@@ -31,6 +32,7 @@ export interface ChatHandlers
     CredentialRequestHandlers,
     CredentialStoreHandlers,
     MadeImageHandlers,
+    MadeMediaHandlers,
     SentFileHandlers,
     BrowserHandlers,
     PdfHandlers,
@@ -147,6 +149,7 @@ export function createChatRelay(options: ChatRelayOptions): ChatRelay {
         ...(options.viewImages === undefined ? {} : { source: options.viewImages }),
       }),
       ...createMadeImageHandlers(options),
+      ...createMadeMediaHandlers(options),
       ...createSentFileHandlers(options),
       ...browserHandlersOf(options),
       ...pdfHandlersOf(options),

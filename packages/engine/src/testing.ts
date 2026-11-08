@@ -73,6 +73,10 @@ export { createFakeBrowserDriver } from "./fakes/fake-browser-driver.js";
 export { createFakePdfReader, fakePdfBytes } from "./fakes/fake-pdf-reader.js";
 export type { FakePdf } from "./fakes/fake-pdf-reader.js";
 export { pdfReaderContract } from "./contracts/pdf-reader-contract.js";
+export { localVoiceContract } from "./contracts/local-voice-contract.js";
+export type { LocalVoiceHarness, LocalVoiceSubject } from "./contracts/local-voice-contract.js";
+export { createFakeLocalVoice, fakeVoiceBytes } from "./fakes/fake-local-voice.js";
+export type { FakeLocalVoice } from "./fakes/fake-local-voice.js";
 export type { PdfReaderHarness, PdfReaderSubject } from "./contracts/pdf-reader-contract.js";
 export type {
   FakeBrowserDriver,

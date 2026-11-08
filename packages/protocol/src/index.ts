@@ -54,6 +54,8 @@ export {
 } from "./operations/image-operations.schema.js";
 export type { ImageContentType, ImagePart } from "./operations/image-operations.schema.js";
 export * from "./values/image-type.js";
+export * from "./operations/media-operations.schema.js";
+export * from "./values/media-type.js";
 export * as fileLimits from "./operations/file-limits.js";
 export * as browserLimits from "./operations/browser-limits.js";
 export * from "./requests/browser-request.schema.js";

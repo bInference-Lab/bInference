@@ -210,5 +210,11 @@
   "pdf.no_pages": "请求的页面都不在该 PDF 中。请请求文档中存在的页面。",
   "pdf.timed_out": "读取该 PDF 超过 30 秒，已被停止。请请求更少的页面。",
   "pdf.gone": "引擎已不再保留该 PDF 的页面图片。请重新读取该 PDF。",
+  "media.not_found": "引擎已不再保留该视频或语音。请让 Agent 重新生成。",
+  "media.too_large": "binference 只保留不超过 100 MiB 的视频和不超过 20 MiB 的语音。请要求更短或更小的版本。",
+  "media.format": "binference 只保留 MP4 视频，以及 Ogg、MP3 或 M4A 语音，而这些都不是。请换一个模型。",
+  "media.unreadable": "无法把该视频或语音保存到 Agent 工作区。请确认 binference 可以写入其工作区文件夹，然后再试。",
+  "speech.local_unavailable": "这台机器没有 binference 可用的语音：只有 macOS 可以。请在 config.json5 中把 `models.speech` 设为某个 OpenAI 兼容服务商的模型。",
+  "speech.failed": "这台机器的语音无法朗读这些文字。请确认 `speech.voice` 是它的某个语音名称，然后再试。",
   "internal.error": "binference 遇到内部错误。请运行 `binference report` 生成不含密钥的支持文件。"
 }

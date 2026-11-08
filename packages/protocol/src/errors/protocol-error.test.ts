@@ -49,6 +49,8 @@ describe("protocolErrorCodes", () => {
       "credential",
       "browser",
       "pdf",
+      "media",
+      "speech",
       "internal",
     ]);
   });

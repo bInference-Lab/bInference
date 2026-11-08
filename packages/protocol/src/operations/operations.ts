@@ -32,6 +32,7 @@ import {
 } from "./launchpad-operations.schema.js";
 import { type LimitOperationShapes, limitOperations } from "./limit-operations.schema.js";
 import { type MarketOperationShapes, marketOperations } from "./market-operations.schema.js";
+import { type MediaOperationShapes, mediaOperations } from "./media-operations.schema.js";
 import { type NoteOperationShapes, noteOperations } from "./note-operations.schema.js";
 import type { OperationTable } from "./operation.schema.js";
 import { type OrderOperationShapes, orderOperations } from "./order-operations.schema.js";
@@ -76,6 +77,7 @@ export interface OperationShapes
     PdfOperationShapes,
     FileOperationShapes,
     SentFileOperationShapes,
+    MediaOperationShapes,
     ChartOperationShapes,
     CredentialOperationShapes,
     DepositOperationShapes,
@@ -120,6 +122,7 @@ export const operations: OperationTable<OperationShapes> = {
   ...pdfOperations,
   ...fileOperations,
   ...sentFileOperations,
+  ...mediaOperations,
   ...chartOperations,
   ...credentialOperations,
   ...depositOperations,

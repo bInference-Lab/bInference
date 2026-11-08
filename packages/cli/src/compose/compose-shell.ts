@@ -9,12 +9,19 @@ import {
   maskShellOutput,
 } from "@binference/engine/shell";
 import { createPdfReader } from "@binference/pdf";
-import { isFolder, type ShellEnd, type ShellLauncher, walledPaths } from "@binference/platform";
+import {
+  isFolder,
+  runCommandWithin,
+  type ShellEnd,
+  type ShellLauncher,
+  walledPaths,
+} from "@binference/platform";
 import { english } from "viem/accounts";
 import type { BinferenceConfig } from "../config/schema/config.schema.js";
 import { asJson } from "../config/shown-config.js";
 import { browserOf } from "./compose-browser.js";
 import { machineFilesOf } from "./compose-files.js";
+import { localVoiceOf } from "./local-voice.js";
 import type { Opened, Opening } from "./open-engine-parts.js";
 
 /** What the agent's shell is built from on this machine. */
@@ -106,8 +113,8 @@ export function commandRunnerOf(parts: ShellParts): CommandRunner {
  * the platform's launcher, behind its wall, with the engine's environment less binference's own
  * variables, starting in the owner's home folder, and the settings `shell` holds as each starts;
  * the agent's files there, with the settings `files` holds at each call (decision 0386); and the
- * agent's browser (decision 0401); and its PDF reader, each read in a worker thread of its own
- * (decision 0402).
+ * agent's browser (decision 0401); its PDF reader, each read in a worker thread of its own
+ * (decision 0402); and the machine's own voice, working in the workspace (decision 0405).
  */
 export function shellOf(opening: Opening, opened: Opened): EngineShell {
   const { host, platform } = opening;
@@ -125,6 +132,13 @@ export function shellOf(opening: Opening, opened: Opened): EngineShell {
     files: agentFilesOf(opening, opened),
     browser: browserOf(opening, opened),
     pdfReader: createPdfReader({ clock: host.clock, execArgv: host.workerExecArgv ?? [] }),
+    voice: localVoiceOf({
+      os: host.system.os,
+      folder: join(platform.stateFolder.workspace, "media", "speech", ".work"),
+      permissions: platform.permissions,
+      run: host.runProgram ?? runCommandWithin,
+      random: host.random,
+    }),
   };
 }
 

@@ -6,6 +6,7 @@ import {
   maxImagePromptChars,
   maxImagesPerMessage,
 } from "../operations/image-operations.schema.js";
+import { type MediaView, mediaViewSchema } from "../operations/media-operations.schema.js";
 import {
   type SentFileView,
   sentFileViewSchema,
@@ -101,6 +102,13 @@ export type ChatPush =
       readonly files: readonly SentFileView[];
     }
   | {
+      readonly kind: "chat/media";
+      readonly agent: string;
+      readonly turn: string;
+      /** A video the agent made, or its words spoken, saved in its workspace (decision 0405). */
+      readonly media: MediaView;
+    }
+  | {
       readonly kind: "chat/turnEnded";
       readonly agent: string;
       readonly turn: string;
@@ -111,7 +119,7 @@ export type ChatPush =
 const at = { agent: z.string().min(1), turn: z.string().min(1) };
 const values = z.record(z.string(), z.union([z.string(), z.number()])).optional();
 
-const pushSchema = z.discriminatedUnion("kind", [
+const turnSchema = z.discriminatedUnion("kind", [
   z.looseObject({ kind: z.literal("chat/turnStarted"), data: z.looseObject(at) }),
   z.looseObject({
     kind: z.literal("chat/message"),
@@ -129,6 +137,14 @@ const pushSchema = z.discriminatedUnion("kind", [
     kind: z.literal("chat/reasoning"),
     data: z.looseObject({ ...at, text: z.string(), final: z.boolean() }),
   }),
+  z.looseObject({
+    kind: z.literal("chat/turnEnded"),
+    data: z.looseObject({ ...at, failedTool: z.string().min(1).max(128).optional() }),
+  }),
+]);
+
+// What a tool showed mid-turn: wallets to fund, a chart, images, files or a made medium.
+const shownSchema = z.discriminatedUnion("kind", [
   z.looseObject({
     kind: z.literal("chat/deposit"),
     data: z.looseObject({
@@ -169,10 +185,16 @@ const pushSchema = z.discriminatedUnion("kind", [
     }),
   }),
   z.looseObject({
-    kind: z.literal("chat/turnEnded"),
-    data: z.looseObject({ ...at, failedTool: z.string().min(1).max(128).optional() }),
+    kind: z.literal("chat/media"),
+    data: z.looseObject({ ...at, media: mediaViewSchema }),
   }),
 ]);
+
+/** A push of a chat topic, as it arrives. */
+interface RawPush {
+  readonly kind: string;
+  readonly data: unknown;
+}
 
 // The tool a turn's end names as failed, when it names one, as an optional field.
 function failedOf(failedTool: unknown): { readonly failedTool?: string } {
@@ -184,31 +206,13 @@ function valuesOf(shown: LineValues | undefined): { readonly values?: LineValues
   return shown === undefined ? {} : { values: shown };
 }
 
-/**
- * Reads a push of an agent's chat topic as a {@link ChatPush}; `undefined` for any other push,
- * such as an agent's question, and for one in a shape it cannot read.
- */
-export function chatPushOf(push: {
-  readonly kind: string;
-  readonly data: unknown;
-}): ChatPush | undefined {
-  const parsed = pushSchema.safeParse(push);
+// What a tool showed mid-turn, or `undefined` for any other push.
+function shownPushOf(push: RawPush): ChatPush | undefined {
+  const parsed = shownSchema.safeParse(push);
   if (!parsed.success) {
     return undefined;
   }
   const read = parsed.data;
-  if (read.kind === "chat/message" || read.kind === "chat/reasoning") {
-    const { agent, turn, text, final } = read.data;
-    return { kind: read.kind, agent, turn, text, final };
-  }
-  if (read.kind === "chat/status") {
-    const { agent, turn, statusKey, values: shown } = read.data;
-    return { kind: read.kind, agent, turn, statusKey, ...valuesOf(shown) };
-  }
-  if (read.kind === "chat/progress") {
-    const { agent, turn, progressKey, values: shown } = read.data;
-    return { kind: read.kind, agent, turn, progressKey, ...valuesOf(shown) };
-  }
   if (read.kind === "chat/deposit") {
     const { agent, turn, mode, frozen, wallets } = read.data;
     return { kind: read.kind, agent, turn, mode, frozen, wallets };
@@ -225,6 +229,36 @@ export function chatPushOf(push: {
     const { agent, turn, caption, files } = read.data;
     return { kind: read.kind, agent, turn, caption, files };
   }
-  const { agent, turn, failedTool } = read.data;
-  return { kind: read.kind, agent, turn, ...failedOf(failedTool) };
+  const { agent, turn, media } = read.data;
+  return { kind: read.kind, agent, turn, media };
+}
+
+/**
+ * Reads a push of an agent's chat topic as a {@link ChatPush}; `undefined` for any other push,
+ * such as an agent's question, and for one in a shape it cannot read.
+ */
+export function chatPushOf(push: RawPush): ChatPush | undefined {
+  const parsed = turnSchema.safeParse(push);
+  if (!parsed.success) {
+    return shownPushOf(push);
+  }
+  const read = parsed.data;
+  if (read.kind === "chat/message" || read.kind === "chat/reasoning") {
+    const { agent, turn, text, final } = read.data;
+    return { kind: read.kind, agent, turn, text, final };
+  }
+  if (read.kind === "chat/status") {
+    const { agent, turn, statusKey, values: shown } = read.data;
+    return { kind: read.kind, agent, turn, statusKey, ...valuesOf(shown) };
+  }
+  if (read.kind === "chat/progress") {
+    const { agent, turn, progressKey, values: shown } = read.data;
+    return { kind: read.kind, agent, turn, progressKey, ...valuesOf(shown) };
+  }
+  if (read.kind === "chat/turnEnded") {
+    const { agent, turn, failedTool } = read.data;
+    return { kind: read.kind, agent, turn, ...failedOf(failedTool) };
+  }
+  const { agent, turn } = read.data;
+  return { kind: read.kind, agent, turn };
 }

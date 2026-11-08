@@ -4,6 +4,7 @@ import type { EngineBrowser } from "../browse/browser-handlers.js";
 import type { PdfReader } from "../documents/ports.js";
 import { createFileHandlers, type EngineFiles, type FileHandlers } from "../files/file-handlers.js";
 import { createNameHandlers, type NameHandlers } from "../names/name-handlers.js";
+import type { LocalVoice } from "../speech/ports.js";
 import type { CommandRunner } from "./ports.js";
 import { createShellHandlers, type ShellHandlers, type ShellSettings } from "./shell-handlers.js";
 import { createShellJobs } from "./shell-jobs.js";
@@ -22,6 +23,8 @@ export interface EngineShell {
   readonly browser?: EngineBrowser;
   /** What reads the PDFs the agent reads on this machine (decision 0402); without it none is read. */
   readonly pdfReader?: PdfReader;
+  /** The machine's own voice (decision 0405); without it the agent speaks only through a model. */
+  readonly voice?: LocalVoice;
 }
 
 const off: ShellSettings = { run: "off", timeoutSeconds: 0 };
