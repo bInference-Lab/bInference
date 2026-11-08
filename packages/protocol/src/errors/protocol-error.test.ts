@@ -48,6 +48,7 @@ describe("protocolErrorCodes", () => {
       "file",
       "credential",
       "browser",
+      "pdf",
       "internal",
     ]);
   });

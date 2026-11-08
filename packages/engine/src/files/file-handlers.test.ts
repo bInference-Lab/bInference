@@ -79,6 +79,23 @@ describe("the file handlers", () => {
     });
   });
 
+  it("name a PDF for pdf/read, though a text file only mentions one", async () => {
+    const files = setUp(
+      createMemoryFiles({
+        [`${home}/paper.pdf`]: "%PDF-1.7\n1 0 obj\n<< >>\nendobj\n",
+        [`${home}/note.txt`]: "Read %PDF-1.7 later.\n",
+      }),
+    );
+    expect(await files.read({ path: "~/paper.pdf" })).toStrictEqual({
+      ok: true,
+      value: { kind: "pdf", path: `${home}/paper.pdf` },
+    });
+    expect(await files.read({ path: "~/note.txt" })).toMatchObject({
+      ok: true,
+      value: { kind: "text" },
+    });
+  });
+
   it("edit a file in place, and say when nothing changed", async () => {
     const files = setUp(createMemoryFiles({ [`${home}/a.txt`]: "a = 1\n" }));
     expect(await files.edit("~/a.txt", [{ oldText: "1", newText: "2" }])).toStrictEqual({

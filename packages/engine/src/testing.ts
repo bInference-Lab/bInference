@@ -70,6 +70,10 @@ export { createCreditBilling } from "./fakes/credit-billing.js";
 export type { CreditAccount } from "./fakes/credit-billing.js";
 export { createFakeCeilingEditor, fakeOwnerKeyCode } from "./fakes/fake-ceiling-editor.js";
 export { createFakeBrowserDriver } from "./fakes/fake-browser-driver.js";
+export { createFakePdfReader, fakePdfBytes } from "./fakes/fake-pdf-reader.js";
+export type { FakePdf } from "./fakes/fake-pdf-reader.js";
+export { pdfReaderContract } from "./contracts/pdf-reader-contract.js";
+export type { PdfReaderHarness, PdfReaderSubject } from "./contracts/pdf-reader-contract.js";
 export type {
   FakeBrowserDriver,
   FakeBrowserOptions,

@@ -8,6 +8,7 @@ import {
   type CredentialStoreHandlers,
   createCredentialStoreHandlers,
 } from "../credentials/credential-store-handlers.js";
+import { createPdfHandlers, type PdfHandlers } from "../documents/pdf-handlers.js";
 import type { EngineHandler } from "../operations/engine-call.js";
 import type { AgentInboxMessage } from "./agent-inbox-record.js";
 import { type ChatRelayOptions, pushInbox } from "./chat-relay-parts.js";
@@ -30,7 +31,8 @@ export interface ChatHandlers
     CredentialStoreHandlers,
     MadeImageHandlers,
     SentFileHandlers,
-    BrowserHandlers {}
+    BrowserHandlers,
+    PdfHandlers {}
 
 /** The engine's relay of chat between the surfaces and the agent runtime. */
 export interface ChatRelay {
@@ -110,6 +112,18 @@ function browserHandlersOf(options: ChatRelayOptions): BrowserHandlers {
   });
 }
 
+// `pdf/read` and `pdf/pageImage`, a PDF's bytes read as a viewed image's are.
+function pdfHandlersOf(options: ChatRelayOptions): PdfHandlers {
+  const { turns, clock, random, viewImages, pdfReader } = options;
+  return createPdfHandlers({
+    turns,
+    clock,
+    random,
+    ...(viewImages === undefined ? {} : { source: viewImages }),
+    ...(pdfReader === undefined ? {} : { reader: pdfReader }),
+  });
+}
+
 /** Creates the {@link ChatRelay} over the agent inbox, the agents and the running turns. */
 export function createChatRelay(options: ChatRelayOptions): ChatRelay {
   const stopFrozen = async (agent: Id<"agt"> | undefined, signal: AbortSignal) => {
@@ -133,6 +147,7 @@ export function createChatRelay(options: ChatRelayOptions): ChatRelay {
       ...createMadeImageHandlers(options),
       ...createSentFileHandlers(options),
       ...browserHandlersOf(options),
+      ...pdfHandlersOf(options),
       ...createCredentialRequestHandlers(options),
       ...createCredentialStoreHandlers(options),
     },

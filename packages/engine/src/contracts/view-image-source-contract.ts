@@ -51,6 +51,15 @@ export function viewImageSourceContract(harness: ViewImageSourceHarness): readon
       },
     },
     {
+      name: "refuses an image over the bytes the read allows",
+      run: async () => {
+        const { source, held } = await harness.create();
+        const maxBytes = held.bytes.byteLength - 1;
+        const read = await source.read(held.place, { ...live(), maxBytes });
+        assert.deepEqual(read, { ok: false, error: "too_large" });
+      },
+    },
+    {
       name: "rejects with the signal's reason once it aborts",
       run: async () => {
         const subject = await harness.create();

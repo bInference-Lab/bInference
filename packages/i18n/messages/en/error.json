@@ -199,5 +199,16 @@
   "browser.address_refused": "That address is refused to the agent's browser: binference's own engine, console and folder are never opened, and addresses on this machine or a private network only when `browser.allowPrivateNetwork` is true in config.json5.",
   "browser.tab_not_found": "The agent's browser has no tab with this ID. List the tabs and use one of their IDs.",
   "browser.evaluate_off": "Scripts in pages are off for the agent's browser. Set `browser.evaluate` to true in config.json5 to allow them.",
+  "pdf.not_found": "There is no PDF there: the address answered with an error, or no file has that path. Check the path or the address.",
+  "pdf.too_large": "That PDF is over 10 MiB, which the agent does not read. Send a smaller file, or only the pages that matter.",
+  "pdf.walled": "That file is inside binference's own folder, which the agent can never read. Name another file.",
+  "pdf.outside_workspace": "That file is outside the agent's workspace, and `files.workspaceOnly` keeps its reads inside it. Move the file into the workspace.",
+  "pdf.not_public": "That address is not on the public internet, and the agent never reads local or private addresses. Use a public address.",
+  "pdf.unreadable": "The PDF could not be read. Try again, or send the file in the chat.",
+  "pdf.not_pdf": "That file is no PDF. Name a PDF file or address.",
+  "pdf.password": "That PDF is encrypted, and no password or a wrong one was given. Give the agent the PDF's password.",
+  "pdf.no_pages": "None of the pages asked for are in that PDF. Ask for pages the document has.",
+  "pdf.timed_out": "Reading that PDF took longer than 30 seconds, so it was stopped. Ask for fewer pages.",
+  "pdf.gone": "The engine no longer holds that PDF's page pictures. Read the PDF again.",
   "internal.error": "binference hit an internal error. Run `binference report` to make a support file without secrets."
 }

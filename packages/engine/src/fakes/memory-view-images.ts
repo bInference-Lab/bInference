@@ -5,7 +5,7 @@ import type { ViewImageSource } from "../chat/ports.js";
 /**
  * An in-memory {@link ViewImageSource} for tests: the images it is given by address or path, a
  * path under `walledFolder` `walled`, an address on `private.invalid` `not_public`, any other
- * place `not_found`, and one over 5 MiB `too_large`.
+ * place `not_found`, and one over `maxBytes`, 5 MiB when absent, `too_large`.
  */
 export function createMemoryViewImages(
   images: ReadonlyMap<string, Uint8Array>,
@@ -25,7 +25,8 @@ export function createMemoryViewImages(
       if (bytes === undefined) {
         return Promise.resolve(err("not_found"));
       }
-      return Promise.resolve(bytes.byteLength > maxImageBytes ? err("too_large") : ok(bytes));
+      const most = options.maxBytes ?? maxImageBytes;
+      return Promise.resolve(bytes.byteLength > most ? err("too_large") : ok(bytes));
     },
   };
 }

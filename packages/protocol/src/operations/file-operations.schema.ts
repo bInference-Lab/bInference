@@ -19,7 +19,7 @@ interface FileReadArgs {
 /**
  * One page of a text file: its lines from `startLine` through `endLine` (1-based), and where the
  * next page starts when there is more, cut by lines or by bytes. An image file is named instead,
- * by its absolute path, for `image/view`.
+ * by its absolute path, for `image/view`; a PDF too, for `pdf/read` (decision 0402).
  */
 type FileReadResult =
   | {
@@ -36,7 +36,8 @@ type FileReadResult =
         readonly cutBy: "lines" | "bytes";
       };
     }
-  | { readonly kind: "image"; readonly path: string };
+  | { readonly kind: "image"; readonly path: string }
+  | { readonly kind: "pdf"; readonly path: string };
 
 /** The args of `file/write`: a file's whole new text. */
 interface FileWriteArgs {
@@ -126,6 +127,7 @@ const fileReadResultSchema: z.ZodType<FileReadResult> = z.discriminatedUnion("ki
       .exactOptional(),
   }),
   z.object({ kind: z.literal("image"), path }),
+  z.object({ kind: z.literal("pdf"), path }),
 ]);
 
 const fileChangeSchema: z.ZodType<FileChange> = z.object({

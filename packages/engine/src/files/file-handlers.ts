@@ -1,5 +1,6 @@
 import { err, ok } from "@binference/core";
 import { imageTypeOf, type ProtocolErrorCode } from "@binference/protocol";
+import { startsAsPdf } from "../documents/pdf-head.js";
 import type { EngineHandler } from "../operations/engine-call.js";
 import { planEdits } from "./edit-plan.js";
 import { editProblemText } from "./edit-problems.js";
@@ -55,6 +56,9 @@ function readHandler({ files, settings }: EngineFiles): EngineHandler<"file/read
     const { path, bytes } = read.value;
     if (imageTypeOf(bytes) !== undefined) {
       return ok({ kind: "image", path });
+    }
+    if (startsAsPdf(bytes)) {
+      return ok({ kind: "pdf", path });
     }
     const utf16 = utf16TextOf(bytes);
     if (utf16 === undefined && isBinary(bytes)) {
@@ -126,7 +130,8 @@ function patchHandler({ files, settings }: EngineFiles): EngineHandler<"file/pat
 
 /**
  * The agent's file handlers (decision 0386): `file/read` pages a text file and names an image
- * file for `image/view`; `file/write` writes a file whole; `file/edit` makes exact replacements;
+ * file for `image/view` and a PDF for `pdf/read` (decision 0402); `file/write` writes a file
+ * whole; `file/edit` makes exact replacements;
  * `file/patch` runs a patch, writing nothing until every change is found. Reads, writes and edits
  * stay inside the workspace when the owner's `workspaceOnly` says so, patches when
  * `patchWorkspaceOnly` does. Without files every call is `file.unreadable`.

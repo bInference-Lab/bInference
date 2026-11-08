@@ -98,13 +98,15 @@ function agentSideOf(
   options: EngineOptions,
 ): Pick<
   ChatRelayOptions,
-  "viewImages" | "madeImageFiles" | "sentFiles" | "communityPluginsOn" | "browser"
+  "viewImages" | "madeImageFiles" | "sentFiles" | "communityPluginsOn" | "browser" | "pdfReader"
 > {
   const { viewImages, shell, communityPluginsOn } = options;
   const browser = shell?.browser;
+  const pdfReader = shell?.pdfReader;
   return {
     ...(viewImages === undefined ? {} : { viewImages }),
     ...(browser === undefined ? {} : { browser }),
+    ...(pdfReader === undefined ? {} : { pdfReader }),
     ...(shell?.files === undefined
       ? {}
       : { madeImageFiles: shell.files.files, sentFiles: shell.files }),

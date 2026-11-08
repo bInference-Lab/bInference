@@ -1,6 +1,7 @@
 import type { NameResolver } from "@binference/chain";
 import type { Clock, IdSource, Logger } from "@binference/core";
 import type { EngineBrowser } from "../browse/browser-handlers.js";
+import type { PdfReader } from "../documents/ports.js";
 import { createFileHandlers, type EngineFiles, type FileHandlers } from "../files/file-handlers.js";
 import { createNameHandlers, type NameHandlers } from "../names/name-handlers.js";
 import type { CommandRunner } from "./ports.js";
@@ -19,6 +20,8 @@ export interface EngineShell {
   readonly files?: EngineFiles;
   /** The agent's browser on this machine (decision 0401); without it `browser/run` is off. */
   readonly browser?: EngineBrowser;
+  /** What reads the PDFs the agent reads on this machine (decision 0402); without it none is read. */
+  readonly pdfReader?: PdfReader;
 }
 
 const off: ShellSettings = { run: "off", timeoutSeconds: 0 };

@@ -203,6 +203,17 @@ export const protocolErrorCodes = [
   "browser.address_refused",
   "browser.tab_not_found",
   "browser.evaluate_off",
+  "pdf.not_found",
+  "pdf.too_large",
+  "pdf.walled",
+  "pdf.outside_workspace",
+  "pdf.not_public",
+  "pdf.unreadable",
+  "pdf.not_pdf",
+  "pdf.password",
+  "pdf.no_pages",
+  "pdf.timed_out",
+  "pdf.gone",
   "internal.error",
 ] as const;
 

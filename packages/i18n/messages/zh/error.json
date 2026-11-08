@@ -199,5 +199,16 @@
   "browser.address_refused": "Agent 的浏览器拒绝打开该地址：binference 自己的引擎、控制台和文件夹永远不会被打开；本机或私有网络上的地址只有在 config.json5 中 `browser.allowPrivateNetwork` 为 true 时才能打开。",
   "browser.tab_not_found": "Agent 的浏览器没有此 ID 的标签页。请列出标签页并使用其中一个 ID。",
   "browser.evaluate_off": "Agent 的浏览器已关闭页面脚本。在 config.json5 中将 `browser.evaluate` 设为 true 以允许。",
+  "pdf.not_found": "该位置没有 PDF：地址返回了错误，或者没有该路径的文件。请检查路径或地址。",
+  "pdf.too_large": "该 PDF 超过 10 MiB，Agent 不会读取。请发送更小的文件，或只发送需要的页面。",
+  "pdf.walled": "该文件位于 binference 自己的文件夹中，Agent 永远无法读取。请换一个文件。",
+  "pdf.outside_workspace": "该文件在 Agent 工作区之外，而 `files.workspaceOnly` 只允许读取工作区内的文件。请把文件移到工作区内。",
+  "pdf.not_public": "该地址不在公共互联网上，Agent 从不读取本机或私有地址。请使用公开地址。",
+  "pdf.unreadable": "无法读取该 PDF。请重试，或在对话中发送该文件。",
+  "pdf.not_pdf": "该文件不是 PDF。请指定一个 PDF 文件或地址。",
+  "pdf.password": "该 PDF 已加密，未提供密码或密码错误。请把 PDF 的密码告诉 Agent。",
+  "pdf.no_pages": "请求的页面都不在该 PDF 中。请请求文档中存在的页面。",
+  "pdf.timed_out": "读取该 PDF 超过 30 秒，已被停止。请请求更少的页面。",
+  "pdf.gone": "引擎已不再保留该 PDF 的页面图片。请重新读取该 PDF。",
   "internal.error": "binference 遇到内部错误。请运行 `binference report` 生成不含密钥的支持文件。"
 }

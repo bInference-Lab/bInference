@@ -11,6 +11,12 @@ export interface ViewImageParts {
   readonly files: EngineFiles;
 }
 
+/** One read's signal and the most bytes it takes. */
+interface ReadLimits {
+  readonly signal: AbortSignal;
+  readonly maxBytes: number;
+}
+
 const fileRefusals: Readonly<Record<FileRefusal, ViewImageRefusal>> = {
   not_found: "not_found",
   walled: "walled",
@@ -27,26 +33,28 @@ const fileRefusals: Readonly<Record<FileRefusal, ViewImageRefusal>> = {
 async function readPath(
   parts: ViewImageParts,
   path: string,
-  signal: AbortSignal,
+  read: ReadLimits,
 ): Promise<Result<Uint8Array, ViewImageRefusal>> {
   const { files, settings } = parts.files;
-  const call = { signal, workspaceOnly: settings().workspaceOnly, maxBytes: maxImageBytes };
-  const read = await files.read(path, call);
-  return read.ok ? ok(read.value.bytes) : err(fileRefusals[read.error]);
+  const { signal, maxBytes } = read;
+  const call = { signal, workspaceOnly: settings().workspaceOnly, maxBytes };
+  const file = await files.read(path, call);
+  return file.ok ? ok(file.value.bytes) : err(fileRefusals[file.error]);
 }
 
 async function readUrl(
   parts: ViewImageParts,
   url: string,
-  signal: AbortSignal,
+  read: ReadLimits,
 ): Promise<Result<Uint8Array, ViewImageRefusal>> {
+  const { signal, maxBytes } = read;
   if (parts.download === undefined) {
     return err("unreadable");
   }
   try {
     const answer = await parts.download.download({
       url,
-      maxBytes: maxImageBytes,
+      maxBytes,
       signal,
       publicOnly: true,
     });
@@ -63,13 +71,16 @@ async function readUrl(
 
 /**
  * The images the agent views on this machine (decision 0385): a web address through the outbound
- * downloads, only to public internet addresses, at most 5 MiB; a file through the agent's file
+ * downloads, only to public internet addresses, at most 5 MiB unless the read allows more (a PDF,
+ * decision 0402); a file through the agent's file
  * adapter, as the file tools read it: relative paths in the workspace, binference's own folder
  * walled off, and the workspace alone when `files.workspaceOnly` says so.
  */
 export function viewImagesOf(parts: ViewImageParts): ViewImageSource {
   return {
-    read: async (place, { signal }) =>
-      "url" in place ? readUrl(parts, place.url, signal) : readPath(parts, place.path, signal),
+    read: async (place, { signal, maxBytes = maxImageBytes }) =>
+      "url" in place
+        ? readUrl(parts, place.url, { signal, maxBytes })
+        : readPath(parts, place.path, { signal, maxBytes }),
   };
 }

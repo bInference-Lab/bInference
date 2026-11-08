@@ -155,12 +155,13 @@ export type ViewedImagePlace = { readonly url: string } | { readonly path: strin
  * Reads an image the agent asks to look at (decision 0385): a public `http:` or `https:` address,
  * never one on a private network (`not_public`), or a file on the engine's machine, absolute or
  * under the owner's home folder, never inside binference's own folder (`walled`). It never reads
- * more than 5 MiB (`too_large`). A source that does not answer is `unreadable`. Rejects with the
- * signal's reason once it aborts. The bytes are never logged.
+ * more than `maxBytes`, 5 MiB when absent (`too_large`); a PDF the agent reads comes through it
+ * too, with up to 10 MiB (decision 0402). A source that does not answer is `unreadable`. Rejects
+ * with the signal's reason once it aborts. The bytes are never logged.
  */
 export interface ViewImageSource {
   read(
     place: ViewedImagePlace,
-    options: { readonly signal: AbortSignal },
+    options: { readonly signal: AbortSignal; readonly maxBytes?: number },
   ): Promise<Result<Uint8Array, ViewImageRefusal>>;
 }

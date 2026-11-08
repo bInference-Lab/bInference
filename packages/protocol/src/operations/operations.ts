@@ -34,6 +34,7 @@ import { type MarketOperationShapes, marketOperations } from "./market-operation
 import { type NoteOperationShapes, noteOperations } from "./note-operations.schema.js";
 import type { OperationTable } from "./operation.schema.js";
 import { type OrderOperationShapes, orderOperations } from "./order-operations.schema.js";
+import { type PdfOperationShapes, pdfOperations } from "./pdf-operations.schema.js";
 import { type PluginOperationShapes, pluginOperations } from "./plugin-operations.schema.js";
 import { type QuestionOperationShapes, questionOperations } from "./question-operations.schema.js";
 import {
@@ -71,6 +72,7 @@ export interface OperationShapes
     ReasoningOperationShapes,
     ShellOperationShapes,
     BrowserOperationShapes,
+    PdfOperationShapes,
     FileOperationShapes,
     SentFileOperationShapes,
     ChartOperationShapes,
@@ -113,6 +115,7 @@ export const operations: OperationTable<OperationShapes> = {
   ...reasoningOperations,
   ...shellOperations,
   ...browserOperations,
+  ...pdfOperations,
   ...fileOperations,
   ...sentFileOperations,
   ...chartOperations,

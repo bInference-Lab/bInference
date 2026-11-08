@@ -85,6 +85,11 @@ const readArgs: z.ZodType<{
   limit: z.int().min(1).max(fileLimits.maxFileReadLines).exactOptional(),
 });
 
+// What file_read answers for a PDF, which it does not read as text.
+function pdfText(file: string): string {
+  return `${file} is a PDF, which file_read does not read.`;
+}
+
 function fileReadTool(parts: AgentToolParts): AgentTool {
   return defineTool({
     name: "file_read",
@@ -100,6 +105,9 @@ function fileReadTool(parts: AgentToolParts): AgentTool {
           { agent: parts.agent, ...args },
           { signal },
         );
+        if (read.kind === "pdf") {
+          return { text: pdfText(read.path), isError: true };
+        }
         return read.kind === "image"
           ? lookAtPlaces(parts, [{ path: read.path }], {
               signal,

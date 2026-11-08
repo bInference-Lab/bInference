@@ -21,6 +21,7 @@ import {
   stakingExamples,
 } from "./launch-examples.js";
 import { intentExamples, marketExamples, orderExamples } from "./market-examples.js";
+import { pdfExamples } from "./pdf-examples.js";
 import { sentFileExamples } from "./sent-file-examples.js";
 import {
   accessExamples,
@@ -52,6 +53,7 @@ export const operationExamples: { readonly [N in OperationName]: WireExample } =
   ...reasoningExamples,
   ...shellExamples,
   ...browserExamples,
+  ...pdfExamples,
   ...fileExamples,
   ...sentFileExamples,
   ...chartExamples,

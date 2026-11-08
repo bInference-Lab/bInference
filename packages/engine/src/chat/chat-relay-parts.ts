@@ -3,6 +3,7 @@ import type { ProtocolId, PushTopic } from "@binference/protocol";
 import type { ModelBudget } from "../billing/model-budget.js";
 import type { EngineBrowser } from "../browse/browser-handlers.js";
 import type { CredentialStore } from "../credentials/ports.js";
+import type { PdfReader } from "../documents/ports.js";
 import type { EngineFiles } from "../files/file-handlers.js";
 import type { MachineFiles } from "../files/ports.js";
 import type { AgentStore } from "../ports.js";
@@ -38,6 +39,8 @@ export interface ChatRelayOptions {
   readonly sentFiles?: EngineFiles;
   /** The agent's browser (decision 0401); without it `browser/run` is `browser.off`. */
   readonly browser?: EngineBrowser;
+  /** What reads the PDFs the agent reads (decision 0402); without it `pdf/read` refuses. */
+  readonly pdfReader?: PdfReader;
   /** The owner's credentials (decision 0388); without them, a request is refused. */
   readonly credentials?: CredentialStore;
   /**
