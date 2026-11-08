@@ -10,8 +10,8 @@ export interface FakeFile {
   readonly reportedSize?: number | null;
 }
 
-/** What Telegram holds a file as, which decides whether `sendPhoto` or `sendDocument` sends it. */
-export type FakeFileKind = "photo" | "document";
+/** What Telegram holds a file as, which decides whether `sendPhoto`, `sendDocument`, `sendVideo` or `sendVoice` sends it. */
+export type FakeFileKind = "photo" | "document" | "video" | "voice";
 
 /** The files of a synthetic Bot API: `getFile` and the downloads of `/file/bot<token>/<path>`. */
 export interface FakeFiles {

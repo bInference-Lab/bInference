@@ -199,5 +199,8 @@
   "chat.madeImage": "An image the agent made",
   "chat.madeImageMissing": "The image is no longer held; open it from the path below.",
   "chat.saveFile": "Save",
-  "chat.fileMissing": "The engine no longer holds this file; open it from the path above."
+  "chat.fileMissing": "The engine no longer holds this file; open it from the path above.",
+  "chat.madeVideo": "A video the agent made",
+  "chat.spoken": "The agent's words, spoken",
+  "chat.mediaMissing": "The engine no longer holds this; open it from the path below."
 }

@@ -199,5 +199,8 @@
   "chat.madeImage": "Agent 生成的图片",
   "chat.madeImageMissing": "引擎已不再保留这张图片；请从下方路径打开。",
   "chat.saveFile": "保存",
-  "chat.fileMissing": "引擎已不再保留这个文件；请从上方路径打开。"
+  "chat.fileMissing": "引擎已不再保留这个文件；请从上方路径打开。",
+  "chat.madeVideo": "Agent 生成的视频",
+  "chat.spoken": "Agent 朗读的话",
+  "chat.mediaMissing": "引擎已不再保留它；请从下方路径打开。"
 }

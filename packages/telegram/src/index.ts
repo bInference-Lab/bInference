@@ -16,6 +16,7 @@ export { createChatReplies } from "./chat/chat-replies.js";
 export type { ChatReplies } from "./chat/chat-replies.js";
 export type { MadeImageReader } from "./chat/made-photos.js";
 export type { SentFileReader } from "./chat/sent-documents.js";
+export type { MediaReader } from "./chat/made-media-messages.js";
 export type { ChatRepliesOptions, ReplySettings } from "./chat/chat-replies-options.js";
 export { createFastCommands } from "./commands/create-fast-commands.js";
 export { createTelegramImages } from "./images/telegram-images.js";

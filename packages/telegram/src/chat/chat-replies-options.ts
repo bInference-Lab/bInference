@@ -3,6 +3,7 @@ import type { Logger, Clock } from "@binference/core";
 import type { OwnerStore } from "@binference/engine/surfaces";
 import type { MessageLocale } from "@binference/i18n";
 import type { Api } from "grammy";
+import type { MediaReader } from "./made-media-messages.js";
 import type { MadeImageReader } from "./made-photos.js";
 import type { SentFileReader } from "./sent-documents.js";
 
@@ -34,6 +35,8 @@ export interface ChatRepliesOptions {
   readonly madeImage?: MadeImageReader;
   /** Reads a file the agent sent from the engine (decision 0400); left out, each shows its path. */
   readonly sentFile?: SentFileReader;
+  /** Reads a video or speech the agent made from the engine (decision 0405); left out, its path. */
+  readonly media?: MediaReader;
 }
 
 /**

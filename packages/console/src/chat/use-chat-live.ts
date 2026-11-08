@@ -54,13 +54,16 @@ function messageStep(push: MessagePush, id: string): PushStep {
   };
 }
 
-// What a tool showed: a chart, images or files, each a line of its own.
+// What a tool showed: a chart, images, files or a made medium, each a line of its own.
 function shownLineOf(push: ChatPush, id: string): LiveLine | undefined {
   if (push.kind === "chat/chart") {
     return { kind: "chart", id, turn: push.turn, chart: push.chart };
   }
   if (push.kind === "chat/images") {
     return { kind: "images", id, turn: push.turn, images: push.images };
+  }
+  if (push.kind === "chat/media") {
+    return { kind: "media", id, turn: push.turn, media: push.media };
   }
   return push.kind === "chat/files"
     ? { kind: "files", id, turn: push.turn, files: push.files }

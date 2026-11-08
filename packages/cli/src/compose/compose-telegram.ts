@@ -40,6 +40,7 @@ import {
 } from "@binference/telegram";
 import type { Api } from "grammy";
 import { madeImagesOf } from "./telegram-made-images.js";
+import { madeMediaOf } from "./telegram-made-media.js";
 import {
   createTelegramRelay,
   type TelegramRelay,
@@ -159,7 +160,9 @@ function relayOf(
   const calls = createOwnerCalls({ handlers: wiring.handlers, ownerId: answersOwner(parts) });
   const madeImage = madeImagesOf(calls, answersOwner(parts));
   const sentFile = sentFilesOf(calls, answersOwner(parts));
-  const replyParts = { ...parts, clock, logger, display, agentNames, chains, madeImage, sentFile };
+  const media = madeMediaOf(calls, answersOwner(parts));
+  const shownFiles = { madeImage, sentFile, media };
+  const replyParts = { ...parts, clock, logger, display, agentNames, chains, ...shownFiles };
   const replies = createChatReplies(replyParts);
   const shown = {
     ...replies,

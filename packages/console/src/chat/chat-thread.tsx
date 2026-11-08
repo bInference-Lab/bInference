@@ -6,6 +6,7 @@ import { useFormatter, useText } from "../i18n/console-text";
 import { ChartFigure } from "./chart-figure";
 import type { ChatEntry } from "./chat-entries";
 import { MadeImagesFigure } from "./made-images-figure";
+import { MadeMediaPlayer } from "./made-media-player";
 import { RichText } from "./rich-text";
 import { SentFilesList } from "./sent-files-list";
 
@@ -80,6 +81,9 @@ function Entry(props: {
   }
   if (entry.kind === "images") {
     return <MadeImagesFigure agent={props.agent} images={entry.images} />;
+  }
+  if (entry.kind === "media") {
+    return <MadeMediaPlayer agent={props.agent} made={entry.media} />;
   }
   return <SaidEntry entry={entry} agentName={props.agentName} />;
 }

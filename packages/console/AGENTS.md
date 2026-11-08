@@ -13,7 +13,7 @@ The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
   (`chat/chart`, decision 0387) is drawn as SVG from `chartLayout` in the theme's `--chart-*`
   colors (`src/chat/chart-figure.tsx`), its words as text and its text form for screen readers.
   The images the agent made (`chat/images`, decision 0392) are drawn from the bytes `image/read`
-  answers, never loaded from an address (`src/chat/made-images-figure.tsx`). A credential request
+  answers, never loaded from an address (`src/chat/made-images-figure.tsx`), and so are the videos and speech it made (`chat/media`, decision 0405), played from what `media/read` answers (`src/chat/made-media-player.tsx`). A credential request
   (decision 0388) shows above the composer with a masked field and editable
   hosts (`src/chat/credential-request-card.tsx`); the value goes only in the answer's call. The agent's answers show their
   Markdown through `rich-text`, the reader the Telegram bot uses, drawn as elements

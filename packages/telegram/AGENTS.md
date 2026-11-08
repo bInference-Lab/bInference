@@ -46,7 +46,7 @@ Rules for this package:
   as plain text. Its photos are QR codes `@binference/qr` makes from the addresses the engine
   answers, never from chat text. They and the images the agent made (`chat/images`, read from the
   engine's `image/read`, `src/chat/made-photos.ts`, decision 0392) are the only files the bot
-  uploads, read whole into bytes by the fetch layer, at most 10 MB. A refusal is answered with the error message of its code. The menu is registered with
+  uploads as photos, read whole into bytes by the fetch layer, at most 10 MB. The files the agent sent go as documents (`src/chat/sent-documents.ts`, decision 0400), and the videos and speech it made (`chat/media`, read from `media/read`, `src/chat/made-media-messages.ts`, decision 0405) as a video Telegram plays in place under 50 MB and a voice note with no caption. A refusal is answered with the error message of its code. The menu is registered with
   `setMyCommands` for private chats, in English and in Chinese.
 - The engine's notices of spec 4, section 4 go to the owner's chat from the outbox through
   `createNoticeOutbox` (decision 0133), written by the engine's `noticeText` in the owner's

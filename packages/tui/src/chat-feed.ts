@@ -51,15 +51,33 @@ function shown(text: string): string {
   return displayOutsideText(text, Number.POSITIVE_INFINITY);
 }
 
-type ShownPush = Extract<ChatPush, { readonly kind: "chat/chart" | "chat/images" | "chat/files" }>;
+type ShownPush = Extract<
+  ChatPush,
+  { readonly kind: "chat/chart" | "chat/images" | "chat/files" | "chat/media" }
+>;
+
+const shownKinds: ReadonlySet<string> = new Set([
+  "chat/chart",
+  "chat/images",
+  "chat/files",
+  "chat/media",
+]);
 
 function isShownPush(push: ChatPush): push is ShownPush {
-  return push.kind === "chat/chart" || push.kind === "chat/images" || push.kind === "chat/files";
+  return shownKinds.has(push.kind);
 }
 
 // What a tool showed, as the terminal prints it: a chart's text, its title in bold (decision 0387),
-// or where each image or file the agent made, showed or sent is, since the terminal draws neither.
+// or where each image, file, video or speech the agent made, showed or sent is, since the
+// terminal draws and plays none of them (decision 0405).
 function shownLines(context: ChatContext, push: ShownPush): readonly ScreenLine[] {
+  if (push.kind === "chat/media") {
+    const key = push.media.kind === "video" ? "tui.media.video" : "tui.media.voice";
+    return [
+      { text: context.words(key, { agent: context.agentName }), tone: "bold" },
+      { text: shown(push.media.path) },
+    ];
+  }
   if (push.kind === "chat/chart") {
     return chartTextLines(push.chart).map((line, index): ScreenLine =>
       index === 0 ? { text: shown(line), tone: "bold" } : { text: shown(line) },

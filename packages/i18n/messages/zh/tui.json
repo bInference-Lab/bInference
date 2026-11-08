@@ -37,5 +37,7 @@
   "credential.multiline": "粘贴的内容不止一行，因此没有接收任何内容。请将凭据粘贴为一行。",
   "credential.closed": "{outcome, select, stored {凭据已保存；Agent 在看不到它的情况下继续。} skipped {已跳过：未保存任何凭据。} expired {凭据请求已超时；未保存任何内容。} other {Agent 改为请求另一个凭据。}}",
   "images.made": "{agent} 生成了 {count, plural, other {# 张图片}}，保存于：",
-  "files.sent": "{agent} 发送了 {count, plural, other {# 个文件}}，保存于："
+  "files.sent": "{agent} 发送了 {count, plural, other {# 个文件}}，保存于：",
+  "media.video": "{agent} 生成了一段视频，保存于：",
+  "media.voice": "{agent} 朗读了一段语音，保存于："
 }

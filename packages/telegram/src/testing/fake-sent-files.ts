@@ -33,6 +33,8 @@ const sendFileSchema = z.looseObject({
   chat_id: z.int(),
   photo: z.string().min(1).optional(),
   document: z.string().min(1).optional(),
+  video: z.string().min(1).optional(),
+  voice: z.string().min(1).optional(),
   reply_parameters: z.looseObject({ message_id: z.int() }).optional(),
   caption: z.string().optional(),
   parse_mode: z.string().optional(),
@@ -73,7 +75,7 @@ function fileOf(
   kind: FakeFileKind,
   call: SendFileCall,
 ): Result<FakeSentFile, string> {
-  const fileId = kind === "photo" ? call.photo : call.document;
+  const fileId = call[kind];
   const uploaded = fileId === undefined ? undefined : uploadedOf(kind, fileId);
   if (uploaded !== undefined) {
     return { ok: true, value: uploaded };
@@ -88,7 +90,7 @@ function fileOf(
 }
 
 /**
- * Answers `sendPhoto` or `sendDocument` of a file the bot uploaded, or one it holds sent again by
+ * Answers `sendPhoto`, `sendDocument`, `sendVideo` or `sendVoice` of a file the bot uploaded, or one it holds sent again by
  * its id: Telegram refuses an id it does not hold, a document's id sent as a photo, or a photo's as
  * a document, and a caption over 1,024 characters.
  */

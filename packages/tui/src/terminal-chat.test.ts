@@ -302,6 +302,29 @@ describe("terminal chat", () => {
     ]);
   });
 
+  it("prints where a video the agent made and the speech it spoke were saved", async () => {
+    const chat = await opened();
+    const video = { media: "d4e5f60718293a4b", kind: "video", contentType: "video/mp4" };
+    const voice = { media: "e5f60718293a4b5c", kind: "voice", contentType: "audio/mp4" };
+    chat.push(`chat:${harnessAgent}`, "chat/media", {
+      agent: harnessAgent,
+      turn,
+      media: { ...video, bytes: 12, path: "/w/media/made/v.mp4" },
+    });
+    chat.push(`chat:${harnessAgent}`, "chat/media", {
+      agent: harnessAgent,
+      turn,
+      media: { ...voice, bytes: 12, path: "/w/media/speech/s.m4a" },
+    });
+    await chat.settle();
+    expect(chat.rows().slice(-5, -1)).toStrictEqual([
+      "main made a video, saved at:",
+      "/w/media/made/v.mp4",
+      "main spoke, saved at:",
+      "/w/media/speech/s.m4a",
+    ]);
+  });
+
   it("prints a chart the agent shows as its text", async () => {
     const chat = await opened();
     chat.push(`chat:${harnessAgent}`, "chat/turnStarted", { agent: harnessAgent, turn });

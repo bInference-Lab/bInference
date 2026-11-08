@@ -288,6 +288,10 @@ const chatCalls = {
   sendMessage,
   sendPhoto: (state: ChatsState, body: string) =>
     sendFile({ ...state, keep: (sent) => keepFile(state, sent) }, "photo", body),
+  sendVideo: (state: ChatsState, body: string) =>
+    sendFile({ ...state, keep: (sent) => keepFile(state, sent) }, "video", body),
+  sendVoice: (state: ChatsState, body: string) =>
+    sendFile({ ...state, keep: (sent) => keepFile(state, sent) }, "voice", body),
   sendDocument: (state: ChatsState, body: string) =>
     sendFile({ ...state, keep: (sent) => keepFile(state, sent) }, "document", body),
   editMessageText,

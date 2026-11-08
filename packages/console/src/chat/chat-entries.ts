@@ -6,6 +6,9 @@ export type MadeImage = Extract<ChatPush, { readonly kind: "chat/images" }>["ima
 /** A file the agent sent, as `chat/files` names it (decision 0400). */
 export type SentFile = Extract<ChatPush, { readonly kind: "chat/files" }>["files"][number];
 
+/** A video the agent made, or its words spoken, as `chat/media` names it (decision 0405). */
+export type MadeMedia = Extract<ChatPush, { readonly kind: "chat/media" }>["media"];
+
 /** One message of the agent's transcript, as `chat/messages` reads it. */
 export type TranscriptMessage = ResultOf<"chat/messages">["items"][number];
 
@@ -44,6 +47,12 @@ export type LiveLine =
       readonly id: string;
       readonly turn: string;
       readonly files: readonly SentFile[];
+    }
+  | {
+      readonly kind: "media";
+      readonly id: string;
+      readonly turn: string;
+      readonly media: MadeMedia;
     };
 
 /** One entry of the chat as the console draws it, in order. */
@@ -62,21 +71,37 @@ export type ChatEntry =
     }
   | { readonly kind: "chart"; readonly id: string; readonly chart: PortableChart }
   | { readonly kind: "images"; readonly id: string; readonly images: readonly MadeImage[] }
-  | { readonly kind: "files"; readonly id: string; readonly files: readonly SentFile[] };
+  | { readonly kind: "files"; readonly id: string; readonly files: readonly SentFile[] }
+  | { readonly kind: "media"; readonly id: string; readonly media: MadeMedia };
 
 // How far the engine's clock may run behind the browser's while an owner's message is matched to
 // its copy in the transcript.
 const skewMs = 60_000;
 
-function entryOf(line: LiveLine): ChatEntry {
+/** A line of what a tool showed. */
+type ShownLine = Extract<LiveLine, { readonly kind: "chart" | "images" | "files" | "media" }>;
+
+// What a tool showed, as its entry.
+function shownEntryOf(line: ShownLine): ChatEntry {
   if (line.kind === "chart") {
     return { kind: "chart", id: line.id, chart: line.chart };
   }
   if (line.kind === "images") {
     return { kind: "images", id: line.id, images: line.images };
   }
-  if (line.kind === "files") {
-    return { kind: "files", id: line.id, files: line.files };
+  return line.kind === "files"
+    ? { kind: "files", id: line.id, files: line.files }
+    : { kind: "media", id: line.id, media: line.media };
+}
+
+function entryOf(line: LiveLine): ChatEntry {
+  if (
+    line.kind === "chart" ||
+    line.kind === "images" ||
+    line.kind === "files" ||
+    line.kind === "media"
+  ) {
+    return shownEntryOf(line);
   }
   if (line.kind === "status") {
     const { id, statusKey, values } = line;

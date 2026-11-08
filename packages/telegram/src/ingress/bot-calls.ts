@@ -1,11 +1,12 @@
 import type { RichLine } from "@binference/rich-text";
-import { type Api, InputFile } from "grammy";
+import type { Api } from "grammy";
 import { isEntitiesUnparsed } from "../api/bot-api-error.schema.js";
 import { callBotApi } from "../api/call-bot-api.js";
 import { unlessGone } from "../api/unless-gone.js";
 import { richHtmlOf, richPlainOf } from "../format/rich-html.js";
 import { splitRichLines } from "../split/split-rich-lines.js";
 import { splitText } from "../split/split-text.js";
+import { sayFileWith, type UploadedFile } from "./bot-file-calls.js";
 import type { ReplyTarget } from "./decide-update.js";
 
 /** An inline button: a press carries its callback data, or opens the Mini App at an HTTPS URL. */
@@ -70,11 +71,25 @@ export interface BotCalls {
    */
   sayDocument(
     target: ReplyTarget,
-    document: {
-      readonly bytes: Uint8Array;
-      readonly caption: readonly RichLine[];
-      readonly fileName: string;
-    },
+    document: Omit<UploadedFile, "fallback">,
+    options: { readonly signal: AbortSignal },
+  ): Promise<void>;
+  /**
+   * Sends an MP4 as a video Telegram plays in place, captioned as `sayDocument` captions a document
+   * (decision 0405); a video Telegram refuses goes as its caption alone.
+   */
+  sayVideo(
+    target: ReplyTarget,
+    video: Omit<UploadedFile, "fallback">,
+    options: { readonly signal: AbortSignal },
+  ): Promise<void>;
+  /**
+   * Sends speech as a voice note, Ogg Opus, MP3 or M4A, with no caption when its caption has no
+   * line (decision 0405); a voice note Telegram refuses goes as its fallback lines.
+   */
+  sayVoice(
+    target: ReplyTarget,
+    voice: UploadedFile,
     options: { readonly signal: AbortSignal },
   ): Promise<void>;
   /**
@@ -172,62 +187,6 @@ function sayRichWith(api: Api, reply: BotCalls["reply"]): BotCalls["sayRich"] {
   };
 }
 
-// A photo's or document's caption as HTML, or as plain text when Telegram cannot parse the HTML.
-async function sendFileOnce(
-  api: Api,
-  sent: {
-    readonly method: "sendPhoto" | "sendDocument";
-    readonly target: ReplyTarget;
-    readonly bytes: Uint8Array;
-    readonly caption: string;
-    readonly fileName: string;
-  },
-  options: { readonly signal: AbortSignal; readonly isHtml: boolean },
-): Promise<void> {
-  const { method, target, bytes, caption, fileName } = sent;
-  const thread = target.threadId === undefined ? {} : { message_thread_id: target.threadId };
-  const mode = options.isHtml ? { parse_mode: "HTML" as const } : {};
-  const other = { ...thread, caption, ...mode };
-  const file = new InputFile(bytes, fileName);
-  await callBotApi(method, options.signal, async (signal) =>
-    method === "sendPhoto"
-      ? api.sendPhoto(target.chatId, file, other, signal)
-      : api.sendDocument(target.chatId, file, other, signal),
-  );
-}
-
-// A file with its caption: as HTML, again as plain text when Telegram cannot parse it, and as the
-// caption alone when Telegram refuses the file.
-function sayFileWith(api: Api, method: "sendPhoto" | "sendDocument", sayRich: BotCalls["sayRich"]) {
-  return async (
-    target: ReplyTarget,
-    file: {
-      readonly bytes: Uint8Array;
-      readonly caption: readonly RichLine[];
-      readonly fileName: string;
-    },
-    options: { readonly signal: AbortSignal },
-  ): Promise<void> => {
-    const { bytes, caption, fileName } = file;
-    const { signal } = options;
-    const sent = { method, target, bytes, fileName };
-    try {
-      await sendFileOnce(api, { ...sent, caption: richHtmlOf(caption) }, { signal, isHtml: true });
-    } catch (error) {
-      signal.throwIfAborted();
-      if (isEntitiesUnparsed(error)) {
-        await sendFileOnce(
-          api,
-          { ...sent, caption: richPlainOf(caption) },
-          { signal, isHtml: false },
-        );
-        return;
-      }
-      await sayRich(target, caption, options);
-    }
-  };
-}
-
 export function createBotCalls(api: Api): BotCalls {
   const reply: BotCalls["reply"] = async (target, text, options) => {
     await callBotApi("sendMessage", options.signal, async (signal) =>
@@ -245,6 +204,8 @@ export function createBotCalls(api: Api): BotCalls {
         options,
       ),
     sayDocument: sayFileWith(api, "sendDocument", sayRichWith(api, reply)),
+    sayVideo: sayFileWith(api, "sendVideo", sayRichWith(api, reply)),
+    sayVoice: sayFileWith(api, "sendVoice", sayRichWith(api, reply)),
     edit: async (at, text, options) =>
       unlessGone(
         callBotApi("editMessageText", options.signal, async (signal) =>
