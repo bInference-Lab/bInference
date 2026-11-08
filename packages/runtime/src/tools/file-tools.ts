@@ -87,7 +87,7 @@ const readArgs: z.ZodType<{
 
 // What file_read answers for a PDF, which it does not read as text.
 function pdfText(file: string): string {
-  return `${file} is a PDF, which file_read does not read.`;
+  return `${file} is a PDF, which file_read does not read: read it with read_pdf.`;
 }
 
 function fileReadTool(parts: AgentToolParts): AgentTool {

@@ -5,9 +5,9 @@ import { createTestTurn } from "../loop/test-turns.js";
 import {
   agent,
   alertWire,
-  candle,
   callTool,
   callToolWith,
+  candle,
   coin,
   coinInfo,
   context,
@@ -16,6 +16,7 @@ import {
   leader,
   order,
   orderWire,
+  pdfReadWire,
   priceCondition,
   schedule,
   scheduleWire,
@@ -111,6 +112,7 @@ const answers: Readonly<Record<string, FakeAnswer>> = {
   "alert/create": alertWire(),
   "schedule/list": { items: [scheduleWire()] },
   "image/view": { contentType: "image/png", bytes: 4, offset: 0, data: "iVBORw==" },
+  "pdf/read": pdfReadWire,
   "file/read": {
     kind: "text",
     path: "/w/a.md",
@@ -284,6 +286,7 @@ const mappings: readonly (readonly [string, JsonValue, JsonValue])[] = [
   ],
   ["schedule_list", {}, [{ op: "schedule/list", args: { agent } }]],
   ["look_at_image", { path: "/x.png" }, [{ op: "image/view", args: { agent, path: "/x.png" } }]],
+  ["read_pdf", { pdf: "/x.pdf" }, [{ op: "pdf/read", args: { agent, path: "/x.pdf" } }]],
   [
     "notes_search",
     { query: "stable" },

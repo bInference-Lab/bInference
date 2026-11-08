@@ -18,6 +18,7 @@ function seeingContext(looked: Looked): ToolRunContext {
   return {
     signal: new AbortController().signal,
     idempotencyKey: "trn.1",
+    askAbout: async () => Promise.resolve(err("failed")),
     look: async (images, question) => {
       looked.images.push(...images);
       looked.questions.push(question);
@@ -137,6 +138,7 @@ describe("the look_at_image tool", () => {
     const blind: ToolRunContext = {
       signal: new AbortController().signal,
       idempotencyKey: "trn.1",
+      askAbout: async () => Promise.resolve(err("failed")),
       look: async () => Promise.resolve(err("no_model")),
     };
     const { outcome } = await view(part, { path: "/x.png" }, blind);

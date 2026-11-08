@@ -71,6 +71,7 @@
   "tool.shellJob": "正在查看命令…",
   "tool.browse": "正在使用浏览器…",
   "tool.lookAtImage": "正在查看图片…",
+  "tool.readPdf": "正在读取 PDF…",
   "tool.fileRead": "正在读取文件…",
   "tool.fileWrite": "正在写入文件…",
   "tool.fileEdit": "正在编辑文件…",

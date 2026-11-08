@@ -8,6 +8,7 @@ const context: ToolRunContext = {
   signal: new AbortController().signal,
   idempotencyKey: "k",
   look: async () => Promise.resolve(err("no_model")),
+  askAbout: async () => Promise.resolve(err("failed")),
 };
 
 interface SwapArgs {

@@ -126,6 +126,7 @@
   "tools.summary.browse": "Drives a browser of the agent's own on the owner's machine: opens pages, reads them, clicks, types and takes screenshots.",
   "tools.summary.deposit_address": "Shows the owner each wallet's address and its QR code, to send funds to the agent.",
   "tools.summary.look_at_image": "Looks at a picture at a public address or in a file on the owner's machine and describes it.",
+  "tools.summary.read_pdf": "Reads PDFs at a public address or on the owner's machine, scanned pages too, and answers a question about them.",
   "tools.summary.file_read": "Reads a text file on the owner's machine, a page at a time, or describes an image file.",
   "tools.summary.file_write": "Writes a file whole on the owner's machine, making its folders.",
   "tools.summary.file_edit": "Makes exact replacements in a file on the owner's machine.",

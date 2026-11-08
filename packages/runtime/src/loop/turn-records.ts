@@ -87,6 +87,35 @@ export interface ToolRunContext {
     images: readonly ModelImage[],
     question: string,
   ) => Promise<Result<string, ImageLookRefusal>>;
+  /**
+   * Answers a request over a document a tool read, on a model of the turn (decision 0402): with
+   * its pages' pictures on the model that looks at images when there is one, else over its text
+   * alone on the turn's own model.
+   */
+  readonly askAbout: (
+    document: DocumentContent,
+    request: string,
+  ) => Promise<Result<DocumentAnswer, "failed">>;
+}
+
+/**
+ * A document a tool read, as a model reads it: its text, and the pictures of its pages, which are
+ * read only when a model of the turn takes images.
+ */
+export interface DocumentContent {
+  readonly text: string;
+  readonly pictureCount: number;
+  readonly pictures: () => Promise<readonly ModelImage[]>;
+}
+
+/**
+ * A model's answer over a document, how many of its pictures the model saw, and whether a model
+ * of the turn takes images.
+ */
+export interface DocumentAnswer {
+  readonly text: string;
+  readonly picturesSeen: number;
+  readonly readsImages: boolean;
 }
 
 /** Why a tool's image went undescribed: no model of the turn takes images, or the call failed. */

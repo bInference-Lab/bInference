@@ -8,7 +8,7 @@ import type { ChainModel, ModelRequest } from "./turn-records.js";
 import type { ModelRoute, TurnRun } from "./turn-run.js";
 
 /** The chain a call tries, and where the turn stands in it: the turn's own, or another's. */
-interface ModelLine {
+export interface ModelLine {
   readonly chain: ModelChain;
   readonly route: ModelRoute;
   /** The turn's own answer: its text goes to the turn's feed as the model writes it. */

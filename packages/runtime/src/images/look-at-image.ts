@@ -1,13 +1,15 @@
 import { err, ok, type Result } from "@binference/core";
-import { callModel } from "../loop/model-call.js";
+import { callModel, type ModelLine } from "../loop/model-call.js";
 import type { ModelImage } from "../loop/model-message.js";
 import type { ImageLookRefusal } from "../loop/turn-records.js";
 import { createModelRoute, type TurnRun } from "../loop/turn-run.js";
 import { describePrefix, maxDescription } from "./describe-words.js";
 
-// The model that looks: the turn's own when it takes images, from where the turn's route stands,
-// else the vision model.
-function lineOf(run: TurnRun) {
+/**
+ * The model that looks at images: the turn's own when it takes images, from where the turn's
+ * route stands, else the vision model; `undefined` when neither takes images.
+ */
+export function imageLineOf(run: TurnRun): ModelLine | undefined {
   const route = createModelRoute();
   if (run.parts.models.models[run.route.at()]?.readsImages === true) {
     route.moveTo(run.route.at());
@@ -28,7 +30,7 @@ export async function lookAtImage(
   images: readonly ModelImage[],
   question: string,
 ): Promise<Result<string, ImageLookRefusal>> {
-  const line = lineOf(run);
+  const line = imageLineOf(run);
   if (line === undefined) {
     return err("no_model");
   }

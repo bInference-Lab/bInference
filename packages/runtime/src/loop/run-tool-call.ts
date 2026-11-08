@@ -1,4 +1,5 @@
 import { createDeadline, type Deadline } from "@binference/core";
+import { answerDocument } from "../documents/answer-document.js";
 import { lookAtImage } from "../images/look-at-image.js";
 import type { ToolCall } from "./model-message.js";
 import { notRunText } from "./not-run.js";
@@ -60,6 +61,7 @@ function contextOf(run: TurnRun, signal: AbortSignal, idempotencyKey: string): T
     signal,
     idempotencyKey,
     look: async (images, question) => lookAtImage(run, images, question),
+    askAbout: async (document, request) => answerDocument(run, document, request),
   };
 }
 

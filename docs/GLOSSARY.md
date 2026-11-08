@@ -376,6 +376,8 @@ new name here first, in the change that uses it.
   only once every change is found.
 - **image look**: a model of the turn that takes images describing an image a tool read, with the
   agent's question (`look_at_image`, [decision 0385](DECISIONS.md#d0385)).
+- **scanned page**: a page of a PDF with fewer than 200 characters of text, which `read_pdf` reads
+  from a picture of the page ([decision 0402](DECISIONS.md#d0402)).
 - **credential**: a secret such as an API key the owner stores for the agents, by a name like an
   environment variable's, with the exact hosts it may be sent to; the agent never sees its value
   (`credentials`, [decision 0388](DECISIONS.md#d0388)).
@@ -755,6 +757,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | file tools                                  | 文件工具               | `file_read` and the others   |
 | agent's browser, browser (the agent drives) | 浏览器                 | `browse`                     |
 | snapshot ref                                | 快照引用               | `e12`                        |
+| scanned page (of a PDF)                     | 扫描页                 | `read_pdf`                   |
 | patch (of files)                            | 补丁                   | `file_patch`                 |
 | made image                                  | 生成的图片             | `make_image`                 |
 | shown chart, chart (the agent shows)        | 图表                   | `show_chart`                 |

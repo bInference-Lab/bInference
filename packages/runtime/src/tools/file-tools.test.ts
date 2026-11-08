@@ -60,6 +60,17 @@ describe("the file tools", () => {
     });
   });
 
+  it("point a PDF to read_pdf", async () => {
+    const run = callTool(
+      { "file/read": { kind: "pdf", path: "/srv/paper.pdf" } },
+      { name: "file_read", args: { path: "~/paper.pdf" } },
+    );
+    expect(await outcomeOf(run)).toStrictEqual({
+      text: "/srv/paper.pdf is a PDF, which file_read does not read: read it with read_pdf.",
+      isError: true,
+    });
+  });
+
   it("write, edit and patch files, and say what changed", async () => {
     const write = callTool(
       { "file/write": { path: "/srv/workspace/a.md", changed: true, bytes: 3 } },

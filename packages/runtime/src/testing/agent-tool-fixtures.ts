@@ -71,11 +71,23 @@ export const toolTurn: AgentToolParts["turn"] = {
   turn: idSchema("trn").parse("trn_0190f1c2-3a4b-7c5d-8e6f-000000000001"),
 };
 
+/** A PDF of one page as `pdf/read` answers it. */
+export const pdfReadWire: WireObject = {
+  document: "9f2c4e1a7b3d5e60",
+  totalPages: 1,
+  pages: [{ page: 1, text: "Supply: 21,000,000" }],
+  textCut: false,
+  pagesCut: false,
+  imagesCut: false,
+};
+
 /** A call's context, its key as the loop names a turn's first call. */
 export const context: ToolRunContext = {
   signal: new AbortController().signal,
   idempotencyKey: "trn_0190f1c2-3a4b-7c5d-8e6f-000000000001.1",
   look: async () => Promise.resolve(ok("A price chart.")),
+  askAbout: async () =>
+    Promise.resolve(ok({ text: "A whitepaper.", picturesSeen: 0, readsImages: false })),
 };
 
 /** An intent of `owner` in `state`, as the engine answers it. */
