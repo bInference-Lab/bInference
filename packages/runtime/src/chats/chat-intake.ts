@@ -39,6 +39,7 @@ async function waitingIn(
 async function endWaiting(context: ChatContext, view: Control): Promise<void> {
   const reason = view.kind === "inbox/stop" ? view.reason : "clear";
   context.chats.running.get(view.agent)?.turn.stop(reason);
+  context.onStop?.(view.agent);
   context.chats.resumesAt.delete(view.agent);
   const waiting = await waitingIn(context, view.session);
   const ended = waiting.filter(

@@ -28,7 +28,7 @@ const clock = {
 const models = createTestChain([{ name: "test/model", transport, readsImages: true }], { clock });
 
 await runNodeRuntime({
-  turnSetup: (place, _settings, client) => ({
+  turnSetup: (place, _settings, { client }) => ({
     models,
     tools: agentToolBox({ agent: place.agent, client, turn: place }),
     instructions: "You are a test agent.",

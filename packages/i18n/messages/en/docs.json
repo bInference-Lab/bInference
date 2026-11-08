@@ -138,6 +138,11 @@
   "tools.summary.make_image": "Makes images with the owner's image model, such as a token's logo; they arrive in the chat a little later.",
   "tools.summary.show_images": "Shows the owner, in the chat, pictures already on the machine, such as images the agent made before.",
   "tools.summary.send_files": "Sends the owner files on the machine in the chat as documents to save, such as a report or a CSV.",
+  "tools.summary.helper_start": "Starts a helper: a model run in the background for one bounded task, whose result the agent answers from in a later turn.",
+  "tools.summary.helper_list": "Lists the agent's helpers with their state and times.",
+  "tools.summary.helper_read": "Reads one of the agent's helpers: what it does now, its report and its newest messages.",
+  "tools.summary.helper_send": "Sends a helper a follow-up, which starts another run of it.",
+  "tools.summary.helper_stop": "Stops one of the agent's running helpers.",
   "tools.summary.settings_read": "Reads the owner's settings, or one key, with secrets shown only as their kind and the rules of each key.",
   "tools.summary.settings_change": "Proposes a change to the owner's settings in a card that shows each setting before and after; nothing changes until the owner confirms."
 }

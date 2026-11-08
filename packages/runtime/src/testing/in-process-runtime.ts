@@ -1,9 +1,10 @@
 import type { ProtocolClient } from "@binference/client";
 import { BinferenceError, type Clock } from "@binference/core";
-import { createManualClock } from "@binference/core/testing";
+import { createManualClock, createSeededRandom } from "@binference/core/testing";
 import {
   createMemoryAgentDatabase,
   createMemoryChatQueueStore,
+  createMemoryHelperStore,
   createMemoryNoteStore,
   createMemorySessionStore,
   createMemoryTranscriptStore,
@@ -20,7 +21,7 @@ import { type TestTool, testToolBox } from "../loop/test-turns.js";
 import { turnLimits } from "../loop/turn-run.js";
 import type { AgentDatabase } from "../process/agent-database.js";
 import { type EngineLink, type RuntimeHost, runRuntime } from "../process/run-runtime.js";
-import { agentToolBox } from "../tools/agent-tools.js";
+import { agentToolBox, helperToolBox } from "../tools/agent-tools.js";
 import type { ToolClient } from "../tools/tool-client.js";
 import { createByteChannel } from "./byte-channel.js";
 import { nthTestId } from "./memory-agent-stores.js";
@@ -98,6 +99,7 @@ function memoryDatabase(database: MemoryAgentDatabase): AgentDatabase {
     sessions: createMemorySessionStore(database),
     transcript: createMemoryTranscriptStore(database),
     queue: createMemoryChatQueueStore(database),
+    helpers: createMemoryHelperStore(database),
     notes: createMemoryNoteStore(database),
     schemaVersion: 0,
     close: async () => Promise.resolve(),
@@ -189,7 +191,7 @@ function chatHost(
   options: InProcessRuntimeOptions,
   database: MemoryAgentDatabase,
   recorded: Recorded,
-): Pick<RuntimeHost, "openAgentDatabase" | "turnSetup" | "applySettings" | "clock"> & {
+): Pick<RuntimeHost, "openAgentDatabase" | "turnSetup" | "applySettings" | "clock" | "random"> & {
   readonly transports: InProcessRuntime["transports"];
 } {
   const tools = testToolBox(options.tools ?? []);
@@ -199,13 +201,15 @@ function chatHost(
   return {
     transports,
     openAgentDatabase: async () => memoryDatabase(database),
-    turnSetup: (place, settings, client) => {
+    turnSetup: (place, settings, { client, helpers }) => {
       const { agent } = place;
       recorded.setups.push({ agent, settings });
+      const parts = { agent, client, turn: place, ...(helpers === undefined ? {} : { helpers }) };
+      const linked = place.helper === undefined ? agentToolBox(parts) : helperToolBox(parts);
       return {
         models,
         ...(vision === undefined ? {} : { vision }),
-        tools: isLinked ? agentToolBox({ agent, client, turn: place }) : tools,
+        tools: isLinked ? linked : tools,
         instructions: "You are a test agent.",
         limits: turnLimits,
       };
@@ -214,6 +218,7 @@ function chatHost(
       recorded.applied.push(settings);
     },
     clock,
+    random: createSeededRandom(7),
   };
 }
 

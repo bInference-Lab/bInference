@@ -68,6 +68,11 @@ const toolKeys: Readonly<Record<AgentToolName, string | undefined>> = {
   credentials: "turn.tool.credentials",
   settings_read: "turn.tool.settingsRead",
   settings_change: "turn.tool.settingsChange",
+  helper_start: "turn.tool.helperStart",
+  helper_list: "turn.tool.helperList",
+  helper_read: "turn.tool.helperRead",
+  helper_send: "turn.tool.helperSend",
+  helper_stop: "turn.tool.helperStop",
 };
 
 // A plugin's tool is named `<id>__<tool>`, its id with `_` for `-`.

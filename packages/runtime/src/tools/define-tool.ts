@@ -36,6 +36,11 @@ export interface ToolSpec<Args> {
    * over it (decision 0173).
    */
   readonly asksOwner?: boolean;
+  /**
+   * Whether a helper may call it (decision 0403). Absent, a read or a machine tool may and a
+   * propose or control tool may not; a propose or control tool can never say it may.
+   */
+  readonly forHelpers?: boolean;
   run(args: Args, context: ToolRunContext): Promise<ToolOutcome>;
 }
 
@@ -48,6 +53,8 @@ export interface AgentTool {
   readonly kind: ToolKind;
   readonly declaration: ToolDeclaration;
   readonly addressSource?: AddressSource;
+  /** A helper may call it (decision 0403): never a propose or a control tool. */
+  readonly forHelpers: boolean;
   /** Checks a call's arguments; a call that passes is ready to run with them. */
   prepare(argumentsText: string): PreparedCall;
 }
@@ -78,6 +85,20 @@ function parametersOf(name: string, args: z.ZodType): { readonly [key: string]: 
     throw invalidTool(name, "an object of its arguments allows fields it does not name");
   }
   return parameters;
+}
+
+// A helper reads and works on the machine, and never proposes or acts in the owner's chat
+// (decision 0403): only a read or a machine tool may let it call it.
+function helperMayCall(spec: {
+  readonly name: string;
+  readonly kind: ToolKind;
+  readonly forHelpers?: boolean;
+}): boolean {
+  const mayAsk = spec.kind === "read" || spec.kind === "machine";
+  if (spec.forHelpers === true && !mayAsk) {
+    throw invalidTool(spec.name, "a propose or control tool is never a helper's");
+  }
+  return spec.forHelpers ?? mayAsk;
 }
 
 /** Cuts a result to {@link maxResultChars}, with a line saying how much was cut. */
@@ -139,6 +160,7 @@ export function defineTool<Args>(spec: ToolSpec<Args>): AgentTool {
   if (spec.asksOwner === true && spec.kind !== "control") {
     throw invalidTool(spec.name, "a tool that asks the owner is not a control tool");
   }
+  const forHelpers = helperMayCall(spec);
   const ready = {
     ready: true as const,
     kind: spec.kind,
@@ -150,6 +172,7 @@ export function defineTool<Args>(spec: ToolSpec<Args>): AgentTool {
     name: spec.name,
     kind: spec.kind,
     declaration,
+    forHelpers,
     ...(spec.addressSource === undefined ? {} : { addressSource: spec.addressSource }),
     prepare(argumentsText) {
       const json = parseArgumentsJson(argumentsText);

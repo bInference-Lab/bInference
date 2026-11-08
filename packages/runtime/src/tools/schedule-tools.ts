@@ -91,6 +91,8 @@ function listTool(parts: AgentToolParts): AgentTool {
     name: "schedule_list",
     kind: "read",
     parallel: true,
+    // The agent's schedules are its own business; a helper works on its task alone.
+    forHelpers: false,
     description: agentToolTexts.schedule_list,
     args: z.strictObject({}),
     run: async (_args, { signal }) =>

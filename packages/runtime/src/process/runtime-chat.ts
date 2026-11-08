@@ -1,8 +1,10 @@
-import type { Clock } from "@binference/core";
+import type { Clock, Id } from "@binference/core";
 import type { TurnSetup } from "../chats/chat-context.js";
 import { type ChatRunner, createChatRunner } from "../chats/chat-runner.js";
 import type { RuntimeSettings } from "../control/runtime-settings.schema.js";
 import type { ContextSource, EngineChat, OwnerImageReader } from "../engine-chat/ports.js";
+import type { BudgetMemory } from "../helpers/budget-memory.js";
+import type { HelperRunner } from "../helpers/helper-desk.js";
 import type { AgentStores } from "../sessions/agent-stores.js";
 import { type RepairedTurn, repairUnfinishedTurns } from "../sessions/repair-turns.js";
 import type { TurnPlace } from "../sessions/turn-place.js";
@@ -25,7 +27,12 @@ export async function prepareChat(
   const fence = await database.fence.raise({ signal: context.signal });
   const { sessions, transcript, queue } = database;
   const stores = { sessions, transcript, queue, fence };
-  return { stores, repaired: await repairUnfinishedTurns(stores, context) };
+  const repaired = await repairUnfinishedTurns(stores, context);
+  // A helper's turn was never the engine's: its repair tells the engine nothing (decision 0403).
+  const helpers = await Promise.all(
+    repaired.map(async ({ session }) => database.helpers.get(session, { signal: context.signal })),
+  );
+  return { stores, repaired: repaired.filter((_turn, place) => helpers[place] === undefined) };
 }
 
 /** What the runtime's chat runs with once it is connected. */
@@ -39,6 +46,10 @@ export interface ChatStart {
   /** The settings in force: a reload applies from the next turn and merge point. */
   readonly settings: () => RuntimeSettings;
   readonly setup: (place: TurnPlace, settings: RuntimeSettings) => TurnSetup;
+  /** The agents' helpers, which stop with their agent's chat and are repaired at the start. */
+  readonly helpers?: HelperRunner;
+  /** What the engine answers of each agent's budget, which its helpers read. */
+  readonly budgets?: BudgetMemory;
   readonly clock: Clock;
   readonly lifetime: AbortSignal;
 }
@@ -80,12 +91,15 @@ async function listAll(engine: EngineChat, runner: ChatRunner, signal: AbortSign
 
 /**
  * Starts the runtime's chat once it is connected (runtime spec, section 2.1): the repaired turns'
- * ends go to the engine, the chat queue's waiting messages start their turns, every untaken
- * message is read with `inbox/list`, and the `inbox` topic is watched, read again after a gap.
+ * ends go to the engine, each helper a stop left running ends `stopped` and its agent hears it,
+ * the chat queue's waiting messages start their turns, every untaken message is read with
+ * `inbox/list`, and the `inbox` topic is watched, read again after a gap; a stop or clear of an
+ * agent's chat stops its helpers.
  */
 export async function startChat(start: ChatStart): Promise<RuntimeChat> {
   const { engine, lifetime } = start;
   await endRepaired(start, lifetime);
+  await start.helpers?.repair(lifetime).catch(() => undefined);
   const relist = (): void => void listAll(engine, runner, lifetime).catch(() => undefined);
   const runner = createChatRunner({
     stores: start.prepared.stores,
@@ -97,6 +111,10 @@ export async function startChat(start: ChatStart): Promise<RuntimeChat> {
     clock: start.clock,
     lifetime,
     onRoom: relist,
+    ...(start.budgets === undefined ? {} : { budgets: start.budgets }),
+    ...(start.helpers === undefined
+      ? {}
+      : { onStop: (agent: Id<"agt">) => start.helpers?.stopAgent(agent) }),
   });
   await runner.resume();
   await listAll(engine, runner, lifetime);

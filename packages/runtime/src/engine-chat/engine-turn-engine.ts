@@ -21,6 +21,11 @@ export interface EngineTurnOptions {
   readonly clock: Clock;
   /** Hears the engine's refusal, with the time a spent budget resumes. */
   readonly onRefused?: (refusal: Extract<TurnStartAnswer, { readonly started: false }>) => void;
+  /**
+   * Hears what is left of the agent's model budget each time the engine answers it, so a helper
+   * knows it before its own first call (decision 0403).
+   */
+  readonly onBudget?: (leftMicros: bigint) => void;
 }
 
 const messageId = idSchema("msg");
@@ -107,6 +112,7 @@ export function createEngineTurnEngine(options: EngineTurnOptions): TurnEngine {
         }
         return err(answer.refusal);
       }
+      options.onBudget?.(answer.budgetLeftMicros);
       await recordStart(options, request, signal);
       return ok({ budgetLeftMicros: answer.budgetLeftMicros });
     },
@@ -119,7 +125,11 @@ export function createEngineTurnEngine(options: EngineTurnOptions): TurnEngine {
     reasoning: async ({ text, final }, signal) =>
       chat.turnReasoning({ ...at, text: text.slice(0, maxReasoningChars), final }, signal),
     status,
-    recordUsage: async (usage, signal) => chat.recordUsage({ ...at, ...usage }, signal),
+    async recordUsage(usage, signal) {
+      const recorded = await chat.recordUsage({ ...at, ...usage }, signal);
+      options.onBudget?.(recorded.budgetLeftMicros);
+      return recorded;
+    },
     end: async (outcome, signal, failedTool) =>
       chat.endTurn({ ...at, outcome, ...(failedTool === undefined ? {} : { failedTool }) }, signal),
   };

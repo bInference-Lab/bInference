@@ -1,12 +1,14 @@
-import { type Id, type JsonValue, jsonValueSchema } from "@binference/core";
+import { type Id, idSchema, type JsonValue, jsonValueSchema } from "@binference/core";
 import {
   alertConditionSchema,
   alertFireSchema,
+  type ChatSurface,
   type InboxMessageView,
   inboxMessageViewSchema,
 } from "@binference/protocol";
 import type { InboxKind, QueuedMessage } from "@binference/store";
 import type { OwnerMessage } from "../loop/model-message.js";
+import type { TurnPhoto } from "../sessions/turn-place.js";
 
 /** A message that can start a turn, or join one. */
 export type TurnMessage = Extract<InboxMessageView, { readonly turn: Id<"trn"> }>;
@@ -114,8 +116,9 @@ export function noteOf(message: QueuedMessage): OwnerMessage | undefined {
 }
 
 /**
- * A message as a turn's conversation holds it: one with images is outside content, and so is a
- * schedule's wake-up whose `outsideContent` is set, and every alert's wake-up.
+ * A message as a turn's conversation holds it: one with images or marked by the engine is outside
+ * content, and so is a schedule's wake-up whose `outsideContent` is set, and every alert's
+ * wake-up.
  */
 export function ownerMessageOf(view: TurnMessage): OwnerMessage {
   if (view.kind === "inbox/intentSettled") {
@@ -129,11 +132,29 @@ export function ownerMessageOf(view: TurnMessage): OwnerMessage {
   if (view.kind === "inbox/alertFired") {
     return { id: view.message, text: alertText(view), outside: true };
   }
+  // A helper's report the engine wrote in the owner's place is outside content when the helper read
+  // some (decision 0403).
   const { images } = view;
   return {
     id: view.message,
     text: view.text,
-    outside: images !== undefined,
+    outside: images !== undefined || view.outsideContent === true,
     ...(images === undefined ? {} : { images }),
   };
+}
+
+/** The photos the owner sent the bot with a turn's messages, in order (decision 0286). */
+export function photosOf(owners: readonly OwnerMessage[]): readonly TurnPhoto[] {
+  return owners.flatMap((owner) => {
+    const message = idSchema("msg").safeParse(owner.id);
+    const images = (owner.images ?? []).filter((image) => image.startsWith("tg:"));
+    return message.success ? images.map((image) => ({ message: message.data, image })) : [];
+  });
+}
+
+/** The surface of the first owner's message a turn took; none for a turn the engine started. */
+export function surfaceOf(queued: readonly QueuedMessage[]): ChatSurface | undefined {
+  const views = queued.map((each) => turnMessageOf(each));
+  const owned = views.find((view) => view?.kind === "inbox/message");
+  return owned?.kind === "inbox/message" ? owned.surface : undefined;
 }

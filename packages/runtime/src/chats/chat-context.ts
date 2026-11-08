@@ -1,7 +1,8 @@
-import type { Clock } from "@binference/core";
+import type { Clock, Id } from "@binference/core";
 import type { TurnCompaction } from "../compaction/turn-history.js";
 import type { SettingsFacts } from "../context/live-facts-text.js";
 import type { ContextSource, EngineChat, OwnerImageReader } from "../engine-chat/ports.js";
+import type { BudgetMemory } from "../helpers/budget-memory.js";
 import type { ModelChain, ToolBox } from "../loop/ports.js";
 import type { TurnLimits } from "../loop/turn-run.js";
 import type { AgentStores } from "../sessions/agent-stores.js";
@@ -46,6 +47,13 @@ export interface ChatRunnerOptions {
   readonly lifetime: AbortSignal;
   /** Runs when the chat queue has room again for messages it left in the engine's inbox. */
   readonly onRoom?: () => void;
+  /** Keeps what the engine answers of each agent's budget, which its helpers read (decision 0403). */
+  readonly budgets?: BudgetMemory;
+  /**
+   * Hears a stop or a clear of the agent's chat as it applies, so the agent's helpers stop with
+   * its running turn (decision 0403).
+   */
+  readonly onStop?: (agent: Id<"agt">) => void;
   /** Turns that run at once in the install; 4. */
   readonly maxRunning?: number;
   /** The wait before a turn the engine could not start is tried again; 30 seconds. */

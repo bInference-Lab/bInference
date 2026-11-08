@@ -2,6 +2,7 @@ import type { ProtocolClient } from "@binference/client";
 import type { Id } from "@binference/core";
 import type { RuntimePlugin } from "../control/runtime-settings.schema.js";
 import type { TurnPlace } from "../sessions/turn-place.js";
+import type { HelperToolParts } from "./helper-tools.js";
 import type { ImageMakingToolParts } from "./make-image-tool.js";
 import type { WebToolParts } from "./web-tools.js";
 
@@ -28,4 +29,6 @@ export interface AgentToolParts {
   readonly plugins?: readonly RuntimePlugin[];
   /** What `make_image` runs on (decision 0392); without it, the agent has no image tool. */
   readonly imageMaking?: ImageMakingToolParts;
+  /** What the helper tools run on (decision 0403); without it, the agent has no helper tools. */
+  readonly helpers?: HelperToolParts;
 }

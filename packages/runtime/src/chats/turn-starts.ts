@@ -1,5 +1,4 @@
-import { err, type Id, idSchema, ok } from "@binference/core";
-import type { ChatSurface } from "@binference/protocol";
+import { err, type Id, ok } from "@binference/core";
 import type { QueuedMessage } from "@binference/store";
 import { readTurnPrefix } from "../context/turn-prefix.js";
 import type { TurnStartAnswer } from "../engine-chat/engine-chat-records.js";
@@ -13,11 +12,18 @@ import { written } from "../sessions/agent-stores.js";
 import { loadConversation } from "../sessions/conversation.js";
 import { withHiddenArgs } from "../sessions/hidden-args.js";
 import { createSessionJournal } from "../sessions/session-journal.js";
-import type { TurnPhoto, TurnPlace } from "../sessions/turn-place.js";
+import type { TurnPlace } from "../sessions/turn-place.js";
 import { hiddenToolArgs } from "../tools/agent-tools.js";
 import type { ChatContext, TurnSetup } from "./chat-context.js";
 import { messagesPerTurn, createQueueMerge } from "./queue-merge.js";
-import { isWakeUp, noteOf, ownerMessageOf, turnMessageOf } from "./queued-view.js";
+import {
+  isWakeUp,
+  noteOf,
+  ownerMessageOf,
+  photosOf,
+  surfaceOf,
+  turnMessageOf,
+} from "./queued-view.js";
 
 /**
  * A waiting message as the turn takes it: the owner's line it adds, and the turn reserved for it
@@ -252,7 +258,7 @@ function turnPartsOf(
     readonly refusals: Refused[];
   },
 ): TurnParts {
-  const { stores, clock } = context;
+  const { stores, clock, budgets } = context;
   const { place, setup, taken, owners, refusals } = turn;
   const engine = createEngineTurnEngine({
     chat: context.engine,
@@ -260,7 +266,13 @@ function turnPartsOf(
     place,
     taken: owners,
     clock,
-    onRefused: (refused) => refusals.push(refused),
+    onRefused(refused) {
+      refusals.push(refused);
+      if (refused.refusal === "budget") {
+        budgets?.note(place.agent, 0n);
+      }
+    },
+    onBudget: (left) => budgets?.note(place.agent, left),
   });
   return {
     models: setup.models,
@@ -275,32 +287,16 @@ function turnPartsOf(
   };
 }
 
-// The photos the owner sent the bot with the turn's messages, in order (decision 0286).
-function photosOf(taken: readonly Waiting[]): readonly TurnPhoto[] {
-  return taken.flatMap(({ owner }) => {
-    const message = idSchema("msg").safeParse(owner.id);
-    const images = (owner.images ?? []).filter((image) => image.startsWith("tg:"));
-    return message.success ? images.map((image) => ({ message: message.data, image })) : [];
-  });
-}
-
-// The surface of the first owner's message the turn took; none for a turn the engine started.
-function surfaceOf(taken: readonly Waiting[]): ChatSurface | undefined {
-  const views = taken.map(({ queued }) => turnMessageOf(queued));
-  const owned = views.find((view) => view?.kind === "inbox/message");
-  return owned?.kind === "inbox/message" ? owned.surface : undefined;
-}
-
 async function runTurn(
   context: ChatContext,
   place: TurnPlace,
   taken: readonly Waiting[],
 ): Promise<void> {
   const { stores, lifetime } = context;
-  const surface = surfaceOf(taken);
+  const surface = surfaceOf(taken.map(({ queued }) => queued));
   const setup = context.setup({
     ...place,
-    photos: photosOf(taken),
+    photos: photosOf(taken.map(({ owner }) => owner)),
     ...(surface === undefined ? {} : { surface }),
   });
   const prefix = await prefixOf(context, { agent: place.agent, instructions: setup.instructions });

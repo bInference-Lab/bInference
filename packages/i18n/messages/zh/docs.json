@@ -138,6 +138,11 @@
   "tools.summary.make_image": "用所有者的图片模型生成图片，例如代币的标志；图片稍后出现在对话中。",
   "tools.summary.show_images": "在对话中向所有者显示机器上已有的图片，例如 Agent 之前生成的图片。",
   "tools.summary.send_files": "在对话中把机器上的文件作为文档发送给所有者保存，例如报告或 CSV。",
+  "tools.summary.helper_start": "启动一个助手：在后台为一项有限的任务运行模型，Agent 在之后的一轮中根据其结果回答。",
+  "tools.summary.helper_list": "列出 Agent 的助手及其状态和时间。",
+  "tools.summary.helper_read": "读取 Agent 的一个助手：它正在做什么、它的报告和最新的消息。",
+  "tools.summary.helper_send": "给助手发送后续消息，开始它的又一次运行。",
+  "tools.summary.helper_stop": "停止 Agent 的一个正在运行的助手。",
   "tools.summary.settings_read": "读取所有者的设置或其中一个键，密钥只显示其来源类型，并附上每个键的规则。",
   "tools.summary.settings_change": "在卡片中提出对所有者设置的更改，显示每项设置更改前后的值；所有者确认前不会有任何更改。"
 }

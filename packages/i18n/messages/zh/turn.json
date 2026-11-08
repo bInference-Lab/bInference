@@ -80,6 +80,11 @@
   "tool.makeImage": "正在生成图片…",
   "tool.showImages": "正在显示图片…",
   "tool.sendFiles": "正在发送文件…",
+  "tool.helperStart": "正在启动助手…",
+  "tool.helperList": "正在查看助手…",
+  "tool.helperRead": "正在读取助手的工作…",
+  "tool.helperSend": "正在给助手发送后续消息…",
+  "tool.helperStop": "正在停止助手…",
   "tool.deposit": "正在显示充值地址…",
   "tool.notesGet": "正在读取笔记…",
   "tool.notesForget": "正在删除笔记…"

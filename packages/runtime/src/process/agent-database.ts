@@ -1,5 +1,6 @@
 import type {
   ChatQueueStore,
+  HelperStore,
   NoteStore,
   SessionStore,
   TranscriptStore,
@@ -12,6 +13,8 @@ export interface AgentDatabase {
   readonly sessions: SessionStore;
   readonly transcript: TranscriptStore;
   readonly queue: ChatQueueStore;
+  /** The agent's helpers (decision 0403). */
+  readonly helpers: HelperStore;
   /** Each agent's notes, which the routed `notes/*` operations read and write. */
   readonly notes: NoteStore;
   /** The schema version after the migrations, which `ready` reports. */

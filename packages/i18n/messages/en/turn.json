@@ -80,6 +80,11 @@
   "tool.makeImage": "Making an image…",
   "tool.showImages": "Showing images…",
   "tool.sendFiles": "Sending files…",
+  "tool.helperStart": "Starting a helper…",
+  "tool.helperList": "Checking helpers…",
+  "tool.helperRead": "Reading a helper's work…",
+  "tool.helperSend": "Sending a helper a follow-up…",
+  "tool.helperStop": "Stopping a helper…",
   "tool.deposit": "Showing where to deposit…",
   "tool.notesGet": "Reading a note…",
   "tool.notesForget": "Forgetting a note…"

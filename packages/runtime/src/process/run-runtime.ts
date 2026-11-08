@@ -1,4 +1,4 @@
-import { BinferenceError, type Clock } from "@binference/core";
+import { BinferenceError, type Clock, createIdSource, type Random } from "@binference/core";
 import type { TurnSetup } from "../chats/chat-context.js";
 import {
   answerMessagesRoute,
@@ -15,8 +15,11 @@ import {
 import { readControlLines } from "../control/read-control-lines.js";
 import type { RuntimeSettings } from "../control/runtime-settings.schema.js";
 import type { ContextSource, EngineChat, OwnerImageReader } from "../engine-chat/ports.js";
+import { type BudgetMemory, createBudgetMemory } from "../helpers/budget-memory.js";
+import { createHelperDesk, type HelperRunner } from "../helpers/helper-desk.js";
 import { answerNoteRoute, isNoteRoute, type NoteRouteParts } from "../notes/note-routes.js";
 import type { TurnPlace } from "../sessions/turn-place.js";
+import type { HelperToolParts } from "../tools/helper-tools.js";
 import type { ToolClient } from "../tools/tool-client.js";
 import type { AgentDatabase } from "./agent-database.js";
 import { type PreparedChat, prepareChat, type RuntimeChat, startChat } from "./runtime-chat.js";
@@ -35,6 +38,13 @@ export interface EngineLink {
   close(): void;
 }
 
+/** What an agent's tools reach beyond their turn: the engine, and the agent's helpers. */
+interface TurnLink {
+  readonly client: ToolClient;
+  /** The helper tools' parts; a helper's own turn gets none, so it starts no helper. */
+  readonly helpers?: HelperToolParts;
+}
+
 /** What the runtime's entry hands over from Node: its pipes, how it reaches the engine, its timer. */
 export interface RuntimeHost {
   /** The standard input: the engine's lines. */
@@ -47,18 +57,17 @@ export interface RuntimeHost {
   readonly openAgentDatabase: (path: string, signal: AbortSignal) => Promise<AgentDatabase>;
   /**
    * What an agent's next turn runs with under the settings in force, its tools calling the engine
-   * through the given client for the place the turn runs in.
+   * through the link's client for the place the turn runs in, and reaching the agent's helpers
+   * (decision 0403); a helper's place gets a helper's setup.
    */
-  readonly turnSetup: (
-    place: TurnPlace,
-    settings: RuntimeSettings,
-    client: ToolClient,
-  ) => TurnSetup;
+  readonly turnSetup: (place: TurnPlace, settings: RuntimeSettings, link: TurnLink) => TurnSetup;
   /**
    * Puts what the process itself holds of the settings in force, such as the route of its
    * outbound requests: with the start line's settings, then with each settings line.
    */
   readonly applySettings?: (settings: RuntimeSettings) => void;
+  /** Random bytes for the ids of the agents' helpers and their turns. */
+  readonly random: Random;
   readonly clock: Clock;
   /** Calls `onTick` every 10 seconds until the signal aborts: when the runtime writes its health. */
   readonly everyTenSeconds: (onTick: () => Promise<void>, signal: AbortSignal) => void;
@@ -226,25 +235,64 @@ interface Connected {
   readonly lifetime: AbortSignal;
 }
 
+/** How one start sets up every turn, the agents' and their helpers', and the helpers' desk. */
+interface Turns {
+  readonly setup: (place: TurnPlace) => TurnSetup;
+  readonly helpers: HelperRunner;
+  readonly budgets: BudgetMemory;
+}
+
+// Every turn runs under the settings in force, and starts marked while a community plugin offers
+// tools (decision 0350). An agent's tools reach its helpers; a helper's turn gets no helper tools,
+// so it starts no helper (decision 0403).
+function turnsOf(host: RuntimeHost, connected: Connected, settings: () => RuntimeSettings): Turns {
+  const budgets = createBudgetMemory();
+  const { link, prepared, database, lifetime } = connected;
+  const holder: { helpers?: HelperToolParts } = {};
+  const setup = (place: TurnPlace): TurnSetup => {
+    const current = settings();
+    const helpers = place.helper === undefined ? holder.helpers : undefined;
+    const turnLink = { client: link.client, ...(helpers === undefined ? {} : { helpers }) };
+    return {
+      ...host.turnSetup(place, current, turnLink),
+      hasOutsideTools: (current.plugins ?? []).some(({ tools }) => tools.length > 0),
+    };
+  };
+  const helpers = createHelperDesk({
+    stores: prepared.stores,
+    helpers: database.helpers,
+    engine: link.chat,
+    context: link.context,
+    client: link.client,
+    setup,
+    budgets,
+    clock: host.clock,
+    ids: createIdSource({ clock: host.clock, random: host.random }),
+    lifetime,
+    providers: () => Object.keys(settings().models.providers),
+  });
+  holder.helpers = { desk: helpers, clock: host.clock };
+  return { setup, helpers, budgets };
+}
+
 // Starts the chat, writes `ready` and the health, and serves the engine's lines; on the way out
 // it ends every running turn as the runtime's stop, keeping the waiting messages.
 async function serveConnected(host: RuntimeHost, connected: Connected): Promise<RuntimeExit> {
   const { lifetime } = connected;
   const settings = { current: connected.start.settings };
   host.applySettings?.(settings.current);
+  const turns = turnsOf(host, connected, () => settings.current);
   const chat = await startChat({
     prepared: connected.prepared,
     engine: connected.link.chat,
     turnContext: connected.link.context,
     images: connected.link.images,
     settings: () => settings.current,
-    // Every host's turns start marked while a community plugin offers tools (decision 0350).
-    setup: (place, current) => ({
-      ...host.turnSetup(place, current, connected.link.client),
-      hasOutsideTools: (current.plugins ?? []).some(({ tools }) => tools.length > 0),
-    }),
+    setup: (place) => turns.setup(place),
     clock: host.clock,
     lifetime,
+    helpers: turns.helpers,
+    budgets: turns.budgets,
   });
   try {
     const { schemaVersion } = connected.database;
@@ -261,7 +309,7 @@ async function serveConnected(host: RuntimeHost, connected: Connected): Promise<
     return await serve(host, connected.lines, context);
   } finally {
     chat.unwatch();
-    await chat.runner.stop();
+    await Promise.all([chat.runner.stop(), turns.helpers.stopAll()]);
   }
 }
 

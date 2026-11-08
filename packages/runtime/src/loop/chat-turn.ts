@@ -142,7 +142,10 @@ async function runTurn(
     run.tally.enter("refused");
     return { state: "refused", refusal: started.error };
   }
-  run.tail.budget(started.value.budgetLeftMicros);
+  const left = started.value.budgetLeftMicros;
+  if (left !== undefined) {
+    run.tail.budget(left);
+  }
   const clearTimeLimit = startTimeLimit(run);
   try {
     const unread = await imagesOrFail(run, taken, firstTaken);

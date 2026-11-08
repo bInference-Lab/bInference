@@ -82,10 +82,14 @@ export interface TurnJournal {
 
 /** The engine's side of one turn: its start, its mark, its text, its status and its end. */
 export interface TurnEngine {
+  /**
+   * Starts the turn, or refuses it for its agent's state. Answers what is left of the model budget,
+   * when it is known; a helper's turn may not know it yet (decision 0403).
+   */
   start(
     request: TurnStartRequest,
     signal: AbortSignal,
-  ): Promise<Result<{ readonly budgetLeftMicros: bigint }, TurnRefusal>>;
+  ): Promise<Result<{ readonly budgetLeftMicros?: bigint }, TurnRefusal>>;
   /** `turn/mark`: the turn holds outside content. Throws when the engine did not take the mark. */
   mark(signal: AbortSignal): Promise<void>;
   say(text: string, signal: AbortSignal): Promise<void>;
