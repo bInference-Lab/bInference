@@ -23,8 +23,11 @@ export type {
   FileAccessState,
   FilePermissions,
   IpcEndpoint,
+  ScreenCapture,
   ServiceManager,
 } from "./ports.js";
+export type { RunScreenProgram, ScreenCaptureOptions } from "./screen-shots.js";
+export type { ScreenRefusal, ScreenShot } from "./screen-shot.js";
 export type { CommandLaunch } from "./command-launch.js";
 export type { RunningShell, ShellEnd, ShellLaunch, ShellProgram } from "./shell-launch.js";
 export { walledPaths } from "./command-wall-paths.js";

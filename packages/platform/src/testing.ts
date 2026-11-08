@@ -15,6 +15,11 @@ export type {
   ShellLauncherHarness,
   ShellLauncherSubject,
 } from "./contracts/shell-launcher-contract.js";
+export { screenCaptureContract } from "./contracts/screen-capture-contract.js";
+export type {
+  ScreenCaptureHarness,
+  ScreenCaptureSubject,
+} from "./contracts/screen-capture-contract.js";
 export { serviceManagerContract } from "./contracts/service-manager-contract.js";
 export type {
   ServiceManagerHarness,

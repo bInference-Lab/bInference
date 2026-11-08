@@ -2,6 +2,7 @@ import type { Socket } from "node:net";
 import type { Result } from "@binference/core";
 import type { CommandLaunch } from "./command-launch.js";
 import type { IpcBindOptions, IpcBinding } from "./ipc/ipc-binding.js";
+import type { ScreenRefusal, ScreenShot } from "./screen-shot.js";
 import type { ServiceDefinition, ServiceStatus } from "./service/service-definition.js";
 import type { RunningShell, ShellLaunch } from "./shell-launch.js";
 
@@ -127,4 +128,20 @@ export interface ShellLauncher {
    * Throws `platform.no_wall` when the wall does not hold.
    */
   start(launch: ShellLaunch, onOutput: (text: string) => void): RunningShell;
+}
+
+/**
+ * Takes a screenshot of the owner's screen with the OS's own program (decision 0406): every
+ * display, or one by its number from 1. It only looks: nothing here moves the mouse, presses a
+ * key or touches a window. Each program runs with an argument array, never a shell, under a time
+ * limit, in a folder of its own that is removed after it. It rejects with the signal's reason once
+ * the signal aborts.
+ */
+export interface ScreenCapture {
+  /** The program the owner allows to record the screen, which a `no_permission` refusal means. */
+  readonly program: string;
+  capture(
+    request: { readonly display?: number },
+    call: { readonly signal: AbortSignal },
+  ): Promise<Result<readonly ScreenShot[], ScreenRefusal>>;
 }

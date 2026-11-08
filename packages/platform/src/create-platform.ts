@@ -10,11 +10,14 @@ import type {
   FileAccess,
   FilePermissions,
   IpcEndpoint,
+  ScreenCapture,
   ServiceManager,
 } from "./ports.js";
 import { createLaunchdServiceManager } from "./posix/launchd-service-manager.js";
 import { createLinuxCommandWall } from "./posix/linux-command-wall.js";
+import { createLinuxScreenCapture } from "./posix/linux-screen-capture.js";
 import { createMacosCommandWall } from "./posix/macos-command-wall.js";
+import { createMacosScreenCapture } from "./posix/macos-screen-capture.js";
 import { linuxBrowserPrograms, macBrowserPrograms } from "./posix/posix-browser-programs.js";
 import { createPosixFileAccess } from "./posix/posix-file-access.js";
 import { createPosixFilePermissions } from "./posix/posix-file-permissions.js";
@@ -22,6 +25,7 @@ import { createPosixIpcEndpoint } from "./posix/posix-ipc-endpoint.js";
 import { posixResidentBytes } from "./posix/posix-resident-memory.js";
 import { createPosixShellLauncher } from "./posix/posix-shell-launcher.js";
 import { createSystemdServiceManager } from "./posix/systemd-service-manager.js";
+import type { ScreenCaptureOptions } from "./screen-shots.js";
 import { resolveStateFolder, type StateFolder, type StateFolderOptions } from "./state-folder.js";
 import { createSchtasksServiceManager } from "./win32/schtasks-service-manager.js";
 import { windowsBrowserPrograms } from "./win32/win32-browser-programs.js";
@@ -30,6 +34,7 @@ import { createWin32FileAccess } from "./win32/win32-file-access.js";
 import { createWin32FilePermissions } from "./win32/win32-file-permissions.js";
 import { createWin32IpcEndpoint } from "./win32/win32-ipc-endpoint.js";
 import { win32ResidentBytes } from "./win32/win32-resident-memory.js";
+import { createWin32ScreenCapture } from "./win32/win32-screen-capture.js";
 import { createWin32ShellLauncher } from "./win32/win32-shell-launcher.js";
 
 /** What names an IPC endpoint. */
@@ -90,6 +95,12 @@ export interface Platform {
    * them; `undefined` when none is there.
    */
   readonly findBrowser: () => string | undefined;
+  /**
+   * Takes screenshots of the owner's screen with this OS's own program (decision 0406):
+   * `screencapture` on macOS, the first of `grim`, `gnome-screenshot` and `scrot` on Linux with a
+   * desktop session, and Windows PowerShell through .NET on Windows.
+   */
+  readonly screenCapture: (options: ScreenCaptureOptions) => ScreenCapture;
 }
 
 type ServiceManagerOf = Platform["serviceManager"];
@@ -125,6 +136,36 @@ function hasDisplay(options: PlatformOptions): boolean {
   return (options.display ?? "") !== "" || (options.waylandDisplay ?? "") !== "";
 }
 
+// The screenshot programs of macOS, or Linux's with a desktop session.
+function posixScreenCapture(options: PlatformOptions): Platform["screenCapture"] {
+  return (screen) =>
+    process.platform === "darwin"
+      ? createMacosScreenCapture({ ...screen, hasScreen: true })
+      : createLinuxScreenCapture({ ...screen, hasScreen: hasDisplay(options) });
+}
+
+// Windows' adapters, around the state folder and the keychain every OS shares.
+function win32Platform(
+  options: PlatformOptions,
+  shared: Pick<Platform, "stateFolder" | "keychain">,
+): Platform {
+  const win32Wall = createWin32CommandWall();
+  return {
+    ...shared,
+    permissions: createWin32FilePermissions(),
+    access: createWin32FileAccess(),
+    stopSignals: ["SIGINT", "SIGBREAK"],
+    ipcEndpoint: (endpoint) => createWin32IpcEndpoint(endpoint),
+    hasDesktopSession: true,
+    serviceManager: (clock) => createSchtasksServiceManager({ clock }),
+    residentBytes: win32ResidentBytes,
+    commandWall: win32Wall,
+    shellLauncher: (clock) => createWin32ShellLauncher(win32Wall, clock),
+    findBrowser: () => firstProgram(windowsBrowserPrograms(options.homeDir ?? homedir())),
+    screenCapture: (screen) => createWin32ScreenCapture({ ...screen, hasScreen: true }),
+  };
+}
+
 /**
  * Picks the adapters for the OS this process runs on. Throws `platform.unsupported_os` on any OS
  * but macOS, Linux and Windows.
@@ -134,21 +175,7 @@ export function createPlatform(options: PlatformOptions = {}): Platform {
   const keychain = createKeychainSecretStore();
   const walled = walledPaths(stateFolder);
   if (process.platform === "win32") {
-    const win32Wall = createWin32CommandWall();
-    return {
-      stateFolder,
-      permissions: createWin32FilePermissions(),
-      access: createWin32FileAccess(),
-      stopSignals: ["SIGINT", "SIGBREAK"],
-      ipcEndpoint: (endpoint) => createWin32IpcEndpoint(endpoint),
-      keychain,
-      hasDesktopSession: true,
-      serviceManager: (clock) => createSchtasksServiceManager({ clock }),
-      residentBytes: win32ResidentBytes,
-      commandWall: win32Wall,
-      shellLauncher: (clock) => createWin32ShellLauncher(win32Wall, clock),
-      findBrowser: () => firstProgram(windowsBrowserPrograms(options.homeDir ?? homedir())),
-    };
+    return win32Platform(options, { stateFolder, keychain });
   }
   if (process.platform === "darwin" || process.platform === "linux") {
     const permissions = createPosixFilePermissions();
@@ -171,6 +198,7 @@ export function createPlatform(options: PlatformOptions = {}): Platform {
       shellLauncher: (clock) =>
         createPosixShellLauncher(posixWall, { loginShell: options.loginShell, clock }),
       findBrowser: () => firstProgram(posixBrowserPrograms(options)),
+      screenCapture: posixScreenCapture(options),
     };
   }
   throw new BinferenceError({
