@@ -41,7 +41,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the core row of config/package-graph.json for what it may import."
               },
               {
@@ -106,6 +106,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -228,7 +230,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the core row of config/package-graph.json for what it may import."
               },
               {
@@ -293,6 +295,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -435,7 +439,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the chain row of config/package-graph.json for what it may import."
               },
               {
@@ -500,6 +504,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -636,7 +642,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the chain row of config/package-graph.json for what it may import."
               },
               {
@@ -701,6 +707,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -846,7 +854,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the chain-evm row of config/package-graph.json for what it may import."
               },
               {
@@ -909,6 +917,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -1007,7 +1017,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the chain-evm row of config/package-graph.json for what it may import."
               },
               {
@@ -1070,6 +1080,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -1187,7 +1199,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the chain-evm row of config/package-graph.json for what it may import."
               },
               {
@@ -1250,6 +1262,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -1344,7 +1358,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the chain-evm row of config/package-graph.json for what it may import."
               },
               {
@@ -1407,6 +1421,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -1522,7 +1538,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chain-evm|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/chain-evm|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the chains row of config/package-graph.json for what it may import."
               },
               {
@@ -1587,6 +1603,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -1685,7 +1703,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chain-evm|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/chain-evm|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the chains row of config/package-graph.json for what it may import."
               },
               {
@@ -1750,6 +1768,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -1860,7 +1880,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the platform row of config/package-graph.json for what it may import."
               },
               {
@@ -1921,6 +1941,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -1991,7 +2013,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the platform row of config/package-graph.json for what it may import."
               },
               {
@@ -2052,6 +2074,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -2142,7 +2166,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the platform row of config/package-graph.json for what it may import."
               },
               {
@@ -2203,6 +2227,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -2270,7 +2296,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the platform row of config/package-graph.json for what it may import."
               },
               {
@@ -2331,6 +2357,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -2424,7 +2452,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/protocol|@binference\\/i18n|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/protocol|@binference\\/i18n|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the store row of config/package-graph.json for what it may import."
               },
               {
@@ -2485,6 +2513,8 @@
                   "openai/*",
                   "partial-json",
                   "partial-json/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -2567,7 +2597,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/protocol|@binference\\/i18n|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/protocol|@binference\\/i18n|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the store row of config/package-graph.json for what it may import."
               },
               {
@@ -2628,6 +2658,8 @@
                   "openai/*",
                   "partial-json",
                   "partial-json/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -2742,7 +2774,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the protocol row of config/package-graph.json for what it may import."
               },
               {
@@ -2807,6 +2839,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -2943,7 +2977,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the protocol row of config/package-graph.json for what it may import."
               },
               {
@@ -3008,6 +3042,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -3163,7 +3199,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the i18n row of config/package-graph.json for what it may import."
               },
               {
@@ -3226,6 +3262,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -3345,7 +3383,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the i18n row of config/package-graph.json for what it may import."
               },
               {
@@ -3408,6 +3446,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -3547,7 +3587,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the engine row of config/package-graph.json for what it may import."
               },
               {
@@ -3612,6 +3652,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -3748,7 +3790,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the engine row of config/package-graph.json for what it may import."
               },
               {
@@ -3813,6 +3855,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -3958,7 +4002,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the signer row of config/package-graph.json for what it may import."
               },
               {
@@ -4021,6 +4065,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -4121,7 +4167,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the signer row of config/package-graph.json for what it may import."
               },
               {
@@ -4184,6 +4230,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -4303,7 +4351,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the signer row of config/package-graph.json for what it may import."
               },
               {
@@ -4366,6 +4414,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -4462,7 +4512,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the signer row of config/package-graph.json for what it may import."
               },
               {
@@ -4525,6 +4575,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -4642,7 +4694,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chains|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/chains|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the custody-privy row of config/package-graph.json for what it may import."
               },
               {
@@ -4701,6 +4753,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -4805,7 +4859,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chains|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/chains|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the custody-privy row of config/package-graph.json for what it may import."
               },
               {
@@ -4864,6 +4918,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -4987,7 +5043,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chains|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/chains|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the custody-privy row of config/package-graph.json for what it may import."
               },
               {
@@ -5046,6 +5102,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -5146,7 +5204,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chains|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/chains|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the custody-privy row of config/package-graph.json for what it may import."
               },
               {
@@ -5205,6 +5263,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -5326,7 +5386,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chains|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/chains|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the custody-privy row of config/package-graph.json for what it may import."
               },
               {
@@ -5385,6 +5445,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -5481,7 +5543,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chains|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/chains|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the custody-privy row of config/package-graph.json for what it may import."
               },
               {
@@ -5540,6 +5602,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -5656,7 +5720,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/i18n|@binference\\/signer|@binference\\/custody-privy|@binference\\/telegram|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/i18n|@binference\\/signer|@binference\\/custody-privy|@binference\\/telegram|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the server row of config/package-graph.json for what it may import."
               },
               {
@@ -5721,6 +5785,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -5804,7 +5870,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/i18n|@binference\\/signer|@binference\\/custody-privy|@binference\\/telegram|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/i18n|@binference\\/signer|@binference\\/custody-privy|@binference\\/telegram|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the server row of config/package-graph.json for what it may import."
               },
               {
@@ -5869,6 +5935,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -5972,7 +6040,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/i18n|@binference\\/signer|@binference\\/custody-privy|@binference\\/telegram|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/i18n|@binference\\/signer|@binference\\/custody-privy|@binference\\/telegram|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the server row of config/package-graph.json for what it may import."
               },
               {
@@ -6037,6 +6105,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -6117,7 +6187,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/i18n|@binference\\/signer|@binference\\/custody-privy|@binference\\/telegram|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/i18n|@binference\\/signer|@binference\\/custody-privy|@binference\\/telegram|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the server row of config/package-graph.json for what it may import."
               },
               {
@@ -6182,6 +6252,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -6284,7 +6356,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host)(?:/|$)",
+                "regex": "^(?:@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/browser)(?:/|$)",
                 "message": "See the telegram row of config/package-graph.json for what it may import."
               },
               {
@@ -6347,6 +6419,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -6432,7 +6506,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host)(?:/|$)",
+                "regex": "^(?:@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/browser)(?:/|$)",
                 "message": "See the telegram row of config/package-graph.json for what it may import."
               },
               {
@@ -6495,6 +6569,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -6600,7 +6676,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the client row of config/package-graph.json for what it may import."
               },
               {
@@ -6665,6 +6741,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -6749,7 +6827,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the client row of config/package-graph.json for what it may import."
               },
               {
@@ -6814,6 +6892,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -6918,7 +6998,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text)(?:/|$)",
+                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/browser)(?:/|$)",
                 "message": "See the runtime row of config/package-graph.json for what it may import."
               },
               {
@@ -6977,6 +7057,8 @@
                   "lucide-react/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -7063,7 +7145,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text)(?:/|$)",
+                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/browser)(?:/|$)",
                 "message": "See the runtime row of config/package-graph.json for what it may import."
               },
               {
@@ -7122,6 +7204,8 @@
                   "lucide-react/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -7228,7 +7312,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text)(?:/|$)",
+                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/browser)(?:/|$)",
                 "message": "See the runtime row of config/package-graph.json for what it may import."
               },
               {
@@ -7287,6 +7371,8 @@
                   "lucide-react/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -7370,7 +7456,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text)(?:/|$)",
+                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/browser)(?:/|$)",
                 "message": "See the runtime row of config/package-graph.json for what it may import."
               },
               {
@@ -7429,6 +7515,8 @@
                   "lucide-react/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -7533,7 +7621,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text)(?:/|$)",
+                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/browser)(?:/|$)",
                 "message": "See the runtime row of config/package-graph.json for what it may import."
               },
               {
@@ -7592,6 +7680,8 @@
                   "lucide-react/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -7673,7 +7763,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text)(?:/|$)",
+                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/browser)(?:/|$)",
                 "message": "See the runtime row of config/package-graph.json for what it may import."
               },
               {
@@ -7732,6 +7822,8 @@
                   "lucide-react/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -7834,7 +7926,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/runtime|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr)(?:/|$)",
+                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/runtime|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/browser)(?:/|$)",
                 "message": "See the tui row of config/package-graph.json for what it may import."
               },
               {
@@ -7899,6 +7991,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -7982,7 +8076,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/runtime|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr)(?:/|$)",
+                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/runtime|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/browser)(?:/|$)",
                 "message": "See the tui row of config/package-graph.json for what it may import."
               },
               {
@@ -8047,6 +8141,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -8151,7 +8247,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/core|@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/runtime|@binference\\/tui|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr)(?:/|$)",
+                "regex": "^(?:@binference\\/core|@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/runtime|@binference\\/tui|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/browser)(?:/|$)",
                 "message": "See the console row of config/package-graph.json for what it may import."
               },
               {
@@ -8188,6 +8284,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "string-width",
                   "string-width/*",
                   "undici",
@@ -8268,7 +8366,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/core|@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/runtime|@binference\\/tui|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr)(?:/|$)",
+                "regex": "^(?:@binference\\/core|@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/runtime|@binference\\/tui|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/browser)(?:/|$)",
                 "message": "See the console row of config/package-graph.json for what it may import."
               },
               {
@@ -8305,6 +8403,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "string-width",
                   "string-width/*",
                   "undici",
@@ -8405,7 +8505,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/core|@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/runtime|@binference\\/tui|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr)(?:/|$)",
+                "regex": "^(?:@binference\\/core|@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/runtime|@binference\\/tui|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/browser)(?:/|$)",
                 "message": "See the console row of config/package-graph.json for what it may import."
               },
               {
@@ -8442,6 +8542,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "string-width",
                   "string-width/*",
                   "undici",
@@ -8519,7 +8621,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/core|@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/runtime|@binference\\/tui|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr)(?:/|$)",
+                "regex": "^(?:@binference\\/core|@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/runtime|@binference\\/tui|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/browser)(?:/|$)",
                 "message": "See the console row of config/package-graph.json for what it may import."
               },
               {
@@ -8556,6 +8658,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "string-width",
                   "string-width/*",
                   "undici",
@@ -8653,7 +8757,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/core|@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/core|@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the mcp row of config/package-graph.json for what it may import."
               },
               {
@@ -8714,6 +8818,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -8800,7 +8906,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/core|@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/core|@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the mcp row of config/package-graph.json for what it may import."
               },
               {
@@ -8861,6 +8967,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -8967,7 +9075,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/core|@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/core|@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the mcp row of config/package-graph.json for what it may import."
               },
               {
@@ -9028,6 +9136,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -9111,7 +9221,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/core|@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/core|@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the mcp row of config/package-graph.json for what it may import."
               },
               {
@@ -9172,6 +9282,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -9276,7 +9388,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the plugin-sdk row of config/package-graph.json for what it may import."
               },
               {
@@ -9341,6 +9453,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -9425,7 +9539,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the plugin-sdk row of config/package-graph.json for what it may import."
               },
               {
@@ -9490,6 +9604,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -9729,7 +9845,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the chain-solana row of config/package-graph.json for what it may import."
               },
               {
@@ -9792,6 +9908,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -9890,7 +10008,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the chain-solana row of config/package-graph.json for what it may import."
               },
               {
@@ -9953,6 +10071,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -10070,7 +10190,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|binference|@binference\\/chain-solana|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|binference|@binference\\/chain-solana|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the plugin-host row of config/package-graph.json for what it may import."
               },
               {
@@ -10135,6 +10255,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -10219,7 +10341,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|binference|@binference\\/chain-solana|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|binference|@binference\\/chain-solana|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the plugin-host row of config/package-graph.json for what it may import."
               },
               {
@@ -10284,6 +10406,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -10398,7 +10522,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/core|@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/core|@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the qr row of config/package-graph.json for what it may import."
               },
               {
@@ -10463,6 +10587,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -10585,7 +10711,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/core|@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/core|@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the qr row of config/package-graph.json for what it may import."
               },
               {
@@ -10650,6 +10776,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -10792,7 +10920,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/core|@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/core|@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the rich-text row of config/package-graph.json for what it may import."
               },
               {
@@ -10857,6 +10985,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -10979,7 +11109,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/core|@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/core|@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the rich-text row of config/package-graph.json for what it may import."
               },
               {
@@ -11044,6 +11174,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -11186,7 +11318,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/core|@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text)(?:/|$)",
+                "regex": "^(?:@binference\\/core|@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/browser)(?:/|$)",
                 "message": "See the chart row of config/package-graph.json for what it may import."
               },
               {
@@ -11251,6 +11383,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -11373,7 +11507,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/core|@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text)(?:/|$)",
+                "regex": "^(?:@binference\\/core|@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/browser)(?:/|$)",
                 "message": "See the chart row of config/package-graph.json for what it may import."
               },
               {
@@ -11438,6 +11572,8 @@
                   "partial-json/*",
                   "pg",
                   "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
                   "react",
                   "react/*",
                   "react-dom",
@@ -11540,6 +11676,320 @@
       }
     },
     {
+      "files": ["packages/browser/**"],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {"name": "node:vm", "message": "No node:vm outside the plugin sandbox."},
+              {
+                "name": "node:child_process",
+                "message": "Run child processes through execa with an argument array."
+              },
+              {
+                "name": "execa",
+                "importNames": ["execaCommand", "execaCommandSync", "$"],
+                "message": "Pass an argument array; no command strings."
+              },
+              {"name": "node:https", "message": "Outbound HTTP goes through the Http port."},
+              {"name": "undici", "message": "Outbound HTTP goes through the Http port."},
+              {"name": "node:http", "message": "Outbound HTTP goes through the Http port."},
+              {
+                "name": "node:os",
+                "importNames": ["platform", "type"],
+                "message": "Only the platform package branches on the OS."
+              },
+              {"name": "tslog", "message": "Log through the Logger port."}
+            ],
+            "patterns": [
+              {
+                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/store|@binference\\/i18n|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "message": "See the browser row of config/package-graph.json for what it may import."
+              },
+              {
+                "group": [
+                  "@anthropic-ai/sdk",
+                  "@anthropic-ai/sdk/*",
+                  "@base-ui/react",
+                  "@base-ui/react/*",
+                  "@fontsource-variable/hanken-grotesk",
+                  "@fontsource-variable/hanken-grotesk/*",
+                  "@hpke/chacha20poly1305",
+                  "@hpke/chacha20poly1305/*",
+                  "@hpke/core",
+                  "@hpke/core/*",
+                  "@modelcontextprotocol/client",
+                  "@modelcontextprotocol/client/*",
+                  "@modelcontextprotocol/server",
+                  "@modelcontextprotocol/server/*",
+                  "@napi-rs/keyring",
+                  "@napi-rs/keyring/*",
+                  "@noble/curves",
+                  "@noble/curves/*",
+                  "@playwright/test",
+                  "@playwright/test/*",
+                  "@privy-io/node",
+                  "@privy-io/node/*",
+                  "@solana/kit",
+                  "@solana/kit/*",
+                  "@tailwindcss/vite",
+                  "@tailwindcss/vite/*",
+                  "@tanstack/react-query",
+                  "@tanstack/react-query/*",
+                  "@tanstack/react-router",
+                  "@tanstack/react-router/*",
+                  "@testing-library/dom",
+                  "@testing-library/dom/*",
+                  "@testing-library/react",
+                  "@testing-library/react/*",
+                  "@vitejs/plugin-react",
+                  "@vitejs/plugin-react/*",
+                  "class-variance-authority",
+                  "class-variance-authority/*",
+                  "cn",
+                  "cn/*",
+                  "execa",
+                  "execa/*",
+                  "fake-indexeddb",
+                  "fake-indexeddb/*",
+                  "grammy",
+                  "grammy/*",
+                  "intl-messageformat",
+                  "intl-messageformat/*",
+                  "jsdom",
+                  "jsdom/*",
+                  "kysely",
+                  "kysely/*",
+                  "lucide-react",
+                  "lucide-react/*",
+                  "openai",
+                  "openai/*",
+                  "partial-json",
+                  "partial-json/*",
+                  "pg",
+                  "pg/*",
+                  "react",
+                  "react/*",
+                  "react-dom",
+                  "react-dom/*",
+                  "string-width",
+                  "string-width/*",
+                  "tailwindcss",
+                  "tailwindcss/*",
+                  "undici",
+                  "undici/*",
+                  "viem",
+                  "viem/*",
+                  "vite",
+                  "vite/*",
+                  "which-command",
+                  "which-command/*",
+                  "ws",
+                  "ws/*",
+                  "yaml",
+                  "yaml/*"
+                ],
+                "message": "See the browser row of config/package-graph.json for what it may import."
+              },
+              {
+                "regex": "^@binference/[^/]+/src/",
+                "message": "Import a package through its exports."
+              },
+              {
+                "regex": "^(?:\\.\\./){2,}",
+                "message": "Import another package by its name, not by a path."
+              }
+            ]
+          }
+        ],
+        "eslint/no-restricted-globals": [
+          "error",
+          {"name": "fetch", "message": "Outbound HTTP goes through the Http port."},
+          {"name": "Intl", "message": "Format for people in i18n, the one formatter."}
+        ],
+        "eslint/no-restricted-properties": [
+          "error",
+          {"object": "process", "property": "argv", "message": "Only the CLI reads arguments."},
+          {
+            "object": "process",
+            "property": "platform",
+            "message": "Only platform branches on the OS."
+          },
+          {"property": "toFixed", "message": "Format for people in i18n, the one formatter."},
+          {"property": "toLocaleString", "message": "Format for people in i18n, the one formatter."}
+        ],
+        "node/no-process-env": "error"
+      }
+    },
+    {
+      "files": ["packages/browser/**/*.test.ts"],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {"name": "node:vm", "message": "No node:vm outside the plugin sandbox."},
+              {
+                "name": "node:child_process",
+                "message": "Run child processes through execa with an argument array."
+              },
+              {
+                "name": "execa",
+                "importNames": ["execaCommand", "execaCommandSync", "$"],
+                "message": "Pass an argument array; no command strings."
+              },
+              {"name": "node:https", "message": "Outbound HTTP goes through the Http port."},
+              {"name": "undici", "message": "Outbound HTTP goes through the Http port."},
+              {"name": "node:http", "message": "Outbound HTTP goes through the Http port."},
+              {
+                "name": "node:os",
+                "importNames": ["platform", "type"],
+                "message": "Only the platform package branches on the OS."
+              },
+              {"name": "tslog", "message": "Log through the Logger port."}
+            ],
+            "patterns": [
+              {
+                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/store|@binference\\/i18n|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "message": "See the browser row of config/package-graph.json for what it may import."
+              },
+              {
+                "group": [
+                  "@anthropic-ai/sdk",
+                  "@anthropic-ai/sdk/*",
+                  "@base-ui/react",
+                  "@base-ui/react/*",
+                  "@fontsource-variable/hanken-grotesk",
+                  "@fontsource-variable/hanken-grotesk/*",
+                  "@hpke/chacha20poly1305",
+                  "@hpke/chacha20poly1305/*",
+                  "@hpke/core",
+                  "@hpke/core/*",
+                  "@modelcontextprotocol/client",
+                  "@modelcontextprotocol/client/*",
+                  "@modelcontextprotocol/server",
+                  "@modelcontextprotocol/server/*",
+                  "@napi-rs/keyring",
+                  "@napi-rs/keyring/*",
+                  "@noble/curves",
+                  "@noble/curves/*",
+                  "@playwright/test",
+                  "@playwright/test/*",
+                  "@privy-io/node",
+                  "@privy-io/node/*",
+                  "@solana/kit",
+                  "@solana/kit/*",
+                  "@tailwindcss/vite",
+                  "@tailwindcss/vite/*",
+                  "@tanstack/react-query",
+                  "@tanstack/react-query/*",
+                  "@tanstack/react-router",
+                  "@tanstack/react-router/*",
+                  "@testing-library/dom",
+                  "@testing-library/dom/*",
+                  "@testing-library/react",
+                  "@testing-library/react/*",
+                  "@vitejs/plugin-react",
+                  "@vitejs/plugin-react/*",
+                  "class-variance-authority",
+                  "class-variance-authority/*",
+                  "cn",
+                  "cn/*",
+                  "execa",
+                  "execa/*",
+                  "fake-indexeddb",
+                  "fake-indexeddb/*",
+                  "grammy",
+                  "grammy/*",
+                  "intl-messageformat",
+                  "intl-messageformat/*",
+                  "jsdom",
+                  "jsdom/*",
+                  "kysely",
+                  "kysely/*",
+                  "lucide-react",
+                  "lucide-react/*",
+                  "openai",
+                  "openai/*",
+                  "partial-json",
+                  "partial-json/*",
+                  "pg",
+                  "pg/*",
+                  "react",
+                  "react/*",
+                  "react-dom",
+                  "react-dom/*",
+                  "string-width",
+                  "string-width/*",
+                  "tailwindcss",
+                  "tailwindcss/*",
+                  "undici",
+                  "undici/*",
+                  "viem",
+                  "viem/*",
+                  "vite",
+                  "vite/*",
+                  "which-command",
+                  "which-command/*",
+                  "ws",
+                  "ws/*",
+                  "yaml",
+                  "yaml/*"
+                ],
+                "message": "See the browser row of config/package-graph.json for what it may import."
+              },
+              {
+                "regex": "^@binference/[^/]+/src/",
+                "message": "Import a package through its exports."
+              },
+              {
+                "regex": "^(?:\\.\\./){2,}",
+                "message": "Import another package by its name, not by a path."
+              }
+            ]
+          }
+        ],
+        "eslint/no-restricted-globals": [
+          "error",
+          {"name": "fetch", "message": "Outbound HTTP goes through the Http port."},
+          {"name": "Intl", "message": "Format for people in i18n, the one formatter."},
+          {
+            "name": "setTimeout",
+            "message": "Unit tests use a fake Clock: no real timers, sleeps or polling."
+          },
+          {
+            "name": "setInterval",
+            "message": "Unit tests use a fake Clock: no real timers, sleeps or polling."
+          }
+        ],
+        "eslint/no-restricted-properties": [
+          "error",
+          {"object": "process", "property": "argv", "message": "Only the CLI reads arguments."},
+          {
+            "object": "process",
+            "property": "platform",
+            "message": "Only platform branches on the OS."
+          },
+          {"property": "toFixed", "message": "Format for people in i18n, the one formatter."},
+          {"property": "toLocaleString", "message": "Format for people in i18n, the one formatter."},
+          {
+            "object": "expect",
+            "property": "poll",
+            "message": "Unit tests use a fake Clock: no real timers, sleeps or polling."
+          }
+        ],
+        "vitest/no-restricted-vi-methods": [
+          "error",
+          {
+            "useRealTimers": "Unit tests use a fake Clock: no real timers, sleeps or polling.",
+            "waitFor": "Unit tests use a fake Clock: no real timers, sleeps or polling.",
+            "waitUntil": "Unit tests use a fake Clock: no real timers, sleeps or polling."
+          }
+        ]
+      }
+    },
+    {
       "files": ["plugins/**"],
       "rules": {
         "eslint/no-restricted-imports": [
@@ -11570,7 +12020,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/core|@binference\\/chain|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/core|@binference\\/chain|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the plugins row of config/package-graph.json for what it may import."
               },
               {
@@ -11638,7 +12088,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/core|@binference\\/chain|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/core|@binference\\/chain|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the plugins row of config/package-graph.json for what it may import."
               },
               {
@@ -11726,7 +12176,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/core|@binference\\/chain|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/core|@binference\\/chain|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the plugins row of config/package-graph.json for what it may import."
               },
               {
@@ -11789,7 +12239,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/core|@binference\\/chain|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart)(?:/|$)",
+                "regex": "^(?:@binference\\/core|@binference\\/chain|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser)(?:/|$)",
                 "message": "See the plugins row of config/package-graph.json for what it may import."
               },
               {
@@ -11844,6 +12294,7 @@
     },
     {
       "files": [
+        "packages/browser/src/index.ts",
         "packages/chain-evm/src/fork.ts",
         "packages/chain-evm/src/index.ts",
         "packages/chain-evm/src/replay.ts",

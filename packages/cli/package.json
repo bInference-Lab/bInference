@@ -36,6 +36,7 @@
   "dependencies": {
     "@binference/across": "workspace:*",
     "@binference/brew": "workspace:*",
+    "@binference/browser": "workspace:*",
     "@binference/chain": "workspace:*",
     "@binference/chain-evm": "workspace:*",
     "@binference/chain-solana": "workspace:*",

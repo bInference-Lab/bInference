@@ -5,7 +5,7 @@ description: "Every config key in config.json5: what it takes, its default and i
 
 <!-- Generated from the code by pnpm docs:gen. Never edit this file: change the code, then run pnpm docs:gen. -->
 
-This binference reads `config.json5` version 20. Each config key is set in the file, by its variable, or by `--set <key>=<value>`, and a later layer wins. A secret is always a secret source, never the secret itself.
+This binference reads `config.json5` version 21. Each config key is set in the file, by its variable, or by `--set <key>=<value>`, and a later layer wins. A secret is always a secret source, never the secret itself.
 
 ## `version`
 
@@ -216,6 +216,16 @@ Where the agent's file tools reach.
 
 - `files.workspaceOnly`: true keeps the agent's file reads, writes and edits inside its workspace; false lets them reach any file but binference's own folder. Takes true or false. Default: `false`. Variable: `BINFERENCE_FILES__WORKSPACE_ONLY`.
 - `files.patchWorkspaceOnly`: true keeps the agent's patches inside its workspace; false lets them change any file but binference's own folder. Takes true or false. Default: `true`. Variable: `BINFERENCE_FILES__PATCH_WORKSPACE_ONLY`.
+
+## `browser`
+
+The agent's browser.
+
+- `browser.enabled`: Lets the agent drive a browser of its own on this machine, with its own profile in binference's folder. Takes true or false. Default: `true`. Variable: `BINFERENCE_BROWSER__ENABLED`.
+- `browser.headless`: true runs the agent's browser without a window; unset, it shows a window where this machine has a desktop. Takes true or false. Default: none. Variable: `BINFERENCE_BROWSER__HEADLESS`.
+- `browser.executablePath`: The program of the Chrome-family browser the agent drives; unset, Google Chrome, Microsoft Edge, Brave or Chromium as found on this machine. Takes an absolute path, or one that starts with ~/. Default: none. Variable: `BINFERENCE_BROWSER__EXECUTABLE_PATH`.
+- `browser.evaluate`: Lets the agent run scripts in the pages its browser opens. Takes true or false. Default: `true`. Variable: `BINFERENCE_BROWSER__EVALUATE`.
+- `browser.allowPrivateNetwork`: Lets the agent's browser open addresses on this machine and private networks; binference's own engine, console and folder stay refused. Takes true or false. Default: `false`. Variable: `BINFERENCE_BROWSER__ALLOW_PRIVATE_NETWORK`.
 
 ## `plugins`
 

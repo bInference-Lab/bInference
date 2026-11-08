@@ -204,6 +204,10 @@
     "chart": {
       "imports": ["protocol"],
       "pure": true
+    },
+    "browser": {
+      "imports": ["core", "protocol", "engine", "platform", "playwright-core"],
+      "fileSystem": true
     }
   },
   "plugins": {

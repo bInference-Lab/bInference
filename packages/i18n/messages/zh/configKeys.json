@@ -132,5 +132,11 @@
   "files": "Agent 的文件工具能访问的范围。",
   "files.workspaceOnly": "true 让 Agent 的文件读取、写入和编辑只在其工作区内；false 允许访问 binference 自己的文件夹以外的任何文件。",
   "files.patchWorkspaceOnly": "true 让 Agent 的补丁只在其工作区内；false 允许修改 binference 自己的文件夹以外的任何文件。",
+  "browser": "Agent 的浏览器。",
+  "browser.enabled": "让 Agent 在本机使用自己的浏览器，其配置文件保存在 binference 的文件夹中。",
+  "browser.headless": "true 让 Agent 的浏览器无窗口运行；未设置时，若本机有桌面则显示窗口。",
+  "browser.executablePath": "Agent 使用的 Chrome 系浏览器的程序；未设置时，使用本机找到的 Google Chrome、Microsoft Edge、Brave 或 Chromium。",
+  "browser.evaluate": "让 Agent 在其浏览器打开的页面中运行脚本。",
+  "browser.allowPrivateNetwork": "让 Agent 的浏览器打开本机和私有网络上的地址；binference 自己的引擎、控制台和文件夹仍被拒绝。",
   "models.imageMaking": "生成图片的模型：在 bInference 网关上，选它的图片模型之一；在 openai 服务商上，选支持 Images API 的模型。"
 }

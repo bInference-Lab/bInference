@@ -73,6 +73,9 @@ const keysReadOnUse: readonly string[] = [
   "shell",
   // Each file call reads where the file tools may reach as it starts.
   "files",
+  // Each browser call reads its switches as it starts; the program, the window and the proxy
+  // apply at the browser's next start.
+  "browser",
 ];
 
 // The keys spec 2 marks live that no part reads yet, so no running part holds an older value: the

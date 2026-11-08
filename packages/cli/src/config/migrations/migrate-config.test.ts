@@ -308,6 +308,16 @@ describe("migrate config", () => {
     });
   });
 
+  it("moves a version 20 file to version 21 unchanged, the agent's browser on", () => {
+    const twentieth: JsonObject = { version: 20, logging: { level: "debug" } };
+    const migrated = migrateConfig(twentieth, configMigrations.slice(0, 20));
+    expect(migrated).toMatchObject({
+      ok: true,
+      file: { version: 21, logging: { level: "debug" } },
+      steps: [{ from: 20, to: 21, edits: [] }],
+    });
+  });
+
   it("keeps the shipped migrations in order, one version each", () => {
     expect(() => {
       assertMigrationOrder(configMigrations);

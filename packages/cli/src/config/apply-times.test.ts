@@ -66,6 +66,8 @@ describe("when a config change applies", () => {
     ["plugins.example.colour", "blue", "now"],
     ["shell.run", "off", "now"],
     ["shell.timeoutSeconds", 60, "now"],
+    ["browser.enabled", false, "now"],
+    ["browser.headless", true, "now"],
     ["a.key.no.entry.covers", 1, "restart"],
   ])("judges %s set to %j as %s", (path, after, time) => {
     expect(applyTimeOf({ path, after }, started)).toBe(time);

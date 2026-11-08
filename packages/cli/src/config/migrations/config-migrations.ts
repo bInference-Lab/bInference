@@ -142,6 +142,14 @@ export const configMigrations: readonly ConfigMigration[] = [
       "none until the owner names one.",
     edits: () => [],
   },
+  {
+    from: 20,
+    summary:
+      "Adds browser, the agent's own browser on this machine: on (enabled true), scripts in pages " +
+      "allowed (evaluate true), addresses on this machine and private networks refused " +
+      "(allowPrivateNetwork false), a window where the machine has a desktop.",
+    edits: () => [],
+  },
 ];
 
 /** The version of `config.json5` this binference writes and reads. */

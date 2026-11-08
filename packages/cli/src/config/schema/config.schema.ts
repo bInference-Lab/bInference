@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { type BrowserConfig, browserSchema } from "./browser.schema.js";
 import {
   type ChainsConfig,
   chainsSchema,
@@ -77,6 +78,7 @@ export interface BinferenceConfig {
   readonly plugins: PluginsConfig;
   readonly shell: ShellConfig;
   readonly files: FilesConfig;
+  readonly browser: BrowserConfig;
 }
 
 /** What a cross-key rule adds to a zod issue, so it maps to a `required` problem. */
@@ -126,6 +128,7 @@ export const configSchema: z.ZodType<BinferenceConfig> = z
     cex: cexSchema,
     shell: shellSchema,
     files: filesSchema,
+    browser: browserSchema,
     plugins: pluginsSchema,
   })
   .superRefine(requireTogether)

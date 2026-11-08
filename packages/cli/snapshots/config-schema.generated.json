@@ -1,5 +1,5 @@
 {
-  "version": 20,
+  "version": 21,
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object",
@@ -1101,6 +1101,39 @@
           "patchWorkspaceOnly": {
             "description": "true keeps the agent's patches inside its workspace; false lets them change any file but binference's own folder.",
             "default": true,
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "browser": {
+        "description": "The agent's browser.",
+        "default": {},
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "description": "Lets the agent drive a browser of its own on this machine, with its own profile in binference's folder.",
+            "default": true,
+            "type": "boolean"
+          },
+          "headless": {
+            "description": "true runs the agent's browser without a window; unset, it shows a window where this machine has a desktop.",
+            "type": "boolean"
+          },
+          "executablePath": {
+            "description": "The program of the Chrome-family browser the agent drives; unset, Google Chrome, Microsoft Edge, Brave or Chromium as found on this machine.",
+            "type": "string",
+            "pattern": "^(?:~[/\\\\]|[/\\\\]|[A-Za-z]:[/\\\\])",
+            "valueFormat": "path"
+          },
+          "evaluate": {
+            "description": "Lets the agent run scripts in the pages its browser opens.",
+            "default": true,
+            "type": "boolean"
+          },
+          "allowPrivateNetwork": {
+            "description": "Lets the agent's browser open addresses on this machine and private networks; binference's own engine, console and folder stay refused.",
+            "default": false,
             "type": "boolean"
           }
         },

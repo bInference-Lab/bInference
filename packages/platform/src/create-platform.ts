@@ -1,6 +1,7 @@
 import { homedir } from "node:os";
 import { isAbsolute, join } from "node:path";
 import { BinferenceError, type Clock, type SecretStore } from "@binference/core";
+import { firstProgram } from "./browser-programs.js";
 import { walledPaths } from "./command-wall-paths.js";
 import { createKeychainSecretStore } from "./keychain/keychain-secret-store.js";
 import type {
@@ -14,6 +15,7 @@ import type {
 import { createLaunchdServiceManager } from "./posix/launchd-service-manager.js";
 import { createLinuxCommandWall } from "./posix/linux-command-wall.js";
 import { createMacosCommandWall } from "./posix/macos-command-wall.js";
+import { linuxBrowserPrograms, macBrowserPrograms } from "./posix/posix-browser-programs.js";
 import { createPosixFileAccess } from "./posix/posix-file-access.js";
 import { createPosixFilePermissions } from "./posix/posix-file-permissions.js";
 import { createPosixIpcEndpoint } from "./posix/posix-ipc-endpoint.js";
@@ -22,6 +24,7 @@ import { createPosixShellLauncher } from "./posix/posix-shell-launcher.js";
 import { createSystemdServiceManager } from "./posix/systemd-service-manager.js";
 import { resolveStateFolder, type StateFolder, type StateFolderOptions } from "./state-folder.js";
 import { createSchtasksServiceManager } from "./win32/schtasks-service-manager.js";
+import { windowsBrowserPrograms } from "./win32/win32-browser-programs.js";
 import { createWin32CommandWall } from "./win32/win32-command-wall.js";
 import { createWin32FileAccess } from "./win32/win32-file-access.js";
 import { createWin32FilePermissions } from "./win32/win32-file-permissions.js";
@@ -81,6 +84,12 @@ export interface Platform {
    * clock times each command's limit.
    */
   readonly shellLauncher: (clock: Clock) => ShellLauncher;
+  /**
+   * The program of a Chrome-family browser installed on this machine, the agent's browser
+   * (decision 0401): Google Chrome, Microsoft Edge, Brave, then Chromium, where this OS installs
+   * them; `undefined` when none is there.
+   */
+  readonly findBrowser: () => string | undefined;
 }
 
 type ServiceManagerOf = Platform["serviceManager"];
@@ -103,6 +112,13 @@ function posixServiceManager(
     "user",
   );
   return () => createSystemdServiceManager({ unitFolder, permissions });
+}
+
+// Where macOS or Linux installs a Chrome-family browser.
+function posixBrowserPrograms(options: PlatformOptions): readonly string[] {
+  return process.platform === "darwin"
+    ? macBrowserPrograms(options.homeDir ?? homedir())
+    : linuxBrowserPrograms;
 }
 
 function hasDisplay(options: PlatformOptions): boolean {
@@ -131,6 +147,7 @@ export function createPlatform(options: PlatformOptions = {}): Platform {
       residentBytes: win32ResidentBytes,
       commandWall: win32Wall,
       shellLauncher: (clock) => createWin32ShellLauncher(win32Wall, clock),
+      findBrowser: () => firstProgram(windowsBrowserPrograms(options.homeDir ?? homedir())),
     };
   }
   if (process.platform === "darwin" || process.platform === "linux") {
@@ -153,6 +170,7 @@ export function createPlatform(options: PlatformOptions = {}): Platform {
       commandWall: posixWall,
       shellLauncher: (clock) =>
         createPosixShellLauncher(posixWall, { loginShell: options.loginShell, clock }),
+      findBrowser: () => firstProgram(posixBrowserPrograms(options)),
     };
   }
   throw new BinferenceError({

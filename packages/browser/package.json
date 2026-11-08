@@ -1,0 +1,29 @@
+{
+  "name": "@binference/browser",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The agent browser on the owner machine, a Chrome-family browser driven through Playwright with every request checked first.",
+  "license": "MIT",
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "@binference/source": "./src/index.ts",
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    }
+  },
+  "scripts": {
+    "build": "tsdown src/index.ts --format esm --dts --tsconfig tsconfig.json"
+  },
+  "dependencies": {
+    "@binference/core": "workspace:*",
+    "@binference/engine": "workspace:*",
+    "@binference/platform": "workspace:*",
+    "@binference/protocol": "workspace:*",
+    "playwright-core": "catalog:",
+    "zod": "catalog:"
+  }
+}

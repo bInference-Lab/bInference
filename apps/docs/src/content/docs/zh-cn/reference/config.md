@@ -5,7 +5,7 @@ description: "config.json5 中的每个配置项：取值、默认值和环境�
 
 <!-- Generated from the code by pnpm docs:gen. Never edit this file: change the code, then run pnpm docs:gen. -->
 
-此版本的 binference 读取第 20 版的 `config.json5`。每个配置项可以在文件中、通过对应的变量或用 `--set <key>=<value>` 设置，后面的层优先。密钥始终写成密钥来源，从不写密钥本身。
+此版本的 binference 读取第 21 版的 `config.json5`。每个配置项可以在文件中、通过对应的变量或用 `--set <key>=<value>` 设置，后面的层优先。密钥始终写成密钥来源，从不写密钥本身。
 
 ## `version`
 
@@ -216,6 +216,16 @@ Agent 的文件工具能访问的范围。
 
 - `files.workspaceOnly`: true 让 Agent 的文件读取、写入和编辑只在其工作区内；false 允许访问 binference 自己的文件夹以外的任何文件。取值：true 或 false。默认：`false`。变量：`BINFERENCE_FILES__WORKSPACE_ONLY`。
 - `files.patchWorkspaceOnly`: true 让 Agent 的补丁只在其工作区内；false 允许修改 binference 自己的文件夹以外的任何文件。取值：true 或 false。默认：`true`。变量：`BINFERENCE_FILES__PATCH_WORKSPACE_ONLY`。
+
+## `browser`
+
+Agent 的浏览器。
+
+- `browser.enabled`: 让 Agent 在本机使用自己的浏览器，其配置文件保存在 binference 的文件夹中。取值：true 或 false。默认：`true`。变量：`BINFERENCE_BROWSER__ENABLED`。
+- `browser.headless`: true 让 Agent 的浏览器无窗口运行；未设置时，若本机有桌面则显示窗口。取值：true 或 false。默认：无。变量：`BINFERENCE_BROWSER__HEADLESS`。
+- `browser.executablePath`: Agent 使用的 Chrome 系浏览器的程序；未设置时，使用本机找到的 Google Chrome、Microsoft Edge、Brave 或 Chromium。取值：绝对路径，或以 ~/ 开头的路径。默认：无。变量：`BINFERENCE_BROWSER__EXECUTABLE_PATH`。
+- `browser.evaluate`: 让 Agent 在其浏览器打开的页面中运行脚本。取值：true 或 false。默认：`true`。变量：`BINFERENCE_BROWSER__EVALUATE`。
+- `browser.allowPrivateNetwork`: 让 Agent 的浏览器打开本机和私有网络上的地址；binference 自己的引擎、控制台和文件夹仍被拒绝。取值：true 或 false。默认：`false`。变量：`BINFERENCE_BROWSER__ALLOW_PRIVATE_NETWORK`。
 
 ## `plugins`
 
