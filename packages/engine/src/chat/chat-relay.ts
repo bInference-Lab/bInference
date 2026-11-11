@@ -9,6 +9,10 @@ import {
   createCredentialStoreHandlers,
 } from "../credentials/credential-store-handlers.js";
 import { createPdfHandlers, type PdfHandlers } from "../documents/pdf-handlers.js";
+import {
+  createHttpRequestHandlers,
+  type HttpRequestHandlers,
+} from "../http-requests/http-request-handlers.js";
 import type { EngineHandler } from "../operations/engine-call.js";
 import { createScreenHandlers, type ScreenHandlers } from "../screen/screen-handlers.js";
 import type { AgentInboxMessage } from "./agent-inbox-record.js";
@@ -39,6 +43,7 @@ export interface ChatHandlers
     BrowserHandlers,
     ScreenHandlers,
     PdfHandlers,
+    HttpRequestHandlers,
     HelperEndHandlers,
     GoalTurnHandlers {}
 
@@ -144,6 +149,16 @@ function pdfHandlersOf(options: ChatRelayOptions): PdfHandlers {
   });
 }
 
+// `http/request`, the agent's API calls with the owner's stored credentials.
+function httpRequestHandlersOf(options: ChatRelayOptions): HttpRequestHandlers {
+  const { turns, clock, requests } = options;
+  return createHttpRequestHandlers({
+    turns,
+    clock,
+    ...(requests === undefined ? {} : { requests }),
+  });
+}
+
 // The owner's chat handlers, whose stop also stops the agent's shell commands once it landed.
 function ownerChatOf(options: ChatRelayOptions): OwnerChatHandlers {
   const owner = createOwnerChatHandlers(options);
@@ -185,6 +200,7 @@ export function createChatRelay(options: ChatRelayOptions): ChatRelay {
       ...browserHandlersOf(options),
       ...screenHandlersOf(options),
       ...pdfHandlersOf(options),
+      ...httpRequestHandlersOf(options),
       ...createHelperEndHandlers(options),
       ...createGoalTurnHandlers(options),
       ...createCredentialRequestHandlers(options),

@@ -84,6 +84,22 @@ describe("markRuntimeTurns", () => {
     expect(written).toStrictEqual({ ok: false, error: "agent.file_untrusted" });
   });
 
+  it("gives the agent's API call its turn's mark, whatever the caller claims", async () => {
+    const seen: EngineCaller[] = [];
+    const request: EngineHandler<"http/request"> = async (call) => {
+      seen.push(call.caller);
+      return Promise.resolve(err("request.unavailable"));
+    };
+    const turns = createRunningTurns();
+    turns.startRuntime(token);
+    turns.start({ agent: testAgent, turn, hasOutsideContent: true });
+    const wrapped = markRuntimeTurns({ "http/request": request }, turns)["http/request"];
+    const claiming = { ...runtimeCaller(token), turn: { hasOutsideContent: false } };
+    const args = { agent: testAgent, method: "GET", url: "https://api.example.com/" } as const;
+    await wrapped?.(testCall(args, claiming));
+    expect(seen.map((caller) => caller.turn)).toStrictEqual([{ hasOutsideContent: true }]);
+  });
+
   it("leaves every other handler as it was", async () => {
     const test = await startTestEngine();
     const handlers = markRuntimeTurns(test.engine.handlers, createRunningTurns());

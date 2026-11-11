@@ -1,11 +1,12 @@
 import type { CredentialEntry, CredentialPut, RevealedCredential } from "./credential-record.js";
 
 /**
- * The credentials the owner stores for the agents (decisions 0388 and 0390). A value is written
- * only by the owner and is never listed; only `reveal` reads one back, and only the composition
- * root calls it, for a config key that names the credential; a removed credential is gone from every read at once, and `purge`
- * drops it with its value 30 days later. Storing the name again brings it back. Its SQLite
- * adapter is in `@binference/store`.
+ * The credentials the owner stores for the agents (decisions 0388, 0390 and 0411). A value is
+ * written only by the owner and is never listed; only `reveal` reads one back, and only the
+ * composition root calls it, for a config key that names the credential, or hands it to the
+ * agent's API calls, which put the value in one request; a removed credential is gone from every
+ * read at once, and `purge` drops it with its value 30 days later. Storing the name again brings
+ * it back. Its SQLite adapter is in `@binference/store`.
  */
 export interface CredentialStore {
   /** Every stored credential, by name, its value aside. */

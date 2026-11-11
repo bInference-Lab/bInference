@@ -6,6 +6,7 @@ import type { CredentialStore } from "../credentials/ports.js";
 import type { PdfReader } from "../documents/ports.js";
 import type { EngineFiles } from "../files/file-handlers.js";
 import type { MachineFiles } from "../files/ports.js";
+import type { EngineRequests } from "../http-requests/engine-requests.js";
 import type { AgentStore } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import type { ScreenCapture } from "../screen/ports.js";
@@ -49,6 +50,8 @@ export interface ChatRelayOptions {
   readonly pdfReader?: PdfReader;
   /** The owner's credentials (decision 0388); without them, a request is refused. */
   readonly credentials?: CredentialStore;
+  /** The agent's API calls (decision 0411); without them `http/request` is refused. */
+  readonly requests?: EngineRequests;
   /**
    * Whether a community plugin is on and offers the agent tools, whose words reach every turn:
    * each turn then starts marked as outside content (decision 0350).

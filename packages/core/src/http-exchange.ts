@@ -1,5 +1,5 @@
 /** The HTTP methods binference sends. */
-export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+export type HttpMethod = "GET" | "HEAD" | "POST" | "PUT" | "PATCH" | "DELETE";
 
 /** One outbound HTTP request. */
 export interface HttpRequest {

@@ -1,5 +1,6 @@
 export type { CommandEnd, CommandRequest, RunningCommand } from "./shell/command-request.js";
 export type { EngineShell } from "./shell/engine-shell.js";
+export type { EngineRequests } from "./http-requests/engine-requests.js";
 export { maskShellOutput } from "./shell/mask-output.js";
 export type { CommandRunner, ShellStore } from "./shell/ports.js";
 export {

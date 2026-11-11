@@ -4,6 +4,7 @@ import type { ShellStopper } from "@binference/protocol";
 import type { EngineBrowser } from "../browse/browser-handlers.js";
 import type { PdfReader } from "../documents/ports.js";
 import { createFileHandlers, type EngineFiles, type FileHandlers } from "../files/file-handlers.js";
+import type { EngineRequests } from "../http-requests/engine-requests.js";
 import { createNameHandlers, type NameHandlers } from "../names/name-handlers.js";
 import type { ConfigJournal } from "../ports.js";
 import type { ScreenCapture } from "../screen/ports.js";
@@ -36,6 +37,8 @@ export interface EngineShell {
   readonly voice?: LocalVoice;
   /** The owner's screen (decision 0406); without it the agent cannot look at it. */
   readonly screen?: ScreenCapture;
+  /** The agent's API calls (decision 0411); without them `http/request` is refused. */
+  readonly requests?: EngineRequests;
 }
 
 /** Every handler of the agent's shell and of the owner's answers to it. */

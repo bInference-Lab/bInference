@@ -274,6 +274,12 @@ Rules for this package:
   wall clock rules (`summary-due.ts`); its facts (`summary-facts.ts`) keep live and paper apart and
   read the holdings as `portfolio/get` does; `daily-notice.ts` draws the notice and judges an idle
   agent, which gets none. Nothing there reaches an intent, an order or the agent inbox.
+- The agent's API calls (`src/http-requests/`, decision 0411): `request-plan.ts` decides before
+  anything is sent, from the URL, the stand-ins, the caller's turn mark and each credential's
+  hosts; a refusal is an answer of kind `refused`, a refused address `request.address_refused`.
+  A value is read only through the `reveal` the composition root hands in, lives in memory for the
+  one request, and is masked back out of the answer (`answer-view.ts`); a failure is answered by
+  its code alone, and the log line names the method, the host, the status or code and the time.
 - Names (`src/names/`, decision 0306): `name/resolve` asks the `NameResolver` whose suffix the
   name ends with, every call, and maps its answer to the protocol's codes; a resolver that rejects
   is `name.resolver_down`. `recheckName` (exported from `@binference/engine/sends`) is the second

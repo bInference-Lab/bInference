@@ -100,18 +100,18 @@ function budgetsOf(options: EngineOptions): {
   return { billing, budget: budgetOf(options, billing) };
 }
 
-// The parts of the agent's chat its shell gives.
-type ShellSide = "madeImageFiles" | "sentFiles" | "browser" | "pdfReader" | "localVoice" | "screen";
+// The parts of the agent's chat its shell gives: its senses of the machine, and the rest.
+type MachineSense = "localVoice" | "screen" | "requests";
+type ShellSide = "madeImageFiles" | "sentFiles" | "browser" | "pdfReader" | MachineSense;
 
-// The machine's own voice and the owner's screen, when the shell gives them.
-function machineSenseOf(
-  shell: EngineOptions["shell"],
-): Pick<ChatRelayOptions, "localVoice" | "screen"> {
+// The machine's own voice, the owner's screen and the API calls, when the shell gives them.
+function machineSenseOf(shell: EngineOptions["shell"]): Pick<ChatRelayOptions, MachineSense> {
   const localVoice = shell?.voice;
   const screen = shell?.screen;
   return {
     ...(localVoice === undefined ? {} : { localVoice }),
     ...(screen === undefined ? {} : { screen }),
+    ...(shell?.requests === undefined ? {} : { requests: shell.requests }),
   };
 }
 
