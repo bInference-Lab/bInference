@@ -5,7 +5,7 @@ description: "Every config key in config.json5: what it takes, its default and i
 
 <!-- Generated from the code by pnpm docs:gen. Never edit this file: change the code, then run pnpm docs:gen. -->
 
-This binference reads `config.json5` version 22. Each config key is set in the file, by its variable, or by `--set <key>=<value>`, and a later layer wins. A secret is always a secret source, never the secret itself.
+This binference reads `config.json5` version 23. Each config key is set in the file, by its variable, or by `--set <key>=<value>`, and a later layer wins. A secret is always a secret source, never the secret itself.
 
 ## `version`
 
@@ -209,8 +209,11 @@ Centralized exchanges.
 
 The agent's shell.
 
-- `shell.run`: any lets the agent run commands on this machine, away from binference's own folder; off runs none. Takes one of "off", "any". Default: `"any"`. Variable: `BINFERENCE_SHELL__RUN`.
+- `shell.run`: any lets the agent run commands on this machine, away from binference's own folder; listed runs only the commands you allowed always; off runs none. Takes one of "off", "listed", "any". Default: `"any"`. Variable: `BINFERENCE_SHELL__RUN`.
+- `shell.ask`: When a command waits for your Allow once, Always allow or Refuse: never, for each command not allowed always (unlisted), or for every command (always). Takes one of "never", "unlisted", "always". Default: `"never"`. Variable: `BINFERENCE_SHELL__ASK`.
+- `shell.onNoAnswer`: What a shell request you leave 10 minutes unanswered does: refuse runs nothing, listed runs it only when it is allowed by then, any runs it; never more than shell.run allows. Takes one of "refuse", "listed", "any". Default: `"refuse"`. Variable: `BINFERENCE_SHELL__ON_NO_ANSWER`.
 - `shell.timeoutSeconds`: A command's time limit in seconds when the agent names none; 0 for none. Takes a number from 0 to 86400. Default: `1800`. Variable: `BINFERENCE_SHELL__TIMEOUT_SECONDS`.
+- `shell.tellOnQuietEnd`: true also wakes the agent when a command it left running ends with exit code 0 and printed nothing new; false leaves such an end quiet. Takes true or false. Default: `false`. Variable: `BINFERENCE_SHELL__TELL_ON_QUIET_END`.
 
 ## `files`
 

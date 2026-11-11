@@ -22,3 +22,9 @@ export interface RunningCommand {
   /** Ends it with every process it started. Safe to call more than once. */
   stop(): void;
 }
+
+/** The real paths of a command line's folder and of each of its programs, in order. */
+export interface LocatedPrograms {
+  readonly folder: string;
+  readonly programs: readonly (string | undefined)[];
+}

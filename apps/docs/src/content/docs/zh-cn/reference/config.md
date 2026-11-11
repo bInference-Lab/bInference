@@ -5,7 +5,7 @@ description: "config.json5 中的每个配置项：取值、默认值和环境�
 
 <!-- Generated from the code by pnpm docs:gen. Never edit this file: change the code, then run pnpm docs:gen. -->
 
-此版本的 binference 读取第 22 版的 `config.json5`。每个配置项可以在文件中、通过对应的变量或用 `--set <key>=<value>` 设置，后面的层优先。密钥始终写成密钥来源，从不写密钥本身。
+此版本的 binference 读取第 23 版的 `config.json5`。每个配置项可以在文件中、通过对应的变量或用 `--set <key>=<value>` 设置，后面的层优先。密钥始终写成密钥来源，从不写密钥本身。
 
 ## `version`
 
@@ -209,8 +209,11 @@ description: "config.json5 中的每个配置项：取值、默认值和环境�
 
 Agent 的命令行。
 
-- `shell.run`: any 让 Agent 在本机运行命令，不触及 binference 自己的文件夹；off 不运行任何命令。取值：以下之一："off", "any"。默认：`"any"`。变量：`BINFERENCE_SHELL__RUN`。
+- `shell.run`: any 让 Agent 在本机运行命令，不触及 binference 自己的文件夹；listed 只运行你始终允许的命令；off 不运行任何命令。取值：以下之一："off", "listed", "any"。默认：`"any"`。变量：`BINFERENCE_SHELL__RUN`。
+- `shell.ask`: 命令何时先等你选择允许一次、始终允许或拒绝：never 从不询问，unlisted 询问每条未被始终允许的命令，always 询问每条命令。取值：以下之一："never", "unlisted", "always"。默认：`"never"`。变量：`BINFERENCE_SHELL__ASK`。
+- `shell.onNoAnswer`: 命令请求 10 分钟未回答时的处理：refuse 拒绝运行，listed 仅在届时已被允许时运行，any 直接运行；不会超出 shell.run 允许的范围。取值：以下之一："refuse", "listed", "any"。默认：`"refuse"`。变量：`BINFERENCE_SHELL__ON_NO_ANSWER`。
 - `shell.timeoutSeconds`: Agent 未指定时，一条命令的时限（秒）；0 表示不限。取值：0 到 86400 之间的数字。默认：`1800`。变量：`BINFERENCE_SHELL__TIMEOUT_SECONDS`。
+- `shell.tellOnQuietEnd`: true 时，Agent 留在后台运行的命令以退出码 0 结束且没有新输出时也会唤醒 Agent；false 时此类结束不唤醒。取值：true 或 false。默认：`false`。变量：`BINFERENCE_SHELL__TELL_ON_QUIET_END`。
 
 ## `files`
 

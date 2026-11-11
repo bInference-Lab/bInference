@@ -112,6 +112,8 @@ function failingOwnerKeyCalls(code: string): readonly object[] {
   return ownerKeyOperations.map(() => [{ t: "fail", error: { code } }]);
 }
 
+const shellRequest = "shq_0190f1c2-3a4b-7c5d-8e6f-000000000001";
+
 function call(op: string, args: object, key?: string): CallFrame {
   return { t: "call", id: "c1", op, args, ...(key === undefined ? {} : { key }) };
 }
@@ -152,6 +154,20 @@ describe("createCallDispatch", () => {
       frame: call("skill/accept", { agent, skill: "dip-buyer", hash: "a".repeat(64) }, "k"),
       scopes: ["read", "propose", "agent"],
       transport: "ipc",
+      code: "auth.scope",
+    },
+    {
+      name: "the agent runtime answering a shell request",
+      frame: call("shell/answer", { request: shellRequest, answer: "always" }, "k"),
+      scopes: ["read", "propose", "agent"],
+      transport: "ipc",
+      code: "auth.scope",
+    },
+    {
+      name: "an MCP client answering a shell request",
+      frame: call("shell/answer", { request: shellRequest, answer: "once" }, "k"),
+      scopes: ["read", "propose"],
+      transport: "ws",
       code: "auth.scope",
     },
     {

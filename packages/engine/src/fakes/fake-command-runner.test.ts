@@ -9,9 +9,12 @@ describe("the fake command runner", () => {
         Promise.resolve({
           runner: createFakeCommandRunner({
             script: { "say hello": { kind: "ends", output: "hello\n", exitCode: 0 } },
+            missing: ["no-such-program-anywhere"],
           }),
           folder: "/home/owner",
+          realFolder: "/home/owner",
           printsHello: "say hello",
+          program: { name: "git", path: "/usr/bin/git" },
         }),
     }),
   )("follows the contract: $name", async ({ run }) => {

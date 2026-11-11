@@ -51,6 +51,9 @@ const expected: Readonly<Record<string, string>> = {
   "notice.scheduleSet":
     "main 有新的定时任务，来自 Telegram，下次运行时间 2026年10月11日 09:30:00：Review my portfolio.",
   "notice.scheduleCancelled": "main 的定时任务已由 Agent 自己取消：Review my portfolio.",
+  "notice.shellAllowed":
+    "现已允许 2 条命令（来自 Telegram），目录 /srv/project：git log -1; head -n 3",
+  "notice.shellDisallowed": "一条允许的命令已被移除（来自命令行）：git status（目录 /srv/project）",
   "notice.loop": "main 重复执行同一步骤，已停止",
   "notice.watcherLag": `${warning} BNB Smart Chain 的价格读取落后链上 14 个区块，自动订单可能延迟成交。请在 config.json5 的 \`chains.rpc\` 中添加付费 RPC，或检查本机网络。`,
   "notice.watcherUnpriced": `${warning} BNB Smart Chain 的价格监控无法获取 2 个监控中代币的价格（首个为 0x9F3c…41aB），在价格恢复之前，这些代币的自动订单无法触发。价格来自发射台联合曲线，或可交易至少 $1,000 WBNB 或稳定币的 PancakeSwap 交易池。`,

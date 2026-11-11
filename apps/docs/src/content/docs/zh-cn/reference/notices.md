@@ -727,6 +727,22 @@ main 的技能“dip-buyer”已从 console 按其当前文件接受，从 Agent
 main 的钱包不会跨链到你在 Base 上的紧急转出地址 0x9F3c…41aB：它在那里或在本链上有合约代码，因此那里的同一地址可能不属于你。要跨链到那里，请用你的所有者密钥在地址簿中保存一个你在 Base 上控制的地址。
 ```
 
+## `shellAllowed`
+
+级别：信息。可静音：否。
+
+```text
+现已允许 2 条命令（来自 Telegram），目录 /srv/project：git log -1; head -n 3
+```
+
+## `shellDisallowed`
+
+级别：信息。可静音：否。
+
+```text
+一条允许的命令已被移除（来自命令行）：git status（目录 /srv/project）
+```
+
 ## `identityMismatch`
 
 级别：警告。可静音：否。

@@ -1,5 +1,5 @@
 import type { Result } from "@binference/core";
-import type { CommandRequest, RunningCommand } from "./command-request.js";
+import type { CommandRequest, LocatedPrograms, RunningCommand } from "./command-request.js";
 import type { AllowedCommandRecord, ShellWatchRecord } from "./shell-records.js";
 
 /**
@@ -48,4 +48,18 @@ export interface CommandRunner {
   ): Result<RunningCommand, "no_wall" | "folder_missing">;
   /** The text with seed phrases and private key blocks masked, before the model reads it. */
   mask(text: string): string;
+  /**
+   * The shell commands start in: a POSIX shell, or PowerShell, whose lines no allowed command
+   * covers (decision 0409).
+   */
+  readonly dialect: "posix" | "powershell";
+  /**
+   * Where a command line would run, as the allowed commands judge it: the real path of its folder,
+   * `folder_missing` when it does not exist, and the real path of each program, a word with a `/`
+   * from that folder and any other on the command's `PATH`, `undefined` for one it cannot find.
+   */
+  locate(
+    where: { readonly folder?: string; readonly programs: readonly string[] },
+    options: { readonly signal: AbortSignal },
+  ): Promise<Result<LocatedPrograms, "folder_missing">>;
 }

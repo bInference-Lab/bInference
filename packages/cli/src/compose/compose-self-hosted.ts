@@ -59,6 +59,8 @@ export interface ComposedSelfHosted extends TimedWork {
   readonly repairPaperFills: Engine["repairPaperFills"];
   /** Ends the paper fills a stop left unfinished and tells the notices it kept back. */
   readonly repairOrderFills: Engine["repairOrderFills"];
+  /** Tells each agent of a command it left running that the stop lost (decision 0409). */
+  readonly tellLostShellJobs: Engine["tellLostShellJobs"];
   /** Takes the confirmed intents the lock held; logs a failure and never rejects. */
   readonly resume: (signal: AbortSignal) => Promise<void>;
   /** The call that `engine/stop` makes once the shutdown sequence exists. */
@@ -342,6 +344,7 @@ export function composeSelfHosted(opening: Opening, opened: Opened): ComposedSel
     ...timedWorkOf(engine),
     repairPaperFills: engine.repairPaperFills,
     repairOrderFills: engine.repairOrderFills,
+    tellLostShellJobs: engine.tellLostShellJobs,
     resume,
     stopper,
     state,

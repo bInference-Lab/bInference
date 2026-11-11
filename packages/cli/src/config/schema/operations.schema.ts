@@ -58,11 +58,17 @@ export interface CexConfig {
   readonly binance: { readonly enabled: boolean };
 }
 
-/** The agent's shell (decision 0378): whether it runs commands, and a command's time limit. */
+/**
+ * The agent's shell (decisions 0378 and 0409): what it runs, when a command asks the owner first,
+ * what an unanswered request does, a command's time limit, and whether a quiet end wakes the agent.
+ */
 export interface ShellConfig {
-  readonly run: "off" | "any";
+  readonly run: "off" | "listed" | "any";
+  readonly ask: "never" | "unlisted" | "always";
+  readonly onNoAnswer: "refuse" | "listed" | "any";
   /** A command's time limit in seconds when the agent names none; 0 for none. */
   readonly timeoutSeconds: number;
+  readonly tellOnQuietEnd: boolean;
 }
 
 /** Where the agent's file tools reach (decision 0386); binference's own folder never. */
@@ -197,11 +203,25 @@ export const cexSchema: z.ZodType<CexConfig> = z
 export const shellSchema: z.ZodType<ShellConfig> = z
   .strictObject({
     run: z
-      .enum(["off", "any"])
+      .enum(["off", "listed", "any"])
       .prefault("any")
       .describe(
         "any lets the agent run commands on this machine, away from binference's own folder; " +
-          "off runs none.",
+          "listed runs only the commands you allowed always; off runs none.",
+      ),
+    ask: z
+      .enum(["never", "unlisted", "always"])
+      .prefault("never")
+      .describe(
+        "When a command waits for your Allow once, Always allow or Refuse: never, for each " +
+          "command not allowed always (unlisted), or for every command (always).",
+      ),
+    onNoAnswer: z
+      .enum(["refuse", "listed", "any"])
+      .prefault("refuse")
+      .describe(
+        "What a shell request you leave 10 minutes unanswered does: refuse runs nothing, listed " +
+          "runs it only when it is allowed by then, any runs it; never more than shell.run allows.",
       ),
     timeoutSeconds: z
       .int()
@@ -209,6 +229,13 @@ export const shellSchema: z.ZodType<ShellConfig> = z
       .max(86_400)
       .prefault(1_800)
       .describe("A command's time limit in seconds when the agent names none; 0 for none."),
+    tellOnQuietEnd: z
+      .boolean()
+      .prefault(false)
+      .describe(
+        "true also wakes the agent when a command it left running ends with exit code 0 and " +
+          "printed nothing new; false leaves such an end quiet.",
+      ),
   })
   .prefault({})
   .describe("The agent's shell.");

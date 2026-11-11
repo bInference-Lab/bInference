@@ -310,6 +310,10 @@ description: "引擎协议的每个操作：调用所需的权限范围、操作
 | --- | --- | --- | --- | --- |
 | `shell/run` | `agent` | 读取 | 任何连接 | 引擎 |
 | `shell/job` | `agent` | 读取 | 任何连接 | 引擎 |
+| `shell/answer` | `confirm` | 写入 | 任何连接 | 引擎 |
+| `shell/requests` | `read` | 读取 | 任何连接 | 引擎 |
+| `shell/allowed` | `read` | 读取 | 任何连接 | 引擎 |
+| `shell/disallow` | `confirm` | 写入 | 任何连接 | 引擎 |
 
 ## `browser`
 

@@ -1,4 +1,4 @@
-import type { Clock, IdSource, Random } from "@binference/core";
+import type { Clock, Id, IdSource, Random } from "@binference/core";
 import type { ProtocolId, PushTopic } from "@binference/protocol";
 import type { ModelBudget } from "../billing/model-budget.js";
 import type { EngineBrowser } from "../browse/browser-handlers.js";
@@ -54,6 +54,11 @@ export interface ChatRelayOptions {
    * each turn then starts marked as outside content (decision 0350).
    */
   readonly communityPluginsOn?: () => boolean;
+  /**
+   * Hears the owner's stop of an agent's chat and a freeze, of one agent or, with none named, of
+   * every agent, once it landed: the agent's shell stops its commands then (decision 0409).
+   */
+  readonly onStop?: (agent: Id<"agt"> | undefined, by: "owner" | "freeze") => void;
 }
 
 /** The topic of one agent's chat. */

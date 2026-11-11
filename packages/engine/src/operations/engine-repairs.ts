@@ -7,6 +7,7 @@ import { repairOrderFills } from "../orders/repair-order-fills.js";
 import type { ResumeFence } from "../orders/resume-fence.js";
 import type { PaperParts } from "../paper/paper-parts.js";
 import { repairPaperFills } from "../paper/repair-paper-fills.js";
+import type { ShellPart } from "../shell/engine-shell.js";
 import { repairRuleFills } from "../webhooks/repair-rule-fills.js";
 import type { Engine, EngineOptions } from "./create-engine.js";
 import { downtimeOf } from "./engine-downtime.js";
@@ -57,8 +58,8 @@ function orderRepairOf(
 }
 
 /**
- * The engine's work the startup runs first, the repairs of what a stop left, and the downtime
- * re-check after each stop and sleep (decision 0266).
+ * The engine's work the startup runs first, the repairs of what a stop left with the commands it
+ * lost, and the downtime re-check after each stop and sleep (decision 0266).
  */
 export function startupWorkOf(
   options: EngineOptions,
@@ -68,10 +69,13 @@ export function startupWorkOf(
     readonly paper: PaperParts;
     readonly check: DowntimeCheck;
     readonly relay: Pick<ChatRelay, "reportResume">;
+    /** The agent's shell, which tells each agent of a command the stop lost (decision 0409). */
+    readonly shell: Pick<ShellPart, "tellLost">;
   },
-): Pick<Engine, "repairPaperFills" | "repairOrderFills" | "downtime"> {
-  const { stored, fills, paper, check, relay } = parts;
+): Pick<Engine, "repairPaperFills" | "repairOrderFills" | "tellLostShellJobs" | "downtime"> {
+  const { stored, fills, paper, check, relay, shell } = parts;
   return {
+    tellLostShellJobs: async (call) => shell.tellLost(call),
     repairPaperFills: paperRepairOf(options, { stored, paper }),
     repairOrderFills: orderRepairOf(options, { stored, fills, fence: check }),
     downtime: downtimeOf(options, { check, relay }),

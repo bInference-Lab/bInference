@@ -144,6 +144,21 @@ function pdfHandlersOf(options: ChatRelayOptions): PdfHandlers {
   });
 }
 
+// The owner's chat handlers, whose stop also stops the agent's shell commands once it landed.
+function ownerChatOf(options: ChatRelayOptions): OwnerChatHandlers {
+  const owner = createOwnerChatHandlers(options);
+  return {
+    ...owner,
+    "chat/stop": async (call) => {
+      const stopped = await owner["chat/stop"](call);
+      if (stopped.ok) {
+        options.onStop?.(call.args.agent, "owner");
+      }
+      return stopped;
+    },
+  };
+}
+
 /** Creates the {@link ChatRelay} over the agent inbox, the agents and the running turns. */
 export function createChatRelay(options: ChatRelayOptions): ChatRelay {
   const stopFrozen = async (agent: Id<"agt"> | undefined, signal: AbortSignal) => {
@@ -156,7 +171,7 @@ export function createChatRelay(options: ChatRelayOptions): ChatRelay {
   };
   return {
     handlers: {
-      ...createOwnerChatHandlers(options),
+      ...ownerChatOf(options),
       ...createRuntimeChatHandlers(options),
       ...imageHandlersOf(options),
       ...createViewImageHandlers({
@@ -184,6 +199,7 @@ export function createChatRelay(options: ChatRelayOptions): ChatRelay {
     freezing: (freeze) => async (call) => {
       const frozen = await freeze(call);
       if (frozen.ok) {
+        options.onStop?.(call.args.agent, "freeze");
         await stopFrozen(call.args.agent, call.signal);
       }
       return frozen;

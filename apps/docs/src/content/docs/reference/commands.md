@@ -432,6 +432,50 @@ Arguments:
 
 - `<name>`: The credential's name, such as DUNE_API_KEY. Required.
 
+## `binference shell`
+
+Answer the agent's shell requests, and keep the commands it may run without asking.
+
+### `binference shell requests`
+
+List the agent's commands that wait for your answer.
+
+### `binference shell allow`
+
+Let a shell request's command run once, or always with --always.
+
+Arguments:
+
+- `<request>`: The request's ID, such as shq_…, from binference shell requests. Required.
+
+Options:
+
+- `--always`: Keep the command allowed, so it runs without asking next time in that folder.
+
+### `binference shell refuse`
+
+Refuse a shell request's command; it does not run.
+
+Arguments:
+
+- `<request>`: The request's ID, such as shq_…, from binference shell requests. Required.
+
+### `binference shell allowed`
+
+List and remove the commands you allowed always.
+
+#### `binference shell allowed list`
+
+List the commands you allowed always, with the folder each runs in.
+
+#### `binference shell allowed remove`
+
+Remove a command you allowed always; it asks again next time.
+
+Arguments:
+
+- `<allowed>`: The allowed command's ID, such as sac_…, from binference shell allowed list. Required.
+
 ## `binference plugin`
 
 Add, list, enable, disable and remove community plugins.

@@ -1,5 +1,5 @@
 import { BinferenceError, type Clock, type Id, type IdSource, type Logger } from "@binference/core";
-import type { ResultOf } from "@binference/protocol";
+import type { ResultOf, ShellStopper } from "@binference/protocol";
 import type { CommandEnd, RunningCommand } from "./command-request.js";
 
 type ShellJobView = ResultOf<"shell/run">;
@@ -26,21 +26,48 @@ interface ShellJob {
   readonly read: number;
   readonly end?: CommandEnd;
   readonly endedAt?: number;
+  readonly stoppedBy?: ShellStopper;
+  /** A call answered that it runs on, so its end is told (decision 0409). */
+  readonly leftRunning: boolean;
+  /** The calls that wait for its end now, which read the end themselves. */
+  readonly waiters: number;
 }
 
-/** What the jobs read the clock, new ids and the log through, and how they mask output. */
+/**
+ * A job's end as the jobs hand it on (decision 0409): the job, how it ended, whether a call left it
+ * running, whether its end is to be told, and the output no answer gave yet, masked.
+ */
+export interface EndedJob {
+  readonly id: Id<"shj">;
+  readonly agent: string;
+  readonly command: string;
+  readonly folder: string;
+  readonly startedAt: number;
+  readonly endedAt: number;
+  readonly end: CommandEnd;
+  readonly stoppedBy?: ShellStopper;
+  readonly leftRunning: boolean;
+  /** Left running, ended with no stop, and no call waits to read the end itself. */
+  readonly tell: boolean;
+  readonly unread: string;
+}
+
+/** What the jobs read the clock, new ids and the log through, how they mask output, and who hears an end. */
 export interface ShellJobsParts {
   readonly clock: Clock;
   readonly ids: IdSource;
   readonly logger?: Logger;
   readonly mask: (text: string) => string;
+  readonly ended?: (job: EndedJob) => void;
 }
 
-/** A started command to keep: its agent, its text, and the command itself. */
+/** A started command to keep: its agent, its text, the command itself, and the id it was given. */
 interface StartedCommand {
   readonly agent: string;
   readonly command: string;
   readonly running: RunningCommand;
+  /** The id a shell request gave it before it started (decision 0409). */
+  readonly id?: Id<"shj">;
 }
 
 /** The agent's commands the engine keeps in memory (decision 0378); none outlives a restart. */
@@ -53,20 +80,35 @@ export interface ShellJobs {
   print(id: Id<"shj">, text: string): void;
   /** The job's view with the output printed since its last view. */
   view(id: Id<"shj">): ShellJobView;
+  /** Marks a job a call answered as still running, so its end is told. */
+  leave(id: Id<"shj">): void;
+  /** Counts a call waiting for the job's end, until the answer it returns is released. */
+  hold(id: Id<"shj">): () => void;
+  /** Stops a job, recording who stopped it first. */
+  stop(id: Id<"shj">, by: ShellStopper): void;
+  /** Stops every running job of an agent, or of every agent, and answers how many. */
+  stopAgent(agent: string | undefined, by: ShellStopper): number;
 }
 
 function endFields(job: ShellJob): Partial<ShellJobView> {
-  const { end, endedAt } = job;
+  const { end, endedAt, stoppedBy } = job;
   return {
     ...(endedAt === undefined ? {} : { endedAt }),
     ...(end?.exitCode === undefined ? {} : { exitCode: end.exitCode }),
     ...(end?.signal === undefined ? {} : { signal: end.signal }),
+    ...(stoppedBy === undefined ? {} : { stoppedBy }),
   };
 }
 
-function viewOf(job: ShellJob, mask: (text: string) => string): ShellJobView {
+// The output no view gave yet, as far as the job still keeps it.
+function unreadOf(job: ShellJob): { readonly text: string; readonly cut: boolean } {
   const keptFrom = job.printed - job.kept.length;
   const from = Math.max(job.read, keptFrom);
+  return { text: job.kept.slice(from - keptFrom), cut: keptFrom > job.read };
+}
+
+function viewOf(job: ShellJob, mask: (text: string) => string): ShellJobView {
+  const unread = unreadOf(job);
   return {
     job: job.id,
     status: job.end === undefined ? "running" : "ended",
@@ -76,8 +118,8 @@ function viewOf(job: ShellJob, mask: (text: string) => string): ShellJobView {
     ...endFields(job),
     timedOut: job.end?.timedOut ?? false,
     stopped: job.end?.stopped ?? false,
-    output: mask(job.kept.slice(from - keptFrom)),
-    outputCut: keptFrom > job.read,
+    output: mask(unread.text),
+    outputCut: unread.cut,
   };
 }
 
@@ -90,7 +132,29 @@ function droppable(jobs: ReadonlyMap<string, ShellJob>, now: number): readonly s
   return [...stale, ...over].map((job) => job.id);
 }
 
-// Records a job's end when its command ends, and logs it without its text or output.
+function endedOf(job: ShellJob, parts: ShellJobsParts): EndedJob {
+  const { id, agent, command, folder, startedAt, stoppedBy, leftRunning } = job;
+  const end = job.end ?? { timedOut: false, stopped: false };
+  const endedAt = job.endedAt ?? job.startedAt;
+  const tell = leftRunning && stoppedBy === undefined && job.waiters === 0;
+  const unread = parts.mask(unreadOf(job).text);
+  const stop = stoppedBy === undefined ? {} : { stoppedBy };
+  return {
+    id,
+    agent,
+    command,
+    folder,
+    startedAt,
+    endedAt,
+    end,
+    ...stop,
+    leftRunning,
+    tell,
+    unread,
+  };
+}
+
+// Records a job's end when its command ends, logs it without its text or output, and hands it on.
 function watchEnd(jobs: Map<string, ShellJob>, parts: ShellJobsParts, id: string): void {
   const ended = (end: CommandEnd): void => {
     const job = jobs.get(id);
@@ -98,9 +162,11 @@ function watchEnd(jobs: Map<string, ShellJob>, parts: ShellJobsParts, id: string
       return;
     }
     const endedAt = parts.clock.now();
-    jobs.set(id, { ...job, end, endedAt });
+    const done = { ...job, end, endedAt };
+    jobs.set(id, done);
     const durationMs = endedAt - job.startedAt;
     parts.logger?.info("shell.ended", { agentId: job.agent, sourceId: id, durationMs });
+    parts.ended?.(endedOf(done, parts));
   };
   jobs.get(id)?.running.ended.then(ended, () => {
     ended({ timedOut: false, stopped: false });
@@ -112,7 +178,7 @@ function addJob(jobs: Map<string, ShellJob>, parts: ShellJobsParts, started: Sta
   for (const id of droppable(jobs, parts.clock.now())) {
     jobs.delete(id);
   }
-  const id = parts.ids.next("shj");
+  const id = started.id ?? parts.ids.next("shj");
   const { agent, command, running } = started;
   jobs.set(id, {
     id,
@@ -124,9 +190,27 @@ function addJob(jobs: Map<string, ShellJob>, parts: ShellJobsParts, started: Sta
     kept: "",
     printed: 0,
     read: 0,
+    leftRunning: false,
+    waiters: 0,
   });
   watchEnd(jobs, parts, id);
   return id;
+}
+
+// Changes a kept job with `change`; a job no longer kept is left alone.
+function update(jobs: Map<string, ShellJob>, id: string, change: (job: ShellJob) => ShellJob) {
+  const job = jobs.get(id);
+  if (job !== undefined) {
+    jobs.set(id, change(job));
+  }
+}
+
+function stopJob(jobs: Map<string, ShellJob>, id: string, by: ShellStopper): void {
+  const job = jobs.get(id);
+  if (job?.end === undefined) {
+    update(jobs, id, (each) => ({ ...each, stoppedBy: each.stoppedBy ?? by }));
+  }
+  job?.running.stop();
 }
 
 /** Creates the in-memory jobs of the agent's commands. */
@@ -139,11 +223,11 @@ export function createShellJobs(parts: ShellJobsParts): ShellJobs {
       return job?.agent === agent ? job.running : undefined;
     },
     print(id, text) {
-      const job = jobs.get(id);
-      if (job !== undefined) {
-        const printed = job.printed + text.length;
-        jobs.set(id, { ...job, printed, kept: (job.kept + text).slice(-keptOutputChars) });
-      }
+      update(jobs, id, (job) => ({
+        ...job,
+        printed: job.printed + text.length,
+        kept: (job.kept + text).slice(-keptOutputChars),
+      }));
     },
     view(id) {
       const job = jobs.get(id);
@@ -152,6 +236,27 @@ export function createShellJobs(parts: ShellJobsParts): ShellJobs {
       }
       jobs.set(id, { ...job, read: job.printed });
       return viewOf(job, parts.mask);
+    },
+    leave(id) {
+      update(jobs, id, (job) => ({ ...job, leftRunning: job.end === undefined }));
+    },
+    hold(id) {
+      update(jobs, id, (job) => ({ ...job, waiters: job.waiters + 1 }));
+      return () => {
+        update(jobs, id, (job) => ({ ...job, waiters: Math.max(0, job.waiters - 1) }));
+      };
+    },
+    stop: (id, by) => {
+      stopJob(jobs, id, by);
+    },
+    stopAgent(agent, by) {
+      const mine = [...jobs.values()].filter(
+        (job) => (agent === undefined || job.agent === agent) && job.end === undefined,
+      );
+      mine.forEach((job) => {
+        stopJob(jobs, job.id, by);
+      });
+      return mine.length;
     },
   };
 }

@@ -1,5 +1,5 @@
 import { homedir } from "node:os";
-import { isAbsolute, join } from "node:path";
+import { isAbsolute, join, resolve } from "node:path";
 import { err, ok } from "@binference/core";
 import {
   type CommandEnd,
@@ -12,6 +12,7 @@ import { createPdfReader } from "@binference/pdf";
 import {
   findProgram,
   isFolder,
+  realPathOf,
   runCommandWithin,
   type ShellEnd,
   type ShellLauncher,
@@ -34,6 +35,8 @@ export interface ShellParts {
   readonly homeDir?: string;
   /** The config as it is now: the shell's settings and the variables its secrets come from. */
   readonly config: () => BinferenceConfig;
+  /** The shell commands start in: PowerShell on Windows, a POSIX shell elsewhere. */
+  readonly dialect?: "posix" | "powershell";
 }
 
 const recoveryWords: ReadonlySet<string> = new Set(english);
@@ -64,6 +67,21 @@ function folderOf(requested: string | undefined, home: string): string | undefin
   const folder = wanted === "" || wanted === "~" ? home : wanted.replace(/^~\//u, `${home}/`);
   const path = isAbsolute(folder) ? folder : join(home, folder);
   return isFolder(path) ? path : undefined;
+}
+
+// The real path of a program a command line names: a path from the folder, else found on the
+// command's PATH; `undefined` for one that is not there.
+async function programPath(
+  name: string,
+  where: { readonly folder: string; readonly env: Readonly<Record<string, string>> },
+  signal: AbortSignal,
+): Promise<string | undefined> {
+  if (name === "") {
+    return undefined;
+  }
+  const wanted = /[\\/]/u.test(name) ? resolve(where.folder, name) : name;
+  const found = await findProgram(wanted, where.env);
+  return found === undefined ? undefined : realPathOf(found, signal);
 }
 
 function commandEndOf(end: ShellEnd): CommandEnd {
@@ -107,6 +125,19 @@ export function commandRunnerOf(parts: ShellParts): CommandRunner {
       });
     },
     mask: (text) => maskShellOutput(text, recoveryWords),
+    dialect: parts.dialect ?? "posix",
+    locate: async (where, { signal }) => {
+      const folder = folderOf(where.folder, home);
+      const real = folder === undefined ? undefined : await realPathOf(folder, signal);
+      if (real === undefined) {
+        return err("folder_missing");
+      }
+      const at = { folder: real, env: commandEnv(parts) };
+      const programs = await Promise.all(
+        where.programs.map(async (name) => programPath(name, at, signal)),
+      );
+      return ok({ folder: real, programs });
+    },
   };
 }
 
@@ -128,6 +159,7 @@ export function shellOf(opening: Opening, opened: Opened): EngineShell {
     env: host.env,
     ...(host.homeDir === undefined ? {} : { homeDir: host.homeDir }),
     config,
+    dialect: host.system.os === "win32" ? "powershell" : "posix",
   });
   return {
     runner,

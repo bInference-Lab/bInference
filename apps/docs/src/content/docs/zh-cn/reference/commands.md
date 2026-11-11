@@ -432,6 +432,50 @@ description: "binference 的每个命令及其参数和选项。"
 
 - `<name>`: 凭据名称，例如 API 密钥的名称 DUNE_API_KEY。必填。
 
+## `binference shell`
+
+回答 Agent 的命令请求，并保存它无需询问即可运行的命令。
+
+### `binference shell requests`
+
+列出等待你回答的 Agent 命令。
+
+### `binference shell allow`
+
+允许命令请求中的命令运行一次，加 --always 则始终允许。
+
+参数：
+
+- `<request>`: 命令请求的 ID，例如 shq_…，可用 binference shell requests 查看。必填。
+
+选项：
+
+- `--always`: 保存为允许的命令，下次在该目录中无需询问即可运行。
+
+### `binference shell refuse`
+
+拒绝命令请求中的命令，它不会运行。
+
+参数：
+
+- `<request>`: 命令请求的 ID，例如 shq_…，可用 binference shell requests 查看。必填。
+
+### `binference shell allowed`
+
+列出并移除你始终允许的命令。
+
+#### `binference shell allowed list`
+
+列出你始终允许的命令及各自运行的目录。
+
+#### `binference shell allowed remove`
+
+移除一条始终允许的命令，下次会重新询问。
+
+参数：
+
+- `<allowed>`: 允许的命令的 ID，例如 sac_…，可用 binference shell allowed list 查看。必填。
+
 ## `binference plugin`
 
 添加、列出、启用、停用和移除社区插件。

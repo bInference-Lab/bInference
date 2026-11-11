@@ -35,6 +35,12 @@ import { runRescueCancel, runRescueSet } from "../commands/rescue-command.js";
 import { runReset } from "../commands/reset-command.js";
 import { runFreeze, runRescue, runSafetyStatus, runUnfreeze } from "../commands/safety-command.js";
 import { runServiceRemove } from "../commands/service-remove-command.js";
+import {
+  runShellAllowedList,
+  runShellAllowedRemove,
+  runShellAnswer,
+  runShellRequests,
+} from "../commands/shell-command.js";
 import { runSignerRevoke } from "../commands/signer-revoke-command.js";
 import { runSkillAccept, runSkillApply } from "../commands/skill-apply-command.js";
 import { runSkillProposals, runSkillReject, runSkillShow } from "../commands/skill-command.js";
@@ -174,6 +180,10 @@ const runners: { readonly [N in ChosenCommand["name"]]: Runner<N> } = {
   skillApply: runSkillApply,
   skillReject: runSkillReject,
   skillAccept: runSkillAccept,
+  shellRequests: async (context) => runShellRequests(context),
+  shellAnswer: runShellAnswer,
+  shellAllowedList: async (context) => runShellAllowedList(context),
+  shellAllowedRemove: runShellAllowedRemove,
   webhookList: async (context) => runWebhookList(context),
   webhookCreate: async (context, chosen) => runWebhookCreate(context, chosen.options),
   webhookEvents: runWebhookEvents,

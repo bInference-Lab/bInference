@@ -2,6 +2,7 @@ import type { ProtocolId } from "@binference/protocol";
 import { bridgeNoticeTable } from "./bridge-notice-table.js";
 import { dailyNothingElse, noticeTableAtMs, noticeTableParts } from "./notice-table-parts.js";
 import { orderNoticeTable } from "./order-notice-table.js";
+import { shellNoticeTable } from "./shell-notice-table.js";
 import { skillNoticeTable } from "./skill-notice-table.js";
 import { stakeNoticeTable } from "./stake-notice-table.js";
 import type { WrittenNotice } from "./write-notice.js";
@@ -241,6 +242,7 @@ export const noticeTable: Readonly<Record<string, TableNotice>> = {
   ...stakeNoticeTable,
   ...skillNoticeTable,
   ...bridgeNoticeTable,
+  ...shellNoticeTable,
   "notice.identityMismatch": { key: "notice.identityMismatch", values: agent },
   "notice.identityDuplicate": { key: "notice.identityDuplicate", values: agent },
   "notice.launchStopped": {

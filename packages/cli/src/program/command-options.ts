@@ -2,9 +2,16 @@ import { type ProtocolId, protocolIdSchema } from "@binference/protocol";
 import { type Command, InvalidArgumentError, Option } from "commander";
 
 /** An id of the protocol's kind, or a command line commander refuses with one message. */
-export function idOf<K extends "agent" | "intent" | "wallet" | "addressBook" | "webhookRule">(
-  kind: K,
-): (value: string) => ProtocolId<K> {
+export function idOf<
+  K extends
+    | "agent"
+    | "intent"
+    | "wallet"
+    | "addressBook"
+    | "webhookRule"
+    | "shellRequest"
+    | "allowedCommand",
+>(kind: K): (value: string) => ProtocolId<K> {
   return (value: string): ProtocolId<K> => {
     const parsed = protocolIdSchema(kind).safeParse(value);
     if (!parsed.success) {

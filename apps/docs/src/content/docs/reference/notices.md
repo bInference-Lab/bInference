@@ -727,6 +727,22 @@ Level: info. Can be muted: no.
 Bridges from main's wallets do not pay your rescue address 0x9F3c…41aB on Base: it holds code there or on its own chain, so the same address there may not be yours. To bridge there, save an address you control on Base in the address book with your owner key.
 ```
 
+## `shellAllowed`
+
+Level: info. Can be muted: no.
+
+```text
+2 commands are now allowed from Telegram, in /srv/project: git log -1; head -n 3
+```
+
+## `shellDisallowed`
+
+Level: info. Can be muted: no.
+
+```text
+A command is no longer allowed, removed from the CLI: git status in /srv/project
+```
+
 ## `identityMismatch`
 
 Level: warning. Can be muted: no.

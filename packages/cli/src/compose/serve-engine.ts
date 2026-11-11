@@ -66,11 +66,13 @@ function startReadTimers(
   startPruneTimer({ pruneRecords: composed.pruneRecords, ...timers });
 }
 
-// What a stop left: the positions of paper fills, the rows of order fills and the launches' pins.
+// What a stop left: the positions of paper fills, the rows of order fills, the launches' pins and
+// the agent's commands it lost.
 async function repairAfterStop(composed: ComposedSelfHosted, signal: AbortSignal): Promise<void> {
   await composed.repairPaperFills({ signal });
   await composed.repairOrderFills({ signal });
   await composed.checkPins({ signal, isRepair: true });
+  await composed.tellLostShellJobs({ signal });
 }
 
 // What the owner hears once the engine serves: that it is locked, but while `binference update`

@@ -17,7 +17,12 @@ import type { ModelBilling } from "../ports.js";
 import { createSafetyHandlers, type SafetyHandlers } from "../safety/safety-handlers.js";
 import { createScheduleQueue, type ScheduleQueue } from "../schedules/run-schedules.js";
 import { createScheduleHandlers, type ScheduleHandlers } from "../schedules/schedule-handlers.js";
-import { machineHandlersOf } from "../shell/engine-shell.js";
+import {
+  createShellPart,
+  machineHandlersOf,
+  type ShellPart,
+  type ShellPartHandlers,
+} from "../shell/engine-shell.js";
 import { ownerImagesOf } from "../uploads/owner-images.js";
 import { createUploadHandlers, type UploadHandlers } from "../uploads/upload-handlers.js";
 import { createUploadShelf } from "../uploads/upload-shelf.js";
@@ -41,7 +46,8 @@ export interface EngineChatHandlers
     AlertHandlers,
     ActivityHandlers,
     LaunchHandlers,
-    LaunchpadHandlers {}
+    LaunchpadHandlers,
+    ShellPartHandlers {}
 
 /**
  * The engine's chat relay, whose settle pushes carry each intent's view as `intent/get` gives it,
@@ -57,6 +63,8 @@ export interface EngineChat {
   /** Hears each settle message the stored intents wrote, and each schedule's or alert's wake-up. */
   readonly settled: (message: AgentInboxMessage) => void;
   readonly attach: (stored: StoredIntents) => void;
+  /** The agent's shell, whose commands the owner's stop and a freeze stop (decision 0409). */
+  readonly shell: ShellPart;
 }
 
 // The owner's uploads, and every image the runtime reads: the uploads and the bot's photos.
@@ -139,13 +147,19 @@ function agentSideOf(
   };
 }
 
-/** Creates the engine's {@link EngineChat}, whose turns spend each agent's model budget. */
-export function engineChatOf(options: EngineOptions): EngineChat {
+// What the chat relay reads, writes and pushes through: settle pushes read each intent's view
+// through the stored intents once they are attached.
+function relayOptionsOf(
+  options: EngineOptions,
+  parts: {
+    readonly budget: ModelBudget;
+    readonly images: ReturnType<typeof imagesOf>["images"];
+    readonly late: { readonly stored?: StoredIntents };
+  },
+): ChatRelayOptions {
   const { stores, chains } = options;
-  const { billing, budget } = budgetsOf(options);
-  const late: { stored?: StoredIntents } = {};
-  const { uploads, images } = imagesOf(options);
-  const relay = createChatRelay({
+  const { budget, images, late } = parts;
+  return {
     agentInbox: stores.agentInbox,
     questions: stores.questions,
     agents: stores.agents,
@@ -164,6 +178,27 @@ export function engineChatOf(options: EngineOptions): EngineChat {
     images,
     ...agentSideOf(options),
     credentials: stores.credentials,
+  };
+}
+
+/** Creates the engine's {@link EngineChat}, whose turns spend each agent's model budget. */
+export function engineChatOf(options: EngineOptions): EngineChat {
+  const { stores } = options;
+  const { billing, budget } = budgetsOf(options);
+  const late: { stored?: StoredIntents } = {};
+  const { uploads, images } = imagesOf(options);
+  const relayOptions = relayOptionsOf(options, { budget, images, late });
+  const shell = createShellPart({
+    ...(options.shell === undefined ? {} : { shell: options.shell }),
+    store: stores.shell,
+    journal: stores.configJournal,
+    wakeParts: relayOptions,
+  });
+  const relay = createChatRelay({
+    ...relayOptions,
+    onStop: (agent, by) => {
+      shell.stop(agent, by);
+    },
   });
   const settled = (message: AgentInboxMessage): void => {
     relay.settled(message);
@@ -181,8 +216,10 @@ export function engineChatOf(options: EngineOptions): EngineChat {
       ...schedules.handlers,
       ...alertHandlersOf(options),
       ...watchedHandlersOf(options),
+      ...shell.handlers,
     },
     settled,
+    shell,
     attach: (stored) => {
       late.stored = stored;
     },

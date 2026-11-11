@@ -52,6 +52,10 @@ const expected: Readonly<Record<string, string>> = {
   "notice.scheduleSet":
     "New schedule for main, set from Telegram, next run Oct 11, 2026, 09:30:00: Review my portfolio.",
   "notice.scheduleCancelled": "Schedule of main cancelled by the agent: Review my portfolio.",
+  "notice.shellAllowed":
+    "2 commands are now allowed from Telegram, in /srv/project: git log -1; head -n 3",
+  "notice.shellDisallowed":
+    "A command is no longer allowed, removed from the CLI: git status in /srv/project",
   "notice.loop": "main repeated the same step and was stopped",
   "notice.watcherLag": `${warning} Prices on BNB Smart Chain are read 14 blocks behind the chain, so auto orders may fill late. Add a paid RPC under \`chains.rpc\` in config.json5, or check this machine's network.`,
   "notice.watcherUnpriced": `${warning} Price watching on BNB Smart Chain has no price for 2 watched tokens, 0x9F3c…41aB first, so their auto orders cannot trigger until a price returns. A price comes from a launchpad curve, or a PancakeSwap pool that trades at least $1,000 of WBNB or a stablecoin.`,

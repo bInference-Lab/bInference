@@ -158,6 +158,14 @@ export const configMigrations: readonly ConfigMigration[] = [
       "makes no video and speaks not at all until the owner names them.",
     edits: () => [],
   },
+  {
+    from: 22,
+    summary:
+      "Adds shell.run's listed, shell.ask, when a command asks the owner first (never), " +
+      "shell.onNoAnswer, what an unanswered request does (refuse), and shell.tellOnQuietEnd " +
+      "(false): every command runs as before.",
+    edits: () => [],
+  },
 ];
 
 /** The version of `config.json5` this binference writes and reads. */

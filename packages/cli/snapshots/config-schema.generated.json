@@ -1,5 +1,5 @@
 {
-  "version": 22,
+  "version": 23,
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object",
@@ -1090,11 +1090,32 @@
         "type": "object",
         "properties": {
           "run": {
-            "description": "any lets the agent run commands on this machine, away from binference's own folder; off runs none.",
+            "description": "any lets the agent run commands on this machine, away from binference's own folder; listed runs only the commands you allowed always; off runs none.",
             "default": "any",
             "type": "string",
             "enum": [
               "off",
+              "listed",
+              "any"
+            ]
+          },
+          "ask": {
+            "description": "When a command waits for your Allow once, Always allow or Refuse: never, for each command not allowed always (unlisted), or for every command (always).",
+            "default": "never",
+            "type": "string",
+            "enum": [
+              "never",
+              "unlisted",
+              "always"
+            ]
+          },
+          "onNoAnswer": {
+            "description": "What a shell request you leave 10 minutes unanswered does: refuse runs nothing, listed runs it only when it is allowed by then, any runs it; never more than shell.run allows.",
+            "default": "refuse",
+            "type": "string",
+            "enum": [
+              "refuse",
+              "listed",
               "any"
             ]
           },
@@ -1104,6 +1125,11 @@
             "type": "integer",
             "minimum": 0,
             "maximum": 86400
+          },
+          "tellOnQuietEnd": {
+            "description": "true also wakes the agent when a command it left running ends with exit code 0 and printed nothing new; false leaves such an end quiet.",
+            "default": false,
+            "type": "boolean"
           }
         },
         "additionalProperties": false

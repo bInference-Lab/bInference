@@ -184,6 +184,8 @@ export interface TestEngineOptions {
   readonly identity?: EngineOptions["identity"];
   /** The config file a confirmed config change writes; none, so none is served, when absent. */
   readonly configChanges?: EngineOptions["configChanges"];
+  /** The agent's shell on this machine; off when absent. */
+  readonly shell?: EngineOptions["shell"];
 }
 
 /** An engine on memory stores and the fake chain, with what a test reads and drives. */

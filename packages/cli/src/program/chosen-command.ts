@@ -1,5 +1,5 @@
 import type { MessageValues } from "@binference/i18n";
-import type { ProtocolId } from "@binference/protocol";
+import type { ProtocolId, ShellAnswer } from "@binference/protocol";
 import type {
   AddressAddFlags,
   AgentIdentityFlags,
@@ -103,6 +103,18 @@ export type ChosenCommand =
       readonly proposal: ProtocolId<"skillProposal">;
     }
   | { readonly name: "skillAccept"; readonly options: AgentFlags; readonly skill: string }
+  | { readonly name: "shellRequests" | "shellAllowedList"; readonly options: CommonOptions }
+  | {
+      readonly name: "shellAnswer";
+      readonly options: CommonOptions;
+      readonly request: ProtocolId<"shellRequest">;
+      readonly answer: ShellAnswer;
+    }
+  | {
+      readonly name: "shellAllowedRemove";
+      readonly options: CommonOptions;
+      readonly allowed: ProtocolId<"allowedCommand">;
+    }
   | { readonly name: "webhookList"; readonly options: CommonOptions }
   | { readonly name: "webhookCreate"; readonly options: WebhookCreateFlags }
   | {

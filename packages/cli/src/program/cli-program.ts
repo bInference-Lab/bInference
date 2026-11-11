@@ -27,6 +27,7 @@ import { addOwnerKeyCommands } from "./owner-key-commands.js";
 import { addPluginCommands } from "./plugin-commands.js";
 import { addSafetyCommands } from "./safety-commands.js";
 import { addServiceCommands } from "./service-commands.js";
+import { addShellCommands } from "./shell-commands.js";
 import { addSignerCommands } from "./signer-commands.js";
 import { addSkillCommands } from "./skill-commands.js";
 import { addTelegramCommands } from "./telegram-commands.js";
@@ -225,6 +226,7 @@ function addCommands(program: Command, options: ProgramOptions): void {
   addAddressCommands(program, options);
   addWebhookCommands(program, options);
   addCredentialCommands(program, options);
+  addShellCommands(program, options);
   addPluginCommands(program, options);
   addSkillCommands(program, options);
   addLimitCommands(program, options);

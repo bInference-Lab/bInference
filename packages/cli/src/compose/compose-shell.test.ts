@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
+import { join } from "node:path";
 import { commandRunnerContract } from "@binference/engine/testing";
-import type { ShellLaunch, ShellLauncher } from "@binference/platform";
-import { createTempFolder, type TempFolder } from "@binference/platform/testing";
+import { realPathOf, type ShellLaunch, type ShellLauncher } from "@binference/platform";
+import {
+  createTempFolder,
+  standInProgramsRun,
+  type TempFolder,
+  writeStandInProgram,
+} from "@binference/platform/testing";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { currentConfigVersion } from "../config/migrations/config-migrations.js";
 import { configSchema } from "../config/schema/config.schema.js";
@@ -19,6 +25,19 @@ const env = {
   BINFERENCE_HOME: "/srv/binference",
   BINFERENCE_INIT_MODEL_KEY: "key",
 };
+
+// The file a stand-in program named `tool` is, and a signal no test aborts.
+const toolFile = standInProgramsRun ? "tool" : "tool.cmd";
+const live = new AbortController().signal;
+
+// The real path of a file the test made, which must be there.
+async function realOf(path: string): Promise<string> {
+  const real = await realPathOf(path, live);
+  if (real === undefined) {
+    throw new Error(`${path} is not there`);
+  }
+  return real;
+}
 
 // A launcher that records each launch and ends it at once with exit code 0.
 function recordingLauncher(wall: ShellLauncher["wall"]) {
@@ -48,17 +67,24 @@ describe("the agent's command runner", () => {
 
   it.each(
     commandRunnerContract({
-      create: async () =>
-        Promise.resolve({
+      create: async () => {
+        await writeStandInProgram(home.path, "tool", "");
+        return {
           runner: commandRunnerOf({
             launcher: recordingLauncher({ kind: "held" }).launcher,
-            env,
+            env: { ...env, PATH: home.path },
             homeDir: home.path,
             config: () => config,
           }),
           folder: home.path,
+          realFolder: await realOf(home.path),
           printsHello: "hello",
-        }),
+          program: {
+            name: "tool",
+            path: await realOf(join(home.path, toolFile)),
+          },
+        };
+      },
     }),
   )("follows the contract: $name", async ({ run }) => {
     await expect(run()).resolves.toBeUndefined();

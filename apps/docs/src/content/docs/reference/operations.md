@@ -310,6 +310,10 @@ Every operation of the engine protocol, version 1, by domain. A client calls an 
 | --- | --- | --- | --- | --- |
 | `shell/run` | `agent` | read | any connection | engine |
 | `shell/job` | `agent` | read | any connection | engine |
+| `shell/answer` | `confirm` | write | any connection | engine |
+| `shell/requests` | `read` | read | any connection | engine |
+| `shell/allowed` | `read` | read | any connection | engine |
+| `shell/disallow` | `confirm` | write | any connection | engine |
 
 ## `browser`
 

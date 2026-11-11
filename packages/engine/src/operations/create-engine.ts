@@ -116,6 +116,11 @@ export interface Engine extends BridgeWork, StakeWork, PruneWork {
    */
   readonly repairOrderFills: (options: { readonly signal: AbortSignal }) => Promise<number>;
   /**
+   * Tells each agent of a command it left running that the last stop of the engine lost before
+   * its end could be told (decision 0409). The startup calls it once; it answers how many.
+   */
+  readonly tellLostShellJobs: (options: { readonly signal: AbortSignal }) => Promise<number>;
+  /**
    * The auto order and alert work that waits for no price (decision 0189): each order waiting for
    * its card moves as the card says, each order whose expiry came expires, each order that ends
    * within 24 hours gets its one `notice.orderExpiring`, and each alert whose expiry came ends. A
@@ -400,7 +405,7 @@ export function createEngineWithFills(given: EngineOptions): {
     pushSettled: chat.settled,
     settle: async ({ signal }) => settleRescueCeilings(rescueParts, signal),
     checkGas: createGasCheck({ ...options, ...options.stores, lowGas: intents.lowGas }),
-    ...startupWorkOf(options, { ...intents, relay: chat.relay, check, paper }),
+    ...startupWorkOf(options, { ...intents, relay: chat.relay, shell: chat.shell, check, paper }),
     ...timedWorkOf({ ...options, intents, chat, drafts: drafts.desk }),
     seePrice: async (price, call) => intents.triggers.see(price, call),
     checkPins: async (call) => intents.moneyPath.followPins(call),
