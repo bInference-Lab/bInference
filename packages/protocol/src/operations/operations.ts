@@ -21,6 +21,7 @@ import { type EngineOperationShapes, engineOperations } from "./engine-operation
 import { type FileOperationShapes, fileOperations } from "./file-operations.schema.js";
 import { type GoalOperationShapes, goalOperations } from "./goal-operations.schema.js";
 import { type HelperOperationShapes, helperOperations } from "./helper-operations.schema.js";
+import { type HttpOperationShapes, httpOperations } from "./http-operations.schema.js";
 import { type ImageOperationShapes, imageOperations } from "./image-operations.schema.js";
 import { type IntentOperationShapes, intentOperations } from "./intent-operations.schema.js";
 import {
@@ -82,6 +83,7 @@ export interface OperationShapes
     BrowserOperationShapes,
     PdfOperationShapes,
     ScreenOperationShapes,
+    HttpOperationShapes,
     FileOperationShapes,
     SentFileOperationShapes,
     MediaOperationShapes,
@@ -130,6 +132,7 @@ export const operations: OperationTable<OperationShapes> = {
   ...browserOperations,
   ...pdfOperations,
   ...screenOperations,
+  ...httpOperations,
   ...fileOperations,
   ...sentFileOperations,
   ...mediaOperations,

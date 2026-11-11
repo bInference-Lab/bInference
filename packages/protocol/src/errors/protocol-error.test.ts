@@ -53,6 +53,7 @@ describe("protocolErrorCodes", () => {
       "speech",
       "screen",
       "goal",
+      "request",
       "internal",
     ]);
   });

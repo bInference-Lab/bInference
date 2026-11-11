@@ -244,6 +244,12 @@ export const protocolErrorCodes = [
   "goal.none",
   "goal.no_chat",
   "goal.done",
+  "request.unavailable",
+  "request.address_refused",
+  "request.unreachable",
+  "request.timed_out",
+  "request.too_large",
+  "request.proxy_held",
   "internal.error",
 ] as const;
 

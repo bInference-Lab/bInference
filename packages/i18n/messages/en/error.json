@@ -240,5 +240,11 @@
   "goal.none": "This chat has no goal. Set one with /goal and what the agent should achieve.",
   "goal.no_chat": "The agent has no chat open yet. Write to it once, then set the goal.",
   "goal.done": "This goal is complete. Clear it with /goal clear to set another.",
+  "request.unavailable": "This engine makes no API calls for the agent. Update binference and try again.",
+  "request.address_refused": "That address is refused: the agent's API calls go only to public https addresses, never to this machine, a private network or binference's own address.",
+  "request.unreachable": "The site did not answer the agent's API call. Check the address, or try again later.",
+  "request.timed_out": "The site did not answer within the API call's time limit, at most 25 seconds. Try again later.",
+  "request.too_large": "The site's answer is larger than 8 MiB, so binference did not read it. Ask for a smaller answer, such as one page of results.",
+  "request.proxy_held": "`network.proxy` names a proxy that cannot be used, so binference sent nothing. Run `binference check` to fix the proxy.",
   "internal.error": "binference hit an internal error. Run `binference report` to make a support file without secrets."
 }

@@ -334,6 +334,12 @@ Every operation of the engine protocol, version 1, by domain. A client calls an 
 | --- | --- | --- | --- | --- |
 | `screen/capture` | `agent` | read | any connection | engine |
 
+## `http`
+
+| Operation | Scope | Kind | Accepted | Answered by |
+| --- | --- | --- | --- | --- |
+| `http/request` | `agent` | read | any connection | engine |
+
 ## `file`
 
 | Operation | Scope | Kind | Accepted | Answered by |

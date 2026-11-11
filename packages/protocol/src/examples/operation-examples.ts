@@ -15,6 +15,7 @@ import { agentExamples, engineExamples, walletExamples } from "./engine-examples
 import { fileExamples } from "./file-examples.js";
 import { goalExamples } from "./goal-examples.js";
 import { helperExamples } from "./helper-examples.js";
+import { httpExamples } from "./http-examples.js";
 import { imageExamples } from "./image-examples.js";
 import {
   bridgeExamples,
@@ -60,6 +61,7 @@ export const operationExamples: { readonly [N in OperationName]: WireExample } =
   ...browserExamples,
   ...pdfExamples,
   ...screenExamples,
+  ...httpExamples,
   ...fileExamples,
   ...sentFileExamples,
   ...mediaExamples,

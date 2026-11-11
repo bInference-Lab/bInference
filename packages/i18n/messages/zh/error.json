@@ -240,5 +240,11 @@
   "goal.none": "此对话没有目标。请用 /goal 加上要 Agent 完成的事来设定。",
   "goal.no_chat": "Agent 还没有打开的对话。请先给它发一条消息，再设定目标。",
   "goal.done": "此目标已完成。请用 /goal clear 清除后再设定新目标。",
+  "request.unavailable": "此引擎不为 Agent 发起 API 调用。请更新 binference 后重试。",
+  "request.address_refused": "该地址被拒绝：Agent 的 API 调用只发往公开的 https 地址，绝不发往本机、私有网络或 binference 自己的地址。",
+  "request.unreachable": "该站点没有回复 Agent 的 API 调用。请检查地址，或稍后再试。",
+  "request.timed_out": "该站点未在 API 调用的时限内回复，时限最多 25 秒。请稍后再试。",
+  "request.too_large": "该站点的回复超过 8 MiB，binference 没有读取。请请求更小的回复，例如一页结果。",
+  "request.proxy_held": "`network.proxy` 指定的代理无法使用，binference 没有发送任何内容。请运行 `binference check` 修正代理。",
   "internal.error": "binference 遇到内部错误。请运行 `binference report` 生成不含密钥的支持文件。"
 }

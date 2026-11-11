@@ -62,6 +62,23 @@ export * from "./requests/browser-request.schema.js";
 export type * from "./views/browser-view.schema.js";
 export { maxDisplayNumber, maxScreenShots } from "./operations/screen-operations.schema.js";
 export type { ScreenCaptureView, ScreenShotView } from "./operations/screen-operations.schema.js";
+export {
+  httpRequestLimits,
+  isBodilessMethod,
+  refusedRequestHeaders,
+  requestBodySchema,
+  requestHeadersSchema,
+  requestMethodSchema,
+} from "./operations/http-operations.schema.js";
+export type {
+  HttpAnswerView,
+  HttpHeader,
+  HttpRefusalReason,
+  HttpRefusalView,
+  HttpRequestArgs,
+  HttpRequestMethod,
+  HttpRequestView,
+} from "./operations/http-operations.schema.js";
 export type { PortableChart } from "./views/portable-chart.schema.js";
 export * as credentialPushes from "./views/credential-push.schema.js";
 export * from "./views/shell-push.schema.js";
