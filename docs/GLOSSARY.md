@@ -423,8 +423,13 @@ new name here first, in the change that uses it.
 - **shell job**: one command the shell host runs, with its output, until it ends and is forgotten.
 - **shell request**: the agent's ask to run one command, which the owner answers with Allow once,
   Always allow or Refuse; it waits 10 minutes.
-- **allowed command**: a command the owner allowed always, which runs under `shell.run: listed`
-  without asking.
+- **allowed command**: one step of a command line the owner allowed always, its program, arguments
+  and folder, which runs under `shell.run: listed` without asking
+  ([decision 0409](DECISIONS.md#d0409)).
+- **Allow once, Always allow, Refuse**: the owner's three answers to a shell request; Always allow
+  keeps each step of the command as an allowed command.
+- **command end**: binference's message that starts the agent's next turn when a command it left
+  running ends, with its exit code, how long it ran and the last lines it printed.
 - **filter command**: a command that only reads its input, such as `wc`, allowed under
   `shell.run: listed` with plain arguments (`shell.filters`).
 - **image input**: `models.imageInput`, the models declared to take images as input; a model reads
@@ -780,84 +785,86 @@ it. Write Chinese the way Binance's own Chinese docs do:
 
 ### Running binference
 
-| English                                     | 中文                   | Notes                        |
-| ------------------------------------------- | ---------------------- | ---------------------------- |
-| state folder                                | 状态文件夹             | `~/.binference`              |
-| shell tool                                  | 命令行工具             | `shell`, `shell_job`         |
-| shell host                                  | 命令行宿主             | Process                      |
-| wall (of the shell)                         | 隔离墙                 |                              |
-| shell job                                   | 命令任务               |                              |
-| file tools                                  | 文件工具               | `file_read` and the others   |
-| agent's browser, browser (the agent drives) | 浏览器                 | `browse`                     |
-| snapshot ref                                | 快照引用               | `e12`                        |
-| scanned page (of a PDF)                     | 扫描页                 | `read_pdf`                   |
-| patch (of files)                            | 补丁                   | `file_patch`                 |
-| made image                                  | 生成的图片             | `make_image`                 |
-| shown chart, chart (the agent shows)        | 图表                   | `show_chart`                 |
-| config change                               | 设置更改               | `configChange`, `/config`    |
-| credential (the owner stores)               | 凭据                   | `credentials`                |
-| masked prompt (for a credential)            | 隐藏输入框             |                              |
-| shell request                               | 命令请求               |                              |
-| allowed command                             | 允许的命令             |                              |
-| filter command                              | 过滤命令               |                              |
-| sandbox                                     | 沙箱                   | `shell.sandbox`              |
-| usage (of a command)                        | 用法                   | Help's heading               |
-| config key                                  | 配置项                 |                              |
-| value (of a config key)                     | 值                     |                              |
-| secret source                               | 密钥来源               |                              |
-| proxy, outbound proxy                       | 代理                   | `network.proxy`              |
-| block (of addresses, such as 10.0.0.0/8)    | 地址段                 | `network.noProxy`            |
-| turn (a setting on or off)                  | 开启                   | "Turns search_x on"          |
-| answers file (of `binference init`)         | 应答文件               |                              |
-| keychain                                    | 钥匙串                 |                              |
-| unlock mode                                 | 解锁方式               | `engine.unlock.mode`         |
-| passphrase                                  | 密码短语               | Seals the agent key          |
-| Privy app                                   | Privy 应用             |                              |
-| app ID (of a Privy app)                     | 应用 ID                |                              |
-| app secret (of a Privy app)                 | 应用密钥               |                              |
-| custody (who holds the agent wallets)       | 托管                   |                              |
-| signer (the process)                        | 签名进程               | Holds the agent key          |
-| agent runtime (the process)                 | Agent 运行时           | Runs the model loop          |
-| signer (of a wallet)                        | 签名方                 | The agent key's key quorum   |
-| wallet facts                                | 钱包信息               |                              |
-| health signal                               | 健康信号               | Shown by `binference status` |
-| log (the engine's log file)                 | 日志                   |                              |
-| support bundle                              | 诊断包                 | `binference report`          |
-| uninstall                                   | 卸载                   | `binference uninstall`       |
-| reset (the local state)                     | 重置                   | `binference reset`           |
-| background service                          | 后台服务               | `binference start`           |
-| telemetry, usage counts                     | 使用统计, 使用次数统计 | `telemetry.enabled`, opt-in  |
-| API address, base URL (of a model provider) | 接口地址               | Where its API answers        |
-| compatible (provider of an API)             | 兼容                   | Speaks that API              |
-| log in (to the computer)                    | 登录                   |                              |
-| client token                                | 访问令牌               | A `bnt_` sign-in token       |
-| release notes                               | 更新说明               |                              |
-| install script                              | 安装脚本               | `install.sh`, `install.ps1`  |
-| launcher (of binference)                    | 启动器                 | `bin/binference`             |
-| plugin host                                 | 插件进程               | One process per plugin       |
-| sandbox check                               | 沙箱检查               | `plugins.sandbox`            |
-| plugin launcher                             | 插件启动器             | In the Docker image          |
-| image entry                                 | 镜像入口               | `binference-image`           |
-| permission review                           | 权限审核               | Before a plugin runs         |
-| npm provenance                              | npm 来源证明           | Shown on the review          |
-| widening (of a plugin's permissions)        | 权限扩大               | Asks for a new review        |
-| remote access                               | 远程访问               | `binference expose`          |
-| roll back (an update)                       | 回退                   | Not 回滚, which is a revert  |
-| key (on the keyboard), number key           | 按键, 数字键           | Terminal chat: Ctrl+Y, Esc   |
-| Postgres store                              | Postgres 存储          | The store's Postgres adapter |
-| engine schema, agent schema                 | 引擎模式, Agent 模式   | `engine_<install>`           |
-| task thread, statement side                 | 任务线程, 语句端       | Store tasks on Postgres      |
-| write-order key                             | 写入顺序键             | `seq`                        |
-| worker (on Cloud)                           | 工作进程               | Runs engine and runtime      |
-| worker thread                               | 工作线程               | A Node thread, not a worker  |
-| agent lease                                 | Agent 租约             | `cloud.agent_leases`         |
-| lease fence                                 | 租约令牌               | Checked by every write       |
-| database role                               | 数据库角色             | One per Cloud service        |
-| provisioner (database role)                 | 开通角色               | Creates a new install        |
-| ingress                                     | 入口服务               | On binference.io             |
-| official bot                                | 官方机器人             | bInference Cloud's bot       |
-| signer service                              | 签名服务               | Holds the Privy key in KMS   |
-| listing catalog                             | 上架目录服务           | Writes the listings          |
+| English                                     | 中文                     | Notes                        |
+| ------------------------------------------- | ------------------------ | ---------------------------- |
+| state folder                                | 状态文件夹               | `~/.binference`              |
+| shell tool                                  | 命令行工具               | `shell`, `shell_job`         |
+| shell host                                  | 命令行宿主               | Process                      |
+| wall (of the shell)                         | 隔离墙                   |                              |
+| shell job                                   | 命令任务                 |                              |
+| file tools                                  | 文件工具                 | `file_read` and the others   |
+| agent's browser, browser (the agent drives) | 浏览器                   | `browse`                     |
+| snapshot ref                                | 快照引用                 | `e12`                        |
+| scanned page (of a PDF)                     | 扫描页                   | `read_pdf`                   |
+| patch (of files)                            | 补丁                     | `file_patch`                 |
+| made image                                  | 生成的图片               | `make_image`                 |
+| shown chart, chart (the agent shows)        | 图表                     | `show_chart`                 |
+| config change                               | 设置更改                 | `configChange`, `/config`    |
+| credential (the owner stores)               | 凭据                     | `credentials`                |
+| masked prompt (for a credential)            | 隐藏输入框               |                              |
+| shell request                               | 命令请求                 |                              |
+| allowed command                             | 允许的命令               |                              |
+| Allow once, Always allow, Refuse            | 允许一次, 始终允许, 拒绝 | Shell request buttons        |
+| command end                                 | 命令结束                 |                              |
+| filter command                              | 过滤命令                 |                              |
+| sandbox                                     | 沙箱                     | `shell.sandbox`              |
+| usage (of a command)                        | 用法                     | Help's heading               |
+| config key                                  | 配置项                   |                              |
+| value (of a config key)                     | 值                       |                              |
+| secret source                               | 密钥来源                 |                              |
+| proxy, outbound proxy                       | 代理                     | `network.proxy`              |
+| block (of addresses, such as 10.0.0.0/8)    | 地址段                   | `network.noProxy`            |
+| turn (a setting on or off)                  | 开启                     | "Turns search_x on"          |
+| answers file (of `binference init`)         | 应答文件                 |                              |
+| keychain                                    | 钥匙串                   |                              |
+| unlock mode                                 | 解锁方式                 | `engine.unlock.mode`         |
+| passphrase                                  | 密码短语                 | Seals the agent key          |
+| Privy app                                   | Privy 应用               |                              |
+| app ID (of a Privy app)                     | 应用 ID                  |                              |
+| app secret (of a Privy app)                 | 应用密钥                 |                              |
+| custody (who holds the agent wallets)       | 托管                     |                              |
+| signer (the process)                        | 签名进程                 | Holds the agent key          |
+| agent runtime (the process)                 | Agent 运行时             | Runs the model loop          |
+| signer (of a wallet)                        | 签名方                   | The agent key's key quorum   |
+| wallet facts                                | 钱包信息                 |                              |
+| health signal                               | 健康信号                 | Shown by `binference status` |
+| log (the engine's log file)                 | 日志                     |                              |
+| support bundle                              | 诊断包                   | `binference report`          |
+| uninstall                                   | 卸载                     | `binference uninstall`       |
+| reset (the local state)                     | 重置                     | `binference reset`           |
+| background service                          | 后台服务                 | `binference start`           |
+| telemetry, usage counts                     | 使用统计, 使用次数统计   | `telemetry.enabled`, opt-in  |
+| API address, base URL (of a model provider) | 接口地址                 | Where its API answers        |
+| compatible (provider of an API)             | 兼容                     | Speaks that API              |
+| log in (to the computer)                    | 登录                     |                              |
+| client token                                | 访问令牌                 | A `bnt_` sign-in token       |
+| release notes                               | 更新说明                 |                              |
+| install script                              | 安装脚本                 | `install.sh`, `install.ps1`  |
+| launcher (of binference)                    | 启动器                   | `bin/binference`             |
+| plugin host                                 | 插件进程                 | One process per plugin       |
+| sandbox check                               | 沙箱检查                 | `plugins.sandbox`            |
+| plugin launcher                             | 插件启动器               | In the Docker image          |
+| image entry                                 | 镜像入口                 | `binference-image`           |
+| permission review                           | 权限审核                 | Before a plugin runs         |
+| npm provenance                              | npm 来源证明             | Shown on the review          |
+| widening (of a plugin's permissions)        | 权限扩大                 | Asks for a new review        |
+| remote access                               | 远程访问                 | `binference expose`          |
+| roll back (an update)                       | 回退                     | Not 回滚, which is a revert  |
+| key (on the keyboard), number key           | 按键, 数字键             | Terminal chat: Ctrl+Y, Esc   |
+| Postgres store                              | Postgres 存储            | The store's Postgres adapter |
+| engine schema, agent schema                 | 引擎模式, Agent 模式     | `engine_<install>`           |
+| task thread, statement side                 | 任务线程, 语句端         | Store tasks on Postgres      |
+| write-order key                             | 写入顺序键               | `seq`                        |
+| worker (on Cloud)                           | 工作进程                 | Runs engine and runtime      |
+| worker thread                               | 工作线程                 | A Node thread, not a worker  |
+| agent lease                                 | Agent 租约               | `cloud.agent_leases`         |
+| lease fence                                 | 租约令牌                 | Checked by every write       |
+| database role                               | 数据库角色               | One per Cloud service        |
+| provisioner (database role)                 | 开通角色                 | Creates a new install        |
+| ingress                                     | 入口服务                 | On binference.io             |
+| official bot                                | 官方机器人               | bInference Cloud's bot       |
+| signer service                              | 签名服务                 | Holds the Privy key in KMS   |
+| listing catalog                             | 上架目录服务             | Writes the listings          |
 
 ### Trading
 

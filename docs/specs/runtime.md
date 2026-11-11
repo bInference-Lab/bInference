@@ -417,6 +417,13 @@ content, by the tool and by the engine. Helpers do not get it. A workspace skill
 the owner accepted its files as they are; one added or changed since is listed as waiting and is
 not opened.
 
+`shell` asks the owner first when `shell.ask` says so ([decision 0409](../DECISIONS.md#d0409)):
+its call answers that a shell request waits and names the job the command will run as, and ends
+the turn; the owner's answer, or `shell.onNoAnswer` after 10 minutes, starts the next turn with
+what happened. `shell_job stop` on a job that waits withdraws its request. A command left running
+as a job starts the agent's next turn when it ends, as a message from binference marked as outside
+content, so the tool's text tells the model to end its turn instead of polling it.
+
 <a id="section-5-2"></a>
 
 ### 5.2 Declaring and checking a call
@@ -442,7 +449,7 @@ not opened.
   A tool's error is a result too, never a turn failure.
 - A read or control call times out after 60 seconds and returns its timeout as its result. A
   `machine` call has its own limits: the command's timeout, its wait before it is left running,
-  and the 10 minutes a shell request waits for the owner. A
+  and a shell request, which ends the turn instead of waiting for the owner. A
   propose call waits up to 30 seconds for the engine; without an answer its outcome is unknown, and
   it is never sent again (section 6.1).
 

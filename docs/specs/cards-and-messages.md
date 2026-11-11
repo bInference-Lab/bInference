@@ -101,6 +101,11 @@ names the keys and fixes the wording.
   the owner on Telegram, the one proposal the owner's chat makes; it confirms nothing, and the
   launch card asks again ([decision 0285](../DECISIONS.md#d0285)). A press on a draft no longer
   open changes nothing.
+- A button of the agent's shell request ([section 8.6](#section-8-6)) carries
+  `bnf1:x:<o|a|n>:<request>`: `o` is Allow once, `a` Always allow and `n` Refuse; `request` is the
+  request's id, which lives 10 minutes in engine memory. A press answers the request; it confirms
+  no card. A press on a request no longer open answers `shell.request.closedToast` and changes
+  nothing ([decision 0409](../DECISIONS.md#d0409)).
 - The engine checks that the presser is the owner's numeric Telegram id, writes the decision
   durably, then answers `answerCallbackQuery`.
 - First answer wins: the other surfaces' buttons are removed, and every copy becomes the receipt.
@@ -1027,6 +1032,19 @@ is never verified, so its short address always follows its symbol.
   blocks it) and a Reject button. A waiting skill follows as a message with its name and an Accept
   button bound to the folder hash it shows. With none of either, the reply is `cmd.skills.none`.
 
+<a id="section-4-6"></a>
+
+### 4.6 The shell
+
+| Notice             | Key                      | English                                                                                                                                                                                                                             | 中文                                                                                                                                                                         |
+| ------------------ | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Commands allowed   | `notice.shellAllowed`    | {count, plural, one {A command is} other {# commands are}} now allowed {by, select, telegram {from Telegram} console {from the console} mini {from the Mini App} cli {from the CLI} other {in binference}}, in {folder}: {commands} | {by, select, telegram {已从 Telegram} console {已从控制台} mini {已从 Mini App} cli {已从命令行} other {已在 binference 中}}允许 {count} 条命令，目录 {folder}：{commands}   |
+| Command disallowed | `notice.shellDisallowed` | A command is no longer allowed, removed {by, select, telegram {from Telegram} console {from the console} mini {from the Mini App} cli {from the CLI} other {in binference}}: {command} in {folder}                                  | {by, select, telegram {已从 Telegram} console {已从控制台} mini {已从 Mini App} cli {已从命令行} other {已在 binference 中}}移除了一条允许的命令：{command}（目录 {folder}） |
+
+- Allowed commands are install-wide, so these notices name no agent. Each goes once per Always
+  allow and per removal, after its journal entry under `shell.allowed`
+  ([decision 0409](../DECISIONS.md#d0409)).
+
 <a id="section-5"></a>
 
 ## 5. Fast commands
@@ -1604,6 +1622,53 @@ under 200 characters.
 
 `{reason}` is the error message of the code the proposal was refused with, or for a launch that
 ended before its card, its intent's `reason.<code>`.
+
+<a id="section-8-6"></a>
+
+### 8.6 The agent's shell requests
+
+A command that waits for the owner's answer ([decision 0409](../DECISIONS.md#d0409)) shows on every
+surface with the same lines: the header, the command as the agent wrote it, the folder, why it
+asks, the line that Always allow is not offered when it is not, and the time it waits until.
+Telegram sends it to the owner's private chat with its buttons, the command in a code block; the
+console shows it as a card above the composer; terminal chat prints it with its number keys, and
+`binference shell requests` lists it. The command is outside text, shown whole with every
+character a reader cannot see written out.
+
+```text
+main asks to run a command
+git status
+In /srv/project
+No allowed command covers it.
+Answer by 14:32.
+[ Allow once ]  [ Always allow ]  [ Refuse ]
+```
+
+```text
+main 请求运行一条命令
+git status
+目录：/srv/project
+没有允许的命令涵盖它。
+请在 14:32 前回答。
+[ 允许一次 ]  [ 始终允许 ]  [ 拒绝 ]
+```
+
+| Line            | Key                                        | English                                                                                                                                                                                                                                                                                                                                                                                                                                            | 中文                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| --------------- | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Header          | `shell.request.header`                     | {agent} asks to run a command                                                                                                                                                                                                                                                                                                                                                                                                                      | {agent} 请求运行一条命令                                                                                                                                                                                                                                                                                                                                                                                             |
+| Folder          | `shell.request.folder`                     | In {folder}                                                                                                                                                                                                                                                                                                                                                                                                                                        | 目录：{folder}                                                                                                                                                                                                                                                                                                                                                                                                       |
+| Why it asks     | `shell.request.reason`                     | {reason, select, always {You are asked before every command (shell.ask is always).} unlisted {No allowed command covers it.} unreadable {binference cannot judge this command line in full, so no allowed command can cover it.} other {On PowerShell no allowed command covers a command.}}                                                                                                                                                       | {reason, select, always {每条命令运行前都会询问你（shell.ask 为 always）。} unlisted {没有允许的命令涵盖它。} unreadable {binference 无法完整判断这行命令，因此任何允许的命令都无法涵盖它。} other {在 PowerShell 上，允许的命令不涵盖任何命令。}}                                                                                                                                                                   |
+| No Always allow | `shell.request.noAlways`                   | Always allow is not offered: this command runs other code, or binference cannot judge it in full.                                                                                                                                                                                                                                                                                                                                                  | 不提供“始终允许”：这条命令会运行其他代码，或 binference 无法完整判断它。                                                                                                                                                                                                                                                                                                                                             |
+| Until           | `shell.request.until`                      | Answer by {time}.                                                                                                                                                                                                                                                                                                                                                                                                                                  | 请在 {time} 前回答。                                                                                                                                                                                                                                                                                                                                                                                                 |
+| Buttons         | `shell.request.once`, `.always`, `.refuse` | Allow once · Always allow · Refuse                                                                                                                                                                                                                                                                                                                                                                                                                 | 允许一次 · 始终允许 · 拒绝                                                                                                                                                                                                                                                                                                                                                                                           |
+| Closed          | `shell.request.closed`                     | {outcome, select, allowed_once {✅ Allowed once.} allowed_always {✅ Allowed, and kept as an allowed command.} refused {❌ Refused. Nothing ran.} expired {❌ No answer in 10 minutes. Nothing ran.} ran_unanswered {🟡 No answer in 10 minutes, so it ran as shell.onNoAnswer says.} replaced {❌ A newer request replaced this one. Nothing ran.} withdrawn {❌ The agent withdrew this request. Nothing ran.} other {❌ Stopped. Nothing ran.}} | {outcome, select, allowed_once {✅ 已允许一次。} allowed_always {✅ 已允许，并已保存为允许的命令。} refused {❌ 已拒绝，没有运行任何命令。} expired {❌ 10 分钟内未回答，没有运行任何命令。} ran_unanswered {🟡 10 分钟内未回答，已按 shell.onNoAnswer 运行。} replaced {❌ 较新的请求已取代此请求，没有运行任何命令。} withdrawn {❌ Agent 已撤回此请求，没有运行任何命令。} other {❌ 已停止，没有运行任何命令。}} |
+| Closed, a press | `shell.request.closedToast`                | This request is no longer open.                                                                                                                                                                                                                                                                                                                                                                                                                    | 此请求已不再开放。                                                                                                                                                                                                                                                                                                                                                                                                   |
+| Terminal keys   | `tui.shell.keys`                           | {always, select, yes {Press 1 to allow once, 2 to always allow, 3 to refuse.} other {Press 1 to allow once, 2 to refuse.}}                                                                                                                                                                                                                                                                                                                         | {always, select, yes {按 1 允许一次，按 2 始终允许，按 3 拒绝。} other {按 1 允许一次，按 2 拒绝。}}                                                                                                                                                                                                                                                                                                                 |
+
+- The first answer from any surface wins. When the request closes, every copy loses its buttons
+  and shows `shell.request.closed`; an answer that runs the command starts the agent's next turn,
+  which says what it printed.
+- The answer to a press is under 200 characters.
 
 <a id="section-9"></a>
 
