@@ -1028,8 +1028,10 @@ of the agent (`skill.not_editable` for a bundled or installed one) and the `revi
 pending proposals (`skill.proposal_limit`). Each proposal is scanned when it is made and revised,
 and its `findings` name each by `file`, `line` and `code`; `skillProposal/apply` refuses one with
 any finding (`skill.proposal_blocked`), one that is no longer pending (`skill.proposal_done`), and
-one whose skill moved since it was made, or whose new name a skill took (`skill.proposal_stale`,
-which marks it `stale`); an unknown id is `skill.proposal_not_found`. `skill/list` with an agent
+one whose skill moved since it was made, whose new name a skill took, or whose skills folder led
+elsewhere while the skill was put in place, which then lands nowhere and moves nothing aside
+(`skill.proposal_stale`, which marks it `stale`, [decision 0410](../DECISIONS.md#d0410)); an
+unknown id is `skill.proposal_not_found`. `skill/list` with an agent
 also lists its waiting workspace skills, with `held: true`, which `skill/read` does not serve.
 
 <a id="section-7-9"></a>

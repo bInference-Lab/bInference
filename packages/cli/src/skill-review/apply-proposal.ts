@@ -4,7 +4,6 @@ import {
   ensurePrivateFolder,
   type FilePermissions,
   listFolderFiles,
-  movePath,
   removePath,
   writePrivateFile,
 } from "@binference/platform";
@@ -14,6 +13,7 @@ import { skillFolderHash } from "../skills/skill-folder-hash.js";
 import { readSkillBytes, type SkillFolder, skillFolderUnder } from "../skills/skill-folder.js";
 import type { SkillShelf } from "../skills/skill-shelf.js";
 import type { ProposalRecord } from "./proposal-record.js";
+import { putSkillInPlace } from "./put-skill-in-place.js";
 
 /** What an apply reads and writes. */
 export interface ApplyParts {
@@ -92,23 +92,14 @@ async function standsAsProposed(
   );
 }
 
-// Puts the work folder in place of the skill's folder, the old one moved aside and removed.
-async function putInPlace(
-  place: { readonly target: string; readonly work: string; readonly aside: string },
-  options: { readonly permissions: FilePermissions; readonly signal: AbortSignal },
-): Promise<void> {
-  await ensurePrivateFolder(dirname(place.target), options);
-  await movePath(place.target, place.aside, options.signal);
-  await movePath(place.work, place.target, options.signal);
-}
-
 /**
  * Applies a skill proposal (decision 0408): builds the skill's folder in `skill-review/` from the
  * skill as it is now, which for a change must hash as the proposal's base, and for a new skill must
  * not exist; writes the proposal's `SKILL.md` and support files over it; puts it in place of the
  * agent's workspace skill; and accepts its new folder hash, so the skill loads from the agent's
  * next turn. Built where the agent's tools cannot reach, the folder the owner accepts is the one
- * binference wrote. A skill that moved is `stale`, and nothing changes.
+ * binference wrote. A skill that moved is `stale`, and nothing changes; so is one whose skills
+ * folder leads elsewhere by the time it is put in place (decision 0410).
  */
 export async function applyProposal(
   parts: ApplyParts,
@@ -137,7 +128,10 @@ export async function applyProposal(
         message: "The applied skill's folder is over a skill's size; nothing was put in place.",
       });
     }
-    await putInPlace({ target: target.folder, work: work.folder, aside }, options);
+    const placement = { target, work: work.folder, aside, tag: hex };
+    if (!(await putSkillInPlace(placement, options))) {
+      return err("stale");
+    }
     const before = await parts.accepted.accept(
       { agent: record.agent, name: record.name, hash: after },
       signal,

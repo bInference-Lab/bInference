@@ -1,6 +1,6 @@
 import { isAbsolute, join, relative } from "node:path";
 import { err, ok, type Result } from "@binference/core";
-import { readJudgedFile, realPathOf } from "@binference/platform";
+import { readJudgedFile, realPlaceOf } from "@binference/platform";
 
 /**
  * A skill's folder (decision 0410): its path, and its real path reached from its place's root with
@@ -23,7 +23,7 @@ export async function skillFolderUnder(
   inner: string,
   signal: AbortSignal,
 ): Promise<SkillFolder> {
-  const realRoot = (await realPathOf(root, signal)) ?? root;
+  const realRoot = await realPlaceOf(root, signal);
   return { folder: join(root, inner), realFolder: join(realRoot, inner) };
 }
 
