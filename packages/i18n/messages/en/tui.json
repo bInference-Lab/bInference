@@ -40,5 +40,6 @@
   "images.made": "{agent} made {count, plural, one {an image} other {# images}}, saved at:",
   "files.sent": "{agent} sent {count, plural, one {a file} other {# files}}, saved at:",
   "media.video": "{agent} made a video, saved at:",
-  "media.voice": "{agent} spoke, saved at:"
+  "media.voice": "{agent} spoke, saved at:",
+  "shell.keys": "{always, select, yes {Press 1 to allow once, 2 to always allow, 3 to refuse.} other {Press 1 to allow once, 2 to refuse.}}"
 }

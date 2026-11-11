@@ -7,6 +7,7 @@ import {
   goalPushOf,
   type PushFrame,
   questionPushOf,
+  shellPushOf,
 } from "@binference/protocol";
 import type { AgentQuestion } from "./agent-question.js";
 import type { ChatContext } from "./chat-context.js";
@@ -17,12 +18,14 @@ import type { ChatTranscript } from "./chat-transcript.js";
 import type { CredentialEntry } from "./credential-entry.js";
 import { depositLines } from "./deposit-lines.js";
 import { goalPushLines } from "./goal-lines.js";
+import type { ShellRequestEntry } from "./shell-request.js";
 
 /** The parts the agent's chat topic feeds. */
 export interface ChatFeedParts {
   readonly transcript: ChatTranscript;
   readonly question: AgentQuestion;
   readonly credential: CredentialEntry;
+  readonly shell: ShellRequestEntry;
   /** Runs a job after the jobs before it, so the chat prints in the order the pushes came. */
   readonly queue: (job: () => Promise<void>) => void;
 }
@@ -154,11 +157,39 @@ function onChatPush(context: ChatContext, parts: ChatFeedParts, push: ChatPush):
   }
 }
 
+// A push of what the agent asks the owner: its shell request, its credential request or its
+// question. A closing push ends the open one; any of them reads the open one again.
+function askedOf(parts: ChatFeedParts, push: PushFrame): void {
+  const shell = shellPushOf(push);
+  if (shell?.kind === "chat/shellRequestClosed") {
+    parts.shell.closed(shell);
+  }
+  if (shell !== undefined) {
+    parts.queue(async () => parts.shell.reload());
+    return;
+  }
+  const credential = credentialPushes.credentialPushOf(push);
+  if (credential?.kind === "chat/credentialRequestClosed") {
+    parts.credential.closed(credential);
+  }
+  if (credential !== undefined) {
+    parts.queue(async () => parts.credential.reload());
+    return;
+  }
+  const question = questionPushOf(push);
+  if (question?.kind === "chat/questionClosed") {
+    parts.question.closed(question);
+  }
+  if (question !== undefined) {
+    parts.queue(async () => parts.question.reload());
+  }
+}
+
 /**
  * Follows the agent's chat topic: the running turn and its answer so far in the live area, each
  * final answer and status line printed as it comes, each change of the chat's goal and its
- * progress note (decision 0407), the agent's question, and its credential request, which opens the
- * masked entry. A turn that starts,
+ * progress note (decision 0407), the agent's question, its credential request, which opens the
+ * masked entry, and its shell request (decision 0409). A turn that starts,
  * and a gap in the topic, read the transcript on, so the owner's messages from other surfaces
  * show too. Answers how to stop following.
  */
@@ -179,26 +210,13 @@ export function followChat(context: ChatContext, parts: ChatFeedParts): () => vo
         });
         return;
       }
-      const credential = credentialPushes.credentialPushOf(push);
-      if (credential?.kind === "chat/credentialRequestClosed") {
-        parts.credential.closed(credential);
-      }
-      if (credential !== undefined) {
-        parts.queue(async () => parts.credential.reload());
-        return;
-      }
-      const question = questionPushOf(push);
-      if (question?.kind === "chat/questionClosed") {
-        parts.question.closed(question);
-      }
-      if (question !== undefined) {
-        parts.queue(async () => parts.question.reload());
-      }
+      askedOf(parts, push);
     },
     refetch: async () => {
       parts.queue(async () => parts.transcript.catchUp());
       parts.queue(async () => parts.question.reload());
       parts.queue(async () => parts.credential.reload());
+      parts.queue(async () => parts.shell.reload());
       return Promise.resolve();
     },
   });

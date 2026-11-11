@@ -3,6 +3,7 @@ import type {
   credentialPushes,
   ProtocolId,
   QuestionView,
+  ShellRequestView,
 } from "@binference/protocol";
 
 /** A card version that waits for the owner, as the chat shows it. */
@@ -40,6 +41,8 @@ export interface ChatState {
     readonly request: credentialPushes.CredentialRequestView;
     readonly length: number;
   };
+  /** The agent's open shell request, which the number keys answer while no question is open. */
+  readonly shellRequest?: ShellRequestView;
   /** The cards that wait for the owner, oldest first; the keys answer the first. */
   readonly cards: readonly OpenCard[];
   /** The client has lost its connection and is making a new one. */
@@ -87,6 +90,12 @@ export function withoutQuestion(state: ChatState): ChatState {
 /** The state without its credential request. */
 export function withoutCredential(state: ChatState): ChatState {
   const { credential: _closed, ...rest } = state;
+  return rest;
+}
+
+/** The state without its shell request. */
+export function withoutShellRequest(state: ChatState): ChatState {
+  const { shellRequest: _closed, ...rest } = state;
   return rest;
 }
 

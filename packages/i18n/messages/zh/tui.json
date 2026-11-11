@@ -40,5 +40,6 @@
   "images.made": "{agent} 生成了 {count, plural, other {# 张图片}}，保存于：",
   "files.sent": "{agent} 发送了 {count, plural, other {# 个文件}}，保存于：",
   "media.video": "{agent} 生成了一段视频，保存于：",
-  "media.voice": "{agent} 朗读了一段语音，保存于："
+  "media.voice": "{agent} 朗读了一段语音，保存于：",
+  "shell.keys": "{always, select, yes {按 1 允许一次，按 2 始终允许，按 3 拒绝。} other {按 1 允许一次，按 2 拒绝。}}"
 }

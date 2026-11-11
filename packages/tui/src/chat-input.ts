@@ -6,11 +6,13 @@ import { failureText, saidLines } from "./chat-lines.js";
 import type { ScreenLine } from "./chat-screen.js";
 import type { ChatTranscript } from "./chat-transcript.js";
 import { goalWordsOf, runGoalCommand } from "./goal-lines.js";
+import type { ShellRequestEntry } from "./shell-request.js";
 
 /** What the owner's keys reach. */
 export interface ChatInputParts {
   readonly transcript: ChatTranscript;
   readonly question: AgentQuestion;
+  readonly shell: ShellRequestEntry;
   readonly cards: ChatCards;
   /** Runs one of the owner's actions after the actions before it. */
   readonly queue: (job: () => Promise<void>) => void;
@@ -112,9 +114,13 @@ function answerCard(context: ChatContext, parts: ChatInputParts, action: ChatAct
 }
 
 function choose(context: ChatContext, parts: ChatInputParts, action: ChatAction): void {
-  if (action.kind === "choose") {
-    parts.queue(async () => parts.question.answer(action.place));
+  if (action.kind !== "choose") {
+    return;
   }
+  const { question } = context.store.get();
+  parts.queue(async () =>
+    question === undefined ? parts.shell.answer(action.place) : parts.question.answer(action.place),
+  );
 }
 
 const handlers: Readonly<Record<ChatAction["kind"], ActionHandler>> = {

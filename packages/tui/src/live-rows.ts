@@ -40,6 +40,16 @@ function questionRow(state: ChatState, words: Words): readonly ScreenLine[] {
     : [{ text: words("tui.question.keys", { last: question.choices.length }) }];
 }
 
+// The keys of the agent's open shell request, while no question takes the number keys.
+function shellRow(state: ChatState, words: Words): readonly ScreenLine[] {
+  const { shellRequest, question } = state;
+  if (shellRequest === undefined || question !== undefined) {
+    return [];
+  }
+  const always = shellRequest.canAlwaysAllow ? "yes" : "no";
+  return [{ text: words("tui.shell.keys", { always }), tone: "yellow" }];
+}
+
 function cardRows(cards: readonly OpenCard[], context: LiveContext): readonly ScreenLine[] {
   const [first, ...rest] = cards;
   if (first === undefined) {
@@ -73,7 +83,7 @@ function promptRows(state: ChatState, context: LiveContext): readonly ScreenLine
 /**
  * The live area's rows, top to bottom: the link while it reconnects, the agent's running turn
  * (the newest line of its answer so far, else how long it has worked), the open question's keys,
- * the first waiting card with its time left and its keys, and the line the owner types, or the
+ * the open shell request's keys, the first waiting card with its time left and its keys, and the line the owner types, or the
  * masked entry of an open credential request.
  */
 export function liveRows(state: ChatState, context: LiveContext): readonly ScreenLine[] {
@@ -84,6 +94,7 @@ export function liveRows(state: ChatState, context: LiveContext): readonly Scree
     ...link,
     ...runningRow(state, context),
     ...questionRow(state, context.words),
+    ...shellRow(state, context.words),
     ...cardRows(state.cards, context),
     ...promptRows(state, context),
   ];

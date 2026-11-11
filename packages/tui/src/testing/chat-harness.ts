@@ -52,6 +52,7 @@ const quiet: ChatAnswers = {
   "chat/messages": () => ({ items: [] }),
   "chat/openQuestion": () => ({}),
   "chat/openCredentialRequest": () => ({}),
+  "shell/requests": () => ({ items: [] }),
   "intent/list": () => ({ items: [] }),
 };
 

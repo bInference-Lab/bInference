@@ -17,6 +17,7 @@ import type { ChatTerminal } from "./chat-terminal.js";
 import { createChatTranscript } from "./chat-transcript.js";
 import { createCredentialEntry, type CredentialEntry } from "./credential-entry.js";
 import { liveRows } from "./live-rows.js";
+import { createShellRequestEntry, shellAnswersOf } from "./shell-request.js";
 
 /** What terminal chat runs with. */
 export interface TerminalChatOptions {
@@ -82,6 +83,7 @@ function follow(session: Session, report: (error: ErrorOptions["cause"]) => void
   const transcript = createChatTranscript(context, context.words("tui.you"));
   const question = createAgentQuestion(context);
   const credential = createCredentialEntry(context);
+  const shell = createShellRequestEntry(context);
   const cards = createChatCards(context);
   const receipts = createChatReceipts(context);
   const notices = createChatNotices(context);
@@ -90,7 +92,7 @@ function follow(session: Session, report: (error: ErrorOptions["cause"]) => void
     return Promise.resolve();
   };
   const unsubscribe = [
-    followChat(context, { transcript, question, credential, queue: feed }),
+    followChat(context, { transcript, question, credential, shell, queue: feed }),
     context.client.subscribe("intent", {
       onPush: (push) =>
         feed(async () => {
@@ -107,6 +109,7 @@ function follow(session: Session, report: (error: ErrorOptions["cause"]) => void
   const parts: ChatInputParts = {
     transcript,
     question,
+    shell,
     cards,
     queue: createJobQueue(report),
     leave: () => session.end("left"),
@@ -126,9 +129,10 @@ function takeKeys(
 ): () => void {
   const { context } = session;
   const onKey = (text: string | undefined, key: PressedKey | undefined): void => {
-    const { input, isPasting, question, credential } = context.store.get();
+    const { input, isPasting, question, credential, shellRequest } = context.store.get();
     if (credential === undefined) {
-      const choices = question?.choices.length ?? 0;
+      const asked = shellRequest === undefined ? 0 : shellAnswersOf(shellRequest).length;
+      const choices = question?.choices.length ?? asked;
       onAction(context, keys.parts, keyAction(text, key ?? {}, { input, isPasting, choices }));
       return;
     }
