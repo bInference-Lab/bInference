@@ -29,7 +29,11 @@ every transaction.
   TradingView alerts.
 - [Plugins, skills and MCP](/guides/plugins-and-skills/): community plugins in a sandbox, the
   bundled skills and MCP clients.
+- [The shell and files](/guides/shell-and-files/): commands and file changes behind a wall around
+  binference's folder, and the commands that ask you first.
 - [Credentials and API calls](/guides/credentials/): API keys the agent uses and never sees.
+- [Pictures, videos, voice and the screen](/guides/media-and-screen/): images, videos and voice the
+  agent makes, files it sends, PDFs it reads and screenshots.
 - [Helpers, goals and skills the agent writes](/guides/helpers-and-goals/): background helpers,
   `/goal`, the agent's status and skill proposals.
 - [Use an outbound proxy](/guides/proxy/): every outbound request through your proxy.

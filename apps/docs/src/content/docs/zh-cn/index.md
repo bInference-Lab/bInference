@@ -21,7 +21,9 @@ binference 是替你在 BNB Smart Chain 上交易的 AI Agent。它运行在你�
 - [发射代币](/zh-cn/guides/launches/)：从发射钱包在 Flap、Genius.fun 和 Brew 上发射。
 - [远程访问和提醒规则](/zh-cn/guides/remote-and-webhooks/)：通过 Tailscale 使用 Mini App，以及 TradingView 提醒。
 - [插件、技能和 MCP](/zh-cn/guides/plugins-and-skills/)：沙箱中的社区插件、自带技能和 MCP 客户端。
+- [命令行和文件](/zh-cn/guides/shell-and-files/)：隔离墙挡住 binference 自己的文件夹，Agent 在墙外运行命令、修改文件，以及哪些命令会先问你。
 - [凭据和 API 调用](/zh-cn/guides/credentials/)：Agent 使用但从不看到的 API 密钥。
+- [图片、视频、语音和屏幕](/zh-cn/guides/media-and-screen/)：Agent 生成的图片、视频和语音，它发送的文件、读取的 PDF 和屏幕截图。
 - [助手、目标和 Agent 编写的技能](/zh-cn/guides/helpers-and-goals/)：后台助手、`/goal`、Agent 的状态和技能提案。
 - [使用代理](/zh-cn/guides/proxy/)：每个外发请求都经过你的代理。
 
