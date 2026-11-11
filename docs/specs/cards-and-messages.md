@@ -1065,6 +1065,7 @@ is never verified, so its short address always follows its symbol.
 | `/status`    | `cmd.status`    | Engine state, mode, frozen or not, health                       |
 | `/spend`     | `cmd.spend`     | Model spend today and this month against the budget             |
 | `/ai`        | `cmd.ai`        | The agent's models, with buttons to pick another configured one |
+| `/stop`      | `cmd.stop`      | Stops the agent's turn, helpers and commands; its goal pauses   |
 | `/clear`     | `cmd.clear`     | Starts a new chat session                                       |
 | `/schedules` | `cmd.schedules` | Schedules with buttons to cancel                                |
 | `/console`   | `cmd.console`   | A button that opens the Mini App                                |

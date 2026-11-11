@@ -28,6 +28,7 @@ const handlers: OwnerChatHandlers = {
   "agent/list": async () => Promise.resolve(ok({ items: [agentView] })),
   "model/list": async () =>
     Promise.resolve(ok({ items: [{ role: "main", model: "router/large", current: true }] })),
+  "chat/stop": async () => Promise.resolve(ok({})),
   "chat/clear": async () =>
     Promise.resolve(
       ok({
@@ -37,15 +38,17 @@ const handlers: OwnerChatHandlers = {
 };
 
 describe("the agent and chat commands in Chinese", () => {
-  it("list the agents, pick one, and start a new chat in Chinese", async () => {
+  it("list the agents, pick one, stop it and start a new chat in Chinese", async () => {
     const bot = await startCommandBot(handlers, { locale: "zh" });
     await bot.send("/agents");
     await bot.send("/use main");
+    await bot.send("/stop");
     await bot.send("/clear");
     await bot.send("/schedules");
     expect(bot.texts()).toStrictEqual([
       `你的 Agent：\nmain · ${icons.paper} 模拟 · 此对话正在使用\n/use 加 Agent 名称可选择此对话使用的 Agent。`,
       "此对话现在使用 main。在你有多个 Agent 时，它的回答会以它的名称开头。",
+      "Agent 已停止：它的回答、助手和命令都已结束，目标已暂停。你已确认的操作仍会执行。",
       "新的对话已开始。Agent 会忘记这段对话，它的笔记和文件仍然保留。",
       "还没有设置定时轮。",
     ]);

@@ -12,10 +12,12 @@ import { ownerChatPatchSchema } from "./owner-chat-patch.schema.js";
 /**
  * The operations the owner's Telegram chat runs: the fast commands' reads and the braking that
  * rule 11 allows from any surface, `chat/post`, the owner's message to the agent, `chat/answer`,
- * the owner's press of a question's button, `chat/clear`, the chat's goal (`goal/get`, `goal/set`
- * and `goal/change`, decision 0407), the skill proposals and waiting skills the owner applies,
- * rejects or accepts from `/skills` (decision 0408), and `model/set`, a model the config
- * names for the agent (decision 0204). None is local or takes the owner key.
+ * the owner's press of a question's button, `chat/stop`, the owner's `/stop` of the agent's turn,
+ * helpers, goal and shell commands, as the console's Stop (decisions 0403, 0407 and 0409),
+ * `chat/clear`, the chat's goal (`goal/get`, `goal/set` and `goal/change`, decision 0407), the
+ * skill proposals and waiting skills the owner applies, rejects or accepts from `/skills`
+ * (decision 0408), and `model/set`, a model the config names for the agent (decision 0204). None
+ * is local or takes the owner key.
  * `limit/set` runs with `confirm` alone, so its handler takes only a stricter limit
  * (decision 0111). `config/change` runs only to set `owner.locale` or `telegram.replies`, the
  * exceptions to its `admin` scope (decisions 0134 and 0377). Any other setting changes through
@@ -42,6 +44,7 @@ export const ownerChatOperations = [
   "engine/restart",
   "chat/post",
   "chat/answer",
+  "chat/stop",
   "chat/clear",
   "shell/answer",
   "goal/get",

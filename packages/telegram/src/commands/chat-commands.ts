@@ -70,6 +70,22 @@ export async function runUse(context: CommandContext): Promise<void> {
 }
 
 /**
+ * `/stop`: stops the agent through `chat/stop`, as the console's Stop and the terminal's `/stop`
+ * do: its running turn ends, its goal pauses, and its helpers and shell commands stop (decisions
+ * 0403, 0407 and 0409). What the owner already confirmed still goes through.
+ */
+export async function runStop(context: CommandContext): Promise<void> {
+  const agent = await chooseAgent(context);
+  if (agent === undefined) {
+    return;
+  }
+  const stopped = await callOrSay(context, "chat/stop", { agent: agent.id });
+  if (stopped !== undefined) {
+    await context.say(context.words("cmd.stop.done"));
+  }
+}
+
+/**
  * `/clear`: starts a new chat session with the agent through `chat/clear`; the running turn ends
  * and an open question closes. The agent's notes and workspace stay.
  */

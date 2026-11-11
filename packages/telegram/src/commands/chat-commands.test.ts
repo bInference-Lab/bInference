@@ -4,6 +4,7 @@ import { type AgentView, protocolIdSchema, type ResultOf } from "@binference/pro
 import { describe, expect, it } from "vitest";
 import { ownerId, strangerId } from "../testing/update-fixtures.js";
 import { modelDigest } from "./ai-command.js";
+import { menuOf } from "./register-commands.js";
 import { startCommandBot } from "./test-command-bot.js";
 
 const main = protocolIdSchema("agent").parse("agt_0190f1c2-3a4b-7c5d-8e6f-0000000000a1");
@@ -51,6 +52,10 @@ function engine() {
     "agent/goPaper": async ({ args }) => {
       asked.push(["agent/goPaper", args.agent]);
       return Promise.resolve(ok(view(scout, "scout", "paper")));
+    },
+    "chat/stop": async ({ args }) => {
+      asked.push(["chat/stop", args.agent]);
+      return Promise.resolve(ok({}));
     },
     "chat/clear": async ({ args }) => {
       asked.push(["chat/clear", args.agent]);
@@ -118,6 +123,27 @@ describe("the agent and chat commands", () => {
     ]);
   });
 
+  it("stops the picked agent through chat/stop, as the console's Stop, and says what stopped", async () => {
+    const { bot, asked } = await botWith();
+    await bot.send("/use scout");
+    await bot.send("/stop");
+    expect(asked).toStrictEqual([["chat/stop", scout]]);
+    expect(bot.texts().at(-1)).toBe(
+      "The agent is stopped: its answer, its helpers and its commands end, and its goal pauses. Anything you already confirmed still goes through.",
+    );
+    expect(bot.chat).toStrictEqual([]);
+  });
+
+  it("lists /stop in the menu after /ai", () => {
+    const menu = menuOf("en");
+    const stop = menu.findIndex(({ command }) => command === "stop");
+    expect(menu[stop]).toStrictEqual({
+      command: "stop",
+      description: "Stop the agent's answer, its helpers and commands, and pause its goal",
+    });
+    expect(menu[stop - 1]?.command).toBe("ai");
+  });
+
   it("says no scheduled turn is set while the engine serves no schedules", async () => {
     const { bot } = await botWith();
     await bot.send("/use main");
@@ -127,7 +153,7 @@ describe("the agent and chat commands", () => {
 
   it("answers every command in the chat itself, never through the agent's model", async () => {
     const { bot } = await botWith();
-    for (const text of ["/agents", "/use main", "/clear", "/ai", "/schedules", "/spend"]) {
+    for (const text of ["/agents", "/use main", "/stop", "/clear", "/ai", "/schedules", "/spend"]) {
       // oxlint-disable-next-line eslint/no-await-in-loop -- the owner sends them one by one
       await bot.send(text);
     }

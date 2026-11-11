@@ -12,7 +12,7 @@ import type { OwnerCalls } from "../ports.js";
 import type { ButtonPress, ChatPost } from "../updates/chat-update.schema.js";
 import { runHalve, runLimits, runPaper } from "./agent-commands.js";
 import { runAi, runPickModel } from "./ai-command.js";
-import { runAgents, runClear, runSchedules, runUse } from "./chat-commands.js";
+import { runAgents, runClear, runSchedules, runStop, runUse } from "./chat-commands.js";
 import { commandCallbackSchema } from "./command-callback.schema.js";
 import type { CommandContext, CommandRun, PressContext } from "./command-context.js";
 import { commandArgs, commandOf, type FastCommandName, fastCommandNames } from "./command-of.js";
@@ -106,6 +106,7 @@ const runs: Readonly<Record<FastCommandName, CommandRun>> = {
   limits: runLimits,
   spend: runSpend,
   ai: runAi,
+  stop: runStop,
   clear: runClear,
   goal: runGoal,
   skills: runSkills,

@@ -79,6 +79,7 @@ describe("the fast commands in Chinese", () => {
       ["limits", "Agent 的限额"],
       ["spend", "今日及本月的模型花费与预算"],
       ["ai", "Agent 的模型，可用按钮选择其他模型"],
+      ["stop", "停止 Agent 的回答、助手和命令，并暂停目标"],
       ["clear", "与 Agent 开始新的对话"],
       ["goal", "给 Agent 设定要推进的目标，或查看、暂停、恢复、清除目标"],
       ["skills", "查看 Agent 的技能提案和待接受的技能"],
