@@ -28,6 +28,7 @@ const features = [
   "guides/launches",
   "guides/remote-and-webhooks",
   "guides/plugins-and-skills",
+  "guides/helpers-and-goals",
   "guides/proxy",
 ];
 
