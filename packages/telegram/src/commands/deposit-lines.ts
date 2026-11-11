@@ -1,18 +1,13 @@
 import { accountRefParts } from "@binference/chain";
-import { displayOutsideText } from "@binference/i18n";
-import type { AgentMode, WalletView } from "@binference/protocol";
+import {
+  type DepositWallet,
+  depositWarnings,
+  displayOutsideText,
+  walletRoleOf,
+} from "@binference/i18n";
+import type { WalletView } from "@binference/protocol";
 import type { RichLine, RichRun } from "@binference/rich-text";
 import type { CommandContext } from "./command-context.js";
-
-/** What a wallet is for, as `cmd.wallet.role` names it. */
-type WalletRole = "agent" | "launch" | "bridge" | "extraLaunch" | "extraBridge";
-
-/** A wallet as its deposit lines show it: the wallet, and its agent's mode and freeze. */
-export interface DepositWallet {
-  readonly view: WalletView;
-  readonly mode: AgentMode;
-  readonly isFrozen: boolean;
-}
 
 /** What the deposit lines are written with: the words, the formatter, and the chains if known. */
 type LineParts = Pick<CommandContext, "words" | "formatter"> & {
@@ -29,17 +24,6 @@ export function isExtraWallet(view: WalletView): boolean {
 /** The wallet's address as its chain writes it, the text a deposit's QR code holds. */
 export function walletAddressOf(view: WalletView): string {
   return accountRefParts(view.address).address;
-}
-
-function roleOf(view: WalletView): WalletRole {
-  const isExtra = isExtraWallet(view);
-  if (view.role === "launch") {
-    return isExtra ? "extraLaunch" : "launch";
-  }
-  if (view.bridge === true) {
-    return isExtra ? "extraBridge" : "bridge";
-  }
-  return "agent";
 }
 
 function lineOf(runs: readonly RichRun[]): RichLine {
@@ -62,19 +46,6 @@ const warningBlock = { kind: "quote", block: 1 } as const;
 
 function quoteLine(text: string): RichLine {
   return { block: warningBlock, runs: [{ text, marks: [] }] };
-}
-
-// What the owner must know before sending: the network, a paper agent's real funds, a freeze; and
-// for a wallet nothing runs from, to send it nothing.
-function warningLines(parts: LineParts, wallet: DepositWallet, chain: string): readonly RichLine[] {
-  if (isExtraWallet(wallet.view)) {
-    return [quoteLine(parts.words("cmd.wallet.extraFunds"))];
-  }
-  return [
-    quoteLine(parts.words("cmd.wallet.network", { chain })),
-    ...(wallet.mode === "paper" ? [quoteLine(parts.words("cmd.wallet.paperFunds"))] : []),
-    ...(wallet.isFrozen ? [quoteLine(parts.words("cmd.wallet.frozenFunds"))] : []),
-  ];
 }
 
 // The wallet's chain as the registry names it, with its first explorer's address page; a chain the
@@ -101,7 +72,7 @@ export function depositLines(parts: LineParts, wallet: DepositWallet): readonly 
   const { view } = wallet;
   const { address } = accountRefParts(view.address);
   const { chainName, template } = chainOf(parts, view);
-  const role = parts.words("cmd.wallet.role", { role: roleOf(view) });
+  const role = parts.words("cmd.wallet.role", { role: walletRoleOf(view) });
   const label = displayOutsideText(view.label, labelLength);
   return [
     lineOf([
@@ -110,7 +81,7 @@ export function depositLines(parts: LineParts, wallet: DepositWallet): readonly 
     ]),
     lineOf([{ text: address, marks: [{ kind: "code" }] }]),
     lineOf([]),
-    ...warningLines(parts, wallet, chainName),
+    ...depositWarnings(parts.formatter, wallet, chainName).map(quoteLine),
     ...(template === undefined ? [] : [lineOf([])]),
     ...explorerLines(parts, template?.replace("{address}", address)),
   ];

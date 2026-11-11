@@ -1,6 +1,5 @@
-import { displayOutsideText, type Formatter } from "@binference/i18n";
+import { depositWarnings, displayOutsideText, type Formatter } from "@binference/i18n";
 import type { ChatPush } from "@binference/protocol";
-import { wordsOf } from "./chat-lines.js";
 import type { ScreenLine } from "./chat-screen.js";
 
 // The most characters of a wallet's label a line shows.
@@ -15,21 +14,14 @@ export function depositLines(
   formatter: Formatter,
   push: Extract<ChatPush, { readonly kind: "chat/deposit" }>,
 ): readonly ScreenLine[] {
-  const words = wordsOf(formatter);
-  const warnings: readonly ScreenLine[] = [
-    ...(push.mode === "paper"
-      ? [{ text: words("cmd.wallet.paperFunds"), tone: "dim" } as const]
-      : []),
-    ...(push.frozen ? [{ text: words("cmd.wallet.frozenFunds"), tone: "dim" } as const] : []),
-  ];
   return push.wallets.flatMap((view) => {
     const at = view.address.lastIndexOf(":");
     const chain = view.chainName ?? view.address.slice(0, at);
+    const wallet = { view, mode: push.mode, isFrozen: push.frozen };
     return [
       { text: `${displayOutsideText(view.label, labelLength)} · ${chain}` },
       { text: `  ${view.address.slice(at + 1)}` },
-      { text: words("cmd.wallet.network", { chain }), tone: "dim" } as const,
-      ...warnings,
+      ...depositWarnings(formatter, wallet, chain).map((text) => ({ text, tone: "dim" }) as const),
     ];
   });
 }

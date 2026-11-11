@@ -34,3 +34,5 @@ export { noticeAssetsToRead } from "./notices/notice-assets.js";
 export { writeNotice } from "./notices/write-notice.js";
 export type { NoticeWriting, WrittenNotice } from "./notices/write-notice.js";
 export type { Catalog } from "./messages.js";
+export { depositWarnings, walletRoleOf } from "./wallets/deposit-warnings.js";
+export type { DepositWallet, WalletRoleName } from "./wallets/deposit-warnings.js";
