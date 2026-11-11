@@ -91,6 +91,7 @@
   "credential.store": "Store",
   "credential.skip": "Skip",
   "credential.never": "The agent never sees the value. Never write a credential in the chat.",
+  "shell.label": "Shell request",
   "chat.post": "Send",
   "chat.stop": "Stop",
   "chat.clear": "New chat",

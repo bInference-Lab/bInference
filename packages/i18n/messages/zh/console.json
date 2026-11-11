@@ -91,6 +91,7 @@
   "credential.store": "存储",
   "credential.skip": "跳过",
   "credential.never": "Agent 永远看不到该值。切勿在对话中写下凭据。",
+  "shell.label": "命令请求",
   "chat.post": "发送",
   "chat.stop": "停止",
   "chat.clear": "新对话",

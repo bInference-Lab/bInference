@@ -15,6 +15,7 @@ import { CredentialRequestCard } from "./credential-request-card";
 import { GoalPanel } from "./goal-panel";
 import { LaunchDraftCard } from "./launch-draft-card";
 import { NewChatButton } from "./new-chat-button";
+import { ShellRequestCard } from "./shell-request-card";
 import { uploadImage } from "./upload-image";
 import { useChatLive } from "./use-chat-live";
 import { transcriptKey, useTranscript } from "./use-transcript";
@@ -162,6 +163,11 @@ export function AgentChat(props: {
       )}
       <AgentQuestionCard agent={agent} agentName={agentName} canAnswer={canChat} />
       <CredentialRequestCard agent={agent} agentName={agentName} canAnswer={canChat} />
+      <ShellRequestCard
+        agent={agent}
+        agentName={agentName}
+        canAnswer={ready.scopes.includes("confirm")}
+      />
       <LaunchDraftCard agent={agent} agentName={agentName} />
       <ChatCards agent={agent} />
       <ChatBottom
