@@ -34,6 +34,8 @@ export const idPrefixes = {
   shellJob: "shj",
   credentialRequest: "crq",
   skillProposal: "skp",
+  shellRequest: "shq",
+  allowedCommand: "sac",
 } as const;
 
 /** A thing that carries a protocol id, such as `intent` or `connection`. */

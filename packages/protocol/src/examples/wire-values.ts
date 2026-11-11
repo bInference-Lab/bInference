@@ -21,6 +21,8 @@ const uuid = "0190f1c2-3a4b-7c5d-8e6f-0123456789ab";
 
 type IdName =
   | "shellJob"
+  | "shellRequest"
+  | "allowedCommand"
   | "agent"
   | "wallet"
   | "intent"
@@ -47,6 +49,8 @@ type IdName =
 /** An example id of every kind the operations name. */
 export const ids: Readonly<Record<IdName, string>> = {
   shellJob: `shj_${uuid}`,
+  shellRequest: `shq_${uuid}`,
+  allowedCommand: `sac_${uuid}`,
   agent: `agt_${uuid}`,
   wallet: `wal_${uuid}`,
   intent: `int_${uuid}`,

@@ -603,6 +603,10 @@
         "shell.no_wall",
         "shell.folder_missing",
         "shell.job_not_found",
+        "shell.not_listed",
+        "shell.request_closed",
+        "shell.always_unavailable",
+        "shell.allowed_not_found",
         "file.not_found",
         "file.walled",
         "file.outside_workspace",
@@ -687,7 +691,9 @@
         "plg",
         "shj",
         "crq",
-        "skp"
+        "skp",
+        "shq",
+        "sac"
       ]
     },
     "call/engine/status": {
@@ -42010,6 +42016,15 @@
               "type": "integer",
               "minimum": 0,
               "maximum": 86400
+            },
+            "surface": {
+              "type": "string",
+              "enum": [
+                "telegram",
+                "console",
+                "cli",
+                "mini"
+              ]
             }
           },
           "required": [
@@ -42060,7 +42075,8 @@
               "type": "string",
               "enum": [
                 "running",
-                "ended"
+                "ended",
+                "asking"
               ]
             },
             "command": {
@@ -42093,12 +42109,79 @@
             "stopped": {
               "type": "boolean"
             },
+            "stoppedBy": {
+              "type": "string",
+              "enum": [
+                "agent",
+                "owner",
+                "freeze"
+              ]
+            },
             "output": {
               "type": "string",
               "maxLength": 200000
             },
             "outputCut": {
               "type": "boolean"
+            },
+            "request": {
+              "type": "object",
+              "properties": {
+                "request": {
+                  "type": "string",
+                  "pattern": "^shq_"
+                },
+                "agent": {
+                  "type": "string",
+                  "pattern": "^agt_"
+                },
+                "job": {
+                  "type": "string",
+                  "pattern": "^shj_"
+                },
+                "command": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 8000
+                },
+                "folder": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "reason": {
+                  "type": "string",
+                  "enum": [
+                    "always",
+                    "unlisted",
+                    "unreadable",
+                    "powershell"
+                  ]
+                },
+                "canAlwaysAllow": {
+                  "type": "boolean"
+                },
+                "createdAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "closesAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "request",
+                "agent",
+                "job",
+                "command",
+                "folder",
+                "reason",
+                "canAlwaysAllow",
+                "createdAt",
+                "closesAt"
+              ]
             }
           },
           "required": [
@@ -42210,7 +42293,8 @@
               "type": "string",
               "enum": [
                 "running",
-                "ended"
+                "ended",
+                "asking"
               ]
             },
             "command": {
@@ -42243,12 +42327,79 @@
             "stopped": {
               "type": "boolean"
             },
+            "stoppedBy": {
+              "type": "string",
+              "enum": [
+                "agent",
+                "owner",
+                "freeze"
+              ]
+            },
             "output": {
               "type": "string",
               "maxLength": 200000
             },
             "outputCut": {
               "type": "boolean"
+            },
+            "request": {
+              "type": "object",
+              "properties": {
+                "request": {
+                  "type": "string",
+                  "pattern": "^shq_"
+                },
+                "agent": {
+                  "type": "string",
+                  "pattern": "^agt_"
+                },
+                "job": {
+                  "type": "string",
+                  "pattern": "^shj_"
+                },
+                "command": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 8000
+                },
+                "folder": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "reason": {
+                  "type": "string",
+                  "enum": [
+                    "always",
+                    "unlisted",
+                    "unreadable",
+                    "powershell"
+                  ]
+                },
+                "canAlwaysAllow": {
+                  "type": "boolean"
+                },
+                "createdAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "closesAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "request",
+                "agent",
+                "job",
+                "command",
+                "folder",
+                "reason",
+                "canAlwaysAllow",
+                "createdAt",
+                "closesAt"
+              ]
             }
           },
           "required": [
@@ -42262,6 +42413,428 @@
             "output",
             "outputCut"
           ]
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "result"
+      ]
+    },
+    "call/shell/answer": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "op": {
+          "type": "string",
+          "const": "shell/answer"
+        },
+        "args": {
+          "type": "object",
+          "properties": {
+            "request": {
+              "type": "string",
+              "pattern": "^shq_"
+            },
+            "answer": {
+              "type": "string",
+              "enum": [
+                "once",
+                "always",
+                "refuse"
+              ]
+            }
+          },
+          "required": [
+            "request",
+            "answer"
+          ],
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "op",
+        "args",
+        "key"
+      ],
+      "scope": "confirm",
+      "kind": "write",
+      "transport": "any",
+      "answeredBy": "engine",
+      "since": "2026.10.0"
+    },
+    "reply/shell/answer": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "reply"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "outcome": {
+              "type": "string",
+              "enum": [
+                "allowed_once",
+                "allowed_always",
+                "refused",
+                "expired",
+                "ran_unanswered",
+                "replaced",
+                "withdrawn",
+                "stopped"
+              ]
+            }
+          },
+          "required": [
+            "outcome"
+          ]
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "result"
+      ]
+    },
+    "call/shell/requests": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "op": {
+          "type": "string",
+          "const": "shell/requests"
+        },
+        "args": {
+          "type": "object",
+          "properties": {
+            "agent": {
+              "type": "string",
+              "pattern": "^agt_"
+            }
+          },
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "op",
+        "args"
+      ],
+      "scope": "read",
+      "kind": "read",
+      "transport": "any",
+      "answeredBy": "engine",
+      "since": "2026.10.0"
+    },
+    "reply/shell/requests": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "reply"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "items": {
+              "readOnly": true,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "request": {
+                    "type": "string",
+                    "pattern": "^shq_"
+                  },
+                  "agent": {
+                    "type": "string",
+                    "pattern": "^agt_"
+                  },
+                  "job": {
+                    "type": "string",
+                    "pattern": "^shj_"
+                  },
+                  "command": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 8000
+                  },
+                  "folder": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "reason": {
+                    "type": "string",
+                    "enum": [
+                      "always",
+                      "unlisted",
+                      "unreadable",
+                      "powershell"
+                    ]
+                  },
+                  "canAlwaysAllow": {
+                    "type": "boolean"
+                  },
+                  "createdAt": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "closesAt": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "request",
+                  "agent",
+                  "job",
+                  "command",
+                  "folder",
+                  "reason",
+                  "canAlwaysAllow",
+                  "createdAt",
+                  "closesAt"
+                ]
+              }
+            }
+          },
+          "required": [
+            "items"
+          ]
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "result"
+      ]
+    },
+    "call/shell/allowed": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "op": {
+          "type": "string",
+          "const": "shell/allowed"
+        },
+        "args": {
+          "type": "object",
+          "properties": {},
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "op",
+        "args"
+      ],
+      "scope": "read",
+      "kind": "read",
+      "transport": "any",
+      "answeredBy": "engine",
+      "since": "2026.10.0"
+    },
+    "reply/shell/allowed": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "reply"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "result": {
+          "type": "object",
+          "properties": {
+            "items": {
+              "readOnly": true,
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "allowed": {
+                    "type": "string",
+                    "pattern": "^sac_"
+                  },
+                  "text": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 8000
+                  },
+                  "program": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "args": {
+                    "readOnly": true,
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "folder": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "allowedAt": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "allowed",
+                  "text",
+                  "program",
+                  "args",
+                  "folder",
+                  "allowedAt"
+                ]
+              }
+            }
+          },
+          "required": [
+            "items"
+          ]
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "result"
+      ]
+    },
+    "call/shell/disallow": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "call"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "op": {
+          "type": "string",
+          "const": "shell/disallow"
+        },
+        "args": {
+          "type": "object",
+          "properties": {
+            "allowed": {
+              "type": "string",
+              "pattern": "^sac_"
+            }
+          },
+          "required": [
+            "allowed"
+          ],
+          "additionalProperties": false
+        },
+        "key": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      },
+      "required": [
+        "t",
+        "id",
+        "op",
+        "args",
+        "key"
+      ],
+      "scope": "confirm",
+      "kind": "write",
+      "transport": "any",
+      "answeredBy": "engine",
+      "since": "2026.10.0"
+    },
+    "reply/shell/disallow": {
+      "$schema": "https://json-schema.org/draft/2020-12/schema",
+      "type": "object",
+      "properties": {
+        "t": {
+          "type": "string",
+          "const": "reply"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "result": {
+          "type": "object",
+          "properties": {}
         }
       },
       "required": [

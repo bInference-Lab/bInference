@@ -64,6 +64,9 @@ export { maxDisplayNumber, maxScreenShots } from "./operations/screen-operations
 export type { ScreenCaptureView, ScreenShotView } from "./operations/screen-operations.schema.js";
 export type { PortableChart } from "./views/portable-chart.schema.js";
 export * as credentialPushes from "./views/credential-push.schema.js";
+export * from "./views/shell-push.schema.js";
+export * from "./views/shell-request-view.schema.js";
+export type { ShellJobView, ShellStopper } from "./views/shell-job-view.schema.js";
 export * from "./views/goal-push.schema.js";
 export * from "./views/goal-view.schema.js";
 export * from "./views/skill-proposal-view.schema.js";
