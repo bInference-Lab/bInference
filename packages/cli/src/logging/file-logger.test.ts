@@ -83,6 +83,14 @@ describe("the file logger", () => {
     ]);
   });
 
+  it("writes a request's method, host and status", () => {
+    const { file, logger } = loggerOn();
+    const fields = { method: "GET", host: "api.example.com", status: 200, durationMs: 40 };
+    logger.info("request.sent", fields);
+    const written = file.lines.map((text) => logLineSchema.parse(JSON.parse(text)).fields);
+    expect(written).toStrictEqual([fields]);
+  });
+
   it("drops records below the level the config sets", () => {
     const { file, logger } = loggerOn("warn");
     logger.debug("queue.idle");

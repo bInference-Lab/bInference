@@ -27,6 +27,20 @@ describe("reportLogLine", () => {
     });
   });
 
+  it("keeps a request's method and status and hides its host", () => {
+    const fields = { method: "POST", host: "api.example.com", status: 201, durationMs: 80 };
+    expect(reportLogLine(line({ event: "request.sent", fields }))?.["fields"]).toStrictEqual({
+      method: "POST",
+      host: omittedMark,
+      status: 201,
+      durationMs: 80,
+    });
+    const odd = { method: "post /v1/orders?key=abc" };
+    expect(reportLogLine(line({ event: "request.sent", fields: odd }))?.["fields"]).toStrictEqual({
+      method: omittedMark,
+    });
+  });
+
   it("cuts an account's and a token's address to the short form", () => {
     const fields = {
       accountId: `eip155:56:${address}`,

@@ -9,6 +9,8 @@ export const omittedMark = "[omitted]";
 const dottedName = /^[a-z][a-z0-9_]*(?:\.[a-z0-9_]+)*$/;
 // An id binference made, such as `int_0192…`, or a connection's trace id.
 const plainId = /^[a-z]{2,4}_[0-9a-f-]{8,40}$/;
+// An HTTP method, as an outbound request names it.
+const httpMethod = /^(?:GET|HEAD|POST|PUT|PATCH|DELETE)$/;
 // A CAIP-2 chain id, such as `eip155:56`.
 const chainId = /^[-a-z0-9]{3,8}:[-_a-zA-Z0-9]{1,32}$/;
 // A data source's or venue's id, such as `dexscreener`.
@@ -42,6 +44,9 @@ const fieldRules: Readonly<Record<string, (value: string) => string>> = {
   accountId: shortRef,
   sourceId: (value) => (sourceName.test(value) ? value : omittedMark),
   errorCode: (value) => (dottedName.test(value) ? value : omittedMark),
+  method: (value) => (httpMethod.test(value) ? value : omittedMark),
+  // The bundle hides every host name (decision 0263), so a request's host never passes.
+  host: () => omittedMark,
 };
 
 function fieldValue(key: string, value: string | number): JsonValue {

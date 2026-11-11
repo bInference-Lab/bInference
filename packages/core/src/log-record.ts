@@ -20,6 +20,12 @@ export interface LogFields {
   readonly gapBps?: number;
   /** A message's id in the owner's chat, such as one a reply went out as. */
   readonly messageId?: number;
+  /** An outbound request's HTTP method, such as `GET`. */
+  readonly method?: string;
+  /** An outbound request's host, such as `api.example.com`; never its path or query. */
+  readonly host?: string;
+  /** The HTTP status an answer came with. */
+  readonly status?: number;
 }
 
 /** One record as a logger writes it. */
