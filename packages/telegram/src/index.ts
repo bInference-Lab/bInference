@@ -49,6 +49,12 @@ export { runPolling } from "./polling/run-polling.js";
 export type { RunPollingOptions } from "./polling/run-polling.js";
 export type { CardAnswers, LaunchDraftAnswers, OwnerCalls, QuestionAnswers } from "./ports.js";
 export { createTelegramLaunchDrafts } from "./drafts/create-telegram-launch-drafts.js";
+export { createTelegramShellRequests } from "./shell/create-telegram-shell-requests.js";
+export type {
+  ShellPress,
+  TelegramShellRequests,
+  TelegramShellRequestsOptions,
+} from "./shell/create-telegram-shell-requests.js";
 export type {
   TelegramLaunchDrafts,
   TelegramLaunchDraftsOptions,

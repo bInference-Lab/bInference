@@ -34,6 +34,10 @@ packages/i18n/messages/zh/cmd.json emoji
 packages/i18n/messages/en/turn.json emoji
 packages/i18n/messages/zh/turn.json emoji
 
+# A shell request's closing line carries the allowed and refused icons the card spec names.
+packages/i18n/messages/en/shell.json emoji
+packages/i18n/messages/zh/shell.json emoji
+
 # Each language's name is written in that language, the same in every language, so the owner finds
 # theirs on the /lang buttons whatever binference speaks now.
 packages/i18n/messages/en/language.json cjk

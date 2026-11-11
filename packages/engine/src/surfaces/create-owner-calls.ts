@@ -43,6 +43,7 @@ export const ownerChatOperations = [
   "chat/post",
   "chat/answer",
   "chat/clear",
+  "shell/answer",
   "goal/get",
   "goal/set",
   "goal/change",

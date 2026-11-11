@@ -1,0 +1,12 @@
+{
+  "request.header": "{agent} asks to run a command",
+  "request.folder": "In {folder}",
+  "request.reason": "{reason, select, always {You are asked before every command (shell.ask is always).} unlisted {No allowed command covers it.} unreadable {binference cannot judge this command line in full, so no allowed command can cover it.} other {On PowerShell no allowed command covers a command.}}",
+  "request.noAlways": "Always allow is not offered: this command runs other code, or binference cannot judge it in full.",
+  "request.until": "Answer by {time}.",
+  "request.once": "Allow once",
+  "request.always": "Always allow",
+  "request.refuse": "Refuse",
+  "request.closed": "{outcome, select, allowed_once {✅ Allowed once.} allowed_always {✅ Allowed, and kept as an allowed command.} refused {❌ Refused. Nothing ran.} expired {❌ No answer in 10 minutes. Nothing ran.} ran_unanswered {🟡 No answer in 10 minutes, so it ran as shell.onNoAnswer says.} replaced {❌ A newer request replaced this one. Nothing ran.} withdrawn {❌ The agent withdrew this request. Nothing ran.} other {❌ Stopped. Nothing ran.}}",
+  "request.closedToast": "This request is no longer open."
+}

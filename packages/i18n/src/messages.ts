@@ -24,6 +24,7 @@ import enQuestion from "../messages/en/question.json" with { type: "json" };
 import enReason from "../messages/en/reason.json" with { type: "json" };
 import enReceipt from "../messages/en/receipt.json" with { type: "json" };
 import enResume from "../messages/en/resume.json" with { type: "json" };
+import enShell from "../messages/en/shell.json" with { type: "json" };
 import enTelegram from "../messages/en/telegram.json" with { type: "json" };
 import enTui from "../messages/en/tui.json" with { type: "json" };
 import enTurn from "../messages/en/turn.json" with { type: "json" };
@@ -55,6 +56,7 @@ import zhQuestion from "../messages/zh/question.json" with { type: "json" };
 import zhReason from "../messages/zh/reason.json" with { type: "json" };
 import zhReceipt from "../messages/zh/receipt.json" with { type: "json" };
 import zhResume from "../messages/zh/resume.json" with { type: "json" };
+import zhShell from "../messages/zh/shell.json" with { type: "json" };
 import zhTelegram from "../messages/zh/telegram.json" with { type: "json" };
 import zhTui from "../messages/zh/tui.json" with { type: "json" };
 import zhTurn from "../messages/zh/turn.json" with { type: "json" };
@@ -99,6 +101,7 @@ export const messages: Readonly<Record<MessageLocale, Catalog>> = {
     ...inArea("turn", enTurn),
     ...inArea("tui", enTui),
     ...inArea("question", enQuestion),
+    ...inArea("shell", enShell),
     ...inArea("cmd", enCmd),
     ...inArea("cli", enCli),
     ...inArea("init", enInit),
@@ -132,6 +135,7 @@ export const messages: Readonly<Record<MessageLocale, Catalog>> = {
     ...inArea("turn", zhTurn),
     ...inArea("tui", zhTui),
     ...inArea("question", zhQuestion),
+    ...inArea("shell", zhShell),
     ...inArea("cmd", zhCmd),
     ...inArea("cli", zhCli),
     ...inArea("init", zhInit),

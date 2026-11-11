@@ -1,0 +1,12 @@
+{
+  "request.header": "{agent} 请求运行一条命令",
+  "request.folder": "目录：{folder}",
+  "request.reason": "{reason, select, always {每条命令运行前都会询问你（shell.ask 为 always）。} unlisted {没有允许的命令涵盖它。} unreadable {binference 无法完整判断这行命令，因此任何允许的命令都无法涵盖它。} other {在 PowerShell 上，允许的命令不涵盖任何命令。}}",
+  "request.noAlways": "不提供“始终允许”：这条命令会运行其他代码，或 binference 无法完整判断它。",
+  "request.until": "请在 {time} 前回答。",
+  "request.once": "允许一次",
+  "request.always": "始终允许",
+  "request.refuse": "拒绝",
+  "request.closed": "{outcome, select, allowed_once {✅ 已允许一次。} allowed_always {✅ 已允许，并已保存为允许的命令。} refused {❌ 已拒绝，没有运行任何命令。} expired {❌ 10 分钟内未回答，没有运行任何命令。} ran_unanswered {🟡 10 分钟内未回答，已按 shell.onNoAnswer 运行。} replaced {❌ 较新的请求已取代此请求，没有运行任何命令。} withdrawn {❌ Agent 已撤回此请求，没有运行任何命令。} other {❌ 已停止，没有运行任何命令。}}",
+  "request.closedToast": "此请求已不再开放。"
+}
