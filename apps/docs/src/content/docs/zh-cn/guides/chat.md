@@ -17,26 +17,33 @@ description: 在 Telegram、控制台和终端中与 Agent 对话，回答它的
 
 这些命令会立即回答，不经过 Agent 的模型。`/help` 会列出它们：
 
-| 命令         | 用途                                         |
-| ------------ | -------------------------------------------- |
-| `/balance`   | 每个钱包的美元总额和主要持仓                 |
-| `/positions` | 每个持仓的数量、市值、平均成本和盈亏         |
-| `/orders`    | 生效中的自动订单，及其触发条件和成交次数     |
-| `/cancel`    | 列出每张等待你回复的卡片，以便取消           |
-| `/freeze`    | 立即冻结所有 Agent                           |
-| `/rescue`    | 打开紧急转出卡片                             |
-| `/paper`     | 将 Agent 切换回模拟模式                      |
-| `/agents`    | 你的 Agent，以及此对话使用的 Agent           |
-| `/use`       | 按名称选择此对话使用的 Agent                 |
-| `/status`    | binference 的状态、Agent、冻结情况和健康状况 |
-| `/limits`    | Agent 的限额；其按钮只能让限额更严格         |
-| `/spend`     | 今日及本月的模型花费与预算                   |
-| `/ai`        | Agent 的模型，可用按钮选择其他主模型         |
-| `/clear`     | 开始新的对话；笔记、交易策略和人设保留       |
-| `/schedules` | Agent 的定时任务                             |
-| `/console`   | 在 Telegram 中以 Mini App 打开控制台         |
-| `/lang`      | binference 与你沟通使用的语言                |
-| `/help`      | 所有命令，每行一个                           |
+| 命令         | 用途                                                    |
+| ------------ | ------------------------------------------------------- |
+| `/balance`   | 每个钱包的美元总额和主要持仓                            |
+| `/wallet`    | Agent 的钱包：每个地址、所在链和模式                    |
+| `/positions` | 每个持仓的数量、市值、平均成本和盈亏                    |
+| `/orders`    | 生效中的自动订单，及其触发条件和成交次数                |
+| `/cancel`    | 列出每张等待你回复的卡片，以便取消                      |
+| `/freeze`    | 立即冻结所有 Agent                                      |
+| `/rescue`    | 打开紧急转出卡片                                        |
+| `/paper`     | 将 Agent 切换回模拟模式                                 |
+| `/agents`    | 你的 Agent，以及此对话使用的 Agent                      |
+| `/use`       | 按名称选择此对话使用的 Agent                            |
+| `/status`    | binference 的状态、Agent、冻结情况和健康状况            |
+| `/limits`    | Agent 的限额；其按钮只能让限额更严格                    |
+| `/spend`     | 今日及本月的模型花费与预算                              |
+| `/ai`        | Agent 的模型，可用按钮选择其他主模型                    |
+| `/stop`      | 停止 Agent 的回答、助手和命令，并暂停目标               |
+| `/clear`     | 开始新的对话；笔记、交易策略和人设保留                  |
+| `/goal`      | 给 Agent 设定要推进的目标，或查看、暂停、恢复、清除目标 |
+| `/skills`    | Agent 的技能提案和待接受的技能，每项都有操作按钮        |
+| `/schedules` | Agent 的定时任务                                        |
+| `/console`   | 在 Telegram 中以 Mini App 打开控制台                    |
+| `/replies`   | Agent 回复和推理在此对话中的显示方式，每个选项一个按钮  |
+| `/config`    | 查看或更改设置；更改会打开一张由你确认的卡片            |
+| `/restart`   | 重启 binference，恢复服务后会在这里告诉你               |
+| `/lang`      | binference 与你沟通使用的语言                           |
+| `/help`      | 所有命令，每行一个                                      |
 
 `/console` 需要引擎有一个 HTTPS 地址：用 [`binference expose`](/zh-cn/guides/remote-and-webhooks/) 设置，或在 `remote.publicUrl` 中填写你自己的地址。没有地址时，机器人会告诉你如何发布一个。
 

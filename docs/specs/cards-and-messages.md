@@ -1049,32 +1049,33 @@ is never verified, so its short address always follows its symbol.
 
 ## 5. Fast commands
 
-| Command      | Reply key       | Reply                                                           |
-| ------------ | --------------- | --------------------------------------------------------------- |
-| `/balance`   | `cmd.balance`   | Each wallet's total in USD and its top holdings                 |
-| `/wallet`    | `cmd.wallet`    | Each wallet's role, chain, mode, address and explorer link      |
-| `/positions` | `cmd.positions` | Each position: amount, value, average cost, P&L                 |
-| `/orders`    | `cmd.orders`    | Active auto orders with their triggers and fills                |
-| `/cancel`    | `cmd.cancel`    | A list of orders with buttons to cancel one                     |
-| `/freeze`    | `cmd.freeze`    | Freezes at once; the reply is `notice.frozen`                   |
-| `/rescue`    | `cmd.rescue`    | Opens the rescue card                                           |
-| `/paper`     | `cmd.paper`     | Switches the agent to paper (braking); going live needs the CLI |
-| `/agents`    | `cmd.agents`    | Agents with mode and state; `/use <agent>` picks one            |
-| `/use`       | `cmd.use`       | Picks the agent the chat talks to, by name or id                |
-| `/limits`    | `cmd.limits`    | The agent's limits; a button halves a cap or a slippage limit   |
-| `/status`    | `cmd.status`    | Engine state, mode, frozen or not, health                       |
-| `/spend`     | `cmd.spend`     | Model spend today and this month against the budget             |
-| `/ai`        | `cmd.ai`        | The agent's models, with buttons to pick another configured one |
-| `/stop`      | `cmd.stop`      | Stops the agent's turn, helpers and commands; its goal pauses   |
-| `/clear`     | `cmd.clear`     | Starts a new chat session                                       |
-| `/schedules` | `cmd.schedules` | Schedules with buttons to cancel                                |
-| `/console`   | `cmd.console`   | A button that opens the Mini App                                |
-| `/replies`   | `cmd.replies`   | How replies and reasoning show here, a button for each choice   |
-| `/config`    | `cmd.config`    | Settings; `/config <key>` one; `set` and `unset` open a card    |
-| `/restart`   | `cmd.restart`   | Restarts binference; it says here when it serves again          |
-| `/lang`      | `cmd.lang`      | Buttons: English, 中文                                          |
-| `/skills`    | `cmd.skills`    | Skill proposals and waiting skills, with buttons to act on each |
-| `/help`      | `cmd.help`      | The commands, one line each                                     |
+| Command      | Reply key       | Reply                                                            |
+| ------------ | --------------- | ---------------------------------------------------------------- |
+| `/balance`   | `cmd.balance`   | Each wallet's total in USD and its top holdings                  |
+| `/wallet`    | `cmd.wallet`    | Each wallet's role, chain, mode, address and explorer link       |
+| `/positions` | `cmd.positions` | Each position: amount, value, average cost, P&L                  |
+| `/orders`    | `cmd.orders`    | Active auto orders with their triggers and fills                 |
+| `/cancel`    | `cmd.cancel`    | A list of orders with buttons to cancel one                      |
+| `/freeze`    | `cmd.freeze`    | Freezes at once; the reply is `notice.frozen`                    |
+| `/rescue`    | `cmd.rescue`    | Opens the rescue card                                            |
+| `/paper`     | `cmd.paper`     | Switches the agent to paper (braking); going live needs the CLI  |
+| `/agents`    | `cmd.agents`    | Agents with mode and state; `/use <agent>` picks one             |
+| `/use`       | `cmd.use`       | Picks the agent the chat talks to, by name or id                 |
+| `/limits`    | `cmd.limits`    | The agent's limits; a button halves a cap or a slippage limit    |
+| `/status`    | `cmd.status`    | Engine state, mode, frozen or not, health                        |
+| `/spend`     | `cmd.spend`     | Model spend today and this month against the budget              |
+| `/ai`        | `cmd.ai`        | The agent's models, with buttons to pick another configured one  |
+| `/stop`      | `cmd.stop`      | Stops the agent's turn, helpers and commands; its goal pauses    |
+| `/clear`     | `cmd.clear`     | Starts a new chat session                                        |
+| `/goal`      | `turn.goal.*`   | The chat's goal; `/goal <objective>`, `pause`, `resume`, `clear` |
+| `/schedules` | `cmd.schedules` | Schedules with buttons to cancel                                 |
+| `/console`   | `cmd.console`   | A button that opens the Mini App                                 |
+| `/replies`   | `cmd.replies`   | How replies and reasoning show here, a button for each choice    |
+| `/config`    | `cmd.config`    | Settings; `/config <key>` one; `set` and `unset` open a card     |
+| `/restart`   | `cmd.restart`   | Restarts binference; it says here when it serves again           |
+| `/lang`      | `cmd.lang`      | Buttons: English, 中文                                           |
+| `/skills`    | `cmd.skills`    | Skill proposals and waiting skills, with buttons to act on each  |
+| `/help`      | `cmd.help`      | The commands, one line each                                      |
 
 Command descriptions are registered with `setMyCommands` in both languages (`language_code`).
 

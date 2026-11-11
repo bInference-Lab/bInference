@@ -814,7 +814,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | Allow once, Always allow, Refuse            | 允许一次, 始终允许, 拒绝 | Shell request buttons        |
 | command end                                 | 命令结束                 |                              |
 | filter command                              | 过滤命令                 |                              |
-| sandbox                                     | 沙箱                     | `shell.sandbox`              |
+| sandbox                                     | 沙箱                     | Around community plugins     |
 | usage (of a command)                        | 用法                     | Help's heading               |
 | config key                                  | 配置项                   |                              |
 | value (of a config key)                     | 值                       |                              |

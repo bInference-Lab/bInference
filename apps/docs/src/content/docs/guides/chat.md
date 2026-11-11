@@ -28,26 +28,33 @@ unread, and the bot tells you so.
 
 The commands answer at once, without the agent's model. `/help` lists them:
 
-| Command      | What it does                                                   |
-| ------------ | -------------------------------------------------------------- |
-| `/balance`   | Each wallet's total in USD and its top holdings                |
-| `/positions` | Each position with its amount, value, average cost and P&L     |
-| `/orders`    | The active auto orders with their triggers and fills           |
-| `/cancel`    | Shows each card that waits for your answer, to cancel it       |
-| `/freeze`    | Freezes every agent at once                                    |
-| `/rescue`    | Opens the rescue card                                          |
-| `/paper`     | Switches the agent back to paper mode                          |
-| `/agents`    | Your agents, and the one this chat talks to                    |
-| `/use`       | Picks the agent this chat talks to, by its name                |
-| `/status`    | binference's state, its agents, freezes and health             |
-| `/limits`    | The agent's limits; its buttons can only make a limit stricter |
-| `/spend`     | Model spend today and this month against the budget            |
-| `/ai`        | The agent's models, with buttons to pick another main model    |
-| `/clear`     | Starts a new chat; notes, strategy and persona stay            |
-| `/schedules` | The agent's schedules                                          |
-| `/console`   | Opens the console inside Telegram as the Mini App              |
-| `/lang`      | The language binference uses with you                          |
-| `/help`      | The commands, one line each                                    |
+| Command      | What it does                                                                |
+| ------------ | --------------------------------------------------------------------------- |
+| `/balance`   | Each wallet's total in USD and its top holdings                             |
+| `/wallet`    | The agent's wallets: each address, its chain and its mode                   |
+| `/positions` | Each position with its amount, value, average cost and P&L                  |
+| `/orders`    | The active auto orders with their triggers and fills                        |
+| `/cancel`    | Shows each card that waits for your answer, to cancel it                    |
+| `/freeze`    | Freezes every agent at once                                                 |
+| `/rescue`    | Opens the rescue card                                                       |
+| `/paper`     | Switches the agent back to paper mode                                       |
+| `/agents`    | Your agents, and the one this chat talks to                                 |
+| `/use`       | Picks the agent this chat talks to, by its name                             |
+| `/status`    | binference's state, its agents, freezes and health                          |
+| `/limits`    | The agent's limits; its buttons can only make a limit stricter              |
+| `/spend`     | Model spend today and this month against the budget                         |
+| `/ai`        | The agent's models, with buttons to pick another main model                 |
+| `/stop`      | Stops the agent's answer, its helpers and commands, and pauses its goal     |
+| `/clear`     | Starts a new chat; notes, strategy and persona stay                         |
+| `/goal`      | Gives the agent a goal to work on, or shows, pauses, resumes or clears it   |
+| `/skills`    | The agent's skill proposals and waiting skills, with buttons to act on each |
+| `/schedules` | The agent's schedules                                                       |
+| `/console`   | Opens the console inside Telegram as the Mini App                           |
+| `/replies`   | How the agent's replies and reasoning show here, a button for each choice   |
+| `/config`    | Shows or changes a setting; a change opens a card you confirm               |
+| `/restart`   | Restarts binference, and says here when it serves again                     |
+| `/lang`      | The language binference uses with you                                       |
+| `/help`      | The commands, one line each                                                 |
 
 `/console` needs an HTTPS address for the engine: set it up with
 [`binference expose`](/guides/remote-and-webhooks/), or name your own in `remote.publicUrl`. Without
