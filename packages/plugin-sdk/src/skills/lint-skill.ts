@@ -1,12 +1,14 @@
+import { hiddenLines } from "./hidden-characters.js";
 import { type PatternCode, patternMatches, redacted } from "./skill-patterns.js";
 
 /**
  * A sentence of a skill that the install refuses: one that tells the agent to ask for a secret
  * (`asks_for_secret`), runs a download in a shell (`pipe_to_shell`), sends a secret store over
- * the network (`exfiltration`), or holds a secret written out (`literal_secret`).
+ * the network (`exfiltration`), or holds a secret written out (`literal_secret`); or a line that
+ * holds a character a reader cannot see (`hidden_characters`).
  */
 export interface SkillFinding {
-  readonly code: "asks_for_secret" | PatternCode;
+  readonly code: "asks_for_secret" | "hidden_characters" | PatternCode;
   /** The line of the skill's text the sentence starts on, from 1. */
   readonly line: number;
   /**
@@ -14,7 +16,10 @@ export interface SkillFinding {
    * `literal_secret`, what the secret looks like.
    */
   readonly secret?: string;
-  /** The sentence, its whitespace collapsed, with every secret written out in it redacted. */
+  /**
+   * The sentence, its whitespace collapsed, with every secret written out in it redacted; for
+   * `hidden_characters`, the line with each such character written as `<U+XXXX>`.
+   */
   readonly text: string;
 }
 
@@ -147,11 +152,17 @@ function findingsOf(text: string, sentence: Sentence): readonly SkillFinding[] {
  * for sentences that tell the agent to ask for or collect a secret (a seed or recovery phrase, a
  * private or secret key, an API key, a token, a password or a passphrase, in English or Chinese),
  * that pipe a download into a shell, that send the environment or a key file over the network, or
- * that write a secret out in full. A sentence that forbids it, such as "Never ask for a seed
- * phrase", passes. It is the install lint of ARCHITECTURE.md section 5, which refuses a skill with
+ * that write a secret out in full, and the lines that hold a zero-width, bidirectional or tag
+ * character, which would hide words from whoever reviews the skill. A sentence that forbids it,
+ * such as "Never ask for a seed phrase", passes. It is the install lint of ARCHITECTURE.md section 5, which refuses a skill with
  * a finding; a skill's author runs it before publishing. It reads words and shapes, so a finding
  * names a sentence to review rather than proving intent. No finding repeats a secret it found.
  */
 export function lintSkill(text: string): readonly SkillFinding[] {
-  return sentencesOf(text).flatMap((sentence) => findingsOf(text, sentence));
+  const hidden = hiddenLines(text).map(({ line, text: shown }): SkillFinding => ({
+    code: "hidden_characters",
+    line,
+    text: shown,
+  }));
+  return [...sentencesOf(text).flatMap((sentence) => findingsOf(text, sentence)), ...hidden];
 }

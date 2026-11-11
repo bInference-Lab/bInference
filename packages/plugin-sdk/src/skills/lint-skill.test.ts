@@ -199,3 +199,28 @@ describe("lintSkill beyond requests for secrets", () => {
     expect(findings[0]?.text).toContain("[redacted]");
   });
 });
+
+describe("lintSkill and hidden characters", () => {
+  it("finds a zero-width character and shows it written out", () => {
+    const text = `${frontmatter}# Helper\n\nCheck the balance.\u200B Then stop.\n`;
+    expect(lintSkill(text)).toStrictEqual([
+      { code: "hidden_characters", line: 7, text: "Check the balance.<U+200B> Then stop." },
+    ]);
+  });
+
+  it.each([
+    ["a right-to-left override", "\u202E"],
+    ["a word joiner", "\u2060"],
+    ["a tag character", "\u{E0041}"],
+    ["a soft hyphen", "\u00AD"],
+  ])("finds %s", (_name, character) => {
+    expect(lintSkill(`Read the page${character} first.`)).toMatchObject([
+      { code: "hidden_characters", line: 1 },
+    ]);
+  });
+
+  it("passes a byte order mark at the start of the file and Chinese text", () => {
+    const text = `${String.fromCodePoint(0xfeff)}${frontmatter}${zh.neverKey}\n`;
+    expect(lintSkill(text)).toEqual([]);
+  });
+});
