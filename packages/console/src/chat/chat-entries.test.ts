@@ -1,4 +1,4 @@
-import { protocolIdSchema } from "@binference/protocol";
+import { protocolIdSchema, walletViewSchema } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
 import { chatEntries, type LiveLine, type TranscriptMessage } from "./chat-entries";
 
@@ -73,6 +73,33 @@ describe("chatEntries", () => {
       { kind: "owner", id: "seq 1", text: "Make a logo" },
       { kind: "answer", id: "seq 2", text: "Making it." },
       { kind: "images", id: "i", images },
+    ]);
+  });
+
+  it("puts the wallets the agent showed to fund after the last message of their turn", () => {
+    const wallets = [
+      walletViewSchema.parse({
+        wallet: "wal_0190f1c2-3a4b-7c5d-8e6f-000000000010",
+        agent: "agt_0190f1c2-3a4b-7c5d-8e6f-000000000001",
+        address: "eip155:56:0x52908400098527886E0F7030069857D2E4169EE7",
+        label: "Main",
+        createdAt: 1,
+      }),
+    ];
+    const deposit = { mode: "live" as const, frozen: false, wallets };
+    const live: readonly LiveLine[] = [
+      { kind: "deposit", id: "d", turn: turn(1), deposit },
+      { kind: "answer", id: "a", turn: turn(1), text: "Send BNB there." },
+    ];
+    expect(
+      chatEntries(
+        [said(1, "owner", "Where do I send?"), said(2, "agent", "Send BNB there.")],
+        live,
+      ),
+    ).toStrictEqual([
+      { kind: "owner", id: "seq 1", text: "Where do I send?" },
+      { kind: "answer", id: "seq 2", text: "Send BNB there." },
+      { kind: "deposit", id: "d", deposit },
     ]);
   });
 });

@@ -1096,7 +1096,12 @@ caption goes as a message, so the address still arrives. The agent's `deposit_ad
 the same messages in the turn's chat, from the engine's `chat/deposit` push
 ([decision 0380](../DECISIONS.md#d0380)), and they count as the turn's answer. It is the one fast
 command that goes as Telegram HTML, drawn from the fixed tags of the agent's chat text
-([decision 0370](../DECISIONS.md#d0370)), so the address shows as code.
+([decision 0370](../DECISIONS.md#d0370)), so the address shows as code. The console's chat shows
+the same push as a card per wallet with the same lines: the label in bold and the role, the QR code
+drawn from the same module grid, ink on white in both themes, the address as code with
+`console.chat.copyAddress`, the warnings in a quote, and `cmd.wallet.explorer` linking the wallet's
+`explorerLink`, which the engine reads from the same registry. The terminal prints each address,
+its chain and the warnings, without a code.
 
 | Line         | Key                      | English                                                                                            | 中文                                                                                         |
 | ------------ | ------------------------ | -------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |

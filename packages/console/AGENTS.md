@@ -9,7 +9,12 @@ The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
 
 - It is a client like any other: it reaches the engine only through `@binference/client` over the
   page's own `/ws`, and it decides nothing the engine decides. It imports `client`, `protocol`,
-  `i18n`, `rich-text` and `chart`, never `core` or another package. A chart the agent shows
+  `i18n`, `rich-text`, `chart` and `qr`, never `core` or another package. The wallets the agent
+  shows to fund (`chat/deposit`, decision 0380) are a card each in the words of Telegram's
+  caption (`src/chat/deposit-cards.tsx`): the QR code of the address the engine read, drawn as
+  SVG from `qrModules` in the theme's `--qr-dark` and `--qr-light`, ink on white in both themes
+  (`src/chat/address-code.tsx`), the address as code with a copy button, the warnings of
+  `depositWarnings` and the wallet's `explorerLink`. A chart the agent shows
   (`chat/chart`, decision 0387) is drawn as SVG from `chartLayout` in the theme's `--chart-*`
   colors (`src/chat/chart-figure.tsx`), its words as text and its text form for screen readers.
   The images the agent made (`chat/images`, decision 0392) are drawn from the bytes `image/read`

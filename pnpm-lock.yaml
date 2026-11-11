@@ -790,6 +790,9 @@ importers:
       '@binference/protocol':
         specifier: workspace:*
         version: link:../protocol
+      '@binference/qr':
+        specifier: workspace:*
+        version: link:../qr
       '@binference/rich-text':
         specifier: workspace:*
         version: link:../rich-text

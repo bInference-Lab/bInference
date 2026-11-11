@@ -8,7 +8,8 @@ const labelLength = 40;
 /**
  * The wallets a `chat/deposit` push shows (decision 0380), as the terminal prints them: each
  * wallet's label and chain, its address as the engine read it from custody, the network to send on,
- * and a warning while the agent trades on paper or is frozen. The QR codes show in Telegram.
+ * and a warning while the agent trades on paper or is frozen. The QR codes show in Telegram and the
+ * console.
  */
 export function depositLines(
   formatter: Formatter,

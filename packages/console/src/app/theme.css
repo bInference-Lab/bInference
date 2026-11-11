@@ -35,6 +35,9 @@
   --chart-4: #d9304e;
   --chart-5: #7b5ac8;
   --chart-6: #707a8a;
+  /* A QR code stays ink on white in both themes: many wallet and exchange scanners read no other. */
+  --qr-dark: var(--ink);
+  --qr-light: #ffffff;
   --radius: 0.5rem;
 }
 

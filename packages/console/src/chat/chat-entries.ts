@@ -9,6 +9,12 @@ export type SentFile = Extract<ChatPush, { readonly kind: "chat/files" }>["files
 /** A video the agent made, or its words spoken, as `chat/media` names it (decision 0405). */
 export type MadeMedia = Extract<ChatPush, { readonly kind: "chat/media" }>["media"];
 
+/** The wallets the agent showed the owner to fund, with its mode and freeze (decision 0380). */
+export type ShownDeposit = Pick<
+  Extract<ChatPush, { readonly kind: "chat/deposit" }>,
+  "mode" | "frozen" | "wallets"
+>;
+
 /** One message of the agent's transcript, as `chat/messages` reads it. */
 export type TranscriptMessage = ResultOf<"chat/messages">["items"][number];
 
@@ -53,6 +59,12 @@ export type LiveLine =
       readonly id: string;
       readonly turn: string;
       readonly media: MadeMedia;
+    }
+  | {
+      readonly kind: "deposit";
+      readonly id: string;
+      readonly turn: string;
+      readonly deposit: ShownDeposit;
     };
 
 /** One entry of the chat as the console draws it, in order. */
@@ -72,14 +84,15 @@ export type ChatEntry =
   | { readonly kind: "chart"; readonly id: string; readonly chart: PortableChart }
   | { readonly kind: "images"; readonly id: string; readonly images: readonly MadeImage[] }
   | { readonly kind: "files"; readonly id: string; readonly files: readonly SentFile[] }
-  | { readonly kind: "media"; readonly id: string; readonly media: MadeMedia };
+  | { readonly kind: "media"; readonly id: string; readonly media: MadeMedia }
+  | { readonly kind: "deposit"; readonly id: string; readonly deposit: ShownDeposit };
 
 // How far the engine's clock may run behind the browser's while an owner's message is matched to
 // its copy in the transcript.
 const skewMs = 60_000;
 
 /** A line of what a tool showed. */
-type ShownLine = Extract<LiveLine, { readonly kind: "chart" | "images" | "files" | "media" }>;
+type ShownLine = Exclude<LiveLine, { readonly kind: "owner" | "answer" | "status" }>;
 
 // What a tool showed, as its entry.
 function shownEntryOf(line: ShownLine): ChatEntry {
@@ -89,27 +102,25 @@ function shownEntryOf(line: ShownLine): ChatEntry {
   if (line.kind === "images") {
     return { kind: "images", id: line.id, images: line.images };
   }
+  if (line.kind === "deposit") {
+    return { kind: "deposit", id: line.id, deposit: line.deposit };
+  }
   return line.kind === "files"
     ? { kind: "files", id: line.id, files: line.files }
     : { kind: "media", id: line.id, media: line.media };
 }
 
 function entryOf(line: LiveLine): ChatEntry {
-  if (
-    line.kind === "chart" ||
-    line.kind === "images" ||
-    line.kind === "files" ||
-    line.kind === "media"
-  ) {
-    return shownEntryOf(line);
-  }
   if (line.kind === "status") {
     const { id, statusKey, values } = line;
     return { kind: "status", id, statusKey, ...(values === undefined ? {} : { values }) };
   }
-  return line.kind === "owner"
-    ? { kind: "owner", id: line.id, text: line.text, images: line.images }
-    : { kind: "answer", id: line.id, text: line.text };
+  if (line.kind === "owner") {
+    return { kind: "owner", id: line.id, text: line.text, images: line.images };
+  }
+  return line.kind === "answer"
+    ? { kind: "answer", id: line.id, text: line.text }
+    : shownEntryOf(line);
 }
 
 // The owner's messages this page sent that the transcript holds now, each matched once by its

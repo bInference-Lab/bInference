@@ -139,6 +139,7 @@
         "i18n",
         "rich-text",
         "chart",
+        "qr",
         "react",
         "react-dom",
         "@tanstack/react-router",

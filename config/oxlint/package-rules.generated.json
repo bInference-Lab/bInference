@@ -8439,7 +8439,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/core|@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/runtime|@binference\\/tui|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/browser|@binference\\/pdf)(?:/|$)",
+                "regex": "^(?:@binference\\/core|@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/runtime|@binference\\/tui|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/browser|@binference\\/pdf)(?:/|$)",
                 "message": "See the console row of config/package-graph.json for what it may import."
               },
               {
@@ -8562,7 +8562,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/core|@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/runtime|@binference\\/tui|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/browser|@binference\\/pdf)(?:/|$)",
+                "regex": "^(?:@binference\\/core|@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/runtime|@binference\\/tui|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/browser|@binference\\/pdf)(?:/|$)",
                 "message": "See the console row of config/package-graph.json for what it may import."
               },
               {
@@ -8705,7 +8705,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/core|@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/runtime|@binference\\/tui|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/browser|@binference\\/pdf)(?:/|$)",
+                "regex": "^(?:@binference\\/core|@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/runtime|@binference\\/tui|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/browser|@binference\\/pdf)(?:/|$)",
                 "message": "See the console row of config/package-graph.json for what it may import."
               },
               {
@@ -8825,7 +8825,7 @@
             ],
             "patterns": [
               {
-                "regex": "^(?:@binference\\/core|@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/runtime|@binference\\/tui|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/browser|@binference\\/pdf)(?:/|$)",
+                "regex": "^(?:@binference\\/core|@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/runtime|@binference\\/tui|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/browser|@binference\\/pdf)(?:/|$)",
                 "message": "See the console row of config/package-graph.json for what it may import."
               },
               {

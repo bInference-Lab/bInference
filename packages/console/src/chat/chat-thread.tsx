@@ -5,6 +5,7 @@ import { MessageLine } from "../cards/card-line";
 import { useFormatter, useText } from "../i18n/console-text";
 import { ChartFigure } from "./chart-figure";
 import type { ChatEntry } from "./chat-entries";
+import { DepositCards } from "./deposit-cards";
 import { MadeImagesFigure } from "./made-images-figure";
 import { MadeMediaPlayer } from "./made-media-player";
 import { RichText } from "./rich-text";
@@ -85,12 +86,15 @@ function Entry(props: {
   if (entry.kind === "media") {
     return <MadeMediaPlayer agent={props.agent} made={entry.media} />;
   }
+  if (entry.kind === "deposit") {
+    return <DepositCards deposit={entry.deposit} agentName={props.agentName} />;
+  }
   return <SaidEntry entry={entry} agentName={props.agentName} />;
 }
 
 /**
  * The chat with one agent, oldest first: the owner's messages on the right, the agent's answers on
- * the left, and its status lines, charts and made images between them. The agent's text shows its Markdown drawn as
+ * the left, and its status lines, wallets to fund, charts and made images between them. The agent's text shows its Markdown drawn as
  * elements, never as HTML from the text (decision 0383); the owner's shows as written. Screen
  * readers hear each new entry.
  */

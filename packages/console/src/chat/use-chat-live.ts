@@ -54,8 +54,13 @@ function messageStep(push: MessagePush, id: string): PushStep {
   };
 }
 
-// What a tool showed: a chart, images, files or a made medium, each a line of its own.
+// What a tool showed: wallets to fund, a chart, images, files or a made medium, each a line of its
+// own.
 function shownLineOf(push: ChatPush, id: string): LiveLine | undefined {
+  if (push.kind === "chat/deposit") {
+    const { mode, frozen, wallets } = push;
+    return { kind: "deposit", id, turn: push.turn, deposit: { mode, frozen, wallets } };
+  }
   if (push.kind === "chat/chart") {
     return { kind: "chart", id, turn: push.turn, chart: push.chart };
   }
@@ -92,13 +97,9 @@ function stepOf(push: ChatPush, id: string): PushStep {
   if (shown !== undefined) {
     return { lines: (lines) => [...lines, shown] };
   }
-  // The page shows the answer so far while the turn runs; a progress line, the model's reasoning
-  // and a deposit card, which the console does not draw yet, add nothing to it.
-  if (
-    push.kind === "chat/progress" ||
-    push.kind === "chat/reasoning" ||
-    push.kind === "chat/deposit"
-  ) {
+  // The page shows the answer so far while the turn runs; a progress line and the model's
+  // reasoning add nothing to it.
+  if (push.kind === "chat/progress" || push.kind === "chat/reasoning") {
     return {};
   }
   return { running: (running) => (running?.turn === push.turn ? undefined : running) };
