@@ -203,6 +203,7 @@
   "file.offset_past_end": "The file ends before that line. Read from an earlier line.",
   "file.bad_patch": "The patch could not be read or applied. Fix the patch and send it again.",
   "file.skill_folder": "Files in a workspace skills folder change only through a skill proposal the owner applies. Use skill_proposal instead.",
+  "file.changed": "That path led to another file or folder while binference checked it, so nothing was read, written or removed. Read the path again, then try once more.",
   "credential.not_found": "No credential of that name is stored. List them with binference credential list.",
   "credential.closed": "That credential request is no longer open: it was answered, skipped, replaced or ran out of time. Ask the agent again if it still needs it.",
   "credential.unavailable": "This engine keeps no credentials. Update binference, then try again.",

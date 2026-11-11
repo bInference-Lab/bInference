@@ -27,6 +27,7 @@ const fileRefusals: Readonly<Record<FileRefusal, ViewImageRefusal>> = {
   unreadable: "unreadable",
   unwritable: "unreadable",
   exists: "unreadable",
+  changed: "unreadable",
 };
 
 // A file read as the file tools read it: relative paths in the workspace, the state folder

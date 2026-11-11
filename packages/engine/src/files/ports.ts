@@ -11,15 +11,17 @@ export type FileRefusal =
   | "unreadable"
   | "unwritable"
   | "exists"
-  | "skill_folder";
+  | "skill_folder"
+  | "changed";
 
 /**
  * The agent's files on the engine's machine (decision 0386). A path is absolute, `~/` under the
  * owner's home folder, or relative to the agent's workspace. binference's own folder, its
  * workspace aside, is walled off; with `workspaceOnly`, any path outside the workspace is
  * refused. A write or a removal inside a workspace skills folder is `skill_folder`: a skill changes
- * only through a proposal the owner applies (decision 0408). Each call answers the file's absolute
- * path.
+ * only through a proposal the owner applies (decision 0408). A path that leads to another file or
+ * folder between its check and its use is `changed`, and nothing is read, written or removed
+ * (decision 0410). Each call answers the file's absolute path.
  */
 export interface MachineFiles {
   /** Reads a regular file whole, refusing one over `maxBytes` as `too_large`. */

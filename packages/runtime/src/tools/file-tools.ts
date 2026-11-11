@@ -26,6 +26,8 @@ const refusals: Readonly<Record<string, string>> = {
   "file.unreadable": "The file could not be read: check its permissions.",
   "file.unwritable": "The file could not be written: check that its folder is the owner's.",
   "file.offset_past_end": "The file ends before that line. Read from an earlier line.",
+  "file.changed":
+    "That path led to another file or folder while it was checked, so nothing was read, written or removed. Read the path again, then try once more.",
 };
 
 async function answerOrRefusal(

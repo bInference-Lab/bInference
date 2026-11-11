@@ -1,6 +1,6 @@
 # 0408. The agent proposes skills and the owner applies them
 
-Status: Accepted
+Status: Amended by 0410
 
 Accepted by the tech lead on 2026-11-11.
 

@@ -1,6 +1,13 @@
 import { join } from "node:path";
 import { machineFilesContract } from "@binference/engine/testing";
-import { ensurePrivateFolder, realFilePath, writePrivateFile } from "@binference/platform";
+import {
+  ensurePrivateFolder,
+  type RealPathStep,
+  realFilePath,
+  realPathOf,
+  removePath,
+  writePrivateFile,
+} from "@binference/platform";
 import { createFileLink, createTempFolder, type TempFolder } from "@binference/platform/testing";
 import { afterEach, describe, expect, it } from "vitest";
 import { machineFilesOf } from "./compose-files.js";
@@ -27,12 +34,34 @@ async function machine() {
   await ensurePrivateFolder(join(home, "pictures"), setUp);
   await writePrivateFile(join(home, "notes.txt"), "hello", setUp);
   await writePrivateFile(join(state, "keys", "agent-key"), "secret", setUp);
-  const files = machineFilesOf({
-    walled: { roots: [state], open: [workspace] },
-    workspace,
-    homeDir: home,
-  });
-  return { home, state, workspace, files };
+  const parts = { walled: { roots: [state], open: [workspace] }, workspace, homeDir: home };
+  return { home, state, workspace, parts, files: machineFilesOf(parts) };
+}
+
+// The platform's real-path step, but `path` moves: once the check's look at it has its answer,
+// and again before the next look, the one after the open, answers.
+function movingStep(
+  path: string,
+  moves: {
+    readonly afterCheck: () => Promise<void>;
+    readonly beforeNextLook?: () => Promise<void>;
+  },
+): RealPathStep {
+  let looks = 0;
+  return async (asked, stepSignal) => {
+    if (asked !== path) {
+      return realPathOf(asked, stepSignal);
+    }
+    looks += 1;
+    if (looks === 2) {
+      await moves.beforeNextLook?.();
+    }
+    const real = await realPathOf(asked, stepSignal);
+    if (looks === 1) {
+      await moves.afterCheck();
+    }
+    return real;
+  };
 }
 
 afterEach(async () => {
@@ -68,6 +97,58 @@ describe("the agent's files on this machine", () => {
     expect(await files.write("~/door/new-key", new Uint8Array([1]), call)).toStrictEqual({
       ok: false,
       error: "walled",
+    });
+  });
+
+  it("reads a file and a link to one in the workspace, each at its real path", async () => {
+    const { workspace, files } = await machine();
+    await writePrivateFile(join(workspace, "plan.md"), "# Plan", setUp);
+    await createFileLink(join(workspace, "plan.md"), join(workspace, "pointer.md"));
+    const read = { ...call, maxBytes: 100 };
+    const plan = { path: join(workspace, "plan.md"), bytes: new TextEncoder().encode("# Plan") };
+    expect([await files.read("plan.md", read), await files.read("pointer.md", read)]).toStrictEqual(
+      [
+        { ok: true, value: plan },
+        { ok: true, value: plan },
+      ],
+    );
+  });
+
+  it("refuses a path that leads into binference's folder by the time it is opened", async () => {
+    const { state, workspace, parts } = await machine();
+    const path = join(workspace, "swapped.md");
+    await writePrivateFile(path, "plain", setUp);
+    const toSecret = async () => {
+      await removePath(path, signal);
+      await createFileLink(join(state, "keys", "agent-key"), path);
+    };
+    const files = machineFilesOf({
+      ...parts,
+      realPath: movingStep(path, { afterCheck: toSecret }),
+    });
+    expect(await files.read("swapped.md", { ...call, maxBytes: 100 })).toStrictEqual({
+      ok: false,
+      error: "walled",
+    });
+  });
+
+  it("refuses a path that leads elsewhere once its file is open, so the agent reads again", async () => {
+    const { state, workspace, parts } = await machine();
+    const path = join(workspace, "swapped.md");
+    await writePrivateFile(path, "plain", setUp);
+    const toSecret = async () => {
+      await removePath(path, signal);
+      await createFileLink(join(state, "keys", "agent-key"), path);
+    };
+    const backToPlain = async () => {
+      await removePath(path, signal);
+      await writePrivateFile(path, "plain", setUp);
+    };
+    const moves = { afterCheck: toSecret, beforeNextLook: backToPlain };
+    const files = machineFilesOf({ ...parts, realPath: movingStep(path, moves) });
+    expect(await files.read("swapped.md", { ...call, maxBytes: 100 })).toStrictEqual({
+      ok: false,
+      error: "changed",
     });
   });
 

@@ -2,8 +2,8 @@ import { basename, dirname, isAbsolute, join, relative, sep } from "node:path";
 import { err, ok, type Result } from "@binference/core";
 import type { FileCall, FileRefusal, MachineFiles, ReadFile } from "@binference/engine/shell";
 import {
-  isFolder,
-  readFileBytes,
+  type RealPathStep,
+  readJudgedFile,
   realPathOf,
   removeOwnerFile,
   type WalledPaths,
@@ -17,6 +17,8 @@ export interface FileParts {
   /** The agent's workspace, where a relative path starts. */
   readonly workspace: string;
   readonly homeDir: string;
+  /** How a path's real path is found: the platform's own unless a test passes its own. */
+  readonly realPath?: RealPathStep;
 }
 
 /** Whether a path is under one of the folders, the folder itself included. */
@@ -35,13 +37,13 @@ function absoluteOf(parts: FileParts, path: string): string {
 
 // The real path of a place that may not exist yet: the nearest folder that does, links resolved,
 // with the rest of the path after it, so no link on the way leads into a walled folder.
-async function realPlaceOf(path: string, signal: AbortSignal): Promise<string> {
-  const real = await realPathOf(path, signal);
+async function realPlaceOf(parts: FileParts, path: string, signal: AbortSignal): Promise<string> {
+  const real = await (parts.realPath ?? realPathOf)(path, signal);
   if (real !== undefined) {
     return real;
   }
   const parent = dirname(path);
-  return parent === path ? path : join(await realPlaceOf(parent, signal), basename(path));
+  return parent === path ? path : join(await realPlaceOf(parts, parent, signal), basename(path));
 }
 
 function judge(
@@ -96,8 +98,8 @@ async function placeOf(
   const absolute = absoluteOf(parts, path);
   const real =
     call.keepLast === true
-      ? join(await realPlaceOf(dirname(absolute), call.signal), basename(absolute))
-      : await realPlaceOf(absolute, call.signal);
+      ? join(await realPlaceOf(parts, dirname(absolute), call.signal), basename(absolute))
+      : await realPlaceOf(parts, absolute, call.signal);
   const refusal = judge(parts, [absolute, real], call);
   return refusal === undefined ? ok(real) : err(refusal);
 }
@@ -111,11 +113,19 @@ async function readOne(
   if (!place.ok) {
     return place;
   }
-  if (isFolder(place.value)) {
-    return err("is_folder");
+  // The file is judged again through the handle that reads it, as the path may lead elsewhere by
+  // the time it is opened (decision 0410).
+  const absolute = absoluteOf(parts, path);
+  const read = await readJudgedFile(absolute, {
+    maxBytes: call.maxBytes,
+    signal: call.signal,
+    judge: (real) => judge(parts, [absolute, real], call),
+    ...(parts.realPath === undefined ? {} : { realPath: parts.realPath }),
+  });
+  if (read.kind === "read") {
+    return ok({ path: read.realPath, bytes: read.bytes });
   }
-  const read = await readFileBytes(place.value, { maxBytes: call.maxBytes, signal: call.signal });
-  return read.ok ? ok({ path: place.value, bytes: read.value }) : read;
+  return err(read.kind === "refused" ? read.refusal : read.kind);
 }
 
 // The narrow space macOS writes before AM or PM in a screenshot's name, and a no-break space.
@@ -152,8 +162,9 @@ function otherSpellings(path: string): readonly string[] {
  * The agent's files on this machine (decision 0386): a path absolute, under the home folder by
  * `~/`, or in the workspace when relative, each read at its real path, so no link leads into
  * binference's own folder, whose workspace stays open, and none is written or removed in an agent's
- * skills folder (`skill_folder`, decision 0408). A write replaces a file whole and makes its
- * folders; a removal removes a link itself and never a folder.
+ * skills folder (`skill_folder`, decision 0408). A read uses only the file it judged, through one
+ * handle; a path that leads elsewhere by then is `changed` (decision 0410). A write replaces a file
+ * whole and makes its folders; a removal removes a link itself and never a folder.
  */
 export function machineFilesOf(parts: FileParts): MachineFiles {
   return {

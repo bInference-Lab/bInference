@@ -207,6 +207,7 @@ export const protocolErrorCodes = [
   "file.offset_past_end",
   "file.bad_patch",
   "file.skill_folder",
+  "file.changed",
   "credential.not_found",
   "credential.closed",
   "credential.unavailable",

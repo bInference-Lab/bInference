@@ -1239,6 +1239,11 @@ allowedAt }`. Always allow keeps one for each step of its line, never for a line
 `workspace/<agent>/skills/`, as `file.skill_folder`: the agent changes a skill through
 `skillProposal/create` ([decision 0408](../DECISIONS.md#d0408)).
 
+A file call uses only the file it judged: a read goes through the one handle whose file is the one
+at the real path judged. A path that leads to another file between the check and the read is
+refused as `file.changed`, and nothing is read; the agent reads the path again
+([decision 0410](../DECISIONS.md#d0410)).
+
 <a id="section-7-12"></a>
 
 ### 7.12 Browser
@@ -1678,7 +1683,7 @@ later unchanged.
 | `remote`     | `tailscale_missing`, `logged_out`, `https_off`, `funnel_denied`, `funnel_port`, `port_taken`, `same_port`, `not_operator`, `not_applied`                                                                                                                                                                                                                                                       |
 | `token`      | `not_found`                                                                                                                                                                                                                                                                                                                                                                                    |
 | `shell`      | `off`, `no_wall`, `folder_missing`, `job_not_found`, `not_listed`, `request_closed`, `always_unavailable`, `allowed_not_found`                                                                                                                                                                                                                                                                 |
-| `file`       | `not_found`, `walled`, `outside_workspace`, `too_large`, `is_folder`, `binary`, `exists`, `unreadable`, `unwritable`, `no_match`, `many_matches`, `overlap`, `offset_past_end`, `bad_patch`, `skill_folder`                                                                                                                                                                                    |
+| `file`       | `not_found`, `walled`, `outside_workspace`, `too_large`, `is_folder`, `binary`, `exists`, `unreadable`, `unwritable`, `no_match`, `many_matches`, `overlap`, `offset_past_end`, `bad_patch`, `skill_folder`, `changed`                                                                                                                                                                         |
 | `credential` | `not_found`, `closed`, `unavailable`                                                                                                                                                                                                                                                                                                                                                           |
 | `browser`    | `off`, `not_found`, `start_failed`, `proxy_held`, `address_refused`, `tab_not_found`, `evaluate_off`                                                                                                                                                                                                                                                                                           |
 | `pdf`        | `not_found`, `too_large`, `walled`, `outside_workspace`, `not_public`, `unreadable`, `not_pdf`, `password`, `no_pages`, `timed_out`, `gone`                                                                                                                                                                                                                                                    |

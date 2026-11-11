@@ -203,6 +203,7 @@
   "file.offset_past_end": "文件在该行之前就结束了。请从更早的行读取。",
   "file.bad_patch": "无法读取或应用该补丁。请修正补丁后重新发送。",
   "file.skill_folder": "工作区技能文件夹中的文件只能通过所有者应用的技能提案更改。请改用 skill_proposal。",
+  "file.changed": "在 binference 检查期间，该路径指向了另一个文件或文件夹，因此没有读取、写入或删除任何内容。请重新读取该路径，然后再试一次。",
   "credential.not_found": "没有存储该名称的凭据。用 binference credential list 查看。",
   "credential.closed": "该凭据请求已不再开放：已被回答、跳过、替换或超时。如果 Agent 仍需要，请让它再次请求。",
   "credential.unavailable": "此引擎不保存凭据。请更新 binference 后重试。",

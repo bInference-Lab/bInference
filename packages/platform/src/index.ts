@@ -46,6 +46,13 @@ export { readTextFile } from "./read-text-file.js";
 export { ensureReadableFolder, writeReadableFile } from "./readable-files.js";
 export { isFolder } from "./is-folder.js";
 export { readFileBytes, realPathOf } from "./read-file-bytes.js";
+export { readJudgedFile } from "./read-judged-file.js";
+export type {
+  JudgedFileRead,
+  JudgedReadFault,
+  JudgedReadOptions,
+  RealPathStep,
+} from "./read-judged-file.js";
 export { removeOwnerFile, writeOwnerFile } from "./owner-files.js";
 export type { FileBytesRefusal } from "./read-file-bytes.js";
 export { realFilePath } from "./real-file-path.js";

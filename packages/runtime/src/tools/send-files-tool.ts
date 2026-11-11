@@ -18,6 +18,8 @@ const refusals: Readonly<Record<string, string>> = {
     "One of those files is inside binference's own folder, which is walled off; nothing was sent. Never try to reach it another way.",
   "file.outside_workspace":
     "The owner keeps your files inside your workspace (files.workspaceOnly), so a file outside it is refused; nothing was sent.",
+  "file.changed":
+    "One of those paths led to another file while it was read; nothing was sent. Check the paths with file_read, then send again.",
 };
 
 const sendArgs = z.strictObject({
