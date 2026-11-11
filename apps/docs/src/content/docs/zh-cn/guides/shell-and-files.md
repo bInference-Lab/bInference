@@ -21,7 +21,7 @@ binference 的状态文件夹（默认为 `~/.binference`）中保存着密钥�
 
 Agent 最多等待 20 秒让命令结束，除非它要求更久，否则等 10 秒。到时仍在运行的命令会作为命令任务继续运行，由 `shell_job` 读取或停止；服务器或耗时的构建可以直接作为命令任务启动。命令会在 `shell.timeoutSeconds`（默认 1,800 秒）后停止，除非 Agent 指定其他时限；0 表示不限时。命令任务在命令结束后保留 30 分钟，binference 重启后不会保留任何命令任务。
 
-Agent 留在后台运行的命令任务结束时，Agent 会收到一条消息：退出码、运行时长和最后 20 行输出。以退出码 0 结束且没有新输出的命令任务不会通知 Agent，除非 `shell.tellOnQuietEnd` 为 `true`。控制台中的“停止”、Telegram 中的 `/stop`、终端对话中的 Esc 或 `/stop`，以及冻结，都会停止 Agent 运行的每条命令。
+Agent 留在后台运行的命令任务结束时，Agent 会收到一条消息：退出码、运行时长和最后 20 行输出。以退出码 0 结束且没有新输出的命令任务不会通知 Agent，除非 `shell.tellOnQuietEnd` 为 `true`。控制台中的“停止”、Telegram 或终端对话中的 `/stop`，以及冻结，都会停止 Agent 运行的每条命令。
 
 ## 先问你的命令
 

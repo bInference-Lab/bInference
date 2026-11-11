@@ -41,8 +41,8 @@ outlives a restart of binference.
 
 When a job the agent left running ends, the agent hears it in a message: its exit code, how long it
 ran and its last 20 lines. A job that ends with exit code 0 and prints nothing new stays quiet,
-unless `shell.tellOnQuietEnd` is `true`. Stop in the console, `/stop` in Telegram, Esc or `/stop` in
-the terminal chat, and a freeze stop every command the agent runs.
+unless `shell.tellOnQuietEnd` is `true`. Stop in the console, `/stop` in Telegram or the terminal
+chat, and a freeze stop every command the agent runs.
 
 ## Commands that ask you first
 

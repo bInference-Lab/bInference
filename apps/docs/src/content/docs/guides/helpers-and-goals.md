@@ -21,8 +21,8 @@ reads a helper, never a helper's own chat.
 - A helper uses the agent's main model unless the agent names another configured one, and spends
   the agent's own model budget.
 - A report from a helper that read outside content marks the chat, as a web page does.
-- Stop in the console, `/stop` in Telegram, Esc or `/stop` in the terminal chat, a freeze and a new
-  chat stop the agent's helpers.
+- Stop in the console, `/stop` in Telegram or the terminal chat, a freeze and a new chat stop the
+  agent's helpers.
   A restart of binference ends the helpers that ran, and the agent hears it.
 
 ## The agent's status

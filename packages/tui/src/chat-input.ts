@@ -51,10 +51,19 @@ async function clear(context: ChatContext, parts: ChatInputParts): Promise<void>
   context.print([dim(context.words("tui.cleared"))]);
 }
 
-async function stop(context: ChatContext): Promise<void> {
+// Esc: stops the agent's answer while one runs; with none running it does nothing.
+async function stopAnswer(context: ChatContext): Promise<void> {
   if (context.store.get().running !== undefined) {
     await context.client.call("chat/stop", { agent: context.agent }, callOptions(context));
   }
+}
+
+// `/stop`: stops the agent whether it answers or not, as the console's and Telegram's stops do,
+// so its helpers and commands end and its goal pauses (decisions 0403, 0407 and 0409).
+async function stopAgent(context: ChatContext): Promise<void> {
+  const answer = context.store.get().running === undefined ? "none" : "running";
+  await context.client.call("chat/stop", { agent: context.agent }, callOptions(context));
+  context.print([dim(context.words("tui.stopped", { answer }))]);
 }
 
 // A line the owner sent: a command of the chat's own, or a message to the agent.
@@ -67,7 +76,7 @@ function sent(context: ChatContext, parts: ChatInputParts, line: string): void {
   } else if (command === "/clear") {
     parts.queue(async () => clear(context, parts));
   } else if (command === "/stop") {
-    parts.queue(async () => stop(context));
+    parts.queue(async () => stopAgent(context));
   } else if (command === "/help") {
     context.print(helpKeys.map((key) => dim(words(`tui.help.${key}`))));
   } else if (imageCommands.has(command)) {
@@ -130,7 +139,7 @@ const handlers: Readonly<Record<ChatAction["kind"], ActionHandler>> = {
   pasteStart: paste,
   pasteEnd: paste,
   send,
-  stop: (context, parts) => parts.queue(async () => stop(context)),
+  stop: (context, parts) => parts.queue(async () => stopAnswer(context)),
   confirm: answerCard,
   cancel: answerCard,
   choose,
@@ -140,8 +149,9 @@ const handlers: Readonly<Record<ChatAction["kind"], ActionHandler>> = {
 
 /**
  * Acts on one key: edits the typed line, sends it (a line of its own, `/clear`, `/stop`, `/goal`,
- * `/help` or an image command, is the chat's own), stops the agent's answer, answers the first card or the
- * question, follows a paste, or leaves.
+ * `/help` or an image command, is the chat's own), stops the agent's answer on Esc, answers the
+ * first card or the question, follows a paste, or leaves. `/stop` stops the agent whether it
+ * answers or not, and says which.
  */
 export function onAction(context: ChatContext, parts: ChatInputParts, action: ChatAction): void {
   handlers[action.kind](context, parts, action);

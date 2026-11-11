@@ -72,15 +72,16 @@ same limits.
 `binference chat` opens the chat in your terminal. Add `--agent <id>` when you have more than one
 agent.
 
-| Key                                | What it does                                       |
-| ---------------------------------- | -------------------------------------------------- |
-| Enter                              | Sends the message                                  |
-| Esc, or `/stop`                    | Stops the answer                                   |
-| Ctrl+Y                             | Confirms the card at the bottom                    |
-| Ctrl+N                             | Cancels the card at the bottom                     |
-| 1 to 9                             | Answers the open question, while the line is empty |
-| Ctrl+U                             | Clears the line                                    |
-| Ctrl+C, or Ctrl+D on an empty line | Leaves the chat                                    |
+| Key                                | What it does                                                                     |
+| ---------------------------------- | -------------------------------------------------------------------------------- |
+| Enter                              | Sends the message                                                                |
+| Esc                                | Stops the answer                                                                 |
+| `/stop`                            | Stops the agent, answering or not: its helpers and commands end, its goal pauses |
+| Ctrl+Y                             | Confirms the card at the bottom                                                  |
+| Ctrl+N                             | Cancels the card at the bottom                                                   |
+| 1 to 9                             | Answers the open question, while the line is empty                               |
+| Ctrl+U                             | Clears the line                                                                  |
+| Ctrl+C, or Ctrl+D on an empty line | Leaves the chat                                                                  |
 
 `/clear` starts a new chat, and `/help` lists the keys. The terminal chat sends no images.
 

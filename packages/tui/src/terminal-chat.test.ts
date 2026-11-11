@@ -550,7 +550,21 @@ describe("terminal chat", () => {
     expect(chat.rows()).toContain(
       "A new chat has started. The agent forgets this conversation; its notes and files stay.",
     );
+    expect(chat.rows()).toContain(
+      "The agent's answer stops. Its helpers and its commands end, and its goal pauses. Anything you already confirmed still goes through.",
+    );
     expect(chat.rows()).toContain("Ctrl+C, or Ctrl+D on an empty line, leaves the chat.");
+  });
+
+  it("stops the agent on /stop while no answer runs, so its helpers, commands and goal stop too", async () => {
+    const chat = await opened({ "chat/stop": () => ({}) });
+    chat.press("/stop\r");
+    await chat.settle();
+    expect(opsOf(chat, "chat/stop")).toStrictEqual([{ agent: harnessAgent }]);
+    expect(chat.rows().slice(-2)).toStrictEqual([
+      "No answer was running. Its helpers and its commands end, and its goal pauses. Anything you already confirmed still goes through.",
+      "› ",
+    ]);
   });
 
   it("says images go through Telegram or the console when the owner asks to send one", async () => {
