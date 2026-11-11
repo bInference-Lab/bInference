@@ -3,9 +3,9 @@ import { ids, type WireExample } from "./wire-values.js";
 
 const chart = {
   chartType: "line",
-  title: "BNB price, last 4 hours",
+  title: "TKN price, last 4 hours",
   categories: ["12:00", "13:00", "14:00", "15:00"],
-  series: [{ name: "BNB", values: [612.4, 615.1, 609.8, 618.2] }],
+  series: [{ name: "TKN", values: [612.4, 615.1, 609.8, 618.2] }],
   yLabel: "USD",
 };
 
