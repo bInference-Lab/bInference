@@ -52,6 +52,33 @@ async function textAt(path: string): Promise<string | undefined> {
   return read.ok ? read.value : undefined;
 }
 
+describe("putting a restored state in place beside a moved workspace", () => {
+  it("puts the workspace back where BINFERENCE_WORKSPACE moved it, and can undo it", async () => {
+    const volume = await createTempFolder("bnf-swap-");
+    folders.push(volume);
+    const state = resolveStateFolder({
+      binferenceHome: join(volume.path, "state"),
+      binferenceWorkspace: join(volume.path, "workspace"),
+    });
+    await write(state.configFile, "old config.json5");
+    await write(join(state.workspace, "agent", "notes.md"), "old notes");
+    const from = await restoredWith(state, ["config.json5", "workspace/agent/new.md"]);
+
+    const swap = await swapInRestored(state, from, { ...files, atMs });
+
+    expect(await listFolderFiles(state.workspace, signal())).toStrictEqual(["agent/new.md"]);
+    expect(await listFolderFiles(join(state.root, "replaced"), signal())).toStrictEqual([
+      "20261012-033015/config.json5",
+      "20261012-033015/workspace/agent/notes.md",
+    ]);
+    expect(await listFolderFiles(join(state.root, "workspace"), signal())).toStrictEqual([]);
+
+    await swap.undo();
+
+    expect(await textAt(join(state.workspace, "agent", "notes.md"))).toBe("old notes");
+  });
+});
+
 describe("putting a restored state in place", () => {
   it("moves the state it replaces aside, keeps keys and backups, and can undo both moves", async () => {
     const state = await stateWith([

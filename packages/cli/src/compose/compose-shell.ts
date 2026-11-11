@@ -1,6 +1,6 @@
 import { homedir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
-import { err, ok } from "@binference/core";
+import { BinferenceError, err, type Logger, ok } from "@binference/core";
 import {
   type CommandEnd,
   type CommandRunner,
@@ -12,6 +12,7 @@ import { createPdfReader } from "@binference/pdf";
 import {
   findProgram,
   isFolder,
+  type Platform,
   realPathOf,
   runCommandWithin,
   type ShellEnd,
@@ -96,10 +97,12 @@ function commandEndOf(end: ShellEnd): CommandEnd {
 
 /**
  * The runner of the agent's commands over a launcher: each starts in its folder with the
- * environment less binference's own variables, its output masked before the model reads it.
+ * environment less binference's own variables, its output masked before the model reads it. A
+ * launcher whose commands run as another user, as the Docker image's does, gives the home folder
+ * they start in (decision 0412).
  */
 export function commandRunnerOf(parts: ShellParts): CommandRunner {
-  const home = parts.homeDir ?? homedir();
+  const home = parts.launcher.home ?? parts.homeDir ?? homedir();
   return {
     start(request, onOutput) {
       if (parts.launcher.wall.kind === "none") {
@@ -193,17 +196,43 @@ export function shellOf(opening: Opening, opened: Opened): EngineShell {
   };
 }
 
+// The folder `~` names for the agent's commands and files alike: in the Docker image the home of
+// the user commands run as (decision 0412), else the owner's.
+function commandHome(opening: Opening): string {
+  const { host, platform } = opening;
+  return platform.shellLauncher(host.clock).home ?? host.homeDir ?? homedir();
+}
+
 /**
  * The agent's files on this machine (decision 0386): relative paths in the workspace, the state
- * folder walled off, and the settings `files` holds at each call. The file tools and the images
- * the agent views read through it alike.
+ * folder walled off, `~` the home folder of the agent's commands, and the settings `files` holds
+ * at each call. The file tools and the images the agent views read through it alike.
  */
 export function agentFilesOf(opening: Opening, opened: Opened): EngineFiles {
-  const { host, platform } = opening;
+  const { platform } = opening;
   const files = machineFilesOf({
     walled: walledPaths(platform.stateFolder),
     workspace: platform.stateFolder.workspace,
-    homeDir: host.homeDir ?? homedir(),
+    homeDir: commandHome(opening),
   });
   return { files, settings: () => opened.settings.current().files };
+}
+
+/**
+ * Gives the Docker image's workspace the group and mode the agent's commands share it with, at
+ * each start, as after a restore put it back owner-only (decision 0412); elsewhere it does
+ * nothing. A workspace it cannot share is logged and the start goes on: only commands then
+ * cannot write it.
+ */
+export async function shareImageWorkspace(
+  platform: Pick<Platform, "shareWorkspace">,
+  logger: Logger,
+  signal: AbortSignal,
+): Promise<void> {
+  try {
+    await platform.shareWorkspace?.(signal);
+  } catch (error) {
+    const errorCode = error instanceof BinferenceError ? error.code : "unexpected";
+    logger.warn("shell.workspace_unshared", { errorCode });
+  }
 }

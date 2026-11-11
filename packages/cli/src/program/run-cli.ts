@@ -102,6 +102,7 @@ async function cliFormatter(host: CliHost): Promise<Formatter> {
 
 const faultMessages: Readonly<Record<string, string>> = {
   "platform.home_not_absolute": "error.homeNotAbsolute",
+  "platform.workspace_not_absolute": "error.workspaceNotAbsolute",
   "platform.ipc_path_too_long": "error.pathTooLong",
   "platform.restrict_failed": "error.notWritable",
 };

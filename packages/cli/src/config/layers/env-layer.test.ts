@@ -20,6 +20,8 @@ describe("env layer", () => {
       BINFERENCE_MCP_TOKEN: `bnt_${"s".repeat(43)}`,
       BINFERENCE_PLUGIN_LAUNCHER: "/var/lib/binference-plugins/run/launcher.sock",
       BINFERENCE_IMAGE_USER: "10001",
+      BINFERENCE_WORKSPACE: "/var/lib/binference/.binference/workspace",
+      BINFERENCE_SHELL_LAUNCHER: "/var/lib/binference/.binference/shell/run/launcher.sock",
       BINFERENCE_INIT_RESCUE: "0x30435f9D276c6BC54F56161Fb3dFB7bDC2a8DBcB",
       BINFERENCE_INIT_ANSWERS: "/srv/binference/answers.json5",
       BINFERENCE_INSTALL_CHANNEL: "beta",

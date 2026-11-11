@@ -13,6 +13,7 @@ import { composeChainReads } from "./chain-reads.js";
 import { cliTokenFile, ensureCliToken } from "./cli-token.js";
 import { createClosers } from "./closers.js";
 import { readSetUpInstall } from "./compose-lock.js";
+import { shareImageWorkspace } from "./compose-shell.js";
 import { type ConfigCell, createConfigCell } from "./config-cell.js";
 import { createConfigReloadLink } from "./config-reload-link.js";
 import { openConsoleFiles } from "./console-files.js";
@@ -201,6 +202,7 @@ async function serveWithStores(
     random: host.random,
     signal,
   });
+  await shareImageWorkspace(platform, opened.log.logger, signal);
   const install = await readSetUpInstall(stores, { host, signal });
   return serveEngine(opening, { ...opened, install });
 }

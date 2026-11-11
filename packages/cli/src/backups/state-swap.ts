@@ -70,15 +70,28 @@ interface Journal {
   readonly signal: AbortSignal;
 }
 
+/** Where one name of a swap is: in the state folder, as `live` places it, or in a folder of the swap. */
+type Place = string | ((name: string) => string);
+
+function pathOf(place: Place, name: string): string {
+  return typeof place === "string" ? join(place, name) : place(name);
+}
+
+// Where each name of the state folder lives: the workspace where BINFERENCE_WORKSPACE moved it,
+// as the Docker image does (decision 0412), every other name in the state folder itself.
+function livePlace(stateFolder: StateFolder): Place {
+  return (name) => (name === "workspace" ? stateFolder.workspace : join(stateFolder.root, name));
+}
+
 async function moveEach(
   journal: Journal,
   names: readonly string[],
-  places: { readonly from: string; readonly to: string },
+  places: { readonly from: Place; readonly to: Place },
 ): Promise<number> {
   let count = 0;
   for (const name of names) {
-    const from = join(places.from, name);
-    const to = join(places.to, name);
+    const from = pathOf(places.from, name);
+    const to = pathOf(places.to, name);
     // oxlint-disable-next-line eslint/no-await-in-loop -- one rename at a time, so an undo knows what moved
     const done = await journal.move(from, to, journal.signal);
     if (done.ok) {
@@ -158,10 +171,12 @@ async function asideOf(stateFolder: StateFolder, atMs: number, signal: AbortSign
 
 /**
  * Puts a restored state in place (keys spec, section 7.4, step 4), with no engine running on the
- * folder: the databases, `config.json5` and `workspace/` it replaces move aside to
+ * folder: the databases, `config.json5` and the workspace it replaces move aside to
  * `replaced/<yyyymmdd-hhmmss>/` in the state folder (`-2` after it for a second restore of that
- * second), kept 7 days, then the restored ones move in,
- * each in one rename. `keys/`, `backups/` and the logs stay. The swap is all or nothing: when a
+ * second), kept 7 days, then the restored ones move in, each in one rename. The workspace is the
+ * folder `BINFERENCE_WORKSPACE` names when it moved, which must then sit on the state folder's
+ * file system, as the Docker image keeps it (decision 0412). `keys/`, `backups/` and the logs
+ * stay. The swap is all or nothing: when a
  * rename fails, every rename made so far is reversed, newest first, and the fault is thrown, so
  * the state folder is as it was and the restored files are back where they came from; a reversal
  * that fails too throws `backup.restore_rollback_failed`. `undo` reverses a swap that finished.
@@ -179,7 +194,7 @@ export async function swapInRestored(
   const { signal } = options;
   const aside = await asideOf(stateFolder, options.atMs, signal);
   await ensurePrivateFolder(aside, { permissions: options.permissions, signal });
-  const root = stateFolder.root;
+  const live = livePlace(stateFolder);
   const journal: Journal = { moves: [], move: options.move ?? movePath, signal };
   const places = { aside, staged: from };
   // Puts everything back, then removes the empty folder the replaced state waited in.
@@ -193,8 +208,8 @@ export async function swapInRestored(
   };
   let away = 0;
   try {
-    away = await moveEach(journal, replaced, { from: root, to: aside });
-    await moveEach(journal, restored, { from, to: root });
+    away = await moveEach(journal, replaced, { from: live, to: aside });
+    await moveEach(journal, restored, { from, to: live });
   } catch (error) {
     await putBack();
     throw error;

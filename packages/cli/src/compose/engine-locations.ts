@@ -4,12 +4,15 @@ import { createPlatform, type IpcEndpoint, type Platform } from "@binference/pla
 import type { CliHost } from "../program/cli-host.js";
 
 /**
- * This OS's platform for the state folder the host names through `BINFERENCE_HOME`, with the
- * host's keychain when it passes one.
+ * This OS's platform for the state folder the host names through `BINFERENCE_HOME`, its
+ * workspace through `BINFERENCE_WORKSPACE` and, in the Docker image, the shell launcher through
+ * `BINFERENCE_SHELL_LAUNCHER` (decision 0412), with the host's keychain when it passes one.
  */
 export function platformOf(host: Pick<CliHost, "env" | "homeDir" | "keychain">): Platform {
   const platform = createPlatform({
     binferenceHome: host.env["BINFERENCE_HOME"],
+    binferenceWorkspace: host.env["BINFERENCE_WORKSPACE"],
+    shellLauncher: host.env["BINFERENCE_SHELL_LAUNCHER"],
     xdgConfigHome: host.env["XDG_CONFIG_HOME"],
     display: host.env["DISPLAY"],
     waylandDisplay: host.env["WAYLAND_DISPLAY"],

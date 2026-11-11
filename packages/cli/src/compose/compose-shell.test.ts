@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { join } from "node:path";
+import { BinferenceError } from "@binference/core";
+import { createMemoryLogger } from "@binference/core/testing";
 import { commandRunnerContract } from "@binference/engine/testing";
 import { realPathOf, type ShellLaunch, type ShellLauncher } from "@binference/platform";
 import {
@@ -11,7 +13,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { currentConfigVersion } from "../config/migrations/config-migrations.js";
 import { configSchema } from "../config/schema/config.schema.js";
-import { commandRunnerOf } from "./compose-shell.js";
+import { commandRunnerOf, shareImageWorkspace } from "./compose-shell.js";
 
 const config = configSchema.parse({
   version: currentConfigVersion,
@@ -110,6 +112,16 @@ describe("the agent's command runner", () => {
     ]);
   });
 
+  it("starts in the home folder of a launcher whose commands run as a user of their own", async () => {
+    const recorded = recordingLauncher({ kind: "held", by: "os_user" });
+    const launcher = { ...recorded.launcher, home: home.path };
+    const runner = commandRunnerOf({ launcher, env, homeDir: "/home/owner", config: () => config });
+    const started = runner.start({ command: "ls", folder: "~", timeoutMs: 0 }, () => undefined);
+    assert.ok(started.ok);
+    await started.value.ended;
+    expect(recorded.launches.map((launch) => launch.folder)).toStrictEqual([home.path]);
+  });
+
   it("refuses a folder that does not exist, and starts nothing", () => {
     const { launcher, launches } = recordingLauncher({ kind: "held", by: "seatbelt" });
     const runner = commandRunnerOf({ launcher, env, homeDir: home.path, config: () => config });
@@ -129,5 +141,34 @@ describe("the agent's command runner", () => {
     const runner = commandRunnerOf({ launcher, env, homeDir: home.path, config: () => config });
     const phrase = "abandon ".repeat(11) + "about";
     expect(runner.mask(`qzx: ${phrase}\n`)).toBe("qzx: [recovery phrase hidden]\n");
+  });
+});
+
+// A share of the image's workspace that fails, as on a folder that is not binference's.
+async function shareWorkspace(): Promise<void> {
+  throw new BinferenceError({ code: "platform.share_failed", message: "not binference's" });
+}
+
+describe("sharing the image's workspace at start", () => {
+  it("logs a workspace it cannot share, and lets the start go on", async () => {
+    const logger = createMemoryLogger({ subsystem: "engine" });
+
+    await expect(shareImageWorkspace({ shareWorkspace }, logger, live)).resolves.toBeUndefined();
+
+    expect(logger.records()).toMatchObject([
+      {
+        level: "warn",
+        event: "shell.workspace_unshared",
+        fields: { errorCode: "platform.share_failed" },
+      },
+    ]);
+  });
+
+  it("does nothing outside the image", async () => {
+    const logger = createMemoryLogger({ subsystem: "engine" });
+
+    await shareImageWorkspace({}, logger, live);
+
+    expect(logger.records()).toStrictEqual([]);
   });
 });

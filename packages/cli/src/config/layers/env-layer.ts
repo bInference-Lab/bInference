@@ -5,15 +5,18 @@ import { type LayerEntry, readLayerText } from "./layer-entry.js";
 /** The prefix of every variable that sets a config key. */
 const prefix = "BINFERENCE_";
 
-// Variables with the prefix that are not config keys: BINFERENCE_HOME moves the state folder,
-// BINFERENCE_MCP_TOKEN carries an MCP session's secret, BINFERENCE_PLUGIN_LAUNCHER and
-// BINFERENCE_IMAGE_USER name the image's plugin launcher and its own user (decision 0344), and
+// Variables with the prefix that are not config keys: BINFERENCE_HOME moves the state folder and
+// BINFERENCE_WORKSPACE its workspace, BINFERENCE_MCP_TOKEN carries an MCP session's secret,
+// BINFERENCE_PLUGIN_LAUNCHER and BINFERENCE_IMAGE_USER name the image's plugin launcher and its
+// own user (decision 0344), BINFERENCE_SHELL_LAUNCHER its shell launcher (decision 0412), and
 // BINFERENCE_NODE_MIRROR is the install script's Node mirror.
 const reserved: ReadonlySet<string> = new Set([
   "BINFERENCE_HOME",
+  "BINFERENCE_WORKSPACE",
   "BINFERENCE_MCP_TOKEN",
   "BINFERENCE_PLUGIN_LAUNCHER",
   "BINFERENCE_IMAGE_USER",
+  "BINFERENCE_SHELL_LAUNCHER",
   "BINFERENCE_NODE_MIRROR",
 ]);
 

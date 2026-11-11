@@ -16,6 +16,7 @@ import { proxyFindings } from "./proxy-findings.js";
 import { remoteFindings } from "./remote-findings.js";
 import { roleWalletFindings } from "./role-wallet-findings.js";
 import { rpcFindings } from "./rpc-keyed-finding.js";
+import { shellWallFinding } from "./shell-wall-finding.js";
 
 // Reading files and one engine call take moments; past this the check gives up.
 const checkBudgetMs = 15_000;
@@ -95,6 +96,7 @@ export async function checkFindings(run: CheckRun): Promise<readonly CheckFindin
   const roles = await roleWalletFindings({ host, platform, signal });
   const remote = await remoteFindings({ host, platform, signal }, config.config);
   const sandbox = await pluginSandboxFinding({ host, platform, signal });
+  const wall = await shellWallFinding({ host, platform });
   return [
     config.finding,
     ...access,
@@ -108,6 +110,7 @@ export async function checkFindings(run: CheckRun): Promise<readonly CheckFindin
     ...roles,
     ...remote,
     sandbox,
+    wall,
   ];
 }
 
@@ -126,7 +129,8 @@ export async function checkFindings(run: CheckRun): Promise<readonly CheckFindin
  * (a warning naming each extra launch or bridge wallet a rebuild adopted, decisions 0218 and 0307)
  * and `wallets.launch_calls` and `wallets.bridge_calls` (a warning naming each launch or bridge
  * wallet whose ceiling lacks calls its venues need, with the owner key's fix, decisions 0271 and
- * 0307), and `remote.funnel`, `remote.loopback` and `remote.serve` (decision 0341). `--fix` moves
+ * 0307), `remote.funnel`, `remote.loopback` and `remote.serve` (decision 0341), and `shell.wall`
+ * (what keeps the agent's commands from binference's own folder, decision 0412). `--fix` moves
  * an older config.json5 to this version after a sealed backup, and makes owner-only every path
  * others can open, the fixes the config spec names. It then says what the wallets' ceiling promises against a machine whose keys are stolen
  * (decision 0149), and that a launch wallet and a bridge wallet are the exceptions (decisions
