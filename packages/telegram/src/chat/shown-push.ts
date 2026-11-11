@@ -23,7 +23,7 @@ export function isShownPush(push: ChatPush): push is ShownPush {
 
 /** The replies' parts what a tool shows goes out with. */
 export interface ShownReplies extends DepositShowing {
-  readonly options: DepositShowing["options"] & {
+  readonly options: {
     readonly madeImage?: MadeImageReader;
     readonly sentFile?: SentFileReader;
     readonly media?: MediaReader;

@@ -3,7 +3,6 @@ import { createMemoryOwnerStore } from "@binference/engine/testing";
 import { qrPng } from "@binference/qr";
 import { Api } from "grammy";
 import { describe, expect, it } from "vitest";
-import { testChains } from "../commands/test-command-bot.js";
 import { createFakeBotApi, fakeBotToken } from "../testing/fake-bot-api.js";
 import { ownerId } from "../testing/update-fixtures.js";
 import { createBotThrottlers } from "../throttle/create-bot-throttlers.js";
@@ -18,6 +17,8 @@ const wallet = {
   wallet: "wal_0190f1c2-3a4b-7c5d-8e6f-000000000010",
   agent,
   address: "fake:1:0x00000010",
+  chainName: "Fake One",
+  explorerLink: "https://scan.example.invalid/address/0x00000010",
   label: "Main",
   createdAt: 1,
 };
@@ -38,7 +39,6 @@ async function setUp(stream: "progress" | "partial" = "progress") {
     clock,
     logger,
     display,
-    chains: testChains(),
     replies: () => ({ stream }),
   });
   return { botApi, clock, replies };

@@ -9,10 +9,8 @@ import type { WalletView } from "@binference/protocol";
 import type { RichLine, RichRun } from "@binference/rich-text";
 import type { CommandContext } from "./command-context.js";
 
-/** What the deposit lines are written with: the words, the formatter, and the chains if known. */
-type LineParts = Pick<CommandContext, "words" | "formatter"> & {
-  readonly chains?: CommandContext["chains"];
-};
+/** What the deposit lines are written with: the words and the formatter. */
+type LineParts = Pick<CommandContext, "words" | "formatter">;
 
 const textBlock = { kind: "text" } as const;
 
@@ -30,7 +28,7 @@ function lineOf(runs: readonly RichRun[]): RichLine {
   return { block: textBlock, runs };
 }
 
-// The address's page from the explorer's page template, labelled by the explorer's host.
+// The address's page the engine named, labelled by the explorer's host.
 function explorerLines(parts: LineParts, page: string | undefined): readonly RichLine[] {
   if (page === undefined) {
     return [];
@@ -48,30 +46,17 @@ function quoteLine(text: string): RichLine {
   return { block: warningBlock, runs: [{ text, marks: [] }] };
 }
 
-// The wallet's chain as the registry names it, with its first explorer's address page; a chain the
-// registry does not list keeps the engine's name for it and has no page.
-function chainOf(
-  parts: LineParts,
-  view: WalletView,
-): { readonly chainName: string; readonly template?: string } {
-  const { chain } = accountRefParts(view.address);
-  const registered = parts.chains?.get(chain);
-  const definition = registered?.ok === true ? registered.value.definition : undefined;
-  const template = definition?.explorers[0]?.addressUrl;
-  const chainName = definition?.name ?? view.chainName ?? chain;
-  return template === undefined ? { chainName } : { chainName, template };
-}
-
 /**
  * A wallet's lines for the owner (spec 4, section 5): its label in bold and its role, its full
  * address in `code` the owner taps to copy, a quote of what to know before sending to it, and its
- * page on the first block explorer the chain registry lists. The chain's name comes from the
- * registry; a chain it does not list keeps the engine's name for it and shows no link.
+ * page on the first block explorer the chain registry lists. The chain's name and the page come
+ * from the engine's view; a view from an older engine names the chain by its id and shows no link.
  */
 export function depositLines(parts: LineParts, wallet: DepositWallet): readonly RichLine[] {
   const { view } = wallet;
-  const { address } = accountRefParts(view.address);
-  const { chainName, template } = chainOf(parts, view);
+  const { address, chain } = accountRefParts(view.address);
+  const chainName = view.chainName ?? chain;
+  const page = view.explorerLink;
   const role = parts.words("cmd.wallet.role", { role: walletRoleOf(view) });
   const label = displayOutsideText(view.label, labelLength);
   return [
@@ -82,7 +67,7 @@ export function depositLines(parts: LineParts, wallet: DepositWallet): readonly 
     lineOf([{ text: address, marks: [{ kind: "code" }] }]),
     lineOf([]),
     ...depositWarnings(parts.formatter, wallet, chainName).map(quoteLine),
-    ...(template === undefined ? [] : [lineOf([])]),
-    ...explorerLines(parts, template?.replace("{address}", address)),
+    ...(page === undefined ? [] : [lineOf([])]),
+    ...explorerLines(parts, page),
   ];
 }

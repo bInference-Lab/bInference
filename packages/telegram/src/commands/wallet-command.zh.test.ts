@@ -18,7 +18,9 @@ function view(n: number, label: string, marks: Partial<WalletView> = {}): Wallet
     `wal_0190f1c2-3a4b-7c5d-8e6f-0000000000${String(n)}`,
   );
   const address = `fake:1:0x000000${String(n)}` as WalletView["address"];
-  return { wallet, agent, address, label, createdAt: n, ...marks };
+  const explorerLink = `https://scan.example.invalid/address/0x000000${String(n)}`;
+  const chain = { chainName: "Fake One", explorerLink };
+  return { wallet, agent, address, label, createdAt: n, ...chain, ...marks };
 }
 
 async function walletReply(items: readonly WalletView[]) {

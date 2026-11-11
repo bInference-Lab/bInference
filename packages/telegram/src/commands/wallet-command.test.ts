@@ -25,9 +25,13 @@ function statusOf(agentStatus: {
   };
 }
 
+// A wallet on the fake chain as `wallet/list` answers it: with its chain's name and its page on
+// the chain's first explorer.
 function view(n: number, label: string, marks: Partial<WalletView> = {}): WalletView {
   const address = `fake:1:0x000000${String(n)}` as WalletView["address"];
-  return { wallet: walletId(n), agent, address, label, createdAt: n, ...marks };
+  const explorerLink = `https://scan.example.invalid/address/0x000000${String(n)}`;
+  const chain = { chainName: "Fake One", explorerLink };
+  return { wallet: walletId(n), agent, address, label, createdAt: n, ...chain, ...marks };
 }
 
 function walletsBot(
@@ -114,9 +118,10 @@ describe("the /wallet command", () => {
     ]);
   });
 
-  it("names a chain the registry does not list as the engine does, with no explorer link", async () => {
+  it("names the chain as the engine does, with no explorer link when the engine names none", async () => {
     const address = "fake:2:0x00000014" as WalletView["address"];
-    const other = { ...view(14, "Far"), address, chainName: "Fake Two" };
+    const { explorerLink: _none, ...far } = view(14, "Far");
+    const other = { ...far, address, chainName: "Fake Two" };
     const bot = await startCommandBot(walletsBot([other]).handlers);
     await bot.send("/wallet");
     expect(bot.botApi.messages()).toMatchObject([

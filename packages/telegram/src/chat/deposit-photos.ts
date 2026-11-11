@@ -1,4 +1,3 @@
-import type { ChainRegistry } from "@binference/chain";
 import type { Formatter } from "@binference/i18n";
 import type { ChatPush } from "@binference/protocol";
 import { qrPng } from "@binference/qr";
@@ -13,8 +12,6 @@ interface DepositSending {
   readonly bot: BotCalls;
   readonly chatId: number;
   readonly formatter: Formatter;
-  /** The registry that names each wallet's chain and explorer; left out, the engine's chain name. */
-  readonly chains?: ChainRegistry;
 }
 
 /*
@@ -27,12 +24,12 @@ async function sendDepositPhotos(
   push: DepositPush,
   signal: AbortSignal,
 ): Promise<void> {
-  const { bot, chatId, formatter, chains } = sending;
+  const { bot, chatId, formatter } = sending;
   const words = (key: string, values?: Parameters<Formatter["message"]>[1]): string => {
     // oxlint-disable-next-line eslint/no-restricted-properties -- the formatter's message method picks i18n text by key; no error message is read
     return formatter.message(key, values);
   };
-  const parts = { words, formatter, ...(chains === undefined ? {} : { chains }) };
+  const parts = { words, formatter };
   await push.wallets.reduce(async (previous, view) => {
     await previous;
     const caption = depositLines(parts, { view, mode: push.mode, isFrozen: push.frozen });
@@ -42,7 +39,6 @@ async function sendDepositPhotos(
 
 /** The replies' parts a deposit is shown with: the turn's showing, if any, and the owner's chat. */
 export interface DepositShowing {
-  readonly options: { readonly chains?: ChainRegistry };
   readonly bot: BotCalls;
   readonly formatter: () => Formatter;
   readonly showing: { readonly chatId: number; readonly reply: { isGiven: boolean } } | undefined;
@@ -72,12 +68,10 @@ export async function showDeposit(
   push: DepositPush,
   signal: AbortSignal,
 ): Promise<void> {
-  const { options } = replies;
   const chatId = await shownChat(replies);
   if (chatId === undefined) {
     return;
   }
-  const chains = options.chains === undefined ? {} : { chains: options.chains };
-  const sending = { bot: replies.bot, chatId, formatter: replies.formatter(), ...chains };
+  const sending = { bot: replies.bot, chatId, formatter: replies.formatter() };
   await sendDepositPhotos(sending, push, signal);
 }

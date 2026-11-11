@@ -1,4 +1,3 @@
-import type { ChainRegistry } from "@binference/chain";
 import type { Logger, Clock } from "@binference/core";
 import type { OwnerStore } from "@binference/engine/surfaces";
 import type { MessageLocale } from "@binference/i18n";
@@ -26,11 +25,6 @@ export interface ChatRepliesOptions {
   }) => Promise<ReadonlyMap<string, string>>;
   /** How replies show as config.json5 holds it now, read as each turn starts; left out, `progress`. */
   readonly replies?: () => ReplySettings;
-  /**
-   * The chain registry, which names each deposit wallet's chain and its explorer; left out, the
-   * engine's chain name shows and no explorer link.
-   */
-  readonly chains?: ChainRegistry;
   /** Reads an image the agent made from the engine (decision 0392); left out, each shows its path. */
   readonly madeImage?: MadeImageReader;
   /** Reads a file the agent sent from the engine (decision 0400); left out, each shows its path. */

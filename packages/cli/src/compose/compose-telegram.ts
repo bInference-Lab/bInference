@@ -163,7 +163,7 @@ function relayOf(
   const sentFile = sentFilesOf(calls, answersOwner(parts));
   const media = madeMediaOf(calls, answersOwner(parts));
   const shownFiles = { madeImage, sentFile, media };
-  const replyParts = { ...parts, clock, logger, display, agentNames, chains, ...shownFiles };
+  const replyParts = { ...parts, clock, logger, display, agentNames, ...shownFiles };
   const replies = createChatReplies(replyParts);
   const shown = {
     ...replies,
