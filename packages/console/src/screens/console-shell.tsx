@@ -18,6 +18,7 @@ const sections = [
   { to: "/ledger", key: "console.nav.ledger" },
   { to: "/limits", key: "console.nav.limits" },
   { to: "/rules", key: "console.nav.rules" },
+  { to: "/skills", key: "console.nav.skills" },
 ] as const;
 
 const statusKeys = {

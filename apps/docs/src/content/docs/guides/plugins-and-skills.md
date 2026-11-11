@@ -86,6 +86,29 @@ agent's tools, cards and caps. binference ships these skills:
 
 The skills never pick an amount for you, and never draft a launch.
 
+### Skills the agent proposes
+
+The agent can write a new skill, or a change to one of its workspace skills, as a skill proposal.
+Nothing it proposes loads until you apply it, and it cannot apply, reject or remove a proposal. A
+turn that read a web page, token data or a plugin's answer proposes nothing. Each proposal is
+scanned for requests for secrets, downloads run in a shell, secrets written out, hidden characters
+and sweeping deletes; a proposal with any finding cannot be applied until the agent revises it.
+
+- In Telegram, `/skills` shows each pending proposal with its changes and findings, with Apply and
+  Reject.
+- In the terminal: `binference skill proposals`, `binference skill show <proposal>`,
+  `binference skill apply <proposal>` and `binference skill reject <proposal> --reason <text>`.
+- In the console, the Skills screen shows each proposal with its diff; Apply asks once more.
+
+An applied proposal is written into the agent's workspace skills folder and loads from its next
+turn. A change to a skill that moved since the agent proposed it is refused as stale.
+
+A workspace skill loads only while its files are the ones you accepted. Skills already in the
+workspace when you updated are accepted. One that is added or changed later, by hand or by the
+agent's shell, waits: the agent does not open it, and binference tells you once. Check its files,
+then accept it with `/skills`, in the console, or with `binference skill accept <name>`. The agent's
+file tools never write into a skills folder.
+
 ## MCP clients
 
 `binference mcp` serves binference's tools to an MCP client such as Claude Code or Codex. An MCP

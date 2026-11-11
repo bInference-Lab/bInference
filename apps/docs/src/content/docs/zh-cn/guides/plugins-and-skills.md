@@ -66,6 +66,18 @@ Agent 看到的插件工具名称为 `<plugin>__<tool>`，例如 `fear_index__sc
 
 这些技能从不替你决定金额，也从不起草发射。
 
+### Agent 提议的技能
+
+Agent 可以把一个新技能，或对其某个工作区技能的修改，写成技能提案。在你应用之前，它提议的内容都不会加载；它不能应用、拒绝或删除提案。读取过网页、代币数据或插件回答的一轮不会提议任何技能。每个提案都会被扫描，检查是否索要密钥、在 shell 中运行下载内容、写出密钥、含有隐藏字符或大范围删除；有任何扫描结果的提案在 Agent 修改之前都无法应用。
+
+- 在 Telegram 中，`/skills` 显示每个待处理的提案及其改动和扫描结果，并提供“应用”和“拒绝”按钮。
+- 在终端中：`binference skill proposals`、`binference skill show <proposal>`、`binference skill apply <proposal>` 和 `binference skill reject <proposal> --reason <text>`。
+- 在控制台中，“技能”页面显示每个提案及其差异；应用前会再次确认。
+
+应用后的提案会写入 Agent 的工作区技能文件夹，并从其下一轮起加载。如果某个技能在提案之后已经更改，对它的修改会因过时而被拒绝。
+
+工作区技能只有在其文件与你接受的版本一致时才会加载。更新时已在工作区中的技能会被接受。之后新增或更改的技能，无论是手动还是由 Agent 的 shell 写入，都会等待：Agent 不会打开它，binference 会通知你一次。检查其文件后，通过 `/skills`、控制台或 `binference skill accept <name>` 接受。Agent 的文件工具从不写入技能文件夹。
+
 ## MCP 客户端
 
 `binference mcp` 向 Claude Code 或 Codex 等 MCP 客户端提供 binference 的工具。MCP 客户端可以读取和提议，但不能确认：每个提议都会打开一张等你确认的卡片，自动模式也从不执行来自 MCP 客户端的提议。

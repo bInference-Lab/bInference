@@ -477,6 +477,59 @@ description: "binference 的每个命令及其参数和选项。"
 
 - `<name>`: 插件名称，与 `binference plugin list` 显示的一致。必填。
 
+## `binference skill`
+
+审阅 Agent 提议的技能，以及等待你接受的工作区技能。
+
+### `binference skill proposals`
+
+列出 Agent 的技能提案及其待接受的工作区技能。
+
+选项：
+
+- `--agent <id>`: Agent 的 ID；不填时使用唯一的 Agent。
+- `--all`: 同时列出已应用、已拒绝和已过时的提案。
+
+### `binference skill show`
+
+完整显示一个技能提案：扫描结果和改动。
+
+参数：
+
+- `<proposal>`: 技能提案的 skp_ id。必填。
+
+### `binference skill apply`
+
+阅读后应用一个技能提案。
+
+参数：
+
+- `<proposal>`: 技能提案的 skp_ id。必填。
+
+### `binference skill reject`
+
+拒绝一个技能提案。
+
+参数：
+
+- `<proposal>`: 技能提案的 skp_ id。必填。
+
+选项：
+
+- `--reason <text>`: 原因，一行文字，Agent 在下一轮读取。
+
+### `binference skill accept`
+
+按当前文件接受一个待接受的工作区技能。
+
+参数：
+
+- `<name>`: 待接受的工作区技能的名称。必填。
+
+选项：
+
+- `--agent <id>`: Agent 的 ID；不填时使用唯一的 Agent。
+
 ## `binference limit`
 
 显示 Agent 当前生效的限额，以及等待生效的较宽松限额。

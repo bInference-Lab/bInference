@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Alert, AlertDescription } from "../components/ui/alert";
 import { useEngine } from "../connection/engine-context";
 import { errorWords } from "../connection/error-words";
+import { FailedAlert } from "../connection/failed-alert";
 import { MessageText, useText } from "../i18n/console-text";
 import { AgentQuestionCard } from "./agent-question";
 import { ChatCards } from "./chat-cards";
@@ -65,22 +66,6 @@ function useChatActions(agent: ProtocolId<"agent">, live: ReturnType<typeof useC
   return { send, stop, clear };
 }
 
-function Failure(props: { readonly error: Error | null }): React.JSX.Element | null {
-  const text = useText();
-  if (props.error === null) {
-    return null;
-  }
-  return (
-    <Alert variant="destructive">
-      <AlertDescription>
-        <MessageText
-          text={text("console.chat.failed", { reason: errorWords(text, props.error) })}
-        />
-      </AlertDescription>
-    </Alert>
-  );
-}
-
 type ChatActions = ReturnType<typeof useChatActions>;
 
 // New chat, and what the chat says above the thread: that a new one started, or that the chat so
@@ -128,7 +113,7 @@ function ChatBottom(props: {
   }
   return (
     <>
-      <Failure error={failed} />
+      <FailedAlert error={failed} wordsKey="console.chat.failed" />
       <ChatComposer
         actions={{
           send: async (said, images) => {
