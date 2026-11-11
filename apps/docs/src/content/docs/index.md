@@ -29,6 +29,7 @@ every transaction.
   TradingView alerts.
 - [Plugins, skills and MCP](/guides/plugins-and-skills/): community plugins in a sandbox, the
   bundled skills and MCP clients.
+- [Credentials and API calls](/guides/credentials/): API keys the agent uses and never sees.
 - [Helpers, goals and skills the agent writes](/guides/helpers-and-goals/): background helpers,
   `/goal`, the agent's status and skill proposals.
 - [Use an outbound proxy](/guides/proxy/): every outbound request through your proxy.
