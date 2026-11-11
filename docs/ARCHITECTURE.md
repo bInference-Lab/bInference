@@ -78,7 +78,9 @@ Every part of binference follows these rules. A rule changes only through a new 
     and runs in a shell host the engine starts, never in the engine, the signer or the runtime. A
     command never reaches `auth/`, `keys/`, the databases, the config, the IPC socket or
     binference's keychain entries; a machine that cannot hold that wall refuses the shell
-    ([decision 0378](DECISIONS.md#d0378)). File and browser tools are off by default.
+    ([decision 0378](DECISIONS.md#d0378)). In the Docker image the wall is an OS user of its own,
+    which a shell launcher runs every command as ([decision 0412](DECISIONS.md#d0412)). File and
+    browser tools are off by default.
 16. <a id="rule-16"></a>**Beyond custody, the bot and a model, it needs no keys.** Self-hosted
     owners bring their Privy app, BotFather bot and model key ([decision 0087](DECISIONS.md#d0087));
     every other v1 default (routing, risk data, launch feed, RPC, private sends) is keyless. Keys
@@ -236,7 +238,9 @@ macOS and Windows.
   - `agent.sqlite`: sessions, transcripts, memory
   - `keys/`: the agent's Privy signing key, owner-only ([decision 0085](DECISIONS.md#d0085))
   - `workspace/<agent>/`: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`,
-    `FIRST-CHAT.md` and `skills/`, whose skills load only as the owner accepted them
+    `FIRST-CHAT.md` and `skills/`, whose skills load only as the owner accepted them;
+    `BINFERENCE_WORKSPACE` moves `workspace/`, as the Docker image does to share it with the
+    agent's commands ([decision 0412](DECISIONS.md#d0412))
   - `skill-review/`: the agent's skill proposals and the accepted skill hashes, outside the
     workspace ([decision 0408](DECISIONS.md#d0408))
   - `logs/`

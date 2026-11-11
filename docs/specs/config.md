@@ -55,12 +55,14 @@ From lowest to highest; a higher layer replaces a lower one key by key:
 2. The file.
 3. Environment variables: `BINFERENCE_` plus the key path in capitals, with `__` between segments.
    `BINFERENCE_ENGINE__PORT=7460` sets `engine.port`. Arrays and objects take JSON:
-   `BINFERENCE_CHAINS__ENABLED='["eip155:56"]'`. `BINFERENCE_HOME`, `BINFERENCE_MCP_TOKEN` (an
-   MCP session's secret, [decision 0159](../DECISIONS.md#d0159)), `BINFERENCE_PLUGIN_LAUNCHER`
-   and `BINFERENCE_IMAGE_USER` (the image's plugin launcher and its own user,
-   [decision 0344](../DECISIONS.md#d0344)), every `BINFERENCE_INIT_*` variable (an answer of
-   `binference init`, [decision 0224](../DECISIONS.md#d0224)), and the install script's
-   `BINFERENCE_INSTALL_*` variables and `BINFERENCE_NODE_MIRROR` are not config keys.
+   `BINFERENCE_CHAINS__ENABLED='["eip155:56"]'`. `BINFERENCE_HOME`, `BINFERENCE_WORKSPACE` (the
+   workspace moved out of the state folder, [decision 0412](../DECISIONS.md#d0412)),
+   `BINFERENCE_MCP_TOKEN` (an MCP session's secret, [decision 0159](../DECISIONS.md#d0159)),
+   `BINFERENCE_PLUGIN_LAUNCHER` and `BINFERENCE_IMAGE_USER` (the image's plugin launcher and its
+   own user, [decision 0344](../DECISIONS.md#d0344)), `BINFERENCE_SHELL_LAUNCHER` (the image's
+   shell launcher, [decision 0412](../DECISIONS.md#d0412)), every `BINFERENCE_INIT_*` variable
+   (an answer of `binference init`, [decision 0224](../DECISIONS.md#d0224)), and the install
+   script's `BINFERENCE_INSTALL_*` variables and `BINFERENCE_NODE_MIRROR` are not config keys.
 4. CLI flags: `--set engine.port=7460`, repeatable.
 
 `binference config show` prints the merged result and the layer each value came from, with secrets

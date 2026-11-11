@@ -488,8 +488,12 @@ new name here first, in the change that uses it.
   and a decoy started as the engine is says whether a signal opened its debugger.
 - **plugin launcher**: in the Docker image, the process under the plugin user,
   `binference-plugin`, that starts each community plugin the engine names by its id.
+- **shell launcher**: in the Docker image, the process under the shell user, `binference-shell`,
+  that runs each of the agent's commands the engine sends it; that user cannot cross the state
+  folder, which is the wall there ([decision 0412](DECISIONS.md#d0412)).
 - **image entry**: `binference-image`, the Docker image's one root process: it starts the engine
-  as `binference` and the plugin launcher as `binference-plugin`, and nothing else.
+  as `binference`, the plugin launcher as `binference-plugin` and the shell launcher as
+  `binference-shell`, and nothing else.
 - **widening**: an update of a plugin that declares more than the version the owner accepted: a
   host, a tool, a kind or a config key. It waits for a new permission review.
 - **plugin lock**: `plugins/lock.json` in the state folder: each installed plugin's source, version,
@@ -562,7 +566,9 @@ check` tries it as `network.proxy`.
   keeps one poller per bot token in a process.
 - **throttler**: one per bot token; it paces the bot's Bot API calls by Telegram's limits and owns
   every wait Telegram asks for with a 429.
-- **state folder**: `~/.binference`, moved by `BINFERENCE_HOME`.
+- **state folder**: `~/.binference`, moved by `BINFERENCE_HOME`. Its `workspace/` moves on its own
+  with `BINFERENCE_WORKSPACE`, as the Docker image moves it beside the state folder for the shell
+  user.
 - **unlock mode**: where the agent key and the Privy app secret are read at start: `keychain`,
   `file`, `command` or `manual`.
 - **check-back**: the last 6 characters of the owner key's code, which the owner types back at
@@ -851,6 +857,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | plugin host                                 | 插件进程                 | One process per plugin       |
 | sandbox check                               | 沙箱检查                 | `plugins.sandbox`            |
 | plugin launcher                             | 插件启动器               | In the Docker image          |
+| shell launcher                              | 命令行启动器             | In the Docker image          |
 | image entry                                 | 镜像入口                 | `binference-image`           |
 | permission review                           | 权限审核                 | Before a plugin runs         |
 | npm provenance                              | npm 来源证明             | Shown on the review          |
