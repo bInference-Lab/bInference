@@ -16,6 +16,12 @@ export interface WalletView {
    * Smart Chain. An older engine leaves it out; a surface then names the chain by `address`.
    */
   readonly chainName?: string;
+  /**
+   * The address's page on the first block explorer binference's chain list names for its chain,
+   * such as `https://bscscan.com/address/0x…`. Absent when the list names no explorer for it, or
+   * from an older engine; a surface then shows no link.
+   */
+  readonly explorerLink?: string;
   readonly label: string;
   readonly createdAt: number;
   readonly archivedAt?: number;
@@ -52,6 +58,10 @@ export const walletViewSchema: z.ZodType<WalletView> = z.object({
   agent: protocolIdSchema("agent"),
   address: accountRefSchema,
   chainName: z.string().min(1).max(200).exactOptional(),
+  explorerLink: z
+    .url({ protocol: /^https$/u })
+    .max(2048)
+    .exactOptional(),
   label: z.string(),
   createdAt: epochMsSchema,
   archivedAt: epochMsSchema.exactOptional(),

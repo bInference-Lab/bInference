@@ -85,6 +85,7 @@ describe("the agent list", () => {
       agent: testAgent,
       address,
       chainName: "Fake One",
+      explorerLink: "https://scan.example.invalid/address/0x00000052",
       label: "Main",
       createdAt: 10,
     });

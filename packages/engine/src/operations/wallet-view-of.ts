@@ -1,4 +1,11 @@
-import type { ChainRegistry, Signer, WalletRole } from "@binference/chain";
+import {
+  type AccountRef,
+  accountRefParts,
+  type ChainDefinition,
+  type ChainRegistry,
+  type Signer,
+  type WalletRole,
+} from "@binference/chain";
 import type { WalletView } from "@binference/protocol";
 import type { WalletRecord } from "../install/install-record.js";
 
@@ -20,11 +27,23 @@ export function roleMarksOf(role: WalletRole | undefined): Pick<WalletView, "rol
   return role === undefined ? {} : marks[role];
 }
 
+/** What a wallet view says of its account's chain: the chain's name and the account's page. */
+type ChainMarks = Pick<WalletView, "address" | "chainName" | "explorerLink">;
+
+// The account's page on the chain's first explorer, from that explorer's page template.
+function chainMarksOf(address: AccountRef, definition: ChainDefinition): ChainMarks {
+  const template = definition.explorers[0]?.addressUrl;
+  const named = { address, chainName: definition.name };
+  return template === undefined
+    ? named
+    : { ...named, explorerLink: template.replace("{address}", accountRefParts(address).address) };
+}
+
 /**
  * A stored wallet as the protocol shows it, with its account on the first registered chain where
- * custody holds it, that chain's name, and its role when it is a launch or bridge wallet;
- * `undefined` when custody holds it on none, so no wallet is ever shown without the address
- * custody signs for.
+ * custody holds it, that chain's name and the account's page on its first block explorer, and its
+ * role when it is a launch or bridge wallet; `undefined` when custody holds it on none, so no
+ * wallet is ever shown without the address custody signs for.
  */
 export async function walletViewOf(
   parts: WalletViewParts,
@@ -34,7 +53,7 @@ export async function walletViewOf(
   const held = await Promise.all(
     parts.chains.list().map(async (chain) => {
       const account = await parts.custody.account(wallet.id, chain.ref, { signal });
-      return account.ok ? [{ address: account.value, chainName: chain.definition.name }] : [];
+      return account.ok ? [chainMarksOf(account.value, chain.definition)] : [];
     }),
   );
   const [first] = held.flat();
@@ -43,8 +62,7 @@ export async function walletViewOf(
     : {
         wallet: wallet.id,
         agent: wallet.agentId,
-        address: first.address,
-        chainName: first.chainName,
+        ...first,
         label: wallet.label,
         createdAt: wallet.createdAtMs,
         ...(wallet.archivedAtMs === undefined ? {} : { archivedAt: wallet.archivedAtMs }),

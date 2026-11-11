@@ -52,11 +52,21 @@ const accounts = {
   others: accountRefSchema.parse("fake:1:0x00000043"),
 };
 
-// Two fake chains: the spare wallet has its account on the second only.
+// The second fake chain's one explorer.
+const secondScan = {
+  name: "two-scan",
+  url: "https://two.example.invalid",
+  txUrl: "https://two.example.invalid/tx/{hash}",
+  addressUrl: "https://two.example.invalid/account/{address}/funds",
+  source: "https://example.invalid/two-scan",
+};
+
+// Two fake chains, each with its own explorer: the spare wallet has its account on the second only.
 function twoChains() {
   const first = createFakeChainDefinition();
+  const second = { ...first, id: "fake:2", key: "fake-two", name: "Fake Two" };
   return createChainRegistry({
-    chains: [first, { ...first, id: "fake:2", key: "fake-two", name: "Fake Two" }],
+    chains: [first, { ...second, explorers: [secondScan] }],
     families: [createFakeFamily()],
     signingSchemes: [createFakeSigningScheme()],
   });
@@ -111,7 +121,7 @@ const everyAccount = new Map([
 ]);
 
 describe("the wallet list", () => {
-  it("lists an agent's wallets, default first, each with its account and chain from custody", async () => {
+  it("lists an agent's wallets, default first, each with its account, chain and its page from custody", async () => {
     const list = await walletList(everyAccount);
     expect(expectOk(await list(testCall({ agent: testAgent })))).toStrictEqual({
       items: [
@@ -120,6 +130,7 @@ describe("the wallet list", () => {
           agent: testAgent,
           address: accounts.main,
           chainName: "Fake One",
+          explorerLink: "https://scan.example.invalid/address/0x00000041",
           label: "Main",
           createdAt: 10,
         },
@@ -128,6 +139,7 @@ describe("the wallet list", () => {
           agent: testAgent,
           address: accounts.spare,
           chainName: "Fake Two",
+          explorerLink: "https://two.example.invalid/account/0x00000042/funds",
           label: "Spare",
           createdAt: 20,
           archivedAt: 30,

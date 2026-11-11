@@ -45,6 +45,7 @@ describe.each(skeletonCompositions)("binference wallet on the $name composition"
           agent,
           address: "fake:1:0x0000000c",
           chainName: "Fake One",
+          explorerLink: "https://scan.example.invalid/address/0x0000000c",
           label: "Main",
           createdAt: testNowMs - 1_000,
         },
