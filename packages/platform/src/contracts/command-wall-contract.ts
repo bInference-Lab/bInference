@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { lstat } from "node:fs/promises";
+import { join } from "node:path";
 import { BinferenceError } from "@binference/core";
 import type { ContractCheck } from "@binference/core/testing";
 import type { CommandWall } from "../ports.js";
@@ -17,6 +19,10 @@ export interface CommandWallSubject {
   readonly allowedContent: string;
   /** The reader to wrap, such as `/bin/cat`, which prints the file it is given. */
   readonly reader: string;
+  /** The linker to wrap, such as `/bin/ln`, which makes a hard link with `ln <file> <link>`. */
+  readonly linker: string;
+  /** An existing folder the wall leaves open inside the walled path, such as the workspace. */
+  readonly openFolder: string;
 }
 
 /** Makes subjects, and says whether this adapter walls a command on the OS running the test. */
@@ -28,22 +34,27 @@ export interface CommandWallHarness {
 
 const signal = (): AbortSignal => AbortSignal.timeout(15_000);
 
+// The one check of an adapter with no mechanism on this OS.
+function noWallChecks(harness: CommandWallHarness): readonly ContractCheck[] {
+  return [
+    {
+      name: "answers none and refuses to wrap a command where it has no mechanism",
+      run: async () => {
+        const { wall } = await harness.create();
+        assert.equal(wall.state.kind, "none");
+        assert.throws(
+          () => wall.wrap({ file: "/bin/echo", args: [] }),
+          (error: Error) => error instanceof BinferenceError && error.code === "platform.no_wall",
+        );
+      },
+    },
+  ];
+}
+
 /** The contract every `CommandWall` adapter passes. */
 export function commandWallContract(harness: CommandWallHarness): readonly ContractCheck[] {
   if (!harness.walls) {
-    return [
-      {
-        name: "answers none and refuses to wrap a command where it has no mechanism",
-        run: async () => {
-          const { wall } = await harness.create();
-          assert.equal(wall.state.kind, "none");
-          assert.throws(
-            () => wall.wrap({ file: "/bin/echo", args: [] }),
-            (error: Error) => error instanceof BinferenceError && error.code === "platform.no_wall",
-          );
-        },
-      },
-    ];
+    return noWallChecks(harness);
   }
   return [
     {
@@ -67,6 +78,19 @@ export function commandWallContract(harness: CommandWallHarness): readonly Contr
           stdout: "",
         }));
         assert.ok(!exit.stdout.includes(deniedContent));
+      },
+    },
+    {
+      name: "keeps a command from making a hard link to a walled file in an open folder",
+      run: async () => {
+        const { wall, linker, deniedFile, openFolder } = await harness.create();
+        const link = join(openFolder, "linked");
+        const wrapped = wall.wrap({ file: linker, args: [deniedFile, link] });
+        // The file tools read an open folder as the engine, which no wall holds, so a hard link
+        // there would reach a walled file by a real path inside the open folder (decision 0386).
+        await runCommandToExit(wrapped.file, wrapped.args, signal()).catch(() => undefined);
+        const made = await lstat(link).catch(() => undefined);
+        assert.ok(made === undefined || made.ino !== (await lstat(deniedFile)).ino);
       },
     },
   ];

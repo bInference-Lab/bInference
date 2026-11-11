@@ -15,6 +15,8 @@ describe("win32 command wall", () => {
         allowedFile: "",
         allowedContent: "",
         reader: "",
+        linker: "",
+        openFolder: "",
       }),
     }),
   )("follows the contract: $name", async ({ run }) => {

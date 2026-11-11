@@ -31,14 +31,14 @@ describe.runIf(process.platform === "linux")("linux command wall", () => {
         const deniedFile = join(auth, "cli.token");
         const deniedContent = "secret-owner-token";
         await writeFile(deniedFile, deniedContent);
+        const openFolder = join(root, "workspace");
+        await mkdir(openFolder);
         const allowedFile = join(await scratch(), "ok.txt");
         const allowedContent = "readable";
         await writeFile(allowedFile, allowedContent);
-        const wall = createLinuxCommandWall({
-          roots: [root],
-          open: [join(root, "workspace")],
-        });
-        return { wall, deniedFile, deniedContent, allowedFile, allowedContent, reader: "/bin/cat" };
+        const wall = createLinuxCommandWall({ roots: [root], open: [openFolder] });
+        const files = { deniedFile, deniedContent, allowedFile, allowedContent, openFolder };
+        return { wall, ...files, reader: "/bin/cat", linker: "/bin/ln" };
       },
     }),
   )("follows the contract: $name", async ({ run }) => {
