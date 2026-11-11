@@ -11,6 +11,7 @@ import { depositTool } from "./deposit-tool.js";
 import { fileTools } from "./file-tools.js";
 import { goalTools } from "./goal-tools.js";
 import { helperTools } from "./helper-tools.js";
+import { httpRequestTool } from "./http-request-tool.js";
 import { launchDraftTool } from "./launch-draft-tool.js";
 import { launchpadsTool } from "./launchpads-tool.js";
 import { lookAtImageTool } from "./look-at-image-tool.js";
@@ -61,7 +62,7 @@ export const hiddenToolArgs: ReadonlyMap<string, readonly string[]> = new Map([
  * (decision 0405), with helper parts the helper tools (decision 0403), with goal parts the goal
  * tools `goal_set`, `goal_read`, `goal_update` and `progress_note` (decision 0407),
  * `skill_proposal`, which proposes skills the owner applies (decision 0408), the machine
- * tools `shell` and `shell_job` (decision 0378), `browse` (decision 0401) and the file tools (decision 0386), `credentials`, which asks the owner for a credential and ends
+ * tools `shell` and `shell_job` (decision 0378), `browse` (decision 0401) and the file tools (decision 0386), `http_request`, an API call with the owner's stored credentials (decision 0411), `credentials`, which asks the owner for a credential and ends
  * the turn (decision 0388), then `ask_owner`, which asks the
  * owner in the turn the tools serve and ends it after its batch.
  */
@@ -107,6 +108,7 @@ export function agentTools(parts: AgentToolParts): readonly AgentTool[] {
     ...shellTools(parts),
     browseTool(parts),
     ...fileTools(parts),
+    httpRequestTool(parts),
     credentialsTool(parts),
     askOwnerTool(parts),
   ];

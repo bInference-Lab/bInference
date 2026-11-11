@@ -11,6 +11,7 @@ import {
   coin,
   coinInfo,
   context,
+  httpCall,
   intent,
   intentWire,
   leader,
@@ -129,6 +130,7 @@ const answers: Readonly<Record<string, FakeAnswer>> = {
   "file/edit": { path: "/w/a.md", changed: true, bytes: 1, replaced: 1 },
   "file/patch": { files: [{ path: "/w/a.md", change: "added" }] },
   "credential/list": { items: [] },
+  "http/request": httpCall.answer,
   "turn/chart": { chart: { chartType: "pie", title: "x", segments: [{ label: "a", value: 1 }] } },
   "schedule/create": scheduleWire(),
   "schedule/cancel": {},
@@ -467,6 +469,7 @@ const mappings: readonly (readonly [string, JsonValue, JsonValue])[] = [
     { input: "*** Begin Patch" },
     [{ op: "file/patch", args: { agent, input: "*** Begin Patch" } }],
   ],
+  ["http_request", httpCall.args, [{ op: "http/request", args: httpCall.sent }]],
   ["credentials", { action: "list" }, [{ op: "credential/list", args: {} }]],
   [
     "ask_owner",
@@ -568,10 +571,7 @@ describe("the agent's tools", () => {
   });
 
   it("keep an amount past 2^53 exact on its way to the engine", async () => {
-    const text = JSON.stringify(swapTerms).replace(
-      '"123456789012345678901"',
-      "123456789012345678901",
-    );
+    const text = JSON.stringify(swapTerms).replace(/"(123456789012345678901)"/u, "$1");
     const run = callToolWith(answers, "swap", text);
     await expect(run.outcome).resolves.toMatchObject({ isError: false });
     expect(run.client.calls()).toMatchObject([

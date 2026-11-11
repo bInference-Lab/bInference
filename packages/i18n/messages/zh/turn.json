@@ -79,6 +79,7 @@
   "tool.fileWrite": "正在写入文件…",
   "tool.fileEdit": "正在编辑文件…",
   "tool.filePatch": "正在修改文件…",
+  "tool.httpRequest": "正在调用 API…",
   "tool.showChart": "正在绘制图表…",
   "tool.makeImage": "正在生成图片…",
   "tool.makeVideo": "正在生成视频…",

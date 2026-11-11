@@ -79,6 +79,7 @@
   "tool.fileWrite": "Writing a file…",
   "tool.fileEdit": "Editing a file…",
   "tool.filePatch": "Changing files…",
+  "tool.httpRequest": "Calling an API…",
   "tool.showChart": "Drawing a chart…",
   "tool.makeImage": "Making an image…",
   "tool.makeVideo": "Making a video…",

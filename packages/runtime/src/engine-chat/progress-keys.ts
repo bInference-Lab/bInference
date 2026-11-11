@@ -69,6 +69,7 @@ const toolKeys: Readonly<Record<AgentToolName, string | undefined>> = {
   show_images: "turn.tool.showImages",
   send_files: "turn.tool.sendFiles",
   credentials: "turn.tool.credentials",
+  http_request: "turn.tool.httpRequest",
   settings_read: "turn.tool.settingsRead",
   settings_change: "turn.tool.settingsChange",
   helper_start: "turn.tool.helperStart",

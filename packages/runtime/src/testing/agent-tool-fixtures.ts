@@ -81,6 +81,26 @@ export const pdfReadWire: WireObject = {
   imagesCut: false,
 };
 
+/** A GET the model writes, as `http/request` takes it, and the site's answer. */
+export const httpCall: {
+  readonly args: WireObject;
+  readonly sent: WireObject;
+  readonly answer: WireObject;
+} = {
+  args: { method: "GET", url: "https://api.example.com/v1" },
+  sent: { agent, method: "GET", url: "https://api.example.com/v1" },
+  answer: {
+    kind: "answer",
+    status: 200,
+    headers: [],
+    bytes: 2,
+    body: "{}",
+    binary: false,
+    cut: false,
+    durationMs: 9,
+  },
+};
+
 /** A call's context, its key as the loop names a turn's first call. */
 export const context: ToolRunContext = {
   signal: new AbortController().signal,

@@ -68,15 +68,18 @@ describe("the tools of a helper's turn", () => {
       expect.arrayContaining(["search_web", "token_info", "notes_search", "shell", "file_write"]),
     );
     const never = ["swap", "send", "order_create", "settings_change", "ask_owner", "credentials"];
+    const credentialed = ["http_request"];
     const others = ["make_image", "show_images", "send_files", "deposit_address", "alert_create"];
     const media = ["make_video", "speak"];
     const own = ["schedule_list", "schedule_create", "helper_start", "helper_list", "helper_read"];
     expect(
-      names.filter((name) => [...never, ...others, ...media, ...own].includes(name)),
+      names.filter((name) =>
+        [...never, ...credentialed, ...others, ...media, ...own].includes(name),
+      ),
     ).toStrictEqual([]);
     // The agent itself keeps every one of them.
     expect(
-      [...never, ...others, ...media, ...own].filter((name) => !kinds.has(name)),
+      [...never, ...credentialed, ...others, ...media, ...own].filter((name) => !kinds.has(name)),
     ).toStrictEqual([]);
   });
 

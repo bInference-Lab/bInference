@@ -372,6 +372,7 @@ describe("the chat relay to the agent runtime process", () => {
         "file_write",
         "file_edit",
         "file_patch",
+        "http_request",
         "credentials",
         "ask_owner",
       ]);

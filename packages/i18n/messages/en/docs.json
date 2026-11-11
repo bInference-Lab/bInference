@@ -134,6 +134,7 @@
   "tools.summary.file_patch": "Changes several files in one patch, by default inside the agent's workspace.",
   "tools.summary.show_chart": "Shows the owner a pie, bar, area or line chart in the chat, or its text where no chart is drawn.",
   "tools.summary.credentials": "Lists the owner's stored credentials, asks the owner for a missing one in a masked prompt, or removes one.",
+  "tools.summary.http_request": "Makes an HTTPS request to an API with the owner's stored credentials, put in by binference only for the hosts the owner allowed; the agent never sees a value.",
   "tools.summary.notes_get": "Reads one of the agent's notes in full.",
   "tools.summary.notes_forget": "Forgets one of the agent's notes.",
   "tools.summary.make_image": "Makes images with the owner's image model, such as a token's logo; they arrive in the chat a little later.",
