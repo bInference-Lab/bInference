@@ -1240,8 +1240,9 @@ allowedAt }`. Always allow keeps one for each step of its line, never for a line
 `skillProposal/create` ([decision 0408](../DECISIONS.md#d0408)).
 
 A file call uses only the file it judged: a read goes through the one handle whose file is the one
-at the real path judged. A path that leads to another file between the check and the read is
-refused as `file.changed`, and nothing is read; the agent reads the path again
+at the real path judged, a write lands only in the folder judged, and a removal removes only what it
+found there. A path that leads to another file or folder between the check and the use is refused
+as `file.changed`, and nothing is read, written or removed; the agent reads the path again
 ([decision 0410](../DECISIONS.md#d0410)).
 
 <a id="section-7-12"></a>

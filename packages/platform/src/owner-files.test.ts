@@ -1,4 +1,14 @@
-import { chmod, mkdir, readFile, stat, symlink, writeFile } from "node:fs/promises";
+import { realpathSync } from "node:fs";
+import {
+  chmod,
+  mkdir,
+  readdir,
+  readFile,
+  rename,
+  stat,
+  symlink,
+  writeFile,
+} from "node:fs/promises";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { createTempFolder, type TempFolder } from "./fakes/temp-folder.js";
@@ -8,10 +18,26 @@ const folders: TempFolder[] = [];
 const signal = new AbortController().signal;
 const bytes = (text: string) => new TextEncoder().encode(text);
 
+// A fresh folder at its real path, as a caller passes every path it judged.
 async function folder(): Promise<string> {
   const made = await createTempFolder("owner-");
   folders.push(made);
-  return made.path;
+  return realpathSync(made.path);
+}
+
+// A protected folder holding a key, and an open one whose `notes` folder becomes a link to it
+// once the caller judged a path in `notes`.
+async function judgedThenMoved(): Promise<{ readonly notes: string; readonly keys: string }> {
+  const root = await folder();
+  const keys = join(root, "keys");
+  const notes = join(root, "open", "notes");
+  await mkdir(keys);
+  await mkdir(notes, { recursive: true });
+  await writeFile(join(keys, "agent-key"), "secret");
+  await writeFile(join(notes, "agent-key"), "the agent's own");
+  await rename(notes, join(root, "open", "moved"));
+  await symlink(keys, notes);
+  return { notes, keys };
 }
 
 afterEach(async () => {
@@ -52,6 +78,15 @@ describe("writeOwnerFile", () => {
     expect(await readFile(join(root, "a.md"), "utf8")).toBe("x");
   });
 
+  it("refuses a write whose folder led elsewhere before the new file, leaving that folder as it was", async () => {
+    const { notes, keys } = await judgedThenMoved();
+    expect(await writeOwnerFile(join(notes, "plan.md"), bytes("plan"), { signal })).toStrictEqual({
+      ok: false,
+      error: "changed",
+    });
+    expect((await readdir(keys)).toSorted()).toStrictEqual(["agent-key"]);
+  });
+
   it("answers unwritable when its folder cannot be made", async () => {
     const root = await folder();
     await writeFile(join(root, "file"), "x");
@@ -84,5 +119,15 @@ describe("removeOwnerFile", () => {
       ok: false,
       error: "is_folder",
     });
+  });
+
+  it("refuses a removal whose folder led elsewhere, and puts the file back", async () => {
+    const { notes, keys } = await judgedThenMoved();
+    expect(await removeOwnerFile(join(notes, "agent-key"), signal)).toStrictEqual({
+      ok: false,
+      error: "changed",
+    });
+    expect(await readdir(keys)).toStrictEqual(["agent-key"]);
+    expect(await readFile(join(keys, "agent-key"), "utf8")).toBe("secret");
   });
 });

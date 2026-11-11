@@ -1,13 +1,19 @@
 import { randomUUID } from "node:crypto";
-import { link, lstat, mkdir, open, rename, rm, stat, unlink } from "node:fs/promises";
-import { dirname } from "node:path";
+import { link, lstat, mkdir, open, realpath, rename, rm, stat, unlink } from "node:fs/promises";
+import { basename, dirname, join } from "node:path";
 import { err, ok, type Result } from "@binference/core";
 
-/** Why an owner's file was not written: a file is there, the path is a folder, or the write failed. */
-export type OwnerWriteRefusal = "exists" | "is_folder" | "unwritable";
+/**
+ * Why an owner's file was not written: a file is there, the path is a folder, its folder led
+ * elsewhere by the time of the write (decision 0410), or the write failed.
+ */
+export type OwnerWriteRefusal = "exists" | "is_folder" | "changed" | "unwritable";
 
-/** Why an owner's file was not removed: nothing is there, it is a folder, or the removal failed. */
-export type OwnerRemoveRefusal = "not_found" | "is_folder" | "unwritable";
+/**
+ * Why an owner's file was not removed: nothing is there, it is a folder, its folder led elsewhere
+ * by the time of the removal (decision 0410), or the removal failed.
+ */
+export type OwnerRemoveRefusal = "not_found" | "is_folder" | "changed" | "unwritable";
 
 const newFileMode = 0o644;
 
@@ -36,6 +42,15 @@ async function modeFor(path: string): Promise<number> {
   }
 }
 
+// The real path of the folder `path` names now, or `undefined` when it is gone.
+async function realFolderOf(path: string): Promise<string | undefined> {
+  try {
+    return await realpath(dirname(path));
+  } catch {
+    return undefined;
+  }
+}
+
 async function writeTemporary(
   path: string,
   bytes: Readonly<Uint8Array>,
@@ -52,10 +67,33 @@ async function writeTemporary(
   return temporary;
 }
 
+// Puts the new file, made beside `path` under the name `temporary`, in its place.
+async function putInPlace(
+  path: string,
+  temporary: string,
+  options: { readonly createOnly?: boolean },
+): Promise<Result<void, OwnerWriteRefusal>> {
+  const folder = dirname(path);
+  // The folder is checked once the new file exists under its random name: a folder that moved
+  // before holds it where the check finds it, and one that moves after cannot take the rename,
+  // which reaches the new file only by that name in the folder judged.
+  const landed = await realFolderOf(join(folder, temporary));
+  if (landed !== folder) {
+    await rm(join(landed ?? folder, temporary), { force: true });
+    return err("changed");
+  }
+  const placed = join(folder, temporary);
+  // A link fails when anything took the path meanwhile; a rename would replace it.
+  await (options.createOnly === true ? link(placed, path) : rename(placed, path));
+  return ok(undefined);
+}
+
 /**
  * Writes an owner's file whole, as the agent's file tools do (decision 0386): its missing folders
  * are made, the bytes go into a new file beside it that then takes its place, so no reader sees
- * part of them, and a file that was there keeps its permissions. With `createOnly`, a path that
+ * part of them, and a file that was there keeps its permissions. `path` is the real path the
+ * caller judged, every link on the way resolved: the file lands in its folder or nowhere, and a
+ * folder that leads elsewhere by then is `changed` (decision 0410). With `createOnly`, a path that
  * holds anything is `exists`, checked as the new file takes its place. Rejects with the signal's
  * reason once it aborts.
  */
@@ -66,6 +104,7 @@ export async function writeOwnerFile(
 ): Promise<Result<void, OwnerWriteRefusal>> {
   const { signal } = options;
   signal.throwIfAborted();
+  const folder = dirname(path);
   let temporary: string | undefined;
   try {
     const kind = await kindAt(path);
@@ -75,25 +114,42 @@ export async function writeOwnerFile(
     if (options.createOnly === true && kind !== "none") {
       return err("exists");
     }
-    await mkdir(dirname(path), { recursive: true });
-    temporary = await writeTemporary(path, bytes, signal);
-    // A link fails when anything took the path meanwhile; a rename would replace it.
-    await (options.createOnly === true ? link(temporary, path) : rename(temporary, path));
-    return ok(undefined);
+    await mkdir(folder, { recursive: true });
+    temporary = basename(await writeTemporary(path, bytes, signal));
+    return await putInPlace(path, temporary, options);
   } catch (error) {
     signal.throwIfAborted();
     return error instanceof Error && codeOf(error) === "EEXIST" ? err("exists") : err("unwritable");
   } finally {
     if (temporary !== undefined) {
-      await rm(temporary, { force: true });
+      await rm(join(folder, temporary), { force: true });
     }
   }
 }
 
+// Moves the entry at `path` aside under a random name, and removes it only from the folder judged;
+// an entry that went elsewhere goes back by the real path of the folder it went to.
+async function removeFromFolder(path: string): Promise<Result<void, OwnerRemoveRefusal>> {
+  const folder = dirname(path);
+  const aside = `${basename(path)}.${randomUUID()}.removing`;
+  await rename(path, join(folder, aside));
+  const landed = await realFolderOf(join(folder, aside));
+  if (landed === folder) {
+    await unlink(join(folder, aside));
+    return ok(undefined);
+  }
+  if (landed !== undefined) {
+    await rename(join(landed, aside), join(landed, basename(path)));
+  }
+  return err("changed");
+}
+
 /**
  * Removes an owner's file, as the agent's file tools do (decision 0386): a link is removed
- * itself, never what it leads to, and a folder is never removed. Rejects with the signal's reason
- * once it aborts.
+ * itself, never what it leads to, and a folder is never removed. `path` is the real path the
+ * caller judged, its last part left as it is: the entry is moved aside under a random name and
+ * removed only when it is in that path's folder, else it is put back and the removal is
+ * `changed` (decision 0410). Rejects with the signal's reason once it aborts.
  */
 export async function removeOwnerFile(
   path: string,
@@ -105,8 +161,7 @@ export async function removeOwnerFile(
     if (kind !== "other") {
       return err(kind === "folder" ? "is_folder" : "not_found");
     }
-    await unlink(path);
-    return ok(undefined);
+    return await removeFromFolder(path);
   } catch {
     signal.throwIfAborted();
     return err("unwritable");

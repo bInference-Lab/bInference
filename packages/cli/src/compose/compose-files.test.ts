@@ -2,7 +2,10 @@ import { join } from "node:path";
 import { machineFilesContract } from "@binference/engine/testing";
 import {
   ensurePrivateFolder,
+  listFolderFiles,
+  movePath,
   type RealPathStep,
+  readTextFile,
   realFilePath,
   realPathOf,
   removePath,
@@ -149,6 +152,41 @@ describe("the agent's files on this machine", () => {
     expect(await files.read("swapped.md", { ...call, maxBytes: 100 })).toStrictEqual({
       ok: false,
       error: "changed",
+    });
+  });
+
+  it("refuses a write whose folder leads into binference's folder once it was judged", async () => {
+    const { state, workspace, parts } = await machine();
+    const notes = join(workspace, "notes");
+    await ensurePrivateFolder(notes, setUp);
+    const toKeys = async () => {
+      await movePath(notes, join(workspace, "moved"), signal);
+      await createFileLink(join(state, "keys"), notes);
+    };
+    const files = machineFilesOf({ ...parts, realPath: movingStep(notes, { afterCheck: toKeys }) });
+    expect(
+      await files.write("notes/plan.md", new TextEncoder().encode("plan"), call),
+    ).toStrictEqual({ ok: false, error: "changed" });
+    expect(await listFolderFiles(join(state, "keys"), signal)).toStrictEqual(["agent-key"]);
+  });
+
+  it("refuses a removal whose folder leads into binference's folder once it was judged", async () => {
+    const { state, workspace, parts } = await machine();
+    const notes = join(workspace, "notes");
+    await ensurePrivateFolder(notes, setUp);
+    await writePrivateFile(join(notes, "agent-key"), "the agent's own", setUp);
+    const toKeys = async () => {
+      await movePath(notes, join(workspace, "moved"), signal);
+      await createFileLink(join(state, "keys"), notes);
+    };
+    const files = machineFilesOf({ ...parts, realPath: movingStep(notes, { afterCheck: toKeys }) });
+    expect(await files.remove("notes/agent-key", call)).toStrictEqual({
+      ok: false,
+      error: "changed",
+    });
+    expect(await readTextFile(join(state, "keys", "agent-key"), signal)).toStrictEqual({
+      ok: true,
+      value: "secret",
     });
   });
 

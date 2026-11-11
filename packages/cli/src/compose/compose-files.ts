@@ -163,8 +163,9 @@ function otherSpellings(path: string): readonly string[] {
  * `~/`, or in the workspace when relative, each read at its real path, so no link leads into
  * binference's own folder, whose workspace stays open, and none is written or removed in an agent's
  * skills folder (`skill_folder`, decision 0408). A read uses only the file it judged, through one
- * handle; a path that leads elsewhere by then is `changed` (decision 0410). A write replaces a file
- * whole and makes its folders; a removal removes a link itself and never a folder.
+ * handle, a write lands only in the folder it judged and a removal removes only what it found there;
+ * a path that leads elsewhere by then is `changed` (decision 0410). A write replaces a file whole
+ * and makes its folders; a removal removes a link itself and never a folder.
  */
 export function machineFilesOf(parts: FileParts): MachineFiles {
   return {
