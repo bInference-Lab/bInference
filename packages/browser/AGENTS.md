@@ -12,6 +12,8 @@ The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
 - Every request and socket of every tab passes `createAddressGuard` first, through the context's
   routes; a navigation is checked before it starts. A new way for a page to reach the network
   goes through the same check, or the browser blocks it, as it blocks service workers.
+- The browser never opens a `file:` path: the route answers each `file:` request with the bytes
+  `AddressGuard.readFile` read through the handle that was judged (decision 0410), or refuses it.
 - Answers are cut to the protocol's `browserLimits`; Playwright's reason for a failed action is
   answered as `problem`, without its call log.
 - Its public API is what `src/index.ts` exports; every export carries TSDoc.

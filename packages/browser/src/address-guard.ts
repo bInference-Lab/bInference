@@ -1,4 +1,3 @@
-import { isAbsolute, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   checkPublicUrl,
@@ -8,6 +7,7 @@ import {
   resolvesToPublic,
 } from "@binference/core";
 import type { WalledPaths } from "@binference/platform";
+import { type FilePage, isWalledPath, readFilePage } from "./file-pages.js";
 
 /** What the check of the browser's requests reads (decision 0401), each read at each request. */
 export interface AddressGuardOptions {
@@ -29,6 +29,11 @@ export interface AddressGuardOptions {
 /** Decides whether the browser may load an address: the page, a part of it, or a socket. */
 export interface AddressGuard {
   allows(url: string, signal: AbortSignal): Promise<boolean>;
+  /**
+   * What a `file:` address serves the browser, which never opens the path itself (decision
+   * 0410): the file read through the handle that was judged, or `undefined` to refuse it.
+   */
+  readFile(url: string, signal: AbortSignal): Promise<FilePage | undefined>;
 }
 
 // Schemes that hold no address to reach: the page itself makes them.
@@ -66,11 +71,6 @@ function isLoopbackHost(host: string): boolean {
   );
 }
 
-function isInside(folder: string, path: string): boolean {
-  const between = relative(folder, path);
-  return between === "" || (!between.startsWith("..") && !isAbsolute(between));
-}
-
 // The HTTP form of a web address, for the URL check that reads only http and https.
 function asHttp(url: URL): string {
   const copy = new URL(url.href);
@@ -83,10 +83,7 @@ function asHttp(url: URL): string {
 async function fileAllowed(options: AddressGuardOptions, url: URL): Promise<boolean> {
   const path = fileURLToPath(url);
   const real = (await options.realPath(path)) ?? path;
-  const { roots, open } = options.walled;
-  const walled = (each: string): boolean =>
-    roots.some((root) => isInside(root, each)) && !open.some((folder) => isInside(folder, each));
-  return !walled(real) && !walled(path);
+  return !isWalledPath(options.walled, real) && !isWalledPath(options.walled, path);
 }
 
 // Whether a name resolves to this machine, so the engine's ports on it are refused too.
@@ -135,10 +132,16 @@ async function webAllowed(options: AddressGuardOptions, url: URL, signal: AbortS
  * that resolves to one included, the origin of `remote.publicUrl`, and any `file://` path inside
  * the state folder but the agent's workspace, its real path read through links; loopback and private addresses, and names
  * that resolve to them, unless `browser.allowPrivateNetwork` allows them; and every scheme but
- * the web's, `file:`, `about:`, `data:` and `blob:`.
+ * the web's, `file:`, `about:`, `data:` and `blob:`. A `file:` request is answered from the bytes
+ * {@link AddressGuard.readFile} gives, so no link moved after the check reaches a walled file.
  */
 export function createAddressGuard(options: AddressGuardOptions): AddressGuard {
+  const filePages = {
+    walled: options.walled,
+    realPath: async (path: string) => options.realPath(path),
+  };
   return {
+    readFile: async (url, signal) => readFilePage(filePages, url, signal),
     allows: async (text, signal) => {
       if (!URL.canParse(text)) {
         return false;

@@ -60,7 +60,25 @@ const checkMs = 5_000;
 // The console messages each tab keeps, newest last.
 const keptMessages = 200;
 
+// A `file:` request gets the bytes the guard read through the handle it judged, so the browser
+// never opens a path a link could move after the check (decision 0410).
+async function servedFile(guard: AddressGuard, route: Route): Promise<void> {
+  const page = await guard
+    .readFile(route.request().url(), AbortSignal.timeout(checkMs))
+    .catch(() => undefined);
+  if (page === undefined) {
+    await route.abort("blockedbyclient");
+    return;
+  }
+  const type = page.contentType === undefined ? {} : { contentType: page.contentType };
+  await route.fulfill({ status: 200, body: Buffer.from(page.bytes), ...type });
+}
+
 async function routed(guard: AddressGuard, route: Route): Promise<void> {
+  if (route.request().url().startsWith("file:")) {
+    await servedFile(guard, route);
+    return;
+  }
   const allowed = await guard
     .allows(route.request().url(), AbortSignal.timeout(checkMs))
     .catch(() => false);

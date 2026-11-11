@@ -1264,6 +1264,11 @@ an act names, at most 9,000 characters; `navigate` answers its interactive eleme
 screenshot or a PDF the engine saved under the workspace's `media/browser/<date>/`. `problem` says
 why an action ran and failed, such as a ref no element holds now.
 
+The browser never opens a `file:` path itself: the engine reads each `file:` page and every part
+of it, at most 20 MiB, through the one handle whose real path lies outside binference's own folder,
+and hands the browser those bytes; a walled file, a folder and a path that led elsewhere by then
+load nothing ([decision 0410](../DECISIONS.md#d0410)).
+
 <a id="section-7-13"></a>
 
 ### 7.13 PDFs

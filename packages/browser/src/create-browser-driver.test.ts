@@ -1,9 +1,10 @@
 import assert from "node:assert/strict";
 import { lookup } from "node:dns";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { createServer, type Server } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { createMemoryLogger } from "@binference/core/testing";
 import type { BrowserDriver, BrowserOutcome } from "@binference/engine/browser";
 import { browserDriverContract } from "@binference/engine/testing";
@@ -33,6 +34,32 @@ async function serve(body: string): Promise<{ readonly server: Server; readonly 
   const port = typeof address === "object" && address !== null ? address.port : 0;
   return { server, origin: `http://127.0.0.1:${String(port)}` };
 }
+
+// A PNG of one pixel, for a file page's images.
+const pixel = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==",
+  "base64",
+);
+
+// A file page with an image beside it and one in binference's folder; its title says how each
+// ended once both have.
+function notesPage(walledImage: string): string {
+  return `<!doctype html><html><head><title>Loading</title><script>
+const ends = {};
+function ended(name, how) {
+  ends[name] = how;
+  if (ends.open && ends.walled) { document.title = "open:" + ends.open + " walled:" + ends.walled; }
+}
+</script></head><body><h1>Notes</h1>
+<img src="open.png" onload="ended('open', 'load')" onerror="ended('open', 'error')">
+<img src="${walledImage}" onload="ended('walled', 'load')" onerror="ended('walled', 'error')">
+</body></html>`;
+}
+
+const waitForTitle = `async () => {
+  while (document.title === "Loading") { await new Promise((done) => setTimeout(done, 50)); }
+  return document.title;
+}`;
 
 const places = { folder: "", origin: "", engineOrigin: "" };
 const servers: Server[] = [];
@@ -129,6 +156,28 @@ describe.skipIf(program === undefined)("the agent's browser on this machine", ()
       expect(fetched.view.value).toBe('"refused"');
       const printed = await outcomeOf(driver, { action: "pdf" });
       expect(printed.capture?.contentType).toBe("application/pdf");
+    } finally {
+      await driver.stop();
+    }
+  }, 60_000);
+
+  it("shows a file page from the bytes binference read, and none of a walled file in it", async () => {
+    const pages = join(places.folder, "pages");
+    const key = join(places.folder, "state", "keys", "key.png");
+    mkdirSync(pages, { recursive: true });
+    mkdirSync(join(places.folder, "state", "keys"), { recursive: true });
+    writeFileSync(join(pages, "open.png"), pixel);
+    writeFileSync(key, pixel);
+    writeFileSync(join(pages, "notes.html"), notesPage(pathToFileURL(key).href));
+    const driver = driverOf();
+    try {
+      const url = pathToFileURL(join(pages, "notes.html")).href;
+      await outcomeOf(driver, { action: "navigate", url });
+      const titled = await outcomeOf(driver, {
+        action: "act",
+        act: { kind: "evaluate", fn: waitForTitle },
+      });
+      expect(titled.view.value).toBe('"open:load walled:error"');
     } finally {
       await driver.stop();
     }
