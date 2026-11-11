@@ -18,6 +18,7 @@ export const fastCommandNames = [
   "ai",
   "clear",
   "goal",
+  "skills",
   "schedules",
   "console",
   "replies",

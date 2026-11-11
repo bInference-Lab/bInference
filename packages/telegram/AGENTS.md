@@ -103,7 +103,9 @@ Rules for this package:
   message saying so, and a turn that ends with nothing for the owner gets `telegram.chat.noAnswer`.
 - A fast command's button carries `bnf1:t:h:<limit>` (a `/limits` button halves that limit) or
   `bnf1:l:s:<en|zh>` (a `/lang` button sets `owner.locale` through `config/change`, decision 0134) or `bnf1:r:<m|t>:<choice>` (a `/replies` button sets one key of `telegram.replies`,
-  decision 0377), the only settings the chat changes at once, and only `commandCallbackSchema` reads it.
+  decision 0377), the only settings the chat changes at once, or `bnf1:k:<a|r|c>:<id>` (a
+  `/skills` button applies or rejects a skill proposal, or accepts a waiting skill at the hash its
+  message showed, decision 0408), and only `commandCallbackSchema` reads it.
   `/config` reads the settings through `config/view` and changes any other through
   `config/propose`, whose card applies it on the owner's tap (decision 0393), naming the key it sets
   in `replacePaths`; `/restart` runs `engine/restart` (decision 0395). A press

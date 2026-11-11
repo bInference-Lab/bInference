@@ -6,6 +6,7 @@ import {
 } from "@binference/engine/surfaces";
 import type { MessageLocale } from "@binference/i18n";
 import { z } from "zod";
+import { type SkillChoice, skillCallbackData, skillChoiceOf } from "./skill-callback.js";
 
 /**
  * The limits a `/limits` button halves: the caps and the slippage limits, each stricter at half
@@ -23,14 +24,15 @@ export type HalvableLimit = (typeof halvableLimits)[number];
 
 /**
  * What a fast command's button asks for (spec 4, section 2): halve a limit of `/limits`, or set
- * the owner's language from `/lang`, pick a model from `/ai`, or set how replies show from
- * `/replies`.
+ * the owner's language from `/lang`, pick a model from `/ai`, set how replies show from
+ * `/replies`, or apply, reject or accept a skill from `/skills` (decision 0408).
  */
 export type CommandCallback =
   | { readonly kind: "halve"; readonly limit: HalvableLimit }
   | { readonly kind: "language"; readonly locale: MessageLocale }
   | { readonly kind: "model"; readonly digest: string }
-  | { readonly kind: "replies"; readonly choice: ReplyChoice };
+  | { readonly kind: "replies"; readonly choice: ReplyChoice }
+  | { readonly kind: "skill"; readonly choice: SkillChoice };
 
 /** A `/replies` button's one setting: how replies grow, or how reasoning shows (decision 0377). */
 export type ReplyChoice = { readonly stream: ReplyStream } | { readonly reasoning: ReasoningShown };
@@ -59,9 +61,13 @@ function isHalvable(name: string): name is HalvableLimit {
  * The callback data of a fast command's button, within Telegram's 64 bytes: `bnf1:t:h:<limit>`
  * for a `/limits` button, the limit named by its field, `bnf1:l:s:<en|zh>` for a `/lang` button,
  * `bnf1:r:m:<progress|partial>` and `bnf1:r:t:<off|streamed|kept>` for a `/replies` button,
- * and `bnf1:m:s:<digest>` for an `/ai` button. It names no agent: a press acts on the chat's.
+ * `bnf1:m:s:<digest>` for an `/ai` button, and `bnf1:k:<a|r|c>:<id>` for a `/skills` button. It
+ * names no agent: a press acts on the chat's.
  */
 export function commandCallbackData(callback: CommandCallback): string {
+  if (callback.kind === "skill") {
+    return skillCallbackData(callback.choice);
+  }
   if (callback.kind === "model") {
     return `bnf1:m:s:${callback.digest}`;
   }
@@ -72,10 +78,20 @@ export function commandCallbackData(callback: CommandCallback): string {
   return callback.kind === "halve" ? `bnf1:t:h:${callback.limit}` : `bnf1:l:s:${callback.locale}`;
 }
 
-function callbackOf(data: string): CommandCallback | undefined {
+// A `/skills` or `/replies` button's choice, which each reads from its own form of data.
+function choiceOf(data: string): CommandCallback | undefined {
+  const skill = skillChoiceOf(data);
+  if (skill !== undefined) {
+    return { kind: "skill", choice: skill };
+  }
   const choice = replyChoiceOf(data);
-  if (choice !== undefined) {
-    return { kind: "replies", choice };
+  return choice === undefined ? undefined : { kind: "replies", choice };
+}
+
+function callbackOf(data: string): CommandCallback | undefined {
+  const chosen = choiceOf(data);
+  if (chosen !== undefined) {
+    return chosen;
   }
   const digest = modelPattern.exec(data)?.[1];
   if (digest !== undefined) {

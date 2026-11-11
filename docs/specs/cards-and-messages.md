@@ -85,6 +85,11 @@ names the keys and fixes the wording.
   An `/ai` button carries
   `bnf1:m:s:<digest>`, the first 16 base64url characters of the SHA-256 of a configured model's
   reference: it sets that model for the agent's `main` role ([decision 0204](../DECISIONS.md#d0204)).
+- A `/skills` button carries `bnf1:k:a:<proposal>` (Apply) or `bnf1:k:r:<proposal>` (Reject), a
+  skill proposal's `skp_` id, or `bnf1:k:c:<digest>` (Accept), the first 16 base64url characters
+  of the SHA-256 of a waiting skill's agent, name and folder hash, so a press accepts only the
+  files its message showed ([decision 0408](../DECISIONS.md#d0408)). An apply or a reject the
+  engine refuses keeps the buttons and says why in the chat.
 - A button of the agent's question ([section 8.2](#section-8-2)) carries `bnf1:q:<choice>:<ref>`:
   `choice` is `0` to `3`, the choice's place in the question; `ref` is the question's random
   12-byte base64url reference (spec 3, `questions.ref`). A press answers the question; it confirms

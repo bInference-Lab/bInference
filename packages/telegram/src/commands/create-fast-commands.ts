@@ -26,6 +26,7 @@ import { runPositions } from "./positions-command.js";
 import { registerCommands } from "./register-commands.js";
 import { runReplies, runReplyChoice } from "./replies-command.js";
 import { runCancel, runFreeze, runRescue } from "./safety-commands.js";
+import { runSkillChoice, runSkills } from "./skills-command.js";
 import { runSpend } from "./spend-command.js";
 import { runStatus } from "./status-command.js";
 import { runWallet } from "./wallet-command.js";
@@ -107,6 +108,7 @@ const runs: Readonly<Record<FastCommandName, CommandRun>> = {
   ai: runAi,
   clear: runClear,
   goal: runGoal,
+  skills: runSkills,
   schedules: runSchedules,
   console: runConsole,
   replies: runReplies,
@@ -234,6 +236,9 @@ export function createFastCommands(options: FastCommandsOptions): FastCommands {
       const context = pressContextOf(parts, { press: pressed, chatId, messageId }, signal);
       const { data } = callback;
       const run = async (): Promise<void> => {
+        if (data.kind === "skill") {
+          return runSkillChoice(context, data.choice);
+        }
         if (data.kind === "model") {
           return runPickModel(context, data.digest);
         }

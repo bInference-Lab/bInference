@@ -13,7 +13,8 @@ import { ownerChatPatchSchema } from "./owner-chat-patch.schema.js";
  * The operations the owner's Telegram chat runs: the fast commands' reads and the braking that
  * rule 11 allows from any surface, `chat/post`, the owner's message to the agent, `chat/answer`,
  * the owner's press of a question's button, `chat/clear`, the chat's goal (`goal/get`, `goal/set`
- * and `goal/change`, decision 0407), and `model/set`, a model the config
+ * and `goal/change`, decision 0407), the skill proposals and waiting skills the owner applies,
+ * rejects or accepts from `/skills` (decision 0408), and `model/set`, a model the config
  * names for the agent (decision 0204). None is local or takes the owner key.
  * `limit/set` runs with `confirm` alone, so its handler takes only a stricter limit
  * (decision 0111). `config/change` runs only to set `owner.locale` or `telegram.replies`, the
@@ -45,6 +46,12 @@ export const ownerChatOperations = [
   "goal/get",
   "goal/set",
   "goal/change",
+  "skill/list",
+  "skill/accept",
+  "skillProposal/list",
+  "skillProposal/get",
+  "skillProposal/apply",
+  "skillProposal/reject",
   "agent/list",
   "model/list",
   "model/set",
