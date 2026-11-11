@@ -49,4 +49,35 @@ describe("state folder", () => {
       expect.objectContaining({ code: "platform.home_not_absolute" }),
     );
   });
+
+  it("moves the workspace alone to BINFERENCE_WORKSPACE, normalized", () => {
+    const moved = resolve("/srv/binference");
+    const workspace = resolve("/srv/shared/workspace");
+
+    const folder = resolveStateFolder({
+      binferenceHome: moved,
+      binferenceWorkspace: `${workspace}/./`,
+    });
+
+    expect(folder.workspace).toBe(workspace);
+    expect(folder.root).toBe(moved);
+    expect(folder.run).toBe(join(moved, "run"));
+  });
+
+  it("keeps the workspace in the state folder for an empty BINFERENCE_WORKSPACE", () => {
+    const moved = resolve("/srv/binference");
+
+    expect(resolveStateFolder({ binferenceHome: moved, binferenceWorkspace: "" }).workspace).toBe(
+      join(moved, "workspace"),
+    );
+  });
+
+  it("refuses a relative BINFERENCE_WORKSPACE", () => {
+    expect(() => resolveStateFolder({ binferenceWorkspace: "workspace" })).toThrow(
+      expect.objectContaining({
+        code: "platform.workspace_not_absolute",
+        details: { binferenceWorkspace: "workspace" },
+      }),
+    );
+  });
 });

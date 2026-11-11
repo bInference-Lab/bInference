@@ -47,6 +47,28 @@ describe.skipIf(process.platform === "win32")("platform on macOS and Linux", () 
     );
     expect(platform.stopSignals).toStrictEqual(["SIGINT", "SIGTERM"]);
   });
+
+  it("runs commands through the image's shell launcher when its socket is named", () => {
+    const platform = createPlatform({
+      binferenceHome: "/srv/binference",
+      shellLauncher: "/srv/shell/run/launcher.sock",
+    });
+    const launcher = platform.shellLauncher(createManualClock());
+
+    expect(platform.commandWall.state).toStrictEqual({ kind: "held", by: "os_user" });
+    expect(launcher.wall).toStrictEqual({ kind: "held", by: "os_user" });
+    expect(launcher.home).toBe("/var/lib/binference/.binference/shell/home");
+    expect(platform.shareWorkspace).toBeTypeOf("function");
+  });
+
+  it("walls the owner's shell when no shell launcher is named", () => {
+    const platform = createPlatform({ binferenceHome: "/srv/binference", shellLauncher: "" });
+    const launcher = platform.shellLauncher(createManualClock());
+
+    expect(launcher.home).toBeUndefined();
+    expect(platform.shareWorkspace).toBeUndefined();
+    expect(launcher.wall).not.toStrictEqual({ kind: "held", by: "os_user" });
+  });
 });
 
 describe.runIf(process.platform === "win32")("platform on Windows", () => {

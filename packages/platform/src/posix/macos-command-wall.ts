@@ -40,7 +40,7 @@ function rulesOf(walled: WalledPaths): string {
  */
 export function createMacosCommandWall(walled: WalledPaths): CommandWall {
   const state: CommandWallState = existsSync(sandboxExec)
-    ? { kind: "held" }
+    ? { kind: "held", by: "seatbelt" }
     : { kind: "none", reason: `${sandboxExec} is missing, so a command cannot be walled.` };
   const ruleset = rulesOf(walled);
   return {

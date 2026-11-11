@@ -91,12 +91,18 @@ export interface ServiceManager {
 }
 
 /**
- * Whether this machine can keep a command away from binference's own secrets: `held` when it can,
- * `none` with a reason when it has no mechanism to (decision 0378). A machine that answers `none`
- * never runs a command, so the reason names why and the next step.
+ * What holds the wall: Seatbelt on macOS, bubblewrap on Linux, or, in the Docker image, an OS user
+ * of its own that cannot read the engine's files (decision 0412).
+ */
+export type CommandWallKind = "seatbelt" | "bubblewrap" | "os_user";
+
+/**
+ * Whether this machine can keep a command away from binference's own secrets: `held`, and by
+ * what, when it can, `none` with a reason when it has no mechanism to (decision 0378). A machine
+ * that answers `none` never runs a command, so the reason names why and the next step.
  */
 export type CommandWallState =
-  | { readonly kind: "held" }
+  | { readonly kind: "held"; readonly by: CommandWallKind }
   | { readonly kind: "none"; readonly reason: string };
 
 /**
@@ -117,12 +123,18 @@ export interface CommandWall {
 
 /**
  * Runs the agent's commands in the machine's shell behind the {@link CommandWall} (decision 0378):
- * the owner's login shell on macOS and Linux, PowerShell on Windows. A stop or a time limit ends a
- * command with every process it started.
+ * the owner's login shell on macOS and Linux, PowerShell on Windows, or, in the Docker image, bash
+ * under a user of its own through the image's shell launcher (decision 0412). A stop or a time
+ * limit ends a command with every process it started.
  */
 export interface ShellLauncher {
   /** Whether the wall holds here; a launcher whose wall answers `none` starts nothing. */
   readonly wall: CommandWallState;
+  /**
+   * The home folder of the user commands run as, when that user is not binference's own: a
+   * command starts there unless it names a folder, and `~` names it.
+   */
+  readonly home?: string;
   /**
    * Starts a command and hands its output, standard output and error together, to `onOutput`.
    * Throws `platform.no_wall` when the wall does not hold.

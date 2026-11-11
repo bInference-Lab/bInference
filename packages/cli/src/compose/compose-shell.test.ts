@@ -71,7 +71,7 @@ describe("the agent's command runner", () => {
         await writeStandInProgram(home.path, "tool", "");
         return {
           runner: commandRunnerOf({
-            launcher: recordingLauncher({ kind: "held" }).launcher,
+            launcher: recordingLauncher({ kind: "held", by: "seatbelt" }).launcher,
             env: { ...env, PATH: home.path },
             homeDir: home.path,
             config: () => config,
@@ -91,7 +91,7 @@ describe("the agent's command runner", () => {
   });
 
   it("starts in the home folder with no binference variable and no secret's variable", async () => {
-    const { launcher, launches } = recordingLauncher({ kind: "held" });
+    const { launcher, launches } = recordingLauncher({ kind: "held", by: "seatbelt" });
     const runner = commandRunnerOf({ launcher, env, homeDir: home.path, config: () => config });
     const started = runner.start({ command: "ls -l", timeoutMs: 1_000 }, () => undefined);
     assert.ok(started.ok);
@@ -111,7 +111,7 @@ describe("the agent's command runner", () => {
   });
 
   it("refuses a folder that does not exist, and starts nothing", () => {
-    const { launcher, launches } = recordingLauncher({ kind: "held" });
+    const { launcher, launches } = recordingLauncher({ kind: "held", by: "seatbelt" });
     const runner = commandRunnerOf({ launcher, env, homeDir: home.path, config: () => config });
     const started = runner.start({ command: "ls", folder: "gone", timeoutMs: 0 }, () => undefined);
     expect([started, launches]).toStrictEqual([{ ok: false, error: "folder_missing" }, []]);
@@ -125,7 +125,7 @@ describe("the agent's command runner", () => {
   });
 
   it("hides a recovery phrase in what a command prints", () => {
-    const { launcher } = recordingLauncher({ kind: "held" });
+    const { launcher } = recordingLauncher({ kind: "held", by: "seatbelt" });
     const runner = commandRunnerOf({ launcher, env, homeDir: home.path, config: () => config });
     const phrase = "abandon ".repeat(11) + "about";
     expect(runner.mask(`qzx: ${phrase}\n`)).toBe("qzx: [recovery phrase hidden]\n");

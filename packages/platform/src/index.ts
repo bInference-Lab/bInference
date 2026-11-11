@@ -17,6 +17,7 @@ export { readLogLines } from "./logs/read-log-lines.js";
 export type { LogLines, ReadLogLinesOptions } from "./logs/read-log-lines.js";
 export type {
   CommandWall,
+  CommandWallKind,
   CommandWallState,
   ShellLauncher,
   FileAccess,

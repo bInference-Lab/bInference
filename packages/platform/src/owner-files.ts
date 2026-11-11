@@ -15,7 +15,10 @@ export type OwnerWriteRefusal = "exists" | "is_folder" | "changed" | "unwritable
  */
 export type OwnerRemoveRefusal = "not_found" | "is_folder" | "changed" | "unwritable";
 
-const newFileMode = 0o644;
+// A new file takes the process's file mode mask, as any program's does: 0644 under the usual 022,
+// and writable to the group under the Docker image's 0002, whose workspace the agent's commands
+// share through that group (decision 0412).
+const newFileMode = 0o666;
 
 function codeOf(error: Error): string | undefined {
   return "code" in error && typeof error.code === "string" ? error.code : undefined;

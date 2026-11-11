@@ -12942,6 +12942,7 @@
         "packages/pdf/src/index.ts",
         "packages/platform/src/index.ts",
         "packages/platform/src/outbound/outbound-pools.ts",
+        "packages/platform/src/posix/image-shell.ts",
         "packages/platform/src/testing.ts",
         "packages/plugin-host/src/index.ts",
         "packages/plugin-host/src/launcher/image-entry.ts",

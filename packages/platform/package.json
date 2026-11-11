@@ -23,10 +23,15 @@
       "@binference/source": "./src/outbound/outbound-pools.ts",
       "types": "./dist/outbound/outbound-pools.d.mts",
       "default": "./dist/outbound/outbound-pools.mjs"
+    },
+    "./image-shell": {
+      "@binference/source": "./src/posix/image-shell.ts",
+      "types": "./dist/posix/image-shell.d.mts",
+      "default": "./dist/posix/image-shell.mjs"
     }
   },
   "scripts": {
-    "build": "tsdown src/index.ts src/testing.ts src/outbound/outbound-pools.ts --format esm --dts --tsconfig tsconfig.json"
+    "build": "tsdown src/index.ts src/testing.ts src/outbound/outbound-pools.ts src/posix/image-shell.ts --format esm --dts --tsconfig tsconfig.json"
   },
   "dependencies": {
     "@binference/core": "workspace:*",

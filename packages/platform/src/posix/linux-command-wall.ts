@@ -36,7 +36,7 @@ export function createLinuxCommandWall(walled: WalledPaths): CommandWall {
           kind: "none",
           reason: "bwrap (bubblewrap) is not installed, so a command cannot be walled.",
         }
-      : { kind: "held" };
+      : { kind: "held", by: "bubblewrap" };
   const base = path === undefined ? [] : argsOf(walled);
   return {
     state,

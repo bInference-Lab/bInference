@@ -19,6 +19,11 @@ The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
   out of file watches, it reads the file again, tries the events again after 0.5, 2 and 5 seconds,
   then checks the file every 100 milliseconds (decision 0396).
 - Child processes go through `runCommand` (execa, an argument array, no shell, a time limit).
+- The agent's shell runs behind the OS's command wall, or, when `BINFERENCE_SHELL_LAUNCHER` names
+  a socket, through the Docker image's shell launcher (decision 0412): `serveImageShell` runs in
+  the image's program as `binference-shell`, and the engine's `createImageShellLauncher` checks
+  every line it sends, since a command can replace it. Both pass the `ShellLauncher` contract in
+  one process, with the server on a socket of the test's folder.
 - `src/outbound/` holds the connection pools of the engine's and the agent runtime's outbound
   HTTP adapters (decision 0347), the one place here that imports undici, exported alone as
   `@binference/platform/outbound` so the runtime's bundle takes nothing else of this package. They
