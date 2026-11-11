@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createTempFolder, type TempFolder } from "./fakes/temp-folder.js";
 import { realPathOf } from "./read-file-bytes.js";
 import { type RealPathStep, readJudgedFile } from "./read-judged-file.js";
+import { runCommandToExit } from "./run-command.js";
 
 const live = (): AbortSignal => new AbortController().signal;
 const bytesOf = (text: string): Uint8Array => new TextEncoder().encode(text);
@@ -96,4 +97,14 @@ describe("reading a file through the handle that was judged", () => {
       readJudgedFile(join(root, "open", "note.txt"), { maxBytes: 9, signal: stop.signal, judge }),
     ).rejects.toBe(stopped);
   });
+
+  // A blocking open of a pipe with no writer would hold the read, and this test, until it timed out.
+  it.skipIf(process.platform === "win32")(
+    "answers a named pipe at once as unreadable",
+    async () => {
+      const pipe = join(root, "open", "pipe");
+      await runCommandToExit("mkfifo", [pipe], live());
+      expect(await read(pipe)).toStrictEqual({ kind: "unreadable" });
+    },
+  );
 });

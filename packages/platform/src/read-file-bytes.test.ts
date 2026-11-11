@@ -3,6 +3,7 @@ import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createTempFolder, type TempFolder } from "./fakes/temp-folder.js";
 import { readFileBytes, realPathOf } from "./read-file-bytes.js";
+import { runCommandToExit } from "./run-command.js";
 
 const live = (): AbortSignal => new AbortController().signal;
 
@@ -40,5 +41,15 @@ describe("reading a file's bytes", () => {
     await symlink(file, link);
     expect(await realPathOf(link, live())).toBe(await realPathOf(file, live()));
     expect(await realPathOf(join(temp.path, "gone"), live())).toBeUndefined();
+  });
+
+  // A blocking open of a pipe with no writer would hold the read, and this test, until it timed out.
+  it.skipIf(process.platform === "win32")("refuses a named pipe at once", async () => {
+    const pipe = join(temp.path, "pipe");
+    await runCommandToExit("mkfifo", [pipe], live());
+    expect(await readFileBytes(pipe, { maxBytes: 3, signal: live() })).toStrictEqual({
+      ok: false,
+      error: "unreadable",
+    });
   });
 });

@@ -1,6 +1,6 @@
 import type { BigIntStats } from "node:fs";
 import { type FileHandle, open, stat } from "node:fs/promises";
-import { realPathOf } from "./read-file-bytes.js";
+import { readOpenFlags, realPathOf } from "./read-file-bytes.js";
 
 /** Why a judged read read nothing, apart from the caller's own refusal. */
 export type JudgedReadFault = "not_found" | "changed" | "is_folder" | "too_large" | "unreadable";
@@ -83,9 +83,9 @@ async function readHeld<R>(
  * judged (decision 0410): it opens `path`, then finds the path's real path, and reads when that
  * real path names the same file as the handle (one device, one file number) and `judge` accepts
  * it. A path that names another file by then is `changed`, so a link moved after a check never
- * leads the read elsewhere. Folders are `is_folder`, other kinds `unreadable`, a file over
- * `maxBytes` `too_large`; all are judged first, so a refused path tells nothing of its file.
- * Rejects with the signal's reason once it aborts.
+ * leads the read elsewhere. Folders are `is_folder`, a named pipe and other kinds `unreadable` at
+ * once, a file over `maxBytes` `too_large`; all are judged first, so a refused path tells nothing
+ * of its file. Rejects with the signal's reason once it aborts.
  */
 export async function readJudgedFile<R>(
   path: string,
@@ -95,7 +95,7 @@ export async function readJudgedFile<R>(
   signal.throwIfAborted();
   let handle: FileHandle;
   try {
-    handle = await open(path, "r");
+    handle = await open(path, readOpenFlags);
   } catch (error) {
     signal.throwIfAborted();
     return { kind: error instanceof Error ? faultOfOpen(error) : "unreadable" };

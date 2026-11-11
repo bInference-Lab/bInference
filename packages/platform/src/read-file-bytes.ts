@@ -1,8 +1,16 @@
+import { constants } from "node:fs";
 import { open, realpath } from "node:fs/promises";
 import { err, ok, type Result } from "@binference/core";
 
 /** Why a file's bytes were not read: nothing is there, it is bigger than allowed, or not a file. */
 export type FileBytesRefusal = "not_found" | "too_large" | "unreadable";
+
+/**
+ * How a read opens a path: read only and without waiting, so a named pipe opens at once instead of
+ * holding one of the process's file threads until something writes to it; a regular file opens as
+ * it would anyway. Windows has no flag for it, where it adds nothing.
+ */
+export const readOpenFlags: number = constants.O_RDONLY | constants.O_NONBLOCK;
 
 function codeOf(error: Error): string | undefined {
   return "code" in error && typeof error.code === "string" ? error.code : undefined;
@@ -24,8 +32,9 @@ export async function realPathOf(path: string, signal: AbortSignal): Promise<str
 
 /**
  * Reads a file's bytes whole, at most `maxBytes` of them: `too_large` when it holds more, read
- * from its size before any byte; `not_found` when nothing is at `path`; `unreadable` for a folder
- * or a file the process may not read. Rejects with the signal's reason once it aborts.
+ * from its size before any byte; `not_found` when nothing is at `path`; `unreadable` for a folder,
+ * a named pipe or any other kind that is not a regular file, at once, and for a file the process
+ * may not read. Rejects with the signal's reason once it aborts.
  */
 export async function readFileBytes(
   path: string,
@@ -34,7 +43,7 @@ export async function readFileBytes(
   const { maxBytes, signal } = options;
   signal.throwIfAborted();
   try {
-    const handle = await open(path, "r");
+    const handle = await open(path, readOpenFlags);
     try {
       const stat = await handle.stat();
       if (!stat.isFile()) {
