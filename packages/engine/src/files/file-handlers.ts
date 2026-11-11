@@ -38,6 +38,7 @@ export const fileRefusalCodes: Readonly<Record<FileRefusal | "binary", ProtocolE
   unreadable: "file.unreadable",
   unwritable: "file.unwritable",
   exists: "file.exists",
+  skill_folder: "file.skill_folder",
   binary: "file.binary",
 };
 

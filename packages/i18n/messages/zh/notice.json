@@ -99,5 +99,10 @@
   "stakeMintedFewer": "⚠️ 你在 {venue} 质押的 {amount} 已上链，但兑换率在上链前变动：只铸造了 {minted}，少于卡片承诺的至少 {least}。binference 已按实际铸造的 {minted} 记账。",
   "stakeApprovalLeft": "⚠️ 你在 {venue} 的解除质押在授权上链后停止：{venue} 仍可从此钱包动用 {approved}，但只能用于此钱包自己发起的解除质押。如仍需要，请重新发起解除质押，它会重新设置该授权。",
   "identityMismatch": "⚠️ {agent} 的身份登记已上链，但注册表读回的账户和注册文件与卡片不符，因此 binference 未保存该身份。依赖它之前请先核对注册表。",
-  "identityDuplicate": "⚠️ {agent} 的第二次身份登记已上链，但 binference 每个 Agent 只保存一个身份，因此没有保存这一次。该钱包现在持有两个身份，请核对注册表。"
+  "identityDuplicate": "⚠️ {agent} 的第二次身份登记已上链，但 binference 每个 Agent 只保存一个身份，因此没有保存这一次。该钱包现在持有两个身份，请核对注册表。",
+  "skillProposed": "{agent} {revised, select, yes {修改了技能“{name}”的提案} other {提议了技能“{name}”}}。{blocked, select, yes {扫描发现了问题，目前无法应用。} other {}}可在 /skills、控制台或用 `binference skill show {proposal}` 查看。",
+  "skillApplied": "{agent} 的技能“{name}”已从 {surface} 应用，从 Agent 的下一轮起加载。",
+  "skillRejected": "{agent} 的技能“{name}”的提案已从 {surface} 拒绝。",
+  "skillHeld": "⚠️ {agent} 工作区中的技能“{name}”为新增或已更改，在你接受之前不会加载。请检查其文件，然后通过 /skills、控制台或 `binference skill accept {name}` 接受。",
+  "skillAccepted": "{agent} 的技能“{name}”已从 {surface} 按其当前文件接受，从 Agent 的下一轮起加载。"
 }

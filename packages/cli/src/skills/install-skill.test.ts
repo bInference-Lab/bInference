@@ -45,6 +45,10 @@ async function rig(): Promise<Rig> {
     },
     startedAtMs: 0,
     logger,
+    accepted: {
+      ready: async () => Promise.resolve(),
+      isAccepted: async () => Promise.resolve(false),
+    },
   });
   const clock = createManualClock(1_767_261_610_000);
   const random = { bytes: (length: number) => new Uint8Array(length).fill(7) };

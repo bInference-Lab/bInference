@@ -20,6 +20,7 @@ interface ReadLimits {
 const fileRefusals: Readonly<Record<FileRefusal, ViewImageRefusal>> = {
   not_found: "not_found",
   walled: "walled",
+  skill_folder: "walled",
   outside_workspace: "outside_workspace",
   too_large: "too_large",
   is_folder: "unreadable",

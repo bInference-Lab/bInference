@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { noPermissions } from "../e2e/test-host.js";
 import { writeInstalledSkills } from "./installed-skills.js";
 import { readSkillText } from "./read-skill-file.js";
-import { skillText, writeFiles } from "./skill-fixtures.js";
+import { skillText, testAcceptedSkills, writeFiles } from "./skill-fixtures.js";
 import { createSkillShelf, type SkillShelf } from "./skill-shelf.js";
 
 const agent = idSchema("agt").parse("agt_0190f1c2-3a4b-7c5d-8e6f-000000000001");
@@ -42,7 +42,12 @@ async function rig(): Promise<Rig> {
     installed,
     workspace,
     logger,
-    shelf: createSkillShelf({ folders, startedAtMs, logger }),
+    shelf: createSkillShelf({
+      folders,
+      startedAtMs,
+      logger,
+      accepted: testAcceptedSkills(join(root, "state")),
+    }),
   };
 }
 

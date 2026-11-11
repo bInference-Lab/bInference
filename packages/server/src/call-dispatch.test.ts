@@ -23,6 +23,9 @@ import { createPushHub } from "./push-hub.js";
 import { describeOnce } from "./server-operations.js";
 
 const agent = protocolIdSchema("agent").parse("agt_0190f1c2-3a4b-7c5d-8e6f-000000000001");
+const proposal = protocolIdSchema("skillProposal").parse(
+  "skp_0190f1c2-3a4b-7c5d-8e6f-000000000001",
+);
 const turn = protocolIdSchema("chatTurn").parse("trn_0190f1c2-3a4b-7c5d-8e6f-000000000001");
 const cli: readonly Scope[] = ["read", "propose", "chat", "confirm", "loosen", "admin"];
 
@@ -127,6 +130,27 @@ describe("createCallDispatch", () => {
       name: "a call above the caller's scopes",
       frame: call("safety/freeze", {}, "k"),
       scopes: ["read", "propose"],
+      transport: "ipc",
+      code: "auth.scope",
+    },
+    {
+      name: "a skill proposal's apply from the agent runtime",
+      frame: call("skillProposal/apply", { proposal }, "k"),
+      scopes: ["read", "propose", "agent"],
+      transport: "ipc",
+      code: "auth.scope",
+    },
+    {
+      name: "a skill proposal's apply from an MCP client",
+      frame: call("skillProposal/apply", { proposal }, "k"),
+      scopes: ["read", "propose"],
+      transport: "ipc",
+      code: "auth.scope",
+    },
+    {
+      name: "a waiting skill's accept from the agent runtime",
+      frame: call("skill/accept", { agent, skill: "dip-buyer", hash: "a".repeat(64) }, "k"),
+      scopes: ["read", "propose", "agent"],
       transport: "ipc",
       code: "auth.scope",
     },

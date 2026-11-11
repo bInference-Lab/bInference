@@ -74,6 +74,11 @@ const expected: Readonly<Record<string, string>> = {
   "notice.restartedForConfig":
     "binference 已重启以应用你的设置，现已恢复服务：models.imageMaking, engine.port。",
   "notice.signerStopped": `${red} 签名进程已停止，binference 不会签名。请先处理 \`binference logs\` 显示的问题，再运行 \`binference unlock\`。`,
+  "notice.skillProposed": `main 提议了技能“dip-buyer”。扫描发现了问题，目前无法应用。可在 /skills、控制台或用 \`binference skill show skp_0190f1c2-3a4b-7c5d-8e6f-000000000001\` 查看。`,
+  "notice.skillApplied": `main 的技能“dip-buyer”已从 telegram 应用，从 Agent 的下一轮起加载。`,
+  "notice.skillRejected": `main 的技能“dip-buyer”的提案已从 cli 拒绝。`,
+  "notice.skillHeld": `${warning} main 工作区中的技能“dip-buyer”为新增或已更改，在你接受之前不会加载。请检查其文件，然后通过 /skills、控制台或 \`binference skill accept dip-buyer\` 接受。`,
+  "notice.skillAccepted": `main 的技能“dip-buyer”已从 console 按其当前文件接受，从 Agent 的下一轮起加载。`,
   "notice.signerRefused": `${warning} 签名进程拒绝为一笔交易的一个步骤签名：金额与这笔交易不符。该步骤未发送任何内容。`,
   "notice.privyUnreachable": `${red} binference 启动后五分钟内都无法连接 Privy，因此仍处于锁定状态。请检查本机网络，然后运行 \`binference unlock\`。`,
   "notice.webhookPortTaken": `${warning} binference 无法为提醒规则接收提醒：端口 7457 已被占用。请在 config.json5 中把 \`engine.webhookPort\` 设为空闲端口，然后重启 binference。`,

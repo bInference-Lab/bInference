@@ -1,7 +1,9 @@
 import { dirname, join } from "node:path";
 import { BinferenceError } from "@binference/core";
+import { createManualClock, createMemoryLogger } from "@binference/core/testing";
 import { ensurePrivateFolder, runCommandWithin, writePrivateFile } from "@binference/platform";
 import { noPermissions } from "../e2e/test-host.js";
+import { type AcceptedSkills, createAcceptedSkills } from "./accepted-skills.js";
 
 // Test fixtures for the skills: skill files, a git repository at one commit, an npm package.
 
@@ -75,4 +77,15 @@ export async function packFolder(folder: string, destination: string): Promise<v
     "--ignore-scripts",
     "--silent",
   ]);
+}
+
+/** The accepted skills of a test's state folder, `skill-review/` beside its `workspace/`. */
+export function testAcceptedSkills(stateFolder: string): AcceptedSkills {
+  return createAcceptedSkills({
+    folder: join(stateFolder, "skill-review"),
+    workspace: join(stateFolder, "workspace"),
+    permissions: noPermissions,
+    clock: createManualClock(1_767_261_600_000),
+    logger: createMemoryLogger({ subsystem: "skills" }),
+  });
 }

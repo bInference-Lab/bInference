@@ -37,6 +37,7 @@ const refusalWords: Readonly<Record<FileRefusal | "binary", string>> = {
   unreadable: "the file could not be read",
   unwritable: "the file could not be written",
   exists: "a file is already there; delete it first in the same patch",
+  skill_folder: "it is in a workspace skills folder, which changes only through skill_proposal",
   binary: "the file is not text",
 };
 

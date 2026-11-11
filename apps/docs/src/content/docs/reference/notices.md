@@ -631,6 +631,46 @@ Level: warning. Can be muted: no.
 ⚠️ Your unstake from Pool stopped after its approval landed: Pool may still take 1.8 BNB from this wallet, but only for an unstake the wallet itself asks for. Propose the unstake again if you still want it; it sets the approval anew.
 ```
 
+## `skillProposed`
+
+Level: info. Can be muted: no.
+
+```text
+main proposes the skill "dip-buyer". Its scan found problems, so it cannot be applied as it stands. Review it with /skills, in the console, or with `binference skill show skp_0190f1c2-3a4b-7c5d-8e6f-000000000001`.
+```
+
+## `skillApplied`
+
+Level: info. Can be muted: no.
+
+```text
+Skill "dip-buyer" of main was applied from telegram. It loads from the agent's next turn.
+```
+
+## `skillRejected`
+
+Level: info. Can be muted: no.
+
+```text
+The proposal for skill "dip-buyer" of main was rejected from cli.
+```
+
+## `skillHeld`
+
+Level: warning. Can be muted: no.
+
+```text
+⚠️ Skill "dip-buyer" in the workspace of main is new or changed, so it does not load until you accept it. Check its files, then accept it with /skills, in the console, or with `binference skill accept dip-buyer`.
+```
+
+## `skillAccepted`
+
+Level: info. Can be muted: no.
+
+```text
+Skill "dip-buyer" of main was accepted from console as its files are now. It loads from the agent's next turn.
+```
+
 ## `bridgeLate`
 
 Level: warning. Can be muted: no.

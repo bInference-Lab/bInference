@@ -5,7 +5,12 @@ import { createTempFolder, type TempFolder } from "@binference/platform/testing"
 import { jobDonePushSchema, jobFailedPushSchema, protocolIdSchema } from "@binference/protocol";
 import { afterEach, describe, expect, it } from "vitest";
 import { noPermissions } from "../e2e/test-host.js";
-import { commitRepository, skillText, writeFiles } from "../skills/skill-fixtures.js";
+import {
+  commitRepository,
+  skillText,
+  testAcceptedSkills,
+  writeFiles,
+} from "../skills/skill-fixtures.js";
 import { createSkillShelf } from "../skills/skill-shelf.js";
 import { createClosers } from "./closers.js";
 import { createSkillOperations } from "./skill-operations.js";
@@ -39,6 +44,7 @@ async function operations() {
     folders: { bundled: [bundled], installed: folders.installed, workspace },
     startedAtMs: 9,
     logger,
+    accepted: testAcceptedSkills(join(root, "state")),
   });
   const pushes: EnginePush[] = [];
   const waiting: { next?: (push: EnginePush) => void } = {};

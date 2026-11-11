@@ -73,6 +73,18 @@ function refusalChecks(harness: MachineFilesHarness): readonly ContractCheck[] {
       },
     },
     {
+      name: "refuses a write or a removal in an agent's skills folder, beside it writes",
+      run: async () => {
+        const { files } = await harness.create();
+        const skill = "agt_0190f1c2-3a4b-7c5d-8e6f-000000000001/skills/demo/SKILL.md";
+        const refused = { ok: false, error: "skill_folder" };
+        assert.deepEqual(await files.write(skill, bytes("x"), live), refused);
+        assert.deepEqual(await files.remove(skill, live), refused);
+        const beside = "agt_0190f1c2-3a4b-7c5d-8e6f-000000000001/notes/skills.md";
+        assert.ok((await files.write(beside, bytes("x"), live)).ok);
+      },
+    },
+    {
       name: "keeps every call inside the workspace when told to",
       run: async () => {
         const { files, outside } = await harness.create();

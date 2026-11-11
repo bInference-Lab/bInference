@@ -23,6 +23,8 @@ export type { NoticeStamp } from "./notices/notice-record-of.js";
 export { storedNoticePush } from "./pushes/notice-push.js";
 export { createPluginNotices } from "./pushes/plugin-notice.js";
 export { restartedNotice } from "./pushes/restart-notice.js";
+export { skillNoticePush } from "./pushes/skill-notice.js";
+export type { SkillNotice } from "./pushes/skill-notice.js";
 export {
   type UpdateSteps,
   updatedNotice,

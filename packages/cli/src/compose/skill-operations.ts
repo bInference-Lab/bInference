@@ -13,7 +13,6 @@ import type { PublishPush } from "@binference/engine";
 import type { EngineHandlerTable } from "@binference/engine/surfaces";
 import { type FilePermissions, removePath } from "@binference/platform";
 import type { JobDonePush, JobFailedPush, ProtocolId, ResultOf } from "@binference/protocol";
-import { bundledSkillRoots } from "../skills/bundled-roots.js";
 import {
   type InstallFailure,
   type InstallParts,
@@ -24,10 +23,8 @@ import {
 import { readInstalledSkills, writeInstalledSkills } from "../skills/installed-skills.js";
 import { readSkillText } from "../skills/read-skill-file.js";
 import type { ShelfSkill, SkillShelf } from "../skills/skill-shelf.js";
-import { createSkillShelf } from "../skills/skill-shelf.js";
 import { readSkillSource } from "../skills/skill-source.js";
 import type { Closers } from "./closers.js";
-import type { Opened, Opening } from "./open-engine-parts.js";
 import { createSingleJob } from "./single-job.js";
 
 type SkillView = ResultOf<"skill/list">["items"][number];
@@ -63,6 +60,11 @@ function viewOf(skill: ShelfSkill): SkillView {
     location: skill.location,
   };
   return skill.agent === undefined ? view : { ...view, agent: skill.agent };
+}
+
+// A waiting workspace skill as `skill/list` shows it (decision 0408).
+function heldViewOf(skill: ShelfSkill): SkillView {
+  return { ...viewOf(skill), held: true };
 }
 
 const add = "skill/add";
@@ -173,7 +175,8 @@ async function removeInstalled(
  * reads its source and hash (`protocol.bad_args` otherwise), answers a job at once and installs
  * one skill at a time; while one runs, it answers that job. The job ends on the `job` topic with
  * the skill, or with a `skill` code. `skill/remove` removes an installed skill and its record, or
- * fails `skill.not_found`; bundled and workspace skills are not removed here.
+ * fails `skill.not_found`; bundled and workspace skills are not removed here. With an agent,
+ * `skill/list` also lists its waiting workspace skills, `held` (decision 0408).
  */
 export function createSkillOperations(options: SkillOperationsOptions): EngineHandlerTable {
   const { shelf } = options;
@@ -182,7 +185,9 @@ export function createSkillOperations(options: SkillOperationsOptions): EngineHa
     "skill/list": async ({ args, signal }) => {
       const agent = args.agent === undefined ? undefined : idSchema("agt").parse(args.agent);
       const skills = await shelf.list(agent, signal);
-      return ok({ items: skills.map(viewOf) });
+      const waiting = agent === undefined ? [] : await shelf.waiting(agent, signal);
+      const held = waiting.map(heldViewOf);
+      return ok({ items: [...skills.map(viewOf), ...held] });
     },
     "skill/read": async ({ args, signal }) => {
       const agent = idSchema("agt").parse(args.agent);
@@ -211,36 +216,4 @@ export function createSkillOperations(options: SkillOperationsOptions): EngineHa
     "skill/remove": async ({ args, signal }) =>
       (await removeInstalled(options, args.skill, signal)) ? ok({}) : err("skill.not_found"),
   };
-}
-
-/**
- * The skill operations of the self-hosted engine: the package's bundled skills, the state folder's
- * `skills/` with installs worked on in `skill-work/` beside it, and each agent's
- * `workspace/<agent>/skills/`; an install's end goes to `publish`.
- */
-export function composeSkillOperations(
-  opening: Opening,
-  opened: Opened,
-  publish: PublishPush,
-): EngineHandlerTable {
-  const { platform, host, closers } = opening;
-  const { root, workspace } = platform.stateFolder;
-  const logger = opened.log.logger.child("skills");
-  const folders = { installed: join(root, "skills"), staging: join(root, "skill-work") };
-  const shelf = createSkillShelf({
-    folders: { bundled: bundledSkillRoots, installed: folders.installed, workspace },
-    startedAtMs: host.clock.now(),
-    logger,
-  });
-  return createSkillOperations({
-    shelf,
-    folders,
-    permissions: platform.permissions,
-    clock: host.clock,
-    random: host.random,
-    publish,
-    closers,
-    logger,
-    proxy: () => opened.proxy.current(),
-  });
 }

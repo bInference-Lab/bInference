@@ -631,6 +631,46 @@ config.json5 中的设置已更改：owner.locale。它们已立即生效。
 ⚠️ 你在 Pool 的解除质押在授权上链后停止：Pool 仍可从此钱包动用 1.8 BNB，但只能用于此钱包自己发起的解除质押。如仍需要，请重新发起解除质押，它会重新设置该授权。
 ```
 
+## `skillProposed`
+
+级别：信息。可静音：否。
+
+```text
+main 提议了技能“dip-buyer”。扫描发现了问题，目前无法应用。可在 /skills、控制台或用 `binference skill show skp_0190f1c2-3a4b-7c5d-8e6f-000000000001` 查看。
+```
+
+## `skillApplied`
+
+级别：信息。可静音：否。
+
+```text
+main 的技能“dip-buyer”已从 telegram 应用，从 Agent 的下一轮起加载。
+```
+
+## `skillRejected`
+
+级别：信息。可静音：否。
+
+```text
+main 的技能“dip-buyer”的提案已从 cli 拒绝。
+```
+
+## `skillHeld`
+
+级别：警告。可静音：否。
+
+```text
+⚠️ main 工作区中的技能“dip-buyer”为新增或已更改，在你接受之前不会加载。请检查其文件，然后通过 /skills、控制台或 `binference skill accept dip-buyer` 接受。
+```
+
+## `skillAccepted`
+
+级别：信息。可静音：否。
+
+```text
+main 的技能“dip-buyer”已从 console 按其当前文件接受，从 Agent 的下一轮起加载。
+```
+
 ## `bridgeLate`
 
 级别：警告。可静音：否。

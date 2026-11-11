@@ -21,6 +21,17 @@ export const memoryFilePlaces: {
 const inside = (path: string, folder: string): boolean =>
   path === folder || path.startsWith(`${folder}/`);
 
+// A path in an agent's skills folder, `<workspace>/<agent>/skills/...`, which no write reaches.
+function isInSkillFolder(path: string): boolean {
+  const steps = inside(path, workspace) ? path.slice(workspace.length + 1).split("/") : [];
+  return steps.length >= 3 && steps[1] === "skills";
+}
+
+// The place a write or a removal may use: one a read may use, outside the skills folders.
+function writable(place: Result<string, FileRefusal>): Result<string, FileRefusal> {
+  return place.ok && isInSkillFolder(place.value) ? err("skill_folder") : place;
+}
+
 function absoluteOf(path: string): string {
   if (path === "~" || path.startsWith("~/")) {
     return `${home}${path.slice(1)}`;
@@ -66,7 +77,7 @@ export function createMemoryFiles(initial: Readonly<Record<string, string>> = {}
       );
     },
     write: async (path, bytes, call) => {
-      const place = placeOf(path, call);
+      const place = writable(placeOf(path, call));
       if (place.ok && call.createOnly === true && held.has(place.value)) {
         return Promise.resolve(err("exists"));
       }
@@ -76,7 +87,7 @@ export function createMemoryFiles(initial: Readonly<Record<string, string>> = {}
       return Promise.resolve(place);
     },
     remove: async (path, call) => {
-      const place = placeOf(path, call);
+      const place = writable(placeOf(path, call));
       if (place.ok && !held.delete(place.value)) {
         return Promise.resolve(err("not_found"));
       }

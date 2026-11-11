@@ -7,15 +7,17 @@ import type {
 import type { RunningTurns } from "./running-turns.js";
 
 /**
- * The operations that take their agent's turn mark: proposals (runtime spec, section 4.3), and the
- * agent's own workspace writes (decision 0242).
+ * The operations that take their agent's turn mark: proposals (runtime spec, section 4.3), the
+ * agent's own workspace writes (decision 0242) and its skill proposals (decision 0408).
  */
 type MarkedOperation =
   | "intent/propose"
   | "order/create"
   | "alert/create"
   | "schedule/create"
-  | "agent/editFile";
+  | "agent/editFile"
+  | "skillProposal/create"
+  | "skillProposal/revise";
 
 // The caller as the server signed it in, with the mark of the turn it proposes in, or none.
 function callerWith(caller: EngineCaller, mark: TurnMark | undefined): EngineCaller {
@@ -42,8 +44,8 @@ function marked<N extends MarkedOperation>(
 }
 
 /**
- * Wraps the handlers of `intent/propose`, `order/create`, `alert/create`, `schedule/create` and
- * `agent/editFile`, so each call carries the outside-content mark of its agent's running turn when
+ * Wraps the handlers of `intent/propose`, `order/create`, `alert/create`, `schedule/create`,
+ * `agent/editFile`, `skillProposal/create` and `skillProposal/revise`, so each call carries the outside-content mark of its agent's running turn when
  * it is made with the token of the runtime's current start, and no mark otherwise, whatever the
  * caller held: such a call of a client with `agent` counts as outside content. Every other handler
  * is unchanged.
@@ -57,6 +59,8 @@ export function markRuntimeTurns(
   const alert = marked(handlers["alert/create"], turns);
   const schedule = marked(handlers["schedule/create"], turns);
   const edit = marked(handlers["agent/editFile"], turns);
+  const skill = marked(handlers["skillProposal/create"], turns);
+  const revise = marked(handlers["skillProposal/revise"], turns);
   return {
     ...handlers,
     ...(propose === undefined ? {} : { "intent/propose": propose }),
@@ -64,5 +68,7 @@ export function markRuntimeTurns(
     ...(alert === undefined ? {} : { "alert/create": alert }),
     ...(schedule === undefined ? {} : { "schedule/create": schedule }),
     ...(edit === undefined ? {} : { "agent/editFile": edit }),
+    ...(skill === undefined ? {} : { "skillProposal/create": skill }),
+    ...(revise === undefined ? {} : { "skillProposal/revise": revise }),
   };
 }

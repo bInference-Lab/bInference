@@ -32,6 +32,11 @@ export async function loadBundledSkills(signal: AbortSignal): Promise<readonly E
     folders: { bundled: bundledSkillRoots, installed: freshState, workspace: freshState },
     startedAtMs: 0,
     logger,
+    // A fresh state folder holds no workspace skill to accept.
+    accepted: {
+      ready: async () => Promise.resolve(),
+      isAccepted: async () => Promise.resolve(false),
+    },
   });
   const skills = await shelf.list(undefined, signal);
   const leftOut = logger

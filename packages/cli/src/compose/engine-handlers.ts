@@ -4,6 +4,7 @@ import type { RuntimeHealth } from "../agent-runtime/runtime-supervisor.js";
 import { composeBackupOperations } from "./backup-operations.js";
 import type { ComposedLock } from "./compose-lock.js";
 import type { ComposedRuntime } from "./compose-runtime.js";
+import { composeSkillOperations } from "./compose-skills.js";
 import { composeUpdateOperations } from "./compose-updates.js";
 import { composeConfigChange } from "./config-change.js";
 import { createEngineOperations } from "./engine-operations.js";
@@ -12,7 +13,6 @@ import { type HealthSignal, startHealthProbe } from "./health-signals.js";
 import { createModelOperations } from "./model-operations.js";
 import type { Opened, Opening } from "./open-engine-parts.js";
 import { composeRemoteOperations } from "./remote-operations.js";
-import { composeSkillOperations } from "./skill-operations.js";
 import { createTelegramPair } from "./telegram-pair.js";
 
 /** What the engine's own operations answer from besides the stores. */

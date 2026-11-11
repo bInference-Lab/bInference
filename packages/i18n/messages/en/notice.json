@@ -99,5 +99,10 @@
   "stakeMintedFewer": "⚠️ Your stake of {amount} with {venue} landed after its rate moved: it minted {minted}, less than the {least} its card promised. binference booked the {minted} it minted.",
   "stakeApprovalLeft": "⚠️ Your unstake from {venue} stopped after its approval landed: {venue} may still take {approved} from this wallet, but only for an unstake the wallet itself asks for. Propose the unstake again if you still want it; it sets the approval anew.",
   "identityMismatch": "⚠️ The identity registration of {agent} landed, but the registry does not read back the account and registration file its card showed, so binference stored no identity. Check the registry before you rely on it.",
-  "identityDuplicate": "⚠️ A second identity registration of {agent} landed, but binference keeps one identity per agent, so it stored none for this one. The wallet holds two identities now; check the registry."
+  "identityDuplicate": "⚠️ A second identity registration of {agent} landed, but binference keeps one identity per agent, so it stored none for this one. The wallet holds two identities now; check the registry.",
+  "skillProposed": "{agent} {revised, select, yes {revised its proposal for} other {proposes}} the skill \"{name}\". {blocked, select, yes {Its scan found problems, so it cannot be applied as it stands. } other {}}Review it with /skills, in the console, or with `binference skill show {proposal}`.",
+  "skillApplied": "Skill \"{name}\" of {agent} was applied from {surface}. It loads from the agent's next turn.",
+  "skillRejected": "The proposal for skill \"{name}\" of {agent} was rejected from {surface}.",
+  "skillHeld": "⚠️ Skill \"{name}\" in the workspace of {agent} is new or changed, so it does not load until you accept it. Check its files, then accept it with /skills, in the console, or with `binference skill accept {name}`.",
+  "skillAccepted": "Skill \"{name}\" of {agent} was accepted from {surface} as its files are now. It loads from the agent's next turn."
 }

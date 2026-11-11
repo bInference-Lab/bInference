@@ -75,6 +75,11 @@ const expected: Readonly<Record<string, string>> = {
   "notice.restartedForConfig":
     "binference restarted to apply your settings and serves again: models.imageMaking, engine.port.",
   "notice.signerStopped": `${red} The signer stopped, so binference signs nothing. Fix what \`binference logs\` shows, then run \`binference unlock\`.`,
+  "notice.skillProposed": `main proposes the skill "dip-buyer". Its scan found problems, so it cannot be applied as it stands. Review it with /skills, in the console, or with \`binference skill show skp_0190f1c2-3a4b-7c5d-8e6f-000000000001\`.`,
+  "notice.skillApplied": `Skill "dip-buyer" of main was applied from telegram. It loads from the agent's next turn.`,
+  "notice.skillRejected": `The proposal for skill "dip-buyer" of main was rejected from cli.`,
+  "notice.skillHeld": `${warning} Skill "dip-buyer" in the workspace of main is new or changed, so it does not load until you accept it. Check its files, then accept it with /skills, in the console, or with \`binference skill accept dip-buyer\`.`,
+  "notice.skillAccepted": `Skill "dip-buyer" of main was accepted from console as its files are now. It loads from the agent's next turn.`,
   "notice.signerRefused": `${warning} The signer refused to sign a step of a trade: its amounts are not the trade's. Nothing was sent for it.`,
   "notice.privyUnreachable": `${red} binference could not reach Privy for five minutes after it started, so it stays locked. Check this machine's network, then run \`binference unlock\`.`,
   "notice.webhookPortTaken": `${warning} binference cannot take alerts for your alert rules: port 7457 is in use. Set \`engine.webhookPort\` in config.json5 to a free port, then restart binference.`,

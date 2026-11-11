@@ -1,4 +1,4 @@
-import { basename, dirname, isAbsolute, join, sep } from "node:path";
+import { basename, dirname, isAbsolute, join, relative, sep } from "node:path";
 import { err, ok, type Result } from "@binference/core";
 import type { FileCall, FileRefusal, MachineFiles, ReadFile } from "@binference/engine/shell";
 import {
@@ -56,6 +56,34 @@ function judge(
   return call.workspaceOnly && places.some((place) => !isInside(place, open))
     ? "outside_workspace"
     : undefined;
+}
+
+// Whether a path lies inside an agent's skills folder, `<workspace>/<agent>/skills/`, where a
+// skill changes only through a proposal the owner applies (decision 0408).
+function isInSkillFolder(parts: FileParts, paths: readonly string[]): boolean {
+  return paths.some((path) =>
+    parts.walled.open.some((open) => {
+      const inner = relative(open, path);
+      const steps = inner.split(sep);
+      return (
+        !inner.startsWith("..") && !isAbsolute(inner) && steps.length >= 3 && steps[1] === "skills"
+      );
+    }),
+  );
+}
+
+// The real path a write or a removal may use: one a read may use, outside the skills folders.
+async function writePlaceOf(
+  parts: FileParts,
+  path: string,
+  call: FileCall & { readonly keepLast?: boolean },
+): Promise<Result<string, FileRefusal>> {
+  const place = await placeOf(parts, path, call);
+  if (!place.ok) {
+    return place;
+  }
+  const asked = absoluteOf(parts, path);
+  return isInSkillFolder(parts, [asked, place.value]) ? err("skill_folder") : place;
 }
 
 // The real path a call may use, or why not; with `keepLast`, a last link stays itself.
@@ -123,7 +151,8 @@ function otherSpellings(path: string): readonly string[] {
 /**
  * The agent's files on this machine (decision 0386): a path absolute, under the home folder by
  * `~/`, or in the workspace when relative, each read at its real path, so no link leads into
- * binference's own folder, whose workspace stays open. A write replaces a file whole and makes its
+ * binference's own folder, whose workspace stays open, and none is written or removed in an agent's
+ * skills folder (`skill_folder`, decision 0408). A write replaces a file whole and makes its
  * folders; a removal removes a link itself and never a folder.
  */
 export function machineFilesOf(parts: FileParts): MachineFiles {
@@ -144,7 +173,7 @@ export function machineFilesOf(parts: FileParts): MachineFiles {
       return first;
     },
     write: async (path, bytes, call) => {
-      const place = await placeOf(parts, path, call);
+      const place = await writePlaceOf(parts, path, call);
       if (!place.ok) {
         return place;
       }
@@ -155,7 +184,7 @@ export function machineFilesOf(parts: FileParts): MachineFiles {
       return written.ok ? ok(place.value) : written;
     },
     remove: async (path, call) => {
-      const place = await placeOf(parts, path, { ...call, keepLast: true });
+      const place = await writePlaceOf(parts, path, { ...call, keepLast: true });
       if (!place.ok) {
         return place;
       }
