@@ -382,6 +382,17 @@ description: "引擎协议的每个操作：调用所需的权限范围、操作
 | `goal/continue` | `agent` | 读取 | 任何连接 | 引擎 |
 | `goal/show` | `agent` | 读取 | 任何连接 | 引擎 |
 
+## `skillProposal`
+
+| 操作 | 权限范围 | 类型 | 接受位置 | 回复方 |
+| --- | --- | --- | --- | --- |
+| `skillProposal/create` | `agent` | 读取 | 任何连接 | 引擎 |
+| `skillProposal/revise` | `agent` | 读取 | 任何连接 | 引擎 |
+| `skillProposal/list` | `read` | 读取 | 任何连接 | 引擎 |
+| `skillProposal/get` | `read` | 读取 | 任何连接 | 引擎 |
+| `skillProposal/apply` | `confirm` | 写入 | 任何连接 | 引擎 |
+| `skillProposal/reject` | `confirm` | 写入 | 任何连接 | 引擎 |
+
 ## `notes`
 
 | 操作 | 权限范围 | 类型 | 接受位置 | 回复方 |
@@ -419,6 +430,7 @@ description: "引擎协议的每个操作：调用所需的权限范围、操作
 | `skill/read` | `read` | 读取 | 任何连接 | 引擎 |
 | `skill/add` | `admin` | 写入 | 仅 IPC | 引擎 |
 | `skill/remove` | `admin` | 写入 | 任何连接 | 引擎 |
+| `skill/accept` | `confirm` | 写入 | 任何连接 | 引擎 |
 
 ## `ledger`
 

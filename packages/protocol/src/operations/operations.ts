@@ -48,6 +48,10 @@ import { type ScreenOperationShapes, screenOperations } from "./screen-operation
 import { type SentFileOperationShapes, sentFileOperations } from "./sent-file-operations.schema.js";
 import { type SettingsOperationShapes, settingsOperations } from "./settings-operations.schema.js";
 import { type ShellOperationShapes, shellOperations } from "./shell-operations.schema.js";
+import {
+  type SkillProposalOperationShapes,
+  skillProposalOperations,
+} from "./skill-proposal-operations.schema.js";
 import { type StakingOperationShapes, stakingOperations } from "./staking-operations.schema.js";
 import { type StreamOperationShapes, streamOperations } from "./stream-operations.schema.js";
 import { type WalletOperationShapes, walletOperations } from "./wallet-operations.schema.js";
@@ -86,6 +90,7 @@ export interface OperationShapes
     DepositOperationShapes,
     HelperOperationShapes,
     GoalOperationShapes,
+    SkillProposalOperationShapes,
     QuestionOperationShapes,
     NoteOperationShapes,
     PluginOperationShapes,
@@ -133,6 +138,7 @@ export const operations: OperationTable<OperationShapes> = {
   ...depositOperations,
   ...helperOperations,
   ...goalOperations,
+  ...skillProposalOperations,
   ...questionOperations,
   ...noteOperations,
   ...pluginOperations,

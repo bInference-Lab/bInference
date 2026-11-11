@@ -382,6 +382,17 @@ Every operation of the engine protocol, version 1, by domain. A client calls an 
 | `goal/continue` | `agent` | read | any connection | engine |
 | `goal/show` | `agent` | read | any connection | engine |
 
+## `skillProposal`
+
+| Operation | Scope | Kind | Accepted | Answered by |
+| --- | --- | --- | --- | --- |
+| `skillProposal/create` | `agent` | read | any connection | engine |
+| `skillProposal/revise` | `agent` | read | any connection | engine |
+| `skillProposal/list` | `read` | read | any connection | engine |
+| `skillProposal/get` | `read` | read | any connection | engine |
+| `skillProposal/apply` | `confirm` | write | any connection | engine |
+| `skillProposal/reject` | `confirm` | write | any connection | engine |
+
 ## `notes`
 
 | Operation | Scope | Kind | Accepted | Answered by |
@@ -419,6 +430,7 @@ Every operation of the engine protocol, version 1, by domain. A client calls an 
 | `skill/read` | `read` | read | any connection | engine |
 | `skill/add` | `admin` | write | IPC only | engine |
 | `skill/remove` | `admin` | write | any connection | engine |
+| `skill/accept` | `confirm` | write | any connection | engine |
 
 ## `ledger`
 

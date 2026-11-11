@@ -90,6 +90,10 @@ export const pluginExamples: { readonly [N in keyof PluginOperationShapes]: Wire
   },
   "skill/add": { args: install, result: job },
   "skill/remove": { args: { skill: "skill-1" }, result: empty },
+  "skill/accept": {
+    args: { agent: ids.agent, skill: "dip-buyer", hash: "c".repeat(64) },
+    result: empty,
+  },
 };
 
 /** An example call of every settings, ledger, backup, update and check operation. */

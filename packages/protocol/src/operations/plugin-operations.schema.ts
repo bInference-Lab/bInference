@@ -112,6 +112,11 @@ interface SkillView {
   readonly place?: SkillPlace;
   /** `<place>/<name>/SKILL.md`: what the agent's index names the skill by. */
   readonly location?: string;
+  /**
+   * A workspace skill whose files the owner has not accepted as they are (decision 0408): it does
+   * not load, and `hash` is the folder hash `skill/accept` takes.
+   */
+  readonly held?: boolean;
 }
 
 /** The args of `skill/read`: one file of a skill the agent's index holds. */
@@ -130,6 +135,13 @@ interface SkillText {
   readonly location: string;
   readonly file: string;
   readonly text: string;
+}
+
+/** The args of `skill/accept`: a waiting workspace skill, by the folder hash the owner saw. */
+interface AcceptSkillArgs {
+  readonly agent: ProtocolId<"agent">;
+  readonly skill: string;
+  readonly hash: string;
 }
 
 /** The args of an operation on one plugin. */
@@ -157,6 +169,7 @@ export interface PluginOperationShapes {
   readonly "skill/read": { readonly args: ReadSkillArgs; readonly result: SkillText };
   readonly "skill/add": { readonly args: InstallArgs; readonly result: JobRef };
   readonly "skill/remove": { readonly args: { readonly skill: string }; readonly result: Empty };
+  readonly "skill/accept": { readonly args: AcceptSkillArgs; readonly result: Empty };
 }
 
 const role = z.enum(["main", "fast", "vision"]);
@@ -289,6 +302,7 @@ export const pluginOperations: OperationTable<PluginOperationShapes> = {
         description: z.string().exactOptional(),
         place: skillPlace.exactOptional(),
         location: z.string().exactOptional(),
+        held: z.boolean().exactOptional(),
       }),
     ),
   },
@@ -321,6 +335,17 @@ export const pluginOperations: OperationTable<PluginOperationShapes> = {
     name: "skill/remove",
     scope: "admin",
     args: z.strictObject({ skill: plainIdSchema }),
+    result: emptyResultSchema,
+  },
+  "skill/accept": {
+    ...writeFlags,
+    name: "skill/accept",
+    scope: "confirm",
+    args: z.strictObject({
+      agent: protocolIdSchema("agent"),
+      skill: skillName,
+      hash: z.string().regex(/^[0-9a-f]{64}$/),
+    }),
     result: emptyResultSchema,
   },
 };

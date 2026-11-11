@@ -169,6 +169,13 @@ const specTable = [
   ["skill/read", "read", ""],
   ["skill/add", "admin", "write local"],
   ["skill/remove", "admin", "write"],
+  ["skill/accept", "confirm", "write"],
+  ["skillProposal/create", "agent", ""],
+  ["skillProposal/revise", "agent", ""],
+  ["skillProposal/list", "read", ""],
+  ["skillProposal/get", "read", ""],
+  ["skillProposal/apply", "confirm", "write"],
+  ["skillProposal/reject", "confirm", "write"],
   ["config/read", "admin", ""],
   ["config/change", "admin", "write"],
   ["config/history", "read", ""],
@@ -246,7 +253,7 @@ function isFiledUnderItsName(name: OperationName): boolean {
 describe("operations", () => {
   it("lists every operation of the spec, each with exactly one scope and its columns", () => {
     const table = operationNames.map(rowOf);
-    expect(table).toHaveLength(207);
+    expect(table).toHaveLength(214);
     expect(table.toSorted(byName)).toStrictEqual(specTable.toSorted(byName));
   });
 
@@ -275,7 +282,7 @@ describe("operations", () => {
     const keyed = operationNames.filter((name) => operations[name].idempotency === "key");
     const writes = kinds.filter(([, kind]) => kind === "write").map(([name]) => name);
     expect(keyed).toStrictEqual(writes);
-    expect(writes).toHaveLength(94);
+    expect(writes).toHaveLength(97);
   });
 
   it("dates every operation to the first protocol version", () => {

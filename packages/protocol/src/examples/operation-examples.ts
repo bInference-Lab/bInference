@@ -36,6 +36,7 @@ import {
   webPushExamples,
 } from "./settings-examples.js";
 import { shellExamples } from "./shell-examples.js";
+import { skillProposalExamples } from "./skill-proposal-examples.js";
 import type { WireExample } from "./wire-values.js";
 
 /** A valid call of every operation, its args and result as JSON carries them. */
@@ -67,6 +68,7 @@ export const operationExamples: { readonly [N in OperationName]: WireExample } =
   ...depositExamples,
   ...helperExamples,
   ...goalExamples,
+  ...skillProposalExamples,
   ...questionExamples,
   ...noteExamples,
   ...pluginExamples,

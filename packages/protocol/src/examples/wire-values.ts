@@ -41,7 +41,8 @@ type IdName =
   | "plugin"
   | "ledgerEntry"
   | "notice"
-  | "question";
+  | "question"
+  | "skillProposal";
 
 /** An example id of every kind the operations name. */
 export const ids: Readonly<Record<IdName, string>> = {
@@ -67,6 +68,7 @@ export const ids: Readonly<Record<IdName, string>> = {
   ledgerEntry: `led_${uuid}`,
   notice: `ntc_${uuid}`,
   question: `qst_${uuid}`,
+  skillProposal: `skp_${uuid}`,
 };
 
 /** Example chain, asset and account refs. */
