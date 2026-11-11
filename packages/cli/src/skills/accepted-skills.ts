@@ -9,6 +9,7 @@ import {
 } from "@binference/platform";
 import { z } from "zod";
 import { skillFolderHash } from "./skill-folder-hash.js";
+import { skillFolderUnder } from "./skill-folder.js";
 
 /** One skill's accepted folder hash. */
 interface AcceptedEntry {
@@ -98,8 +99,9 @@ async function seeded(
   for (const path of await listFolderFiles(options.workspace, signal)) {
     const [, agent, name] = workspaceSkillPath.exec(path) ?? [];
     if (agent !== undefined && name !== undefined && idSchema("agt").safeParse(agent).success) {
-      const folder = join(options.workspace, agent, "skills", name);
       // oxlint-disable-next-line eslint/no-await-in-loop -- once, at the first run of this version
+      const folder = await skillFolderUnder(options.workspace, join(agent, "skills", name), signal);
+      // oxlint-disable-next-line eslint/no-await-in-loop -- as above
       const hash = await skillFolderHash(folder, signal);
       if (hash !== undefined) {
         agents[agent] = { ...agents[agent], [name]: { hash, acceptedAt: at } };

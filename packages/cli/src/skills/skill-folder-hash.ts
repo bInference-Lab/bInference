@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
-import { join } from "node:path";
-import { listFolderFiles, readFileBytes } from "@binference/platform";
+import { listFolderFiles } from "@binference/platform";
 import { skillLimits } from "./fetch-skill.js";
+import { readSkillBytes, type SkillFolder } from "./skill-folder.js";
 
 function sha256(data: string | Uint8Array): string {
   return createHash("sha256").update(data).digest("hex");
@@ -11,13 +11,14 @@ function sha256(data: string | Uint8Array): string {
  * The hash of a skill's folder as it is now (decision 0408): the SHA-256 of one line per file,
  * `<path> <SHA-256 of its bytes>`, in path order, so any change to any file of the skill, a
  * support file too, gives another hash. A folder of more than 200 files or 2 MiB, or one whose
- * files change while it is read, has none: such a skill never loads from a workspace.
+ * files change while it is read, has none: such a skill never loads from a workspace. Each file is
+ * read only inside the folder's real path (decision 0410).
  */
 export async function skillFolderHash(
-  folder: string,
+  skill: SkillFolder,
   signal: AbortSignal,
 ): Promise<string | undefined> {
-  const paths = await listFolderFiles(folder, signal);
+  const paths = await listFolderFiles(skill.folder, signal);
   if (paths.length === 0 || paths.length > skillLimits.files) {
     return undefined;
   }
@@ -25,7 +26,7 @@ export async function skillFolderHash(
   let room = skillLimits.bytes;
   for (const path of paths) {
     // oxlint-disable-next-line eslint/no-await-in-loop -- one file after another bounds the bytes read
-    const read = await readFileBytes(join(folder, path), { maxBytes: room, signal });
+    const read = await readSkillBytes(skill, path, { maxBytes: room, signal });
     if (!read.ok) {
       return undefined;
     }

@@ -1,12 +1,11 @@
-import { join } from "node:path";
 import { type Clock, err, type Id, type IdSource, ok } from "@binference/core";
 import type { EngineCaller } from "@binference/engine";
 import type { ConfigChangeParts } from "@binference/engine/audit";
 import { skillNoticePush } from "@binference/engine/notices";
 import type { EngineHandlerTable } from "@binference/engine/surfaces";
-import { readTextFile } from "@binference/platform";
 import { type ProtocolErrorCode, skillProposalLimits } from "@binference/protocol";
 import type { AcceptedSkills } from "../skills/accepted-skills.js";
+import { readSkillTextFile } from "../skills/skill-folder.js";
 import type { ShelfSkill, SkillShelf } from "../skills/skill-shelf.js";
 import type { ApplyParts } from "./apply-proposal.js";
 import { draftProposal, type ProposalDraft, revisedDraft } from "./proposal-drafts.js";
@@ -53,7 +52,7 @@ async function pendingOf(parts: SkillReviewParts, agent: Id<"agt">, signal: Abor
 }
 
 async function readSkillMd(skill: ShelfSkill, signal: AbortSignal): Promise<string | undefined> {
-  const read = await readTextFile(join(skill.folder, "SKILL.md"), signal);
+  const read = await readSkillTextFile(skill, "SKILL.md", signal);
   return read.ok ? read.value : undefined;
 }
 

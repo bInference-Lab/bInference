@@ -1,12 +1,13 @@
 import { createHash } from "node:crypto";
 import { join } from "node:path";
 import { err, type Id, type Logger, ok, type Result } from "@binference/core";
-import { listFolderFiles, readTextFile } from "@binference/platform";
+import { listFolderFiles } from "@binference/platform";
 import { lintSkill } from "@binference/plugin-sdk";
 import type { AcceptedSkills } from "./accepted-skills.js";
 import { type InstalledSkills, readInstalledSkills } from "./installed-skills.js";
 import { readSkillFile } from "./skill-file.js";
 import { skillFolderHash } from "./skill-folder-hash.js";
+import { readSkillTextFile, type SkillFolder, skillFolderUnder } from "./skill-folder.js";
 
 /** Where a skill lives (decision 0207). */
 type SkillPlace = "bundled" | "installed" | "workspace";
@@ -22,6 +23,8 @@ export interface ShelfSkill {
   readonly location: string;
   /** Its folder on this machine; never shown to the agent. */
   readonly folder: string;
+  /** Its folder's real path, reached from its place's root with no link on the way (decision 0410). */
+  readonly realFolder: string;
   readonly source: string;
   readonly hash: string;
   readonly installedAt: number;
@@ -52,11 +55,16 @@ export interface SkillShelfOptions {
 }
 
 /** One skill folder found in a place, before its `SKILL.md` is read. */
-interface Found {
+interface Found extends SkillFolder {
   readonly place: SkillPlace;
   readonly folderName: string;
-  readonly folder: string;
   readonly agent?: Id<"agt">;
+}
+
+/** Where a place's skill folders are listed: below `root`, which no agent can change, at `inner`. */
+interface Listed {
+  readonly root: string;
+  readonly inner: string;
 }
 
 // A skill is a folder of its own, its name not starting with a dot, holding `SKILL.md`.
@@ -68,23 +76,31 @@ function sha256Text(text: string): string {
 }
 
 async function foldersIn(
-  root: string,
+  listed: Listed,
   where: Pick<Found, "place" | "agent">,
   signal: AbortSignal,
 ): Promise<readonly Found[]> {
-  const files = await listFolderFiles(root, signal);
-  return files.flatMap((file) => {
-    const folderName = skillMdPath.exec(file)?.[1];
-    return folderName === undefined
-      ? []
-      : [{ ...where, folderName, folder: join(root, folderName) }];
-  });
+  const files = await listFolderFiles(join(listed.root, listed.inner), signal);
+  const names = files.flatMap((file) => skillMdPath.exec(file)?.[1] ?? []);
+  return Promise.all(
+    names.map(async (folderName): Promise<Found> => {
+      const { folder, realFolder } = await skillFolderUnder(
+        listed.root,
+        join(listed.inner, folderName),
+        signal,
+      );
+      const { place, agent } = where;
+      return agent === undefined
+        ? { place, folderName, folder, realFolder }
+        : { place, folderName, folder, realFolder, agent };
+    }),
+  );
 }
 
 async function bundledFolders(roots: readonly string[], signal: AbortSignal) {
   for (const root of roots) {
     // oxlint-disable-next-line eslint/no-await-in-loop -- the first root that holds a skill wins
-    const found = await foldersIn(root, { place: "bundled" }, signal);
+    const found = await foldersIn({ root, inner: "" }, { place: "bundled" }, signal);
     if (found.length > 0) {
       return found;
     }
@@ -111,16 +127,14 @@ async function provenance(
     return context.installed.get(found.folderName);
   }
   const hash =
-    found.place === "workspace"
-      ? await skillFolderHash(found.folder, signal)
-      : sha256Text(context.text);
+    found.place === "workspace" ? await skillFolderHash(found, signal) : sha256Text(context.text);
   return hash === undefined
     ? undefined
     : { source: found.place, hash, installedAt: context.startedAtMs };
 }
 
 async function readFound(found: Found, context: ReadContext, signal: AbortSignal): Promise<Read> {
-  const read = await readTextFile(join(found.folder, "SKILL.md"), signal);
+  const read = await readSkillTextFile(found, "SKILL.md", signal);
   if (!read.ok) {
     return err("skill.not_found");
   }
@@ -146,6 +160,7 @@ async function readFound(found: Found, context: ReadContext, signal: AbortSignal
     place: found.place,
     location,
     folder: found.folder,
+    realFolder: found.realFolder,
     ...from,
     ...agent,
   });
@@ -191,18 +206,21 @@ async function foundFor(
   agent: Id<"agt"> | undefined,
   signal: AbortSignal,
 ): Promise<readonly Found[]> {
+  // A workspace skill's real path starts at the workspace, which the agent cannot change, so an
+  // agent's folder or skills folder that became a link moves its files' real paths out of it.
   const workspace =
     agent === undefined
       ? []
       : await foldersIn(
-          join(folders.workspace, agent, "skills"),
+          { root: folders.workspace, inner: join(agent, "skills") },
           { place: "workspace", agent },
           signal,
         );
+  const installed = { root: folders.installed, inner: "" };
   return [
     ...workspace,
     ...(await bundledFolders(folders.bundled, signal)),
-    ...(await foldersIn(folders.installed, { place: "installed" }, signal)),
+    ...(await foldersIn(installed, { place: "installed" }, signal)),
   ];
 }
 

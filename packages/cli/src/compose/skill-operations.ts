@@ -73,6 +73,7 @@ const readCodes = {
   not_found: "skill.not_found",
   bad_path: "protocol.bad_args",
   refused: "skill.refused",
+  changed: "skill.changed",
 } as const;
 
 function failedPush(job: ProtocolId<"longJob">, failure: InstallFailure): JobFailedPush {

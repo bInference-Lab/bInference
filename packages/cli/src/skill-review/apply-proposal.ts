@@ -5,13 +5,13 @@ import {
   type FilePermissions,
   listFolderFiles,
   movePath,
-  readFileBytes,
   removePath,
   writePrivateFile,
 } from "@binference/platform";
 import type { AcceptedSkills } from "../skills/accepted-skills.js";
 import { skillLimits } from "../skills/fetch-skill.js";
 import { skillFolderHash } from "../skills/skill-folder-hash.js";
+import { readSkillBytes, type SkillFolder, skillFolderUnder } from "../skills/skill-folder.js";
 import type { SkillShelf } from "../skills/skill-shelf.js";
 import type { ProposalRecord } from "./proposal-record.js";
 
@@ -54,13 +54,14 @@ async function writeAll(
   }
 }
 
-// The skill's files as they are now, each read whole, within a skill's size.
-async function filesOf(folder: string, signal: AbortSignal): Promise<readonly FileToWrite[]> {
+// The skill's files as they are now, each read whole inside the folder's real path, within a
+// skill's size; a file that led elsewhere is left out, so the copy no longer hashes as the base.
+async function filesOf(skill: SkillFolder, signal: AbortSignal): Promise<readonly FileToWrite[]> {
   const files: FileToWrite[] = [];
   let room = skillLimits.bytes;
-  for (const path of await listFolderFiles(folder, signal)) {
+  for (const path of await listFolderFiles(skill.folder, signal)) {
     // oxlint-disable-next-line eslint/no-await-in-loop -- one file after another bounds the bytes read
-    const read = await readFileBytes(join(folder, path), { maxBytes: room, signal });
+    const read = await readSkillBytes(skill, path, { maxBytes: room, signal });
     if (read.ok) {
       room -= read.value.byteLength;
       files.push({ path, data: read.value });
@@ -74,19 +75,21 @@ async function filesOf(folder: string, signal: AbortSignal): Promise<readonly Fi
 async function standsAsProposed(
   parts: ApplyParts,
   record: ProposalRecord,
-  place: { readonly target: string; readonly work: string; readonly signal: AbortSignal },
+  place: { readonly target: SkillFolder; readonly work: SkillFolder; readonly signal: AbortSignal },
 ): Promise<boolean> {
   const { target, work, signal } = place;
   const options = { permissions: parts.permissions, signal };
   if (record.base !== undefined) {
-    await writeAll(work, await filesOf(target, signal), options);
+    await writeAll(work.folder, await filesOf(target, signal), options);
     return (await skillFolderHash(work, signal)) === record.base.hash;
   }
   const names = [
     ...(await parts.shelf.list(record.agent, signal)),
     ...(await parts.shelf.waiting(record.agent, signal)),
   ].map(({ name }) => name);
-  return !names.includes(record.name) && (await listFolderFiles(target, signal)).length === 0;
+  return (
+    !names.includes(record.name) && (await listFolderFiles(target.folder, signal)).length === 0
+  );
 }
 
 // Puts the work folder in place of the skill's folder, the old one moved aside and removed.
@@ -113,16 +116,20 @@ export async function applyProposal(
   signal: AbortSignal,
 ): Promise<Result<Applied, "stale">> {
   const hex = Buffer.from(parts.random.bytes(8)).toString("hex");
-  const work = join(parts.review, "work", `apply-${hex}`);
+  const work = await skillFolderUnder(parts.review, join("work", `apply-${hex}`), signal);
   const aside = join(parts.review, "work", `old-${hex}`);
-  const target = join(parts.workspace, record.agent, "skills", record.name);
+  const target = await skillFolderUnder(
+    parts.workspace,
+    join(record.agent, "skills", record.name),
+    signal,
+  );
   const options = { permissions: parts.permissions, signal };
   try {
     if (!(await standsAsProposed(parts, record, { target, work, signal }))) {
       return err("stale");
     }
     const support = record.supportFiles.map(({ path, text }) => ({ path, data: text }));
-    await writeAll(work, [{ path: "SKILL.md", data: record.text }, ...support], options);
+    await writeAll(work.folder, [{ path: "SKILL.md", data: record.text }, ...support], options);
     const after = await skillFolderHash(work, signal);
     if (after === undefined) {
       throw new BinferenceError({
@@ -130,7 +137,7 @@ export async function applyProposal(
         message: "The applied skill's folder is over a skill's size; nothing was put in place.",
       });
     }
-    await putInPlace({ target, work, aside }, options);
+    await putInPlace({ target: target.folder, work: work.folder, aside }, options);
     const before = await parts.accepted.accept(
       { agent: record.agent, name: record.name, hash: after },
       signal,
@@ -138,7 +145,7 @@ export async function applyProposal(
     return ok(before === undefined ? { after } : { before, after });
   } finally {
     // The work folders go even when the apply was stopped.
-    await removePath(work, AbortSignal.timeout(30_000));
+    await removePath(work.folder, AbortSignal.timeout(30_000));
     await removePath(aside, AbortSignal.timeout(30_000));
   }
 }

@@ -1,7 +1,7 @@
-import { join } from "node:path";
-import { BinferenceError, err, type Id, ok, type Result } from "@binference/core";
-import { listFolderFiles, readTextFile } from "@binference/platform";
+import { err, type Id, ok, type Result } from "@binference/core";
+import { listFolderFiles } from "@binference/platform";
 import { lintSkill } from "@binference/plugin-sdk";
+import { readSkillTextFile, type SkillFolder } from "./skill-folder.js";
 import type { ShelfSkill, SkillShelf } from "./skill-shelf.js";
 
 /** One file of a skill, as `skill/read` answers it. */
@@ -12,8 +12,11 @@ export interface SkillFileText {
   readonly text: string;
 }
 
-/** Why a skill file was not read: no such skill or file, a path outside it, or a lint finding. */
-export type SkillReadRefusal = "not_found" | "bad_path" | "refused";
+/**
+ * Why a skill file was not read: no such skill or file, a path outside it, a lint finding, or a
+ * file that led elsewhere once its folder was listed (decision 0410).
+ */
+export type SkillReadRefusal = "not_found" | "bad_path" | "refused" | "changed";
 
 /** The most a file `open_skill` reads: a playbook's page, not a data set. */
 const maxSkillFileBytes: number = 256 * 1024;
@@ -37,29 +40,28 @@ function isServable(text: string): boolean {
   );
 }
 
-// The file's text, or why it gives none; a file past 1 MiB is refused before it is read.
+// The file's text, or why it gives none; a file past 1 MiB is refused before it is read, and one
+// it cannot read is not there for the agent.
 async function servedText(
-  path: string,
+  skill: SkillFolder,
+  file: string,
   signal: AbortSignal,
-): Promise<Result<string, "not_found" | "refused">> {
-  try {
-    const read = await readTextFile(path, signal);
-    if (!read.ok) {
-      return read;
-    }
+): Promise<Result<string, "not_found" | "refused" | "changed">> {
+  const read = await readSkillTextFile(skill, file, signal);
+  if (read.ok) {
     return isServable(read.value) ? read : err("refused");
-  } catch (error) {
-    if (error instanceof BinferenceError && error.code === "platform.file_too_large") {
-      return err("refused");
-    }
-    throw error;
   }
+  if (read.error === "too_large") {
+    return err("refused");
+  }
+  return err(read.error === "changed" ? "changed" : "not_found");
 }
 
 /**
  * Reads one file of a skill the agent's index holds (decision 0207): `SKILL.md` unless `file`
  * names another. A skill the index does not hold, or a file its folder does not list, is
- * `not_found`; the folder's listing never holds a link, so a link is never followed. A path with
+ * `not_found`; the folder's listing never holds a link, and a file that became one, or that leads
+ * outside the folder's real path, by the time it is read is `changed` (decision 0410). A path with
  * an empty, `.` or `..` part or a leading dot is `bad_path`. A file over 256 KiB, one that is not
  * UTF-8 text, or one with a lint finding is `refused`.
  */
@@ -78,6 +80,6 @@ export async function readSkillText(
   if (skill === undefined || !(await listFolderFiles(skill.folder, signal)).includes(file)) {
     return err("not_found");
   }
-  const text = await servedText(join(skill.folder, file), signal);
+  const text = await servedText(skill, file, signal);
   return text.ok ? ok({ skill, file, text: text.value }) : text;
 }

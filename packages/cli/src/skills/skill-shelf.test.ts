@@ -1,5 +1,5 @@
 // oxlint-disable-next-line eslint/no-restricted-imports -- this test plants a link in its own folder
-import { symlink } from "node:fs/promises";
+import { rename, symlink } from "node:fs/promises";
 import { join } from "node:path";
 import { idSchema } from "@binference/core";
 import { createMemoryLogger } from "@binference/core/testing";
@@ -214,6 +214,30 @@ describe("readSkillText", () => {
       ok: false,
       error: "not_found",
     });
+  });
+
+  it("reads nothing from a workspace skill whose folder became a link once it was listed", async () => {
+    const at = await rig();
+    const skills = join(at.workspace, agent, "skills");
+    await writeFiles(skills, {
+      "notes-kit/SKILL.md": skillText("notes-kit"),
+      "notes-kit/references/steps.md": "Steps.",
+    });
+    await writeFiles(at.root, { "elsewhere/notes-kit/references/steps.md": "the owner's secret" });
+    // The shelf lists the skill, then its folder becomes a link to a folder of the same files.
+    const moving: SkillShelf = {
+      ...at.shelf,
+      list: async (asked, listSignal) => {
+        const listed = await at.shelf.list(asked, listSignal);
+        await rename(join(skills, "notes-kit"), join(skills, "moved"));
+        await symlink(join(at.root, "elsewhere", "notes-kit"), join(skills, "notes-kit"));
+        return listed;
+      },
+    };
+    const file = "references/steps.md";
+    expect(
+      await readSkillText(moving, { agent, skill: "notes-kit", file }, signal()),
+    ).toStrictEqual({ ok: false, error: "changed" });
   });
 
   it("refuses a file with a lint finding, one that is not text, and one over 256 KiB", async () => {
