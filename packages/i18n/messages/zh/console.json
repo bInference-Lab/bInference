@@ -94,6 +94,8 @@
   "shell.label": "命令请求",
   "chat.post": "发送",
   "chat.stop": "停止",
+  "chat.stopAgent": "停止 Agent",
+  "chat.stopped": "{answer, select, running {Agent 的回答已停止。} other {没有正在进行的回答。}}它的助手和命令都已结束，目标已暂停。你已确认的操作仍会执行。",
   "chat.clear": "新对话",
   "chat.clearAsk": "开始新对话？Agent 会忘记这段对话，它的笔记和文件仍然保留。",
   "chat.clearKeep": "保留当前对话",

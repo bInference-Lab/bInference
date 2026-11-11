@@ -1,6 +1,8 @@
 import type { ProtocolId } from "@binference/protocol";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { SquareIcon } from "lucide-react";
 import { Alert, AlertDescription } from "../components/ui/alert";
+import { Button } from "../components/ui/button";
 import { useEngine } from "../connection/engine-context";
 import { errorWords } from "../connection/error-words";
 import { FailedAlert } from "../connection/failed-alert";
@@ -33,6 +35,15 @@ interface Message {
   readonly images: readonly PickedImage[];
 }
 
+/**
+ * A stop the owner pressed: the chat's Stop the agent, which says what it stopped, or the
+ * composer's Stop of the running answer, whose turn says it stopped.
+ */
+interface StopPress {
+  readonly from: "top" | "composer";
+  readonly wasAnswering: boolean;
+}
+
 function useChatActions(agent: ProtocolId<"agent">, live: ReturnType<typeof useChatLive>) {
   const { client, fetch } = useEngine();
   const queries = useQueryClient();
@@ -55,7 +66,7 @@ function useChatActions(agent: ProtocolId<"agent">, live: ReturnType<typeof useC
     },
   });
   const stop = useMutation({
-    mutationFn: async () => client.call("chat/stop", { agent }, writeCall()),
+    mutationFn: async (_press: StopPress) => client.call("chat/stop", { agent }, writeCall()),
   });
   const clear = useMutation({
     mutationFn: async () => client.call("chat/clear", { agent }, writeCall()),
@@ -69,18 +80,58 @@ function useChatActions(agent: ProtocolId<"agent">, live: ReturnType<typeof useC
 
 type ChatActions = ReturnType<typeof useChatActions>;
 
-// New chat, and what the chat says above the thread: that a new one started, or that the chat so
-// far could not load.
+// What the chat's Stop the agent says it stopped: the answer that ran or none, then the rest.
+function StoppedLine(props: { readonly press: StopPress | undefined }): React.JSX.Element | null {
+  const text = useText();
+  if (props.press?.from !== "top") {
+    return null;
+  }
+  const answer = props.press.wasAnswering ? "running" : "none";
+  return (
+    <output className="text-sm text-muted-foreground">
+      {text("console.chat.stopped", { answer })}
+    </output>
+  );
+}
+
+// Stop the agent, reachable while it answers or not, so its helpers and commands end and its goal
+// pauses (decisions 0403, 0407 and 0409); and New chat.
+function ChatControls(props: {
+  readonly actions: ChatActions;
+  readonly canChat: boolean;
+  readonly isRunning: boolean;
+}): React.JSX.Element {
+  const text = useText();
+  const { stop, clear } = props.actions;
+  return (
+    <div className="flex flex-wrap items-start justify-end gap-2">
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={!props.canChat || stop.isPending}
+        onClick={() => stop.mutate({ from: "top", wasAnswering: props.isRunning })}
+      >
+        <SquareIcon data-icon="inline-start" strokeWidth={1.5} aria-hidden />
+        {text("console.chat.stopAgent")}
+      </Button>
+      <NewChatButton canStart={props.canChat && !clear.isPending} start={() => clear.mutate()} />
+    </div>
+  );
+}
+
+// The chat's controls, and what the chat says above the thread: what a stop stopped, that a new
+// chat started, or that the chat so far could not load.
 function ChatTop(props: {
   readonly actions: ChatActions;
   readonly canChat: boolean;
+  readonly isRunning: boolean;
   readonly historyError: Error | null;
 }): React.JSX.Element {
   const text = useText();
-  const { clear } = props.actions;
+  const { stop, clear } = props.actions;
   return (
     <>
-      <NewChatButton canStart={props.canChat && !clear.isPending} start={() => clear.mutate()} />
+      <ChatControls actions={props.actions} canChat={props.canChat} isRunning={props.isRunning} />
       {props.historyError === null ? null : (
         <Alert>
           <AlertDescription>
@@ -92,6 +143,7 @@ function ChatTop(props: {
           </AlertDescription>
         </Alert>
       )}
+      {stop.isSuccess ? <StoppedLine press={stop.variables} /> : null}
       {clear.isSuccess ? (
         <output className="text-sm text-muted-foreground">{text("console.chat.cleared")}</output>
       ) : null}
@@ -120,7 +172,7 @@ function ChatBottom(props: {
           send: async (said, images) => {
             await actions.send.mutateAsync({ text: said, images });
           },
-          stop: () => actions.stop.mutate(),
+          stop: () => actions.stop.mutate({ from: "composer", wasAnswering: true }),
         }}
         state={{
           agentName: props.agentName,
@@ -135,7 +187,8 @@ function ChatBottom(props: {
 /**
  * The chat with one agent: its goal and progress note (decision 0407), the thread, the running
  * turn, the agent's question with its answer buttons, the agent's cards inline with Confirm and
- * Cancel, and the composer. New chat asks once more, then starts a new session; the agent keeps
+ * Cancel, and the composer. Stop the agent stops it whether it answers or not, as Telegram's and
+ * the terminal's `/stop` do. New chat asks once more, then starts a new session; the agent keeps
  * its notes and files.
  */
 export function AgentChat(props: {
@@ -151,7 +204,12 @@ export function AgentChat(props: {
   const canChat = ready.scopes.includes("chat");
   return (
     <div className="flex flex-col gap-4">
-      <ChatTop actions={actions} canChat={canChat} historyError={transcript.error} />
+      <ChatTop
+        actions={actions}
+        canChat={canChat}
+        isRunning={running !== undefined}
+        historyError={transcript.error}
+      />
       <GoalPanel agent={agent} canChange={canChat} />
       <ChatThread
         entries={chatEntries(transcript.data ?? [], live.lines)}

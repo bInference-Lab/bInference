@@ -94,6 +94,8 @@
   "shell.label": "Shell request",
   "chat.post": "Send",
   "chat.stop": "Stop",
+  "chat.stopAgent": "Stop the agent",
+  "chat.stopped": "{answer, select, running {The agent's answer stops.} other {No answer was running.}} Its helpers and its commands end, and its goal pauses. Anything you already confirmed still goes through.",
   "chat.clear": "New chat",
   "chat.clearAsk": "Start a new chat? The agent forgets this conversation; its notes and files stay.",
   "chat.clearKeep": "Keep this chat",

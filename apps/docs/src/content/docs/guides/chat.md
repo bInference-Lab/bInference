@@ -64,8 +64,9 @@ one, the bot tells you how to publish one.
 
 The console is the web interface the engine serves on your machine. Run `binference console` to get
 a single-use link, valid 10 minutes, that pairs your browser. Its chat shows the same conversation
-as Telegram, with Send, Stop and New chat buttons. You may attach up to 4 images there too, with the
-same limits.
+as Telegram, with Send and New chat buttons. Stop shows while the agent answers; Stop the agent,
+above the chat, stops it whether it answers or not, as `/stop` does. You may attach up to 4 images
+there too, with the same limits.
 
 ## The terminal chat
 

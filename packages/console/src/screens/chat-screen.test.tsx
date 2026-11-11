@@ -162,6 +162,38 @@ describe("the chat screen", () => {
     expect(screen.queryByRole("button", { name: "Stop" })).toBeNull();
   });
 
+  it("stops the agent while it answers nothing, and says no answer was running", async () => {
+    const engine = fakeClient(chatAnswers());
+    renderSignedIn(<ChatScreen />, { client: engine.client });
+    await settle();
+    expect(screen.queryByRole("button", { name: "Stop" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Stop the agent" }));
+    await settle();
+    expect(engine.calls.filter((call) => call.op === "chat/stop")).toStrictEqual([
+      { op: "chat/stop", args: { agent } },
+    ]);
+    expect(screen.getByRole("status").textContent).toBe(
+      "No answer was running. Its helpers and its commands end, and its goal pauses. Anything you already confirmed still goes through.",
+    );
+  });
+
+  it("says the answer stopped when Stop the agent stops a running turn", async () => {
+    const engine = fakeClient(chatAnswers());
+    renderSignedIn(<ChatScreen />, { client: engine.client });
+    await settle();
+    act(() => engine.push(`chat:${agent}`, "chat/turnStarted", { agent, session, turn }));
+    fireEvent.click(screen.getByRole("button", { name: "Stop the agent" }));
+    await settle();
+    expect(screen.getByRole("status").textContent).toMatch(/^The agent's answer stops\. /u);
+  });
+
+  it("offers Stop the agent only to a connection with the chat scope", async () => {
+    const engine = fakeClient(chatAnswers());
+    renderSignedIn(<ChatScreen />, { client: engine.client, scopes: ["read"] });
+    await settle();
+    expect(screen.getByRole("button", { name: "Stop the agent" })).toHaveProperty("disabled", true);
+  });
+
   it("asks before a new chat, and keeps this one when the owner says so", async () => {
     const engine = fakeClient(chatAnswers());
     renderSignedIn(<ChatScreen />, { client: engine.client });

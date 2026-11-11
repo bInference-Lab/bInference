@@ -42,6 +42,27 @@ describe("the chat screen, in Chinese", () => {
     expect(screen.getByRole("button", { name: "添加图片" })).toBeDefined();
   });
 
+  it("stops an idle agent in the owner's language", async () => {
+    const engine = fakeClient({
+      "agent/list": () => ({
+        items: [{ agent, name: "main", mode: "paper", locale: "zh", createdAt: 1, changedAt: 1 }],
+      }),
+      "chat/messages": () => ({ items: [] }),
+      "intent/list": () => ({ items: [] }),
+      "chat/stop": () => ({}),
+    });
+    renderSignedIn(<ChatScreen />, { client: engine.client, locale: "zh" });
+    await settle();
+    fireEvent.click(screen.getByRole("button", { name: "停止 Agent" }));
+    await settle();
+    expect(engine.calls.filter((call) => call.op === "chat/stop")).toStrictEqual([
+      { op: "chat/stop", args: { agent } },
+    ]);
+    expect(screen.getByRole("status").textContent).toBe(
+      "没有正在进行的回答。它的助手和命令都已结束，目标已暂停。你已确认的操作仍会执行。",
+    );
+  });
+
   it("asks before a new chat in the owner's language", async () => {
     const engine = fakeClient({
       "agent/list": () => ({
