@@ -354,8 +354,15 @@ new name here first, in the change that uses it.
   teaches Claude Code, Codex and other MCP clients the engine's MCP tools.
 - **skill lint**: `lintSkill`, which names each sentence of a skill that tells the agent to ask for
   a seed phrase, a private key, an API key, a token, a password or a passphrase, pipes a download
-  into a shell, sends a secret store over the network, or writes a secret out; the install refuses
-  such a skill.
+  into a shell, sends a secret store over the network, writes a secret out, or holds hidden
+  characters; the install refuses such a skill.
+- **skill proposal**: a new skill or a change to one of the agent's workspace skills that the agent
+  wrote with `skill_proposal` (`skp_…`). It waits for the owner, who applies or rejects it; it is
+  never applied by itself ([decision 0408](DECISIONS.md#d0408)).
+- **scan findings**: what the skill lint and binference's own checks found in a skill proposal, by
+  file, line and code; any finding keeps the owner from applying it.
+- **waiting skill**: a workspace skill whose files changed since the owner last accepted them, or
+  that the owner never accepted; it does not load until the owner accepts it.
 - **question**: the agent's question to the owner with two to four answer buttons (`ask_owner`).
   The answer comes back as the owner's next message. A chat surface reads the open one with
   `chat/openQuestion`.
@@ -708,6 +715,9 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | CLI                                     | 命令行                  |                             |
 | Mini App                                | Mini App                | Stays English               |
 | skill (Agent Skills)                    | 技能                    |                             |
+| skill proposal                          | 技能提案                |                             |
+| scan findings                           | 扫描结果                |                             |
+| waiting skill                           | 待接受的技能            |                             |
 | plugin                                  | 插件                    |                             |
 | model                                   | 模型                    |                             |
 | model budget                            | 模型预算                |                             |

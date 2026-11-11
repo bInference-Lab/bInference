@@ -1002,6 +1002,26 @@ is never verified, so its short address always follows its symbol.
   `notice.pluginStopped` and `notice.pluginSandboxOff` follow the plugin host's rules
   ([ARCHITECTURE.md section 14](../ARCHITECTURE.md#section-14)).
 
+### 4.5 Skill proposals and waiting skills
+
+| Notice         | Key                    | English                                                                                                                                                                                                                                                                             | 中文                                                                                                                                                                                                                     |
+| -------------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Skill proposed | `notice.skillProposed` | {agent} {revised, select, yes {revised its proposal for} other {proposes}} the skill "{name}". {blocked, select, yes {Its scan found problems, so it cannot be applied as it stands. } other {}}Review it with /skills, in the console, or with `binference skill show {proposal}`. | {agent} {revised, select, yes {修改了技能“{name}”的提案} other {提议了技能“{name}”}}。{blocked, select, yes {扫描发现了问题，目前无法应用。} other {}}可在 /skills、控制台或用 `binference skill show {proposal}` 查看。 |
+| Skill applied  | `notice.skillApplied`  | Skill "{name}" of {agent} was applied from {surface}. It loads from the agent's next turn.                                                                                                                                                                                          | {agent} 的技能“{name}”已从 {surface} 应用，从 Agent 的下一轮起加载。                                                                                                                                                     |
+| Skill rejected | `notice.skillRejected` | The proposal for skill "{name}" of {agent} was rejected from {surface}.                                                                                                                                                                                                             | {agent} 的技能“{name}”的提案已从 {surface} 拒绝。                                                                                                                                                                        |
+| Skill waiting  | `notice.skillHeld`     | ⚠️ Skill "{name}" in the workspace of {agent} is new or changed, so it does not load until you accept it. Check its files, then accept it with /skills, in the console, or with `binference skill accept {name}`.                                                                   | ⚠️ {agent} 工作区中的技能“{name}”为新增或已更改，在你接受之前不会加载。请检查其文件，然后通过 /skills、控制台或 `binference skill accept {name}` 接受。                                                                  |
+| Skill accepted | `notice.skillAccepted` | Skill "{name}" of {agent} was accepted from {surface} as its files are now. It loads from the agent's next turn.                                                                                                                                                                    | {agent} 的技能“{name}”已从 {surface} 按其当前文件接受，从 Agent 的下一轮起加载。                                                                                                                                         |
+
+- A proposal is told as it is made and each time it is revised; `blocked` says whether its scan
+  found anything ([decision 0408](../DECISIONS.md#d0408)).
+- `notice.skillHeld` goes once per skill and folder hash, the first time binference reads the
+  agent's skills after the change.
+- `/skills` in the owner's private chat lists the agent's pending proposals, each as a message:
+  its name, kind and description, its scan findings by file, line and code, then its diff against
+  the skill it changes, cut to fit one message, with an Apply button (left out while a finding
+  blocks it) and a Reject button. A waiting skill follows as a message with its name and an Accept
+  button bound to the folder hash it shows. With none of either, the reply is `cmd.skills.none`.
+
 <a id="section-5"></a>
 
 ## 5. Fast commands
@@ -1029,6 +1049,7 @@ is never verified, so its short address always follows its symbol.
 | `/config`    | `cmd.config`    | Settings; `/config <key>` one; `set` and `unset` open a card    |
 | `/restart`   | `cmd.restart`   | Restarts binference; it says here when it serves again          |
 | `/lang`      | `cmd.lang`      | Buttons: English, 中文                                          |
+| `/skills`    | `cmd.skills`    | Skill proposals and waiting skills, with buttons to act on each |
 | `/help`      | `cmd.help`      | The commands, one line each                                     |
 
 Command descriptions are registered with `setMyCommands` in both languages (`language_code`).
@@ -1506,6 +1527,7 @@ How the owner's messages reach the agent and its replies reach the owner in Tele
 | `helper_send`, `helper_stop`                          | `turn.tool.helperSend`, `turn.tool.helperStop`                                           | Sending a helper a follow-up…, Stopping a helper…                              | 正在给助手发送后续消息…，正在停止助手…                     |
 | `goal_set`, `goal_read`, `goal_update`                | `turn.tool.goalSet`, `turn.tool.goalRead`, `turn.tool.goalUpdate`                        | Setting the chat's goal…, Checking the chat's goal…, Updating the chat's goal… | 正在设定对话目标…，正在查看对话目标…，正在更新对话目标…    |
 | `progress_note`                                       | `turn.tool.progressNote`                                                                 | Updating the progress note…                                                    | 正在更新进度说明…                                          |
+| `skill_proposal`                                      | `turn.tool.skillProposal`                                                                | Working on a skill proposal…                                                   | 正在处理技能提案…                                          |
 | `agent_status`                                        | `turn.tool.agentStatus`                                                                  | Checking the agent's status…                                                   | 正在查看 Agent 的状态…                                     |
 | `credentials`                                         | `turn.tool.credentials`                                                                  | Asking for a credential…                                                       | 正在请求凭据…                                              |
 | `shell`, `shell_job`                                  | `turn.tool.shell`, `turn.tool.shellJob`                                                  | Running a command…, Checking a command…                                        | 正在运行命令…，正在查看命令…                               |

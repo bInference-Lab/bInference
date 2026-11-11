@@ -236,7 +236,9 @@ macOS and Windows.
   - `agent.sqlite`: sessions, transcripts, memory
   - `keys/`: the agent's Privy signing key, owner-only ([decision 0085](DECISIONS.md#d0085))
   - `workspace/<agent>/`: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`,
-    `FIRST-CHAT.md` and `skills/`
+    `FIRST-CHAT.md` and `skills/`, whose skills load only as the owner accepted them
+  - `skill-review/`: the agent's skill proposals and the accepted skill hashes, outside the
+    workspace ([decision 0408](DECISIONS.md#d0408))
   - `logs/`
 
 <a id="section-4"></a>
