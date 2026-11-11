@@ -34,10 +34,13 @@ async function takeWakeUps(test: TestEngine): Promise<readonly string[]> {
       testCall({}),
     );
   }
-  return untaken.map((message) => {
-    const { due } = message.payload as { readonly due: number };
-    return new Date(due).toISOString();
-  });
+  // A freeze's stop waits in the inbox too; only the schedules' wake-ups have a due time.
+  return untaken
+    .filter((message) => message.kind === "inbox/scheduleDue")
+    .map((message) => {
+      const { due } = message.payload as { readonly due: number };
+      return new Date(due).toISOString();
+    });
 }
 
 async function stored(test: TestEngine, view: ScheduleView) {
@@ -166,7 +169,9 @@ describe("the schedule queue", () => {
       testCall({}),
     );
     const wakeUps = waiting.filter((message) => message.kind === "inbox/scheduleDue");
-    const all = waiting.map(({ id }) => id);
+    // The freeze's stop waits beside them, and the runtime applies it apart from any turn.
+    const turnMessages = waiting.filter((message) => message.kind !== "inbox/stop");
+    const all = turnMessages.map(({ id }) => id);
     const start = async (messages: readonly (typeof all)[number][]) =>
       handlers["turn/start"](
         testCall(

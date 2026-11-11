@@ -2,16 +2,19 @@ import { idSchema } from "@binference/core";
 import { type InboxMessageView, inboxMessageViewSchema } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
 import { bridgeEngine, testBridge, testRescueThere } from "../bridges/test-bridges.js";
-import { expectOk, testAgent, testSwap } from "../intents/test-intents.js";
+import { expectOk, testAgent, testAgentDraft, testSwap } from "../intents/test-intents.js";
 import type { EngineCaller } from "../operations/engine-call.js";
 import {
+  listedArchived,
   startTestEngine,
   type TestEngine,
   testCall,
   testCallers,
 } from "../operations/test-engine.js";
+import { secondAgent } from "../safety/test-rescue.js";
 
 const runtime = testCallers.runtime;
+const live = { signal: new AbortController().signal };
 const session = idSchema("ses").parse("ses_0190f1c2-3a4b-7c5d-8e6f-000000000001");
 const turn = idSchema("trn").parse("trn_0190f1c2-3a4b-7c5d-8e6f-000000000001");
 
@@ -184,18 +187,30 @@ describe("the chat relay", () => {
     ]);
   });
 
-  it("sends no stop when the frozen agent runs no turn", async () => {
+  it("sends the frozen agent a stop though it runs no turn, so its helpers stop", async () => {
     const test = await startTestEngine();
     expectOk(await test.engine.handlers["safety/freeze"](testCall({ agent: testAgent })));
-    expect(kinds(test, "inbox")).toStrictEqual([]);
+    expect(inboxPushes(test)).toMatchObject([
+      { kind: "inbox/stop", agent: testAgent, reason: "freeze" },
+    ]);
   });
 
-  it("sends the running turn a stop when the install freezes", async () => {
+  it("sends every agent a stop when the install freezes, whether a turn runs or not", async () => {
     const test = await startTestEngine();
+    await test.stores.agents.create(testAgentDraft({ id: secondAgent, name: "second" }), live);
     expectOk(await startTurn(test));
     expectOk(await test.engine.handlers["safety/freeze"](testCall({})));
     const stops = inboxPushes(test).filter((view) => view.kind === "inbox/stop");
-    expect(stops).toMatchObject([{ kind: "inbox/stop", agent: testAgent, reason: "freeze" }]);
+    expect(stops).toMatchObject([
+      { kind: "inbox/stop", agent: testAgent, reason: "freeze" },
+      { kind: "inbox/stop", agent: secondAgent, reason: "freeze" },
+    ]);
+  });
+
+  it("sends no stop to an archived agent when the install freezes", async () => {
+    const test = await startTestEngine({ agents: listedArchived });
+    expectOk(await test.engine.handlers["safety/freeze"](testCall({})));
+    expect(kinds(test, "inbox")).toStrictEqual([]);
   });
 
   it("stores the owner's stop whether or not a turn runs", async () => {

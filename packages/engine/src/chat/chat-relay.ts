@@ -57,12 +57,12 @@ export interface ChatRelay {
    */
   settled(message: AgentInboxMessage): void;
   /**
-   * Stores a stop for the running turn of the frozen agent, or of every agent when the whole
-   * install froze, and pushes it (runtime spec, section 4.4). An agent with no running turn gets
-   * none.
+   * Stores a stop for the frozen agent, or for every agent not archived when the whole install
+   * froze, and pushes it (runtime spec, section 4.4): its running turn ends, its goal pauses and
+   * its helpers stop, so an agent with no running turn gets one too (decision 0403).
    */
   stopFrozen(agent: Id<"agt"> | undefined, signal: AbortSignal): Promise<void>;
-  /** Wraps `safety/freeze` so a freeze that lands also stops the turns it froze. */
+  /** Wraps `safety/freeze` so a freeze that lands also stops the agents it froze. */
   freezing(freeze: EngineHandler<"safety/freeze">): EngineHandler<"safety/freeze">;
   /**
    * Stores the downtime re-check's `inbox/resumeReport` for an agent and pushes it (runtime spec,
@@ -174,11 +174,24 @@ function ownerChatOf(options: ChatRelayOptions): OwnerChatHandlers {
   };
 }
 
+// The agents a freeze stops: the one it names, or with none named every agent not archived. An
+// agent with no running turn may still run helpers, which only the runtime knows of.
+async function frozenAgents(
+  options: ChatRelayOptions,
+  agent: Id<"agt"> | undefined,
+  signal: AbortSignal,
+): Promise<readonly Id<"agt">[]> {
+  if (agent !== undefined) {
+    return [agent];
+  }
+  const listed = await options.agents.list({ signal });
+  return listed.filter((each) => each.archivedAtMs === undefined).map((each) => each.id);
+}
+
 /** Creates the {@link ChatRelay} over the agent inbox, the agents and the running turns. */
 export function createChatRelay(options: ChatRelayOptions): ChatRelay {
   const stopFrozen = async (agent: Id<"agt"> | undefined, signal: AbortSignal) => {
-    const running = options.turns.agents();
-    const frozen = agent === undefined ? running : running.filter((each) => each === agent);
+    const frozen = await frozenAgents(options, agent, signal);
     for (const each of frozen) {
       // oxlint-disable-next-line eslint/no-await-in-loop -- one write at a time, in order
       await stopOne(options, each, signal);

@@ -31,8 +31,6 @@ export interface RunningTurns {
   isRuntime(credential: string): boolean;
   /** The agent's running turn, if one runs. */
   runningOf(agent: ProtocolId<"agent">): RunningTurn | undefined;
-  /** The agents with a running turn. */
-  agents(): readonly ProtocolId<"agent">[];
   /** Records the agent's running turn, in place of any before it. */
   start(turn: RunningTurn): void;
   /** Marks the turn as holding outside content; the mark never clears. False when it is not running. */
@@ -62,7 +60,6 @@ export function createRunningTurns(): RunningTurns {
       const running = turns.get(agent);
       return running === undefined ? undefined : { ...running };
     },
-    agents: () => [...turns.values()].map((running) => running.agent),
     start(turn) {
       turns.set(turn.agent, { ...turn });
     },

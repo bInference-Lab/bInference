@@ -304,7 +304,8 @@ schedule starts its turn marked.
   the agent". The turn ends `stopped`, and the messages that waited before the stop are dropped.
   Stopping never cancels an intent: the owner cancels a proposal on its card. A stopped turn whose
   proposal the engine took says its card is still open ([decision 0173](../DECISIONS.md#d0173)).
-- **Freeze.** A freeze of the agent or the install sends `inbox/stop` with `reason: freeze`. While
+- **Freeze.** A freeze of the agent or the install sends `inbox/stop` with `reason: freeze` to
+  each agent it froze that is not archived, whether a turn runs or not, so its helpers stop. While
   frozen, owner messages and settle messages still start turns, and proposals end
   `rejected_policy` with `frozen`. `turn/start` refuses a turn that only a schedule or an alert
   starts with `agent.frozen`, and the runtime skips those messages.

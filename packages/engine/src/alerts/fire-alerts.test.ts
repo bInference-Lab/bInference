@@ -198,7 +198,7 @@ describe("wake-ups", () => {
     const [fired] = await test.engine.alerts.seePrice(at(800_000n), live);
 
     expect(fired?.woke).toBe(false);
-    expect(await untaken(test)).toStrictEqual([]);
+    expect((await untaken(test)).map(({ kind }) => kind)).toStrictEqual(["inbox/stop"]);
     expect(pushed(test, "notice/new")).toContainEqual(
       expect.objectContaining({ key: "notice.alertPrice" }),
     );
