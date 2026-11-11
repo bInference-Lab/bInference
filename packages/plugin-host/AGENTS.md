@@ -29,9 +29,10 @@ Rules for this package:
   declared host exactly, the URL guard and public addresses only. A refusal reaches the plugin as
   its code, never an error's text.
 - `PluginStarter` has its contract suite in `src/contracts/`; the direct starter and the image's
-  launcher starter run it. `src/launcher/` holds the image's two programs: the image entry, the
-  one root process, and the plugin launcher, which starts a plugin or removes its data folder by
-  its id alone (decision 0351). Each takes no argument; a change to what they do is a change to
-  decision 0344.
+  launcher starter run it. `src/launcher/` holds the image's three programs: the image entry, the
+  one root process; the plugin launcher, which starts a plugin or removes its data folder by its
+  id alone (decision 0351); and the shell launcher, which runs the agent's commands as
+  `binference-shell` through `@binference/platform/image-shell` (decision 0412). Each takes no
+  argument; a change to what they do is a change to decision 0344 or 0412.
 - Tests that start a plugin build the programs with `buildPluginBundles` into a folder of the
   package's `dist` and remove it; each test stops every process it started.

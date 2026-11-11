@@ -29,6 +29,10 @@
       "@binference/source": "./src/launcher/plugin-launcher.ts",
       "default": "./dist/plugin-launcher.mjs"
     },
+    "./shell-launcher": {
+      "@binference/source": "./src/launcher/shell-launcher.ts",
+      "default": "./dist/shell-launcher.mjs"
+    },
     "./image-entry": {
       "@binference/source": "./src/launcher/image-entry.ts",
       "default": "./dist/image-entry.mjs"

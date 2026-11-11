@@ -12947,6 +12947,7 @@
         "packages/plugin-host/src/index.ts",
         "packages/plugin-host/src/launcher/image-entry.ts",
         "packages/plugin-host/src/launcher/plugin-launcher.ts",
+        "packages/plugin-host/src/launcher/shell-launcher.ts",
         "packages/plugin-host/src/probe/sandbox-probe.ts",
         "packages/plugin-host/src/process/plugin-process.ts",
         "packages/plugin-host/src/testing.ts",
