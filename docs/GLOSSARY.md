@@ -409,6 +409,11 @@ new name here first, in the change that uses it.
 - **masked prompt**: where the owner types a credential the agent asked for, its characters hidden,
   in the console, in terminal chat's masked entry or with `binference credential set`; never a
   chat message.
+- **API call**: an HTTPS request the agent makes through binference with `http_request`, which
+  puts in the owner's stored credentials only for the hosts each allows
+  ([decision 0411](DECISIONS.md#d0411)).
+- **credential stand-in**: `{{credential:NAME}}`, written where a credential's value goes in an API
+  call; binference puts the value in and replaces it with the stand-in again in the answer.
 - **made image**: an image the agent made with the owner's image model (`make_image`,
   [decision 0392](DECISIONS.md#d0392)), saved in its workspace under `media/made/` and shown in
   the chat.
@@ -802,6 +807,8 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | config change                               | 设置更改                 | `configChange`, `/config`    |
 | credential (the owner stores)               | 凭据                     | `credentials`                |
 | masked prompt (for a credential)            | 隐藏输入框               |                              |
+| API call                                    | API 调用                 | `http_request`               |
+| credential stand-in                         | 凭据占位符               | `{{credential:NAME}}`        |
 | shell request                               | 命令请求                 |                              |
 | allowed command                             | 允许的命令               |                              |
 | Allow once, Always allow, Refuse            | 允许一次, 始终允许, 拒绝 | Shell request buttons        |

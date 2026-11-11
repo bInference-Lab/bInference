@@ -1311,6 +1311,41 @@ macOS one shot shows each display, up to four; elsewhere one shot shows every di
 has not allowed binference to record the screen, the answer holds no shot and `blocked.program`
 names the program the owner allows under System Settings, Privacy and Security, Screen Recording.
 
+<a id="section-7-15"></a>
+
+### 7.15 API requests
+
+Decided in [decision 0411](../DECISIONS.md#d0411). Only the current agent runtime calls it, for
+`http_request`. The engine makes the request itself and puts in each stored credential a
+stand-in names, only for the hosts the owner allowed; the agent never sees a value. It takes no
+idempotency key, so no answer is stored, and every answer the site gave carries outside content.
+
+| Operation      | Scope   | Write | Local | Args → result                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| -------------- | ------- | ----- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `http/request` | `agent` |       |       | `{ agent, method, url, headers?, body?, timeoutSeconds? }` → an `HttpAnswerView`; `method` is `GET`, `HEAD`, `POST`, `PUT`, `PATCH` or `DELETE`; `url` an `https:` URL of at most 2,048 characters; at most 32 `headers` as `{ name, value }`; `body` text of at most 256 KiB, never with `GET` or `HEAD`; `timeoutSeconds` 1 to 25, 20 when absent; refused `request.unavailable`, `request.address_refused`, `request.unreachable`, `request.timed_out`, `request.too_large`, `request.proxy_held` |
+
+`{{credential:NAME}}` stands for a stored credential in a header's value, in the URL's query and
+in the body. The engine puts in the value as it is in a header and the body and percent-encoded in
+the query, only when the URL's host is one of the credential's hosts, matched exactly, on the
+default port 443. A header name is an HTTP token of at most 100 characters, each once; `host`,
+`content-length`, `connection`, `keep-alive`, `proxy-connection`, `proxy-authorization`,
+`proxy-authenticate`, `te`, `trailer`, `transfer-encoding`, `upgrade`, `expect`, `http2-settings`
+and `user-agent` are refused. The URL reaches only a public host that is not `remote.publicUrl`'s;
+a redirect is never followed.
+
+`HttpAnswerView` is `{ kind: "answer", status, headers, contentType?, bytes, body?, binary, cut,
+durationMs }` or `{ kind: "refused", reason, credential?, host }`. An answer lists at most 16 of
+the site's headers (`content-type`, `content-length`, `location`, `retry-after` and the rate-limit
+headers), each value at most 500 characters, and its body as text of at most 10,000 characters,
+`cut` when there was more; a body that is not text is answered by `contentType` and `bytes` alone,
+with `binary`, and a `HEAD` answer has none. Each value the request carried, as it is and
+percent-encoded, is replaced by its stand-in in the headers and the body. A refusal sends nothing:
+`credential_unknown` (no credential of the name is stored), `credential_host` (its hosts leave
+`host` out, or the URL names another port), `credential_outside` (a method other than `GET` or
+`HEAD` carries a credential in a turn marked as outside content), `standin_place` (a stand-in in
+the URL's host, path or fragment), `standin_malformed` (a stand-in with no credential's name) and
+`value_unfit` (a header cannot carry the value).
+
 <a id="section-8"></a>
 
 ## 8. Shared shapes
