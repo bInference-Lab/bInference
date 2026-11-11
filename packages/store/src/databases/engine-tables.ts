@@ -14,6 +14,7 @@ import type { OrderTables } from "./order-tables.js";
 import type { PositionTables } from "./position-tables.js";
 import type { RiskCacheTables } from "./risk-cache-tables.js";
 import type { ScheduleTables } from "./schedule-tables.js";
+import type { ShellTables } from "./shell-tables.js";
 import type { SummaryTables } from "./summary-tables.js";
 import type { TelegramTables } from "./telegram-tables.js";
 import type { UnbondingTables } from "./unbonding-tables.js";
@@ -311,6 +312,7 @@ export interface EngineTables
     PositionTables,
     DowntimeTables,
     CredentialTables,
+    ShellTables,
     RiskCacheTables,
     NoticeTables,
     OrderTables,

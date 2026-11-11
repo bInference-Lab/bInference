@@ -1,5 +1,35 @@
 import type { Result } from "@binference/core";
 import type { CommandRequest, RunningCommand } from "./command-request.js";
+import type { AllowedCommandRecord, ShellWatchRecord } from "./shell-records.js";
+
+/**
+ * The shell's rows the engine keeps (decision 0409): the commands the owner allowed always, and
+ * the commands the agent left running whose end it has still to hear. Its SQLite adapter is in
+ * `@binference/store`.
+ */
+export interface ShellStore {
+  /** Every allowed command, oldest first. */
+  allowed(options: { readonly signal: AbortSignal }): Promise<readonly AllowedCommandRecord[]>;
+  /**
+   * Keeps each command no allowed command holds yet with the same program, arguments and folder,
+   * and answers the ones it kept, in order.
+   */
+  allow(
+    commands: readonly AllowedCommandRecord[],
+    options: { readonly signal: AbortSignal },
+  ): Promise<readonly AllowedCommandRecord[]>;
+  /** Removes an allowed command and answers it; `undefined` when none has the id. */
+  disallow(
+    id: string,
+    options: { readonly signal: AbortSignal },
+  ): Promise<AllowedCommandRecord | undefined>;
+  /** Keeps a command whose end the agent is to hear, once. */
+  watch(watch: ShellWatchRecord, options: { readonly signal: AbortSignal }): Promise<void>;
+  /** Drops a job's row; `true` only for the call that dropped it, which tells its end. */
+  unwatch(job: string, options: { readonly signal: AbortSignal }): Promise<boolean>;
+  /** Every job whose end is still to be told, oldest first. */
+  watched(options: { readonly signal: AbortSignal }): Promise<readonly ShellWatchRecord[]>;
+}
 
 /**
  * Runs the agent's commands in the owner's shell behind the command wall (decision 0378). The

@@ -192,6 +192,9 @@ export { machineFilesContract } from "./contracts/machine-files-contract.js";
 export { createMemoryCredentialStore } from "./fakes/memory-credential-store.js";
 export { credentialStoreContract } from "./contracts/credential-store-contract.js";
 export type { CredentialStoreHarness } from "./contracts/credential-store-contract.js";
+export { createMemoryShellStore } from "./fakes/memory-shell-store.js";
+export { shellStoreContract } from "./contracts/shell-store-contract.js";
+export type { ShellStoreHarness } from "./contracts/shell-store-contract.js";
 export type {
   MachineFilesHarness,
   MachineFilesSubject,

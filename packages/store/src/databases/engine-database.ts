@@ -25,6 +25,7 @@ import { positionTasks } from "../positions/sqlite-position-store.js";
 import { clearEngineStateTask } from "../reset/reset-tasks.js";
 import { riskCacheTasks } from "../risk-cache/risk-cache-tasks.js";
 import { scheduleTasks } from "../schedules/sqlite-schedule-store.js";
+import { shellTasks } from "../shell/sqlite-shell-store.js";
 import { dailySummaryTasks } from "../summaries/sqlite-daily-summary-store.js";
 import { agentTopicTasks } from "../surfaces/sqlite-agent-topic-store.js";
 import { cardCopyTasks } from "../surfaces/sqlite-card-copy-store.js";
@@ -75,6 +76,7 @@ export const engineDatabase: DatabaseDefinition = {
     clearEngineStateTask,
     ...aliveTasks,
     ...credentialTasks,
+    ...shellTasks,
   ],
 };
 

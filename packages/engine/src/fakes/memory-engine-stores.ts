@@ -24,6 +24,7 @@ import { createMemoryOrderStore, type MemoryOrderStore } from "./memory-order-st
 import { createMemoryOwnerStore } from "./memory-owner-store.js";
 import { createMemoryQuestionStore } from "./memory-question-store.js";
 import { createMemoryScheduleStore } from "./memory-schedule-store.js";
+import { createMemoryShellStore } from "./memory-shell-store.js";
 import { createMemoryTrackedWalletStore } from "./memory-tracked-wallet-store.js";
 import { createMemoryTracking } from "./memory-tracking.js";
 import { createMemoryTransactionStore } from "./memory-transaction-store.js";
@@ -69,6 +70,7 @@ function sideStores(parts: {
     alive: createMemoryAliveStore(),
     dailySummaries: createMemoryDailySummaryStore({ agents }),
     credentials: createMemoryCredentialStore(),
+    shell: createMemoryShellStore(),
   };
 }
 

@@ -21,6 +21,7 @@ import type {
   TransactionStore,
 } from "../ports.js";
 import type { ScheduleStore } from "../schedules/ports.js";
+import type { ShellStore } from "../shell/ports.js";
 import type { UnbondingStore } from "../staking/ports.js";
 import type { DailySummaryStore } from "../summaries/ports.js";
 import type { AgentTopicStore, CardCopyStore, OwnerStore } from "../surfaces/ports.js";
@@ -81,4 +82,6 @@ export interface EngineStores {
   readonly webhookRules: WebhookRuleStore;
   /** The credentials the owner stores for the agents (decision 0388). */
   readonly credentials: CredentialStore;
+  /** The commands the owner allowed always, and the jobs whose end the agent is to hear. */
+  readonly shell: ShellStore;
 }
