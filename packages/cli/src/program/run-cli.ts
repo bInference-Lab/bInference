@@ -36,6 +36,8 @@ import { runReset } from "../commands/reset-command.js";
 import { runFreeze, runRescue, runSafetyStatus, runUnfreeze } from "../commands/safety-command.js";
 import { runServiceRemove } from "../commands/service-remove-command.js";
 import { runSignerRevoke } from "../commands/signer-revoke-command.js";
+import { runSkillAccept, runSkillApply } from "../commands/skill-apply-command.js";
+import { runSkillProposals, runSkillReject, runSkillShow } from "../commands/skill-command.js";
 import { runStart } from "../commands/start-command.js";
 import { runStatus, signalName } from "../commands/status-command.js";
 import { runRestart, runStop } from "../commands/stop-command.js";
@@ -167,6 +169,11 @@ const runners: { readonly [N in ChosenCommand["name"]]: Runner<N> } = {
     runCredentialSet(context, { options: chosen.options, name: chosen.credential }),
   credentialDelete: async (context, chosen) =>
     runCredentialDelete(context, { name: chosen.credential }),
+  skillProposals: runSkillProposals,
+  skillShow: runSkillShow,
+  skillApply: runSkillApply,
+  skillReject: runSkillReject,
+  skillAccept: runSkillAccept,
   webhookList: async (context) => runWebhookList(context),
   webhookCreate: async (context, chosen) => runWebhookCreate(context, chosen.options),
   webhookEvents: runWebhookEvents,

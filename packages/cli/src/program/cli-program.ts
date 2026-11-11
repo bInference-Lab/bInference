@@ -28,6 +28,7 @@ import { addPluginCommands } from "./plugin-commands.js";
 import { addSafetyCommands } from "./safety-commands.js";
 import { addServiceCommands } from "./service-commands.js";
 import { addSignerCommands } from "./signer-commands.js";
+import { addSkillCommands } from "./skill-commands.js";
 import { addTelegramCommands } from "./telegram-commands.js";
 import { updateFlagsSchema } from "./update-flags.schema.js";
 import { addWebhookCommands } from "./webhook-commands.js";
@@ -225,6 +226,7 @@ function addCommands(program: Command, options: ProgramOptions): void {
   addWebhookCommands(program, options);
   addCredentialCommands(program, options);
   addPluginCommands(program, options);
+  addSkillCommands(program, options);
   addLimitCommands(program, options);
   addConfigCommands(program, options);
   addMcpCommands(program, options);

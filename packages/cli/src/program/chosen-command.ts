@@ -19,6 +19,7 @@ import type {
 import type { CliHost } from "./cli-host.js";
 import type { McpFlags, McpSessionFlags, McpSetupFlags } from "./mcp-flags.schema.js";
 import type { PluginAddFlags } from "./plugin-flags.schema.js";
+import type { SkillProposalsFlags, SkillRejectFlags } from "./skill-flags.schema.js";
 import type { UpdateFlags } from "./update-flags.schema.js";
 import type { WebhookCreateFlags, WebhookEventsFlags } from "./webhook-flags.schema.js";
 
@@ -90,6 +91,18 @@ export type ChosenCommand =
       readonly options: CommonOptions;
       readonly credential: string;
     }
+  | { readonly name: "skillProposals"; readonly options: SkillProposalsFlags }
+  | {
+      readonly name: "skillShow" | "skillApply";
+      readonly options: CommonOptions;
+      readonly proposal: ProtocolId<"skillProposal">;
+    }
+  | {
+      readonly name: "skillReject";
+      readonly options: SkillRejectFlags;
+      readonly proposal: ProtocolId<"skillProposal">;
+    }
+  | { readonly name: "skillAccept"; readonly options: AgentFlags; readonly skill: string }
   | { readonly name: "webhookList"; readonly options: CommonOptions }
   | { readonly name: "webhookCreate"; readonly options: WebhookCreateFlags }
   | {

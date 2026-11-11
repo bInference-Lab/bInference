@@ -477,6 +477,59 @@ Arguments:
 
 - `<name>`: the plugin's name, as `binference plugin list` shows it. Required.
 
+## `binference skill`
+
+Review the skills the agent proposes and the workspace skills that wait for you.
+
+### `binference skill proposals`
+
+List the agent's skill proposals and its waiting workspace skills.
+
+Options:
+
+- `--agent <id>`: The agent's id; the only agent when left out.
+- `--all`: list the applied, rejected and stale proposals too.
+
+### `binference skill show`
+
+Show a skill proposal whole: its scan findings and its changes.
+
+Arguments:
+
+- `<proposal>`: the skill proposal's skp_ id. Required.
+
+### `binference skill apply`
+
+Apply a skill proposal, after you read it.
+
+Arguments:
+
+- `<proposal>`: the skill proposal's skp_ id. Required.
+
+### `binference skill reject`
+
+Reject a skill proposal.
+
+Arguments:
+
+- `<proposal>`: the skill proposal's skp_ id. Required.
+
+Options:
+
+- `--reason <text>`: why, in a line the agent reads at its next turn.
+
+### `binference skill accept`
+
+Accept a waiting workspace skill as its files are now.
+
+Arguments:
+
+- `<name>`: the waiting workspace skill's name. Required.
+
+Options:
+
+- `--agent <id>`: The agent's id; the only agent when left out.
+
 ## `binference limit`
 
 Show the agent's limits in effect, and the looser ones that wait.

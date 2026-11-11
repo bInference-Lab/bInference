@@ -7,6 +7,8 @@ import { createMemoryConfigJournal } from "@binference/engine/testing";
 import { createTempFolder, type TempFolder } from "@binference/platform/testing";
 import type { ArgsOf, OperationName, ResultOf } from "@binference/protocol";
 import { z } from "zod";
+import { createClosers } from "../compose/closers.js";
+import { createSkillOperations } from "../compose/skill-operations.js";
 import { noPermissions } from "../e2e/test-host.js";
 import { createAcceptedSkills } from "../skills/accepted-skills.js";
 import { skillText, writeFiles } from "../skills/skill-fixtures.js";
@@ -50,6 +52,8 @@ interface RigFolders {
 /** The rig: its folders, what it published, its journal and its handlers. */
 export interface ReviewRig extends RigFolders {
   readonly shelf: SkillShelf;
+  /** The skill operations and the skill review's, for an engine a test serves. */
+  readonly handlers: EngineHandlerTable;
   readonly pushes: EnginePush[];
   readonly journal: ReturnType<typeof createMemoryConfigJournal>;
   /** Calls one operation's handler and answers its result, or throws its error code. */
@@ -117,7 +121,18 @@ function rigHandlers(folders: RigFolders, publish: (push: EnginePush) => void) {
     onWaiting: tellWaiting({ accepted, agentName, publish }),
   });
   const journal = createMemoryConfigJournal();
-  const handlers = createSkillReviewHandlers({
+  const skillOperations = createSkillOperations({
+    shelf,
+    folders: { installed: folders.installed, staging: join(review, "work") },
+    permissions,
+    clock,
+    random,
+    publish,
+    closers: createClosers(),
+    logger,
+    proxy: () => ({ noProxy: [] }),
+  });
+  const reviewHandlers = createSkillReviewHandlers({
     shelf,
     accepted,
     proposals: createProposalStore({ folder: join(review, "proposals"), permissions }),
@@ -127,7 +142,7 @@ function rigHandlers(folders: RigFolders, publish: (push: EnginePush) => void) {
     agentName,
     journal: { journal, publish },
   });
-  return { shelf, journal, handlers };
+  return { shelf, journal, handlers: { ...skillOperations, ...reviewHandlers } };
 }
 
 /**
@@ -143,6 +158,7 @@ export async function reviewRig(seeded: readonly string[] = []): Promise<ReviewR
   return {
     ...folders,
     shelf,
+    handlers,
     pushes,
     journal,
     async call(name, args, caller = cleanTurn) {
