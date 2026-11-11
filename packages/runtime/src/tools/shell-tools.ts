@@ -22,6 +22,15 @@ const refusals: Readonly<Record<string, string>> = {
     "That folder does not exist. Give one that does, or leave folder out to start in the owner's home folder.",
   "shell.job_not_found":
     "This agent has no job with that id: a job is kept 30 minutes after its command ends, and none outlives a restart.",
+  "shell.not_listed":
+    "The owner lets only the commands they allowed always run (shell.run is listed), and this one is not among them, so it did not run. Tell the owner the command you would run and why; never try another way to run it.",
+};
+
+// Who stopped a command, as the model reads it.
+const stoppers: Readonly<Record<string, string>> = {
+  agent: "stopped",
+  owner: "stopped by the owner's stop",
+  freeze: "stopped by a freeze",
 };
 
 function endLine(view: ShellJobView): string {
@@ -29,7 +38,7 @@ function endLine(view: ShellJobView): string {
     return "ended at its time limit";
   }
   if (view.stopped) {
-    return "stopped";
+    return stoppers[view.stoppedBy ?? "agent"] ?? "stopped";
   }
   if (view.exitCode !== undefined) {
     return `ended with exit code ${String(view.exitCode)}`;
@@ -39,13 +48,31 @@ function endLine(view: ShellJobView): string {
 
 function statusLine(view: ShellJobView): string {
   if (view.status === "running") {
-    return `Job ${view.job} still runs in ${view.folder}. Read what it prints next with shell_job poll, or end it with shell_job stop.`;
+    return `Job ${view.job} still runs in ${view.folder}. When it ends, a message from binference starts your next turn with its exit code and last lines, so do not poll it: do other work, or end your turn with a short line when only waiting is left. shell_job poll reads what it printed so far, and shell_job stop ends it.`;
   }
   return `Job ${view.job} ${endLine(view)}, in ${view.folder}.`;
 }
 
+// Why the owner is asked, as the model reads it.
+const askedBecause: Readonly<Record<string, string>> = {
+  always: "the owner asks before every command",
+  unlisted: "the owner allowed no such command always",
+  unreadable: "the line uses shell features binference cannot judge in full",
+  powershell: "on PowerShell every command asks",
+};
+
+// A command that waits for the owner's answer ends the turn: the answer starts the next one.
+function askingOf(view: ShellJobView): ToolOutcome {
+  const why = askedBecause[view.request?.reason ?? "unlisted"] ?? "the owner asked to be asked";
+  const text = `The command did not run yet: ${why}, so the owner now sees it with Allow once, Always allow and Refuse, for 10 minutes; the turn ends here. Their answer starts your next turn: what the command printed and how it ended, or that it was refused. Do not run it another way meanwhile, and do not repeat the command in your answer. Its job will be ${view.job}; shell_job stop withdraws the request.`;
+  return { text, isError: false, endsTurn: true, shown: [view.command] };
+}
+
 // A command's output is outside content: any program, page or file can print words into it.
 function outcomeOf(view: ShellJobView): ToolOutcome {
+  if (view.status === "asking") {
+    return askingOf(view);
+  }
   const cut = view.outputCut ? "[earlier output was dropped]\n" : "";
   const output = view.output === "" ? "[no new output]" : `${cut}${view.output}`;
   return {
@@ -78,11 +105,14 @@ function waitOf(seconds: number | undefined): { readonly waitMs?: number } {
 const callTimeoutMs = mostWaitSeconds * 1000 + answerMarginMs;
 
 /**
- * `shell`, a machine tool (decision 0378): runs one command line in the owner's login shell on the
- * engine's machine, behind the wall around binference's own files, and answers its output once it
- * ends or its wait passes, when it keeps running as a job.
+ * `shell`, a machine tool (decisions 0378 and 0409): runs one command line in the owner's login
+ * shell on the engine's machine, behind the wall around binference's own files, and answers its
+ * output once it ends or its wait passes, when it keeps running as a job whose end a message tells.
+ * A command the owner's settings ask about first ends the turn, and the owner's answer starts the
+ * next.
  */
-function shellTool({ agent, client }: AgentToolParts): AgentTool {
+function shellTool({ agent, client, turn }: AgentToolParts): AgentTool {
+  const surface = turn.surface === undefined ? {} : { surface: turn.surface };
   return defineTool({
     name: "shell",
     kind: "machine",
@@ -93,7 +123,7 @@ function shellTool({ agent, client }: AgentToolParts): AgentTool {
         const { waitSeconds: seconds, ...rest } = args;
         const view = await client.call(
           "shell/run",
-          { agent, ...rest, ...waitOf(seconds) },
+          { agent, ...rest, ...waitOf(seconds), ...surface },
           { signal, timeoutMs: callTimeoutMs },
         );
         return outcomeOf(view);
