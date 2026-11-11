@@ -47,6 +47,7 @@ export { ensureReadableFolder, writeReadableFile } from "./readable-files.js";
 export { isFolder } from "./is-folder.js";
 export { readFileBytes, realPathOf } from "./read-file-bytes.js";
 export { readJudgedFile } from "./read-judged-file.js";
+export { realPlaceOf } from "./real-place-of.js";
 export type {
   JudgedFileRead,
   JudgedReadFault,

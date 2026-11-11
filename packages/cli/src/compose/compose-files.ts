@@ -4,7 +4,7 @@ import type { FileCall, FileRefusal, MachineFiles, ReadFile } from "@binference/
 import {
   type RealPathStep,
   readJudgedFile,
-  realPathOf,
+  realPlaceOf,
   removeOwnerFile,
   type WalledPaths,
   writeOwnerFile,
@@ -33,17 +33,6 @@ function absoluteOf(parts: FileParts, path: string): string {
     return join(parts.homeDir, path.slice(1));
   }
   return isAbsolute(path) ? path : join(parts.workspace, path);
-}
-
-// The real path of a place that may not exist yet: the nearest folder that does, links resolved,
-// with the rest of the path after it, so no link on the way leads into a walled folder.
-async function realPlaceOf(parts: FileParts, path: string, signal: AbortSignal): Promise<string> {
-  const real = await (parts.realPath ?? realPathOf)(path, signal);
-  if (real !== undefined) {
-    return real;
-  }
-  const parent = dirname(path);
-  return parent === path ? path : join(await realPlaceOf(parts, parent, signal), basename(path));
 }
 
 function judge(
@@ -98,8 +87,8 @@ async function placeOf(
   const absolute = absoluteOf(parts, path);
   const real =
     call.keepLast === true
-      ? join(await realPlaceOf(parts, dirname(absolute), call.signal), basename(absolute))
-      : await realPlaceOf(parts, absolute, call.signal);
+      ? join(await realPlaceOf(dirname(absolute), call.signal, parts.realPath), basename(absolute))
+      : await realPlaceOf(absolute, call.signal, parts.realPath);
   const refusal = judge(parts, [absolute, real], call);
   return refusal === undefined ? ok(real) : err(refusal);
 }
