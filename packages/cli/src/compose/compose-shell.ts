@@ -24,6 +24,7 @@ import type { BinferenceConfig } from "../config/schema/config.schema.js";
 import { asJson } from "../config/shown-config.js";
 import { browserOf } from "./compose-browser.js";
 import { machineFilesOf } from "./compose-files.js";
+import { engineRequestsOf } from "./compose-requests.js";
 import { localVoiceOf } from "./local-voice.js";
 import type { Opened, Opening } from "./open-engine-parts.js";
 
@@ -149,7 +150,7 @@ export function commandRunnerOf(parts: ShellParts): CommandRunner {
  * agent's browser (decision 0401); its PDF reader, each read in a worker thread of its own
  * (decision 0402); the machine's own voice, working in the workspace (decision 0405); and the
  * owner's screen, its shots taken in the workspace, named after the program binference runs as
- * (decision 0406).
+ * (decision 0406); and the agent's API calls with the owner's stored credentials (decision 0411).
  */
 export function shellOf(opening: Opening, opened: Opened): EngineShell {
   const { host, platform } = opening;
@@ -182,6 +183,12 @@ export function shellOf(opening: Opening, opened: Opened): EngineShell {
       run: host.runProgram ?? runCommandWithin,
       program: host.entry.node,
       findProgram: async (name) => findProgram(name, host.env),
+    }),
+    requests: engineRequestsOf({
+      http: host.http,
+      credentials: opened.stores.credentials,
+      config,
+      logger: opened.log.logger,
     }),
   };
 }

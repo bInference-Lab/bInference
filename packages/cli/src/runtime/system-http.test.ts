@@ -142,6 +142,19 @@ describe("the system Http adapter", () => {
     expect(answer.headers["set-cookie"]).toBe("a=1, b=2");
   });
 
+  it("sends a HEAD and answers its headers with no body", async () => {
+    const answer = await adapter().request({
+      method: "HEAD",
+      url: `${held.origin}/echo`,
+      signal: live(),
+    });
+    expect([answer.status, answer.headers["x-echo-method"], answer.body]).toStrictEqual([
+      200,
+      "HEAD",
+      "",
+    ]);
+  });
+
   it("sends a body of bytes as they are", async () => {
     const bytes = Uint8Array.of(0, 255, 128, 10, 13);
     const answer = await adapter().request({
