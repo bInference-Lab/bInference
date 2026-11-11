@@ -34,7 +34,14 @@ describe("scenarioContextOf", () => {
     contextSourceContract({
       create: async () => {
         const source = scenarioContextOf({ workspace: { "RULES.md": rules } }, facts, agent);
-        return Promise.resolve({ source, agent, unknownAgent, rules, skills: [skill] });
+        return Promise.resolve({
+          source,
+          agent,
+          unknownAgent,
+          rules,
+          skills: [skill],
+          proposals: [],
+        });
       },
     }),
   )("follows the contract: $name", async ({ run }) => {

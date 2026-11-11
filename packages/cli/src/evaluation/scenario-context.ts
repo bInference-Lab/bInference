@@ -52,6 +52,9 @@ export function scenarioContextOf(
         facts.skills.map(({ name, description, location }) => ({ name, description, location })),
       );
     },
+    async skillProposals() {
+      return Promise.resolve([]);
+    },
     async liveFacts(asked, signal) {
       reach(asked, signal);
       return Promise.resolve(live);

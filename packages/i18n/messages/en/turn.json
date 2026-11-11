@@ -95,6 +95,7 @@
   "tool.goalRead": "Checking the chat's goal…",
   "tool.goalUpdate": "Updating the chat's goal…",
   "tool.progressNote": "Updating the progress note…",
+  "tool.skillProposal": "Working on a skill proposal…",
   "tool.deposit": "Showing where to deposit…",
   "tool.notesGet": "Reading a note…",
   "tool.notesForget": "Forgetting a note…",

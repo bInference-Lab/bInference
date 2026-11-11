@@ -28,6 +28,7 @@ import { sendFilesTool } from "./send-files-tool.js";
 import { settingsChangeTool, settingsReadTool } from "./settings-tools.js";
 import { shellTools } from "./shell-tools.js";
 import { showImagesTool } from "./show-images-tool.js";
+import { skillProposalTool } from "./skill-proposal-tool.js";
 import { openSkillTool } from "./skill-tools.js";
 import { speakTool } from "./speak-tool.js";
 import type { AgentToolParts } from "./tool-client.js";
@@ -58,7 +59,8 @@ export const hiddenToolArgs: ReadonlyMap<string, readonly string[]> = new Map([
  * which shows the owner a chart (decision 0387), with image parts `make_image`, which makes images
  * in the background (decision 0392), with video parts `make_video` and with speech parts `speak`
  * (decision 0405), with helper parts the helper tools (decision 0403), with goal parts the goal
- * tools `goal_set`, `goal_read`, `goal_update` and `progress_note` (decision 0407), the machine
+ * tools `goal_set`, `goal_read`, `goal_update` and `progress_note` (decision 0407),
+ * `skill_proposal`, which proposes skills the owner applies (decision 0408), the machine
  * tools `shell` and `shell_job` (decision 0378), `browse` (decision 0401) and the file tools (decision 0386), `credentials`, which asks the owner for a credential and ends
  * the turn (decision 0388), then `ask_owner`, which asks the
  * owner in the turn the tools serve and ends it after its batch.
@@ -101,6 +103,7 @@ export function agentTools(parts: AgentToolParts): readonly AgentTool[] {
     ...(parts.speaking === undefined ? [] : [speakTool(parts, parts.speaking)]),
     ...(parts.helpers === undefined ? [] : helperTools(parts, parts.helpers)),
     ...(parts.goals === undefined ? [] : goalTools(parts, parts.goals)),
+    skillProposalTool(parts),
     ...shellTools(parts),
     browseTool(parts),
     ...fileTools(parts),

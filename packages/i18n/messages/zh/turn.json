@@ -95,6 +95,7 @@
   "tool.goalRead": "正在查看对话目标…",
   "tool.goalUpdate": "正在更新对话目标…",
   "tool.progressNote": "正在更新进度说明…",
+  "tool.skillProposal": "正在处理技能提案…",
   "tool.deposit": "正在显示充值地址…",
   "tool.notesGet": "正在读取笔记…",
   "tool.notesForget": "正在删除笔记…",

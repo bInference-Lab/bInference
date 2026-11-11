@@ -1,5 +1,5 @@
 import type { Id } from "@binference/core";
-import { type WorkspaceFile, workspaceFiles } from "@binference/protocol";
+import { type SkillProposalView, type WorkspaceFile, workspaceFiles } from "@binference/protocol";
 import type { ContextSource } from "../engine-chat/ports.js";
 import type { SkillIndexEntry } from "../engine-chat/skill-index-entry.js";
 
@@ -58,10 +58,49 @@ function workspaceSections(files: readonly WorkspaceText[]): readonly string[] {
   return files.length === 0 ? [] : [workspaceHeading, ...sections];
 }
 
-// The skills index: one line per skill, by name, at most 100, then how many were left out.
-function skillsIndex(skills: readonly SkillIndexEntry[]): readonly string[] {
-  if (skills.length === 0) {
+/** What the prefix lists of the agent's skills: its index and its skill proposals. */
+export interface SkillsPart {
+  readonly skills?: readonly SkillIndexEntry[];
+  readonly proposals?: readonly SkillProposalView[];
+}
+
+const proposalsHeading = [
+  "# Your skill proposals",
+  "",
+  "Skills and changes you proposed with skill_proposal (decision 0408). Each pending one waits for the owner, who applies or rejects it; an applied one is in the skills index above from now on. Read one whole with skill_proposal inspect.",
+].join("\n");
+
+// The waiting workspace skills by name, which the agent never opens.
+function waitingLine(held: readonly SkillIndexEntry[]): readonly string[] {
+  const names = held.map(({ name }) => name).toSorted();
+  return names.length === 0
+    ? []
+    : [
+        `Waiting for the owner to accept their files, so not loaded and never to be opened: ${names.join(", ")}.`,
+      ];
+}
+
+// The agent's pending proposals, then those it decided last, one line each.
+function proposalsSection(proposals: readonly SkillProposalView[]): readonly string[] {
+  if (proposals.length === 0) {
     return [];
+  }
+  const lines = proposals.map((each) => {
+    const found =
+      each.findings.length === 0 ? "" : `, ${String(each.findings.length)} scan findings`;
+    const reason =
+      each.reason === undefined ? "" : `, owner's reason: ${each.reason.replace(/\s+/g, " ")}`;
+    return `- ${each.proposal}: ${each.kind} of ${each.name}, ${each.status}${found}${reason}`;
+  });
+  return [proposalsHeading, lines.join("\n")];
+}
+
+// The skills index: one line per skill, by name, at most 100, then how many were left out.
+function skillsIndex(all: readonly SkillIndexEntry[]): readonly string[] {
+  const skills = all.filter(({ held }) => held !== true);
+  const waiting = waitingLine(all.filter(({ held }) => held === true));
+  if (skills.length === 0) {
+    return waiting;
   }
   const sorted = skills.toSorted((one, two) => (one.name < two.name ? -1 : 1));
   const lines = sorted
@@ -72,7 +111,7 @@ function skillsIndex(skills: readonly SkillIndexEntry[]): readonly string[] {
     );
   const left = sorted.length - indexMaxSkills;
   const more = left > 0 ? [`[${String(left)} more skills are left out of this list.]`] : [];
-  return [skillsHeading, [...lines, ...more].join("\n")];
+  return [skillsHeading, [...lines, ...more].join("\n"), ...waiting];
 }
 
 /**
@@ -81,14 +120,20 @@ function skillsIndex(skills: readonly SkillIndexEntry[]): readonly string[] {
  * A file is cut at 12,000 characters and all of them at 40,000, each cut with a line that says
  * so; a file past the total is left out with a line naming it. The index lists each skill's name,
  * location and description by name, at most 100, then a line with the number left out (decision
- * 0207). The same instructions, files and skills always give the same bytes.
+ * 0207); then the names of the waiting workspace skills, and the agent's skill proposals (decision
+ * 0408). The same instructions, files, skills and proposals always give the same bytes.
  */
 export function prefixText(
   instructions: string,
   files: readonly WorkspaceText[],
-  skills: readonly SkillIndexEntry[] = [],
+  part: SkillsPart = {},
 ): string {
-  return [instructions, ...workspaceSections(files), ...skillsIndex(skills)].join("\n\n");
+  return [
+    instructions,
+    ...workspaceSections(files),
+    ...skillsIndex(part.skills ?? []),
+    ...proposalsSection(part.proposals ?? []),
+  ].join("\n\n");
 }
 
 // The first chat runs in paper mode alone (decision 0242): a live agent's prefix leaves its script
@@ -129,5 +174,6 @@ export async function readTurnPrefix(
     signal,
   );
   const skills = await source.skills(turn.agent, signal);
-  return prefixText(turn.instructions, files, skills);
+  const proposals = await source.skillProposals(turn.agent, signal);
+  return prefixText(turn.instructions, files, { skills, proposals });
 }

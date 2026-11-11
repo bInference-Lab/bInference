@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import type { Id } from "@binference/core";
 import type { ContractCheck } from "@binference/core/testing";
+import type { SkillProposalView } from "@binference/protocol";
 import type { ContextSource } from "../engine-chat/ports.js";
 import type { SkillIndexEntry } from "../engine-chat/skill-index-entry.js";
 
@@ -14,6 +15,8 @@ export interface ContextSourceSubject {
   readonly unknownAgent: Id<"agt">;
   readonly rules: string;
   readonly skills: readonly SkillIndexEntry[];
+  /** The agent's skill proposals as its prefix lists them, none or more. */
+  readonly proposals: readonly SkillProposalView[];
 }
 
 /** Makes a fresh subject for each check. */
@@ -38,6 +41,12 @@ const checks: readonly {
     name: "lists the skills the agent's index holds",
     run: async ({ source, agent, skills }) => {
       assert.deepEqual(await source.skills(agent, live()), skills);
+    },
+  },
+  {
+    name: "lists the agent's skill proposals",
+    run: async ({ source, agent, proposals }) => {
+      assert.deepEqual(await source.skillProposals(agent, live()), proposals);
     },
   },
   {

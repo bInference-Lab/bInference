@@ -1,5 +1,5 @@
 import { BinferenceError } from "@binference/core";
-import { liveFactsViewSchema } from "@binference/protocol";
+import { liveFactsViewSchema, protocolIdSchema } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
 import { contextSourceContract } from "../contracts/context-source-contract.js";
 import { nthTestId } from "../testing/memory-agent-stores.js";
@@ -28,6 +28,14 @@ function clientOver(source: MemoryContextSource) {
         }
         return { text, updatedAt: 1 };
       }
+      if (op === "skillProposal/list") {
+        const all = await source.skillProposals(args["agent"] as never, options.signal);
+        return {
+          items: all.filter(
+            (each) => args["status"] === undefined || each.status === args["status"],
+          ),
+        };
+      }
       if (op === "skill/list") {
         const listed = await source.skills(args["agent"] as never, options.signal);
         const views = listed.map(({ name, description, location }) => ({
@@ -54,6 +62,35 @@ function clientOver(source: MemoryContextSource) {
   } as never;
 }
 
+const proposals = [
+  {
+    proposal: protocolIdSchema("skillProposal").parse("skp_0190f1c2-3a4b-7c5d-8e6f-000000000002"),
+    agent,
+    kind: "create",
+    name: "dip-buyer",
+    description: "Buys after a fall.",
+    status: "pending",
+    findings: [],
+    files: [],
+    createdAt: 2,
+    updatedAt: 2,
+  },
+  {
+    proposal: protocolIdSchema("skillProposal").parse("skp_0190f1c2-3a4b-7c5d-8e6f-000000000001"),
+    agent,
+    kind: "update",
+    name: "safe-swap",
+    description: "Checks a swap.",
+    status: "rejected",
+    findings: [],
+    files: [],
+    createdAt: 1,
+    updatedAt: 1,
+    decidedAt: 1,
+    reason: "Not now.",
+  },
+] as const;
+
 describe("createProtocolContextSource", () => {
   it.each(
     contextSourceContract({
@@ -61,9 +98,10 @@ describe("createProtocolContextSource", () => {
         const memory = createMemoryContextSource({ agents: [agent] });
         memory.write(agent, "RULES.md", rules);
         memory.setSkills(agent, skills);
+        memory.setSkillProposals(agent, proposals);
         const source = createProtocolContextSource(clientOver(memory));
         const unknownAgent = nthTestId("agt", 9);
-        return await Promise.resolve({ source, agent, unknownAgent, rules, skills });
+        return await Promise.resolve({ source, agent, unknownAgent, rules, skills, proposals });
       },
     }),
   )("follows the contract: $name", async ({ run }) => {

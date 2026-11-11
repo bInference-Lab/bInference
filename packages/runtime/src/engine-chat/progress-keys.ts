@@ -81,6 +81,7 @@ const toolKeys: Readonly<Record<AgentToolName, string | undefined>> = {
   goal_read: "turn.tool.goalRead",
   goal_update: "turn.tool.goalUpdate",
   progress_note: "turn.tool.progressNote",
+  skill_proposal: "turn.tool.skillProposal",
 };
 
 // A plugin's tool is named `<id>__<tool>`, its id with `_` for `-`.

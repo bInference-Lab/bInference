@@ -72,6 +72,7 @@ The tools the agent's model may call in a turn, in the order a turn offers them.
 - `goal_read` (read): Reads this chat's goal, its goal turns and spend, and the progress note.
 - `goal_update` (control): Marks this chat's goal complete or blocked, with a short note.
 - `progress_note` (control): Keeps this chat's progress note: a short status and a plan of steps the owner reads beside the chat.
+- `skill_proposal` (control): Proposes a skill, or a change to one of the agent's own skills, for the owner to apply or reject; reads skills and the agent's proposals.
 - `shell` (machine): Runs a command on the owner's machine, away from binference's own files, and reads its output.
 - `shell_job` (machine): Reads a running command's new output, or stops it.
 - `browse` (machine): Drives a browser of the agent's own on the owner's machine: opens pages, reads them, clicks, types and takes screenshots.

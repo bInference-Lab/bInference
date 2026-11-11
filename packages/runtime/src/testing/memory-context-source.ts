@@ -1,5 +1,10 @@
 import type { Id } from "@binference/core";
-import { type LiveFactsView, liveFactsViewSchema, type WorkspaceFile } from "@binference/protocol";
+import {
+  type LiveFactsView,
+  liveFactsViewSchema,
+  type SkillProposalView,
+  type WorkspaceFile,
+} from "@binference/protocol";
 import type { ContextSource } from "../engine-chat/ports.js";
 import type { SkillIndexEntry } from "../engine-chat/skill-index-entry.js";
 
@@ -9,6 +14,8 @@ export interface MemoryContextSource extends ContextSource {
   write(agent: Id<"agt">, file: WorkspaceFile, text: string | undefined): void;
   /** Sets the skills an agent's index holds, in place of those before. */
   setSkills(agent: Id<"agt">, skills: readonly SkillIndexEntry[]): void;
+  /** Sets the skill proposals the agent's prefix lists, in place of those before. */
+  setSkillProposals(agent: Id<"agt">, proposals: readonly SkillProposalView[]): void;
   /** Sets the mode an agent's live facts name; paper until set. */
   setMode(agent: Id<"agt">, mode: LiveFactsView["mode"]): void;
   /** Makes every read reject from now on, as an engine out of reach does, or answer again. */
@@ -53,6 +60,22 @@ export interface MemoryContextSourceOptions {
   readonly now?: () => number;
 }
 
+// The agent's skill proposals, as a test sets them.
+function proposalsPart(
+  reach: (agent: Id<"agt">, signal: AbortSignal) => void,
+): Pick<MemoryContextSource, "skillProposals" | "setSkillProposals"> {
+  const proposals = new Map<Id<"agt">, readonly SkillProposalView[]>();
+  return {
+    async skillProposals(agent, signal) {
+      reach(agent, signal);
+      return await Promise.resolve(proposals.get(agent) ?? []);
+    },
+    setSkillProposals(agent, entries) {
+      proposals.set(agent, entries);
+    },
+  };
+}
+
 /**
  * Creates a {@link MemoryContextSource} with no workspace file and no skill, whose live facts are
  * {@link testLiveFacts} read at the time `now` gives. An agent it does not hold rejects.
@@ -72,6 +95,7 @@ export function createMemoryContextSource(
     }
   };
   return {
+    ...proposalsPart(reach),
     async workspaceFile(place, signal) {
       reach(place.agent, signal);
       return await Promise.resolve(files.get(`${place.agent}/${place.file}`));

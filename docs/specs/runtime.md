@@ -411,7 +411,7 @@ a `chat/goal` push. Helpers get none of these tools.
 **Skill proposals** ([decision 0408](../DECISIONS.md#d0408)). `skill_proposal` writes a new skill
 or a change to one of the agent's workspace skills as a proposal the owner applies or rejects; it
 never applies one. Its actions are `create`, `update`, `patch`, `read`, `revise`, `list` and
-`inspect`. `update` and `patch` need the skill's revision from `read` in the same turn, and
+`inspect`. `update` and `patch` name the revision `read` gave, and
 `create`, `update`, `patch` and `revise` are refused in a turn whose context holds outside
 content, by the tool and by the engine. Helpers do not get it. A workspace skill loads only while
 the owner accepted its files as they are; one added or changed since is listed as waiting and is
@@ -585,8 +585,8 @@ The context of a model call is data with three parts, never one string with a ma
       and an owner who moves on ends them ([decision 0382](../DECISIONS.md#d0382));
    3. the skills index: each installed skill's name, description and location, by name, read
       from the engine with `skill/list` ([decision 0207](../DECISIONS.md#d0207)); the waiting
-      workspace skills by name, and the agent's pending skill proposals and those decided in the
-      last 24 hours, read with `skillProposal/list` ([decision 0408](../DECISIONS.md#d0408));
+      workspace skills by name, and the agent's pending skill proposals and the five it decided
+      last, read with `skillProposal/list` ([decision 0408](../DECISIONS.md#d0408));
    4. the tool declarations, by name.
 2. **The history**: the session's latest summary, then every transcript event after it, in order.
 3. **The volatile tail**: one context message after the history, built for each model call and

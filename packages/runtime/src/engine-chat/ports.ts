@@ -1,5 +1,5 @@
 import type { Id, Result } from "@binference/core";
-import type { LiveFactsView } from "@binference/protocol";
+import type { LiveFactsView, SkillProposalView } from "@binference/protocol";
 import type { ImageReadRefusal } from "../loop/turn-records.js";
 import type {
   EngineProgress,
@@ -65,6 +65,11 @@ export interface ContextSource {
   skills(agent: Id<"agt">, signal: AbortSignal): Promise<readonly SkillIndexEntry[]>;
   /** `facts/get`: what the agent stands on now. */
   liveFacts(agent: Id<"agt">, signal: AbortSignal): Promise<LiveFactsView>;
+  /**
+   * `skillProposal/list`: the agent's pending skill proposals, then the five it decided last, newest
+   * first (decision 0408); none from an engine that serves none.
+   */
+  skillProposals(agent: Id<"agt">, signal: AbortSignal): Promise<readonly SkillProposalView[]>;
 }
 
 /**

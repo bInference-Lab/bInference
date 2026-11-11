@@ -44,6 +44,7 @@ const sendArgs = { paths: ["trades.csv"], caption: "The trades." };
 const turnOf = { turn: toolTurn.turn };
 const shellJob = "shj_0190f1c2-3a4b-7c5d-8e6f-000000000001";
 const navigate = { action: "navigate", url: "https://example.com/" } as const;
+const poll = { job: shellJob, action: "poll" } as const;
 const viewShot = { op: "image/view", args: { agent, path: "/x.png" } };
 const shellView = {
   job: shellJob,
@@ -62,6 +63,7 @@ const shellView = {
 const answers: Readonly<Record<string, FakeAnswer>> = {
   "asset/search": { items: [{ asset: coin, ...coinInfo }] },
   "address/list": { items: [] },
+  "skillProposal/list": { items: [] },
   "agent/get": {
     agent,
     name: "main",
@@ -445,12 +447,9 @@ const mappings: readonly (readonly [string, JsonValue, JsonValue])[] = [
       },
     ],
   ],
+  ["skill_proposal", { action: "list" }, [{ op: "skillProposal/list", args: { agent } }]],
   ["shell", { command: "ls" }, [{ op: "shell/run", args: { agent, command: "ls" } }]],
-  [
-    "shell_job",
-    { job: shellJob, action: "poll" },
-    [{ op: "shell/job", args: { agent, job: shellJob, action: "poll" } }],
-  ],
+  ["shell_job", poll, [{ op: "shell/job", args: { agent, ...poll } }]],
   ["browse", navigate, [{ op: "browser/run", args: { agent, request: navigate } }]],
   ["file_read", { path: "a.md" }, [{ op: "file/read", args: { agent, path: "a.md" } }]],
   [

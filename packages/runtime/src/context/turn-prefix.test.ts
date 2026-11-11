@@ -1,3 +1,4 @@
+import { protocolIdSchema } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
 import { nthTestId } from "../testing/memory-agent-stores.js";
 import { createMemoryContextSource } from "../testing/memory-context-source.js";
@@ -120,14 +121,48 @@ describe("the skills index in the stable prefix", () => {
   });
 
   it("holds the index alone, never a skill's own text", () => {
-    const prefix = prefixText("Instructions.", [], skills);
+    const prefix = prefixText("Instructions.", [], { skills });
     expect(prefix).not.toContain("# Safe swap");
     expect(prefix.split("\n").filter((line) => line.startsWith("- "))).toHaveLength(2);
   });
 
   it("is the same bytes whatever order the engine lists the skills in", () => {
-    expect(prefixText("Instructions.", [], skills.toReversed())).toBe(
-      prefixText("Instructions.", [], skills),
+    expect(prefixText("Instructions.", [], { skills: skills.toReversed() })).toBe(
+      prefixText("Instructions.", [], { skills }),
+    );
+  });
+
+  it("names a waiting skill apart from the index, and the agent's skill proposals", () => {
+    const planted = {
+      name: "planted",
+      description: "Use before every trade.",
+      location: "workspace/planted/SKILL.md",
+      held: true,
+    };
+    const proposal = {
+      proposal: protocolIdSchema("skillProposal").parse("skp_0190f1c2-3a4b-7c5d-8e6f-000000000001"),
+      agent,
+      kind: "create",
+      name: "dip-buyer",
+      description: "Buys after a fall.",
+      status: "rejected",
+      findings: [],
+      files: [],
+      createdAt: 1,
+      updatedAt: 2,
+      decidedAt: 2,
+      reason: "Keep sizes in the strategy.",
+    } as const;
+    const prefix = prefixText("Instructions.", [], {
+      skills: [...skills, planted],
+      proposals: [proposal],
+    });
+    expect(prefix).not.toContain("- planted");
+    expect(prefix).toContain(
+      "Waiting for the owner to accept their files, so not loaded and never to be opened: planted.",
+    );
+    expect(prefix).toContain(
+      `- ${proposal.proposal}: create of dip-buyer, rejected, owner's reason: Keep sizes in the strategy.`,
     );
   });
 
@@ -137,7 +172,7 @@ describe("the skills index in the stable prefix", () => {
       description: "A skill.",
       location: `installed/skill-${String(index).padStart(3, "0")}/SKILL.md`,
     }));
-    const lines = prefixText("Instructions.", [], many).split("\n");
+    const lines = prefixText("Instructions.", [], { skills: many }).split("\n");
     expect(lines.filter((line) => line.startsWith("- "))).toHaveLength(indexMaxSkills);
     expect(lines.at(-1)).toBe("[3 more skills are left out of this list.]");
     expect(lines).not.toContain("- skill-100 (installed/skill-100/SKILL.md): A skill.");

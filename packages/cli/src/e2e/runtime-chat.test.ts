@@ -364,6 +364,7 @@ describe("the chat relay to the agent runtime process", () => {
         "goal_read",
         "goal_update",
         "progress_note",
+        "skill_proposal",
         "shell",
         "shell_job",
         "browse",
