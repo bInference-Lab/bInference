@@ -716,3 +716,145 @@ The service checks a request in this order, and the first check that fails answe
 A worker stores the signed transaction before it sends it, as the executor does (spec 6, section
 6). A worker that lost its lease after the service's second read is refused by its own store's
 fence ([decision 0418](../DECISIONS.md#d0418)), so it never sends.
+
+<a id="section-8-4"></a>
+
+### 8.4 Each user's 24-hour sums
+
+Privy allows 10 aggregations per app and one Cloud app serves every user, so the signer service
+keeps each user's 24-hour sums, which self-hosted keeps in Privy's caps (section 4). Privy's
+app-wide caps stay one Cloud-wide backstop ([decision 0422](../DECISIONS.md#d0422)).
+
+- **What counts,** per install, which is one user's, and per chain, as Privy's caps count it:
+
+  | Sum                                                         | Counts                                                                                                                      | Cap at the default $1,000              |
+  | ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
+  | The chain's native coin                                     | The value of every transaction the service signs on the chain, sends to saved addresses among them; a cancel counts nothing | 10 BNB on BSC                          |
+  | Each token the chain caps (WBNB, USDT, USDC and ETH on BSC) | The amount of every approval of the token                                                                                   | 10 WBNB, 1,000 USDT, 1,000 USDC, 1 ETH |
+
+- **Sizes.** Each cap is the install's 24-hour cap in dollars at its asset's floor price, as
+  `binference ceiling set --day-cap-usd` sizes self-hosted's ([decision
+  0151](../DECISIONS.md#d0151)): $100 a BNB or WBNB, $1 a stablecoin, $1,000 an ETH. The dollar
+  cap lives in the install's `custody` record, $1,000 by default, twice the default rolling day
+  limit, and only binference.io writes it (section 8.5).
+- **A Cloud-wide maximum.** During the beta no user's dollar cap passes $5,000 a day. The maximum is a
+  setting of the Cloud deploy, which the signer service and binference.io read at start; no user,
+  worker or install row can change it. binference.io refuses a higher cap, and the service sizes
+  each sum from the smaller of the install's cap and the maximum, so a row written past it never
+  widens a sum.
+- **Window.** A reservation counts while it is younger than 24 hours by the database's clock.
+- **Reserve first.** In the check transaction (section 8.3, step 2), the service sums the
+  install's reservations of the window for each sum the transaction counts towards, refuses with
+  `over_sums` when one would pass its cap, and writes the reservation before the key signs, so a
+  crash never signs uncounted. `roomAtMs` says when enough of the window's reservations age out
+  for this one to pass.
+- **One nonce, one reservation.** A reservation belongs to one wallet's nonce on one chain and to
+  one intent's step. A repeat of the request, a speed-up or the step's cancel reuses it, counting
+  the larger of the two amounts of each sum. Another intent's step at that nonce is refused with
+  `nonce_held` while the intent that holds the nonce has not ended. Once it ended, dropped, failed
+  or cancelled, the next step at that nonce takes a reservation of its own, as the wallet queue
+  hands a dropped step's nonce on ([decision 0115](../DECISIONS.md#d0115)), and both reservations
+  count their 24 hours. The self-hosted signer agrees: it keeps no nonce of its own, checks only
+  that a speed-up or a cancel repeats or cancels the step it replaces (section 5.2, rule 6), and
+  leaves each nonce to the wallet queue.
+- **Release.** A reservation is released only when no signature left the service: Privy refused
+  and signed nothing, the service withheld the signature after the lease's second read, or a check
+  after the reservation failed. A signature that left counts for 24 hours, landed or not, as
+  Privy's caps count it, and a cancel does not release the step it cancels.
+- **Store.** The service's own schema, `signer`, in the Cloud database, owned by the migrator.
+  `binference_signer` alone reads and writes it, and no other role holds a grant on it:
+
+  | Table                 | Columns                                                                                                                                                                                                                                                                                                           | Keys                                                                                                           |
+  | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+  | `signer.reservations` | `id`, `install_id`, `chain`, `account`, `nonce`, `intent_id`, `step`, `native_base` and `token_base` (`numeric(78,0)`), `token` (CAIP-19, or NULL), `state` (`reserved`, `signed`, `released`), `tx_hash` (the last signature at the nonce), `request_id`, `worker_id`, `reserved_at`, `signed_at`, `released_at` | Unique `(chain, account, nonce, intent_id, step)` where `state` is not `released`; `(install_id, reserved_at)` |
+  | `signer.answers`      | `worker_id`, `request_id`, `body_sha256`, `answer` (JSON), `answered_at`                                                                                                                                                                                                                                          | Primary key `(worker_id, request_id)`; removed after 24 hours                                                  |
+  | `signer.audit`        | Section 8.7; insert only                                                                                                                                                                                                                                                                                          | `(install_id, at)`                                                                                             |
+
+  With the store out of reach the service signs nothing and answers `down` with `store`.
+
+- **The user is told.** The worker's engine ends the intent as one a signer refused (spec 6,
+  section 7, item 4) and raises `notice.daySums` ([spec 4, section
+  4](cards-and-messages.md#section-4)), which names the asset, the chain, the cap, what is used
+  and when room frees, and says to raise the cap on binference.io.
+  Each agent's own rolling cap in the engine, half the dollar cap by default, refuses first while
+  one agent trades; the sums bind across all of a user's agents, and when something passed the
+  engine.
+
+<a id="section-8-5"></a>
+
+### 8.5 Owner actions only on binference.io
+
+On bInference Cloud the agent's owner is a signed-in user whose Privy account owns the wallets, and
+there is no owner key. Every action that needs the owner key on self-hosted happens only on
+binference.io, in Privy's own window, under the user's Privy sign-in, which signs the change as the
+wallet's owner ([decision 0423](../DECISIONS.md#d0423)):
+
+| Self-hosted, with the owner key or at the terminal                | On binference.io                                              |
+| ----------------------------------------------------------------- | ------------------------------------------------------------- |
+| `safety/setRescueAddress`, `safety/cancelRescueChange`            | Set or cancel the rescue address, with the same 24-hour wait  |
+| `ceiling/set`: venues, the per-transaction cap, `--day-cap-usd`   | Change the ceiling; the dollar cap also sizes the user's sums |
+| `binference address add`, and a removal that rewrites the ceiling | Save or remove an address                                     |
+| `binference wallet create`, `--launch`, `--bridge`                | Make a wallet, a launch wallet or a bridge wallet             |
+| `binference wallet export`                                        | Export a wallet's key, sealed to the user's browser           |
+| `binference signer revoke`                                        | Remove bInference's signer service from the wallets           |
+| `identity/allow`                                                  | Let the agent register its identity                           |
+| `binference live`, with the typed disclaimer                      | Go live, typing the disclaimer on binference.io               |
+
+An owner action asked anywhere else, from the official bot, the console's chat, the agent or an MCP
+client, is refused with the step to take on binference.io. Without them the engine still trades
+inside the ceiling and the limits, makes limits stricter, freezes, rescues to the rescue address in
+effect, revokes approvals and switches to paper, each with the taps self-hosted asks. It never
+writes a wallet, a ceiling, the custody record, the address book or the rescue fields of `safety`,
+and never moves an agent to live: its database role and the trigger on `agents` refuse it (spec
+3, section 6.6). Turning auto mode on is the user's own tap, which only the ingress writes
+([decision 0421](../DECISIONS.md#d0421)), so the signer service can rely on it.
+
+<a id="section-8-6"></a>
+
+### 8.6 The breaker
+
+bInference Cloud's breaker freezes every Cloud agent at once ([ARCHITECTURE.md section
+30](../ARCHITECTURE.md#section-30), [decision 0424](../DECISIONS.md#d0424)):
+
+- It is one row of the shared schema, `cloud.breaker`: `pulled` (0 or 1), `changed_at`,
+  `changed_by`, `reason` and `version`. Only the role `binference_ops` may update it, and only the
+  operations control, under the sign-in of bInference's owner with a second factor, connects as
+  it. bInference's owner, the person who runs bInference and not an agent's owner, alone pulls and
+  lifts it.
+- It keeps rescues, as a freeze does. While it is pulled, the signer service answers `locked` with
+  `breaker` to every request but a step of a rescue intent that pays the rescue address in effect,
+  which only binference.io sets, with that rescue's speed-ups and cancel. A row it cannot read
+  answers `down` with `store`. A worker that missed the breaker still signs nothing but a rescue.
+- The workers read it too and freeze every agent they hold, with a freeze's rules: everything
+  unsigned is cancelled but a rescue, which goes on, and a sent transaction finishes or is dropped
+  on its own (decisions [0093](../DECISIONS.md#d0093) and [0099](../DECISIONS.md#d0099)). The
+  user's way out stays open: a rescue moves every wallet's funds to their rescue address. Lifting
+  the breaker ends only its own freeze; each user's own freeze stays.
+- Refusing everything while it is pulled, a rescue among them, was weighed and rejected: a user
+  could then reach their funds only through Privy itself.
+
+<a id="section-8-7"></a>
+
+### 8.7 Audit and failure
+
+- **Once per request** ([decision 0425](../DECISIONS.md#d0425)). The service keeps each answer for
+  24 hours under the worker's id and the request id, and answers a repeat with the first answer; a
+  repeat with another body is refused as `malformed`. A lost answer costs a repeat, never a second
+  signature.
+- **Retries.** The client repeats a request only after `down` or no answer within 30 seconds, with
+  the same request id, and only while the intent's authorization still allows a signature: a
+  confirmation before its end, a fill grant within its 60 seconds, an auto grant while the mode
+  holds, and a cancel within decision 0116's minute. It never repeats another outcome, and never
+  past the authorization's end; the engine then ends the intent as a step it could not sign (spec
+  6, section 7, item 4).
+- **What each outcome does** in the worker: `signed` is stored, then sent; `refused` ends the
+  intent with `notice.signerRefused`, naming the reason; `over_sums` ends it with
+  `notice.daySums`; `locked` leaves a confirmed intent waiting, as a locked engine does, until its
+  authorization runs out (spec 6, section 7, item 5); `lease_lost` stops the install; `down` is
+  repeated as above.
+- **The audit line.** Each request leaves one row in `signer.audit`, which the service inserts and
+  never changes: the time by the database's clock, the request id, the worker id and fence, the
+  install, agent, intent, step and wallet, the chain, nonce and replacement, the authorization's
+  kind and id, the outcome with its reason or rule, each sum before and after, the signed
+  transaction's hash, Privy's request id, and how long each part took. No key, signature, app
+  secret, raw transaction or calldata goes in it; calldata goes in as its SHA-256.

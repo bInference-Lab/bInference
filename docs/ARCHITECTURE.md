@@ -1423,7 +1423,9 @@ the Cloud profile. A port with two adapters runs one contract test suite against
   Cloud agents get no shell, file or browser tools.
 - **Signer service.** The only holder of our Privy authorization key, in KMS. It runs the same hard
   rules as the self-hosted signer and signs with `eth_signTransaction`; the worker broadcasts through
-  private relays. Owners can export their key or remove the bInference signer at any time.
+  private relays. Owners can export their key or remove the bInference signer at any time. As
+  [spec 5, section 8](specs/keys-and-backups.md#section-8) has it, it checks the worker's lease,
+  the authorization and each user's 24-hour sums itself.
 - **Separate database roles** for the workers, the ingress API and the signer service. A worker
   cannot insert a confirmation, so a compromised worker cannot approve its own transactions.
 - **Official bot.** Updates arrive by webhook into an ingress table unique on `bot_id + update_id`.
