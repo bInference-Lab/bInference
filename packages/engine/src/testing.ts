@@ -43,6 +43,8 @@ export type {
   MoneyRaceSubject,
   MoneyWriter,
 } from "./contracts/money-race-runs.js";
+export { storeKeyRaces } from "./contracts/store-key-races.js";
+export type { KeyRaceSubject, KeyRaceWriter } from "./contracts/store-key-race-runs.js";
 export { marketDataContract } from "./contracts/market-data-contract.js";
 export type { MarketDataHarness, MarketDataSubject } from "./contracts/market-data-contract.js";
 export { marketReadsContract } from "./contracts/market-reads-contract.js";

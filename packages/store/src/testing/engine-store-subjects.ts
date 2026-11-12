@@ -8,6 +8,8 @@ import {
   type CardVersionKey,
   fixtureId,
   type InstallStoreSubject,
+  type KeyRaceSubject,
+  type KeyRaceWriter,
   type NoticeStoreSubject,
   type QuestionSubject,
   type RiskCacheStoreSubject,
@@ -18,11 +20,13 @@ import {
   type WebhookAlertSubject,
   type WebhookRuleStoreSubject,
 } from "@binference/engine/testing";
+import { createSqliteAccessStore } from "../access/sqlite-access-store.js";
 import { createSqliteAgentInboxStore } from "../agent-inbox/sqlite-agent-inbox-store.js";
 import { createSqliteQuestionStore } from "../agent-inbox/sqlite-question-store.js";
 import { createSqliteAgentStore } from "../agents/sqlite-agent-store.js";
 import { createSqliteAlertStore } from "../alerts/sqlite-alert-store.js";
 import { createSqliteBridgeStore } from "../bridges/sqlite-bridge-store.js";
+import { createSqliteIdempotencyStore } from "../ingress/sqlite-idempotency-store.js";
 import { createSqliteInboxStore } from "../ingress/sqlite-inbox-store.js";
 import { createSqliteInstallStore } from "../install/sqlite-install-store.js";
 import { createSqliteIntentStore } from "../intents/sqlite-intent-store.js";
@@ -30,6 +34,7 @@ import { createSqliteTrackedWalletStore } from "../leaders/sqlite-tracked-wallet
 import { createSqliteNoticeStore } from "../notices/sqlite-notice-store.js";
 import { createSqliteRiskCacheStore } from "../risk-cache/sqlite-risk-cache-store.js";
 import { createSqliteScheduleStore } from "../schedules/sqlite-schedule-store.js";
+import { createSqliteDailySummaryStore } from "../summaries/sqlite-daily-summary-store.js";
 import type { StoreHost } from "../tasks/store-host.js";
 import { createSqliteWebhookAlertStore } from "../webhooks/sqlite-webhook-alert-store.js";
 import { createSqliteWebhookRuleStore } from "../webhooks/sqlite-webhook-rule-store.js";
@@ -158,5 +163,41 @@ export async function webhookRuleSubject(host: StoreHost): Promise<WebhookRuleSt
     agents: createSqliteAgentStore(host),
     ...(await plantAgentOn(host, 1)),
     other: await plantAgentOn(host, 2),
+  };
+}
+
+function keyRaceWriter(host: StoreHost): KeyRaceWriter {
+  return {
+    access: createSqliteAccessStore(host),
+    agents: createSqliteAgentStore(host),
+    idempotency: createSqliteIdempotencyStore(host),
+    inbox: createSqliteInboxStore(host),
+    install: createSqliteInstallStore(host),
+    bridges: createSqliteBridgeStore(host),
+    summaries: createSqliteDailySummaryStore(host),
+    rules: createSqliteWebhookRuleStore(host),
+    webhookAlerts: createSqliteWebhookAlertStore(host),
+  };
+}
+
+/**
+ * The key races' writers, one per host, all on one engine database, with agent 1, two intents of
+ * it and its webhook rules planted through the first.
+ */
+export async function keyRaceSubject(hosts: readonly StoreHost[]): Promise<KeyRaceSubject> {
+  const [first] = hosts;
+  if (first === undefined) {
+    throw new Error("A race needs a writer.");
+  }
+  const agent = await plantAgentOn(first, 1);
+  const intentIds = [
+    await createIntent(first, agent, 1),
+    await createIntent(first, agent, 2),
+  ] as const;
+  return {
+    writers: hosts.map((host) => keyRaceWriter(host)),
+    ...agent,
+    intentIds,
+    plant: async (rule) => plantWebhookRuleOn(first, agent.agentId, rule),
   };
 }
