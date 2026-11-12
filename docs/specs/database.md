@@ -534,7 +534,11 @@ both adapters.
 | A unique or partial index                                                       | The same index, with the same `WHERE`                                                     |
 | A trigger that raises (the ledger, the transcript)                              | A PL/pgSQL trigger that raises the same message                                           |
 | `notes_fts`, FTS5 with the trigram tokenizer                                    | A `pg_trgm` GIN index on `notes.text`                                                     |
-| `json_extract(x, '$.a.b')` in a query                                           | `x::jsonb #>> '{a,b}'`                                                                    |
+| `json_extract(x, '$.a.b')` in a query                                           | `replace(x, '\u0000', '\ufffd')::jsonb #>> '{a,b}'` (decision 0416)                       |
+| `json_array_length(x)` in a query                                               | `jsonb_array_length(replace(x, '\u0000', '\ufffd')::jsonb)`                               |
+
+The `replace` reads past the escape `\u0000`, which `jsonb` refuses and only a row stored before
+[decision 0416](../DECISIONS.md#d0416) can hold.
 
 `numeric(78,0)` reads back as the decimal text SQLite stores. Text compares byte by byte under
 `COLLATE "C"`, as on SQLite, so a sort, an equality and a prefix range match the same rows.

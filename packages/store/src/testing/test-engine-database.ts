@@ -2,6 +2,7 @@
 // stores' task thread. Nothing in production uses this file.
 import { type DatabaseDefinition, workerUrl } from "../databases/database-definition.js";
 import { engineDatabase } from "../databases/engine-database.js";
+import { readInsidersFieldTask, setInsidersTextTask } from "./old-json-text.js";
 import { plantAgentTask, plantWalletTask } from "./plant-agent.js";
 import { archiveAgentTask, plantCardsTask, plantWebhookRuleTask } from "./plant-rows.js";
 import { setTransactionStateTask } from "./set-transaction-state.js";
@@ -17,6 +18,8 @@ export const testEngineDatabase: DatabaseDefinition = {
     archiveAgentTask,
     plantWebhookRuleTask,
     plantCardsTask,
+    setInsidersTextTask,
+    readInsidersFieldTask,
   ],
 };
 

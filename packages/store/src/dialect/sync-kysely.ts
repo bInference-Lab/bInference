@@ -88,13 +88,19 @@ function sqliteJsonField(
   return sql<string | number | null>`json_extract(${sql.ref(reference)}, ${at})`;
 }
 
+// The JSON text a column holds, read as jsonb past an escaped U+0000, which jsonb refuses and only
+// a row written before decision 0416 can hold: U+FFFD reads in its place.
+function postgresJsonb(reference: string): RawBuilder<string> {
+  return sql<string>`replace(${sql.ref(reference)}, ${String.raw`\u0000`}, ${String.raw`\ufffd`})::jsonb`;
+}
+
 // Database spec, section 6.3: the text read as jsonb, and `#>>` for the text at the path.
 function postgresJsonField(
   reference: string,
   path: readonly string[],
 ): RawBuilder<string | number | null> {
   const at = `{${checkedPath(path).join(",")}}`;
-  return sql<string | null>`(${sql.ref(reference)}::jsonb #>> ${at})`;
+  return sql<string | null>`(${postgresJsonb(reference)} #>> ${at})`;
 }
 
 function sqliteJsonArrayLength(reference: string): RawBuilder<number> {
@@ -102,7 +108,7 @@ function sqliteJsonArrayLength(reference: string): RawBuilder<number> {
 }
 
 function postgresJsonArrayLength(reference: string): RawBuilder<number> {
-  return sql<number>`jsonb_array_length(${sql.ref(reference)}::jsonb)`;
+  return sql<number>`jsonb_array_length(${postgresJsonb(reference)})`;
 }
 
 function sqliteDecimalNumber(value: Expression<string>): RawBuilder<number | string> {

@@ -44,6 +44,10 @@ function insert(into: PostgresTaskConnection): { id: number } {
   return takeOne(kysely.insertInto("events").values({ id: 7, at: 1 }).returning("id"));
 }
 
+// The escapes of U+0000 and U+FFFD that a Postgres JSON read binds (decision 0416).
+const nulEscape = String.raw`\u0000`;
+const fffdEscape = String.raw`\ufffd`;
+
 describe("createSyncKysely on a Postgres task connection", () => {
   it("names the install's schema on every table and keeps aliases bare", () => {
     const { connection, sent } = recording({ rows: [] });
@@ -112,7 +116,7 @@ describe("createSyncKysely on a Postgres task connection", () => {
     expect(() => insert(empty)).toThrow(expect.objectContaining({ code: "store.no_row" }));
   });
 
-  it("reads a JSON field as text through jsonb, with the alias bare and the path bound", () => {
+  it("reads a JSON field as text through jsonb past an escaped U+0000, the path bound", () => {
     const { connection, sent } = recording({ rows: [] });
     const { kysely, execute, jsonField } = createSyncKysely<Tables>(connection);
 
@@ -126,10 +130,18 @@ describe("createSyncKysely on a Postgres task connection", () => {
     expect(sent).toStrictEqual([
       {
         sql:
-          'select ("order"."state"::jsonb #>> $1) as "leader" ' +
+          'select (replace("order"."state", $1, $2)::jsonb #>> $3) as "leader" ' +
           'from "engine_0190f1c23a4b7c5d8e6f000000000001"."orders" as "order" ' +
-          'where ("order"."state"::jsonb #>> $2) = $3',
-        parameters: ["{trigger,leader}", "{kind}", "copy"],
+          'where (replace("order"."state", $4, $5)::jsonb #>> $6) = $7',
+        parameters: [
+          nulEscape,
+          fffdEscape,
+          "{trigger,leader}",
+          nulEscape,
+          fffdEscape,
+          "{kind}",
+          "copy",
+        ],
       },
     ]);
   });
@@ -156,7 +168,7 @@ describe("createSyncKysely on a Postgres task connection", () => {
     expect(jsonField("order.state", ["leg2"])).toBeDefined();
   });
 
-  it("counts a JSON array through jsonb and compares decimal text as numeric", () => {
+  it("counts a JSON array through jsonb past an escaped U+0000 and compares decimal text as numeric", () => {
     const { connection, sent } = recording({ rows: [] });
     const { kysely, execute, jsonArrayLength, decimalNumber } =
       createSyncKysely<Tables>(connection);
@@ -174,10 +186,10 @@ describe("createSyncKysely on a Postgres task connection", () => {
       {
         sql:
           'select "fill"."id" from "engine_0190f1c23a4b7c5d8e6f000000000001"."fills" as "fill" ' +
-          'where jsonb_array_length("fill"."order_id"::jsonb) <= $1 ' +
-          'and cast("fill"."amount" as numeric) < cast($2 as numeric) ' +
+          'where jsonb_array_length(replace("fill"."order_id", $1, $2)::jsonb) <= $3 ' +
+          'and cast("fill"."amount" as numeric) < cast($4 as numeric) ' +
           'order by cast("fill"."amount" as numeric) desc',
-        parameters: [2, "10"],
+        parameters: [nulEscape, fffdEscape, 2, "10"],
       },
     ]);
   });
