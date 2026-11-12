@@ -12,12 +12,19 @@ import { prepareSharedSchema } from "../migrations/prepare-shared-schema.js";
 import type { MetaTables } from "../migrations/run-postgres-migrations.js";
 import type { StoreHost } from "../tasks/store-host.js";
 import { plantAgentOn } from "../testing/plant-agent.js";
-import { probeWorker, recordThenSleep, summarize } from "../testing/probe-database.js";
+import {
+  probeWorker,
+  recordThenSleep,
+  recordThenStall,
+  recordWrite,
+  summarize,
+} from "../testing/probe-database.js";
 import { createProbeInstall } from "../testing/probe-install.js";
 import { testAgentWorker } from "../testing/test-agent-database.js";
 import { testEngineWorker } from "../testing/test-engine-database.js";
 import { createTestPostgresDatabase, type TestPostgresDatabase } from "../testing/test-postgres.js";
 import { openPostgres, type PostgresDatabase } from "./open-postgres.js";
+import { postgresLimits } from "./pool-config.js";
 import { createPostgresAgentLeases } from "./postgres-agent-leases.js";
 import { createPostgresStoreHost } from "./postgres-store-host.js";
 import { type PostgresTaskThread, startPostgresTaskThread } from "./postgres-task-thread.js";
@@ -225,5 +232,32 @@ describe.runIf(url !== "")("the lease fence of a Postgres store host", () => {
     expect(okValue(await taking).fence).toBe(held.fence + 1);
     expect(ended).toStrictEqual(["write", "take"]);
     await expect(host.run(summarize, null, go())).resolves.toMatchObject({ rows: 1 });
+  });
+  it("loses a paused worker's locks to the idle limit, so its next write fails", async () => {
+    installs += 1;
+    const probe = await createProbeInstall(database, { sharedSchema, n: installs }, never);
+    const installId = probe.installId;
+    const held = okValue(await leasesOf(1_000).take({ installId, workerId: workerA }, go()));
+    const hostOf = (lease: HeldLease): StoreHost =>
+      createPostgresStoreHost({
+        database,
+        thread: threadOf("probe"),
+        schema: probe.schema,
+        lease: { sharedSchema, held: lease },
+      });
+    const paused = hostOf(held);
+    const settled: string[] = [];
+    // The task passes the check and writes, then sits idle in its transaction for four seconds,
+    // past the session's idle limit, which ends the session and frees its locks.
+    const stalling = paused.run(recordThenStall, { writer: 1, seq: 1, stallMs: 4_000 }, go());
+    const stalled = stalling.finally(() => settled.push("stalled"));
+    await passes(postgresLimits.idleInTransactionMs + 600);
+    const taken = await leasesOf(longLeaseMs).take({ installId, workerId: workerB }, go());
+    expect(settled).toStrictEqual([]);
+    const holder = hostOf(okValue(taken));
+    await expect(stalled).rejects.toMatchObject({ code: "store.postgres_unreachable" });
+    await expect(paused.run(recordWrite, { writer: 1, seq: 9 }, go())).rejects.toMatchObject(lost);
+    await expect(holder.run(summarize, null, go())).resolves.toMatchObject({ rows: 0 });
+    await expect(holder.run(recordWrite, { writer: 2, seq: 1 }, go())).resolves.toBe(1);
   });
 });

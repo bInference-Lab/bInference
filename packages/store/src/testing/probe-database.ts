@@ -186,12 +186,46 @@ export const recordAfterLock: StoreTask<ProbeWrite, number> = defineTask({
   },
 });
 
+/** A write that stalls between its two statements. */
+export interface ProbeStall extends ProbeWrite {
+  readonly stallMs: number;
+}
+
+/**
+ * Postgres only: records a write, then blocks its task thread for `stallMs` before it records the
+ * next, so its transaction sits idle on the server as a paused worker's does.
+ */
+export const recordThenStall: StoreTask<ProbeStall, number> = defineTask({
+  name: "probe.record_then_stall",
+  access: "write",
+  input: z.strictObject({
+    writer: z.number().int().nonnegative(),
+    seq: z.number().int().nonnegative(),
+    stallMs: z.number().int().positive(),
+  }),
+  output: z.number().int(),
+  run(database, input) {
+    recordWrite.handle(database, { writer: input.writer, seq: input.seq });
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, input.stallMs);
+    const next = { writer: input.writer, seq: input.seq + 1 };
+    return z.number().int().parse(recordWrite.handle(database, next));
+  },
+});
+
 /** The probe database: the engine's `meta` migration, the probe tables and the probe tasks. */
 export const probeDatabase: DatabaseDefinition = {
   name: "probe",
   synchronous: "normal",
   migrations: [meta, probeTables],
-  tasks: [recordWrite, failAfterWrite, summarize, sleepOnServer, recordThenSleep, recordAfterLock],
+  tasks: [
+    recordWrite,
+    failAfterWrite,
+    summarize,
+    sleepOnServer,
+    recordThenSleep,
+    recordAfterLock,
+    recordThenStall,
+  ],
 };
 
 /** The probe database's worker entry. */
