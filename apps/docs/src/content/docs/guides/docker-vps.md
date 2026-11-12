@@ -25,7 +25,8 @@ sudo usermod -aG docker binference-admin
 
 Membership in the `docker` group is as strong as `root` on that server, so give it to this user
 only. Log in as this user for every step below. Inside the container binference runs as its own
-user `binference`, ID 10001, never as `root`.
+user `binference`, ID 10001, never as `root`. The agent's commands run as another user,
+`binference-shell`, ID 10003, which cannot read binference's own files.
 
 ## 2. The firewall
 
@@ -118,10 +119,12 @@ docker run -d --name binference --restart unless-stopped \
 ```
 
 - `--user root --entrypoint binference-image` starts the image entry, the one process that runs as
-  root. It starts the engine as the `binference` user and a plugin launcher as
-  `binference-plugin`, a user of its own for community plugins, so a plugin can never stop or
-  inspect the engine. It takes no arguments and starts nothing else. `--init` lets Docker clean
-  up after a plugin that ends. Started without these flags, the engine runs and runs no plugin.
+  root. It starts the engine as the `binference` user, a plugin launcher as `binference-plugin`,
+  a user of its own for community plugins, so a plugin can never stop or inspect the engine, and
+  a shell launcher as `binference-shell`, which runs the agent's commands. It takes no arguments
+  and starts nothing else. `--init` lets Docker clean up after a plugin or a command that ends.
+  Started without these flags, the engine runs, but it runs no plugin and none of the agent's
+  commands.
 - `docker exec binference binference ...` and the health check run as root in this container,
   and each `binference` command drops to the `binference` user before it does anything, so
   nothing in your state folder is ever made by root.
@@ -169,6 +172,53 @@ docker restart binference
 
 Never put the engine's port behind a public proxy or Tailscale `funnel`.
 
+## The agent's commands
+
+In the image, the agent's [shell](/guides/shell-and-files/) runs each command as
+`binference-shell` through the shell launcher, in bash. That user cannot read binference's own
+files: the state folder, `/var/lib/binference/.binference/state`, belongs to the `binference` user
+alone, so the keys, the databases, `config.json5` and the CLI's token stay out of a command's
+reach. The image needs no bubblewrap, which Docker's default settings refuse anyway.
+
+The state volume holds three folders the image makes:
+
+| Folder       | What it holds                                                        |
+| ------------ | -------------------------------------------------------------------- |
+| `state/`     | The state folder, `binference`'s alone                               |
+| `workspace/` | The agent's workspace, shared by `binference` and `binference-shell` |
+| `shell/`     | The shell launcher's socket in `run/` and the shell user's `home/`   |
+
+What you see:
+
+- A command starts in `/var/lib/binference/.binference/shell/home`, the shell user's home, unless
+  the agent names another folder. `~` names that home for the shell and the file tools alike, and
+  `whoami` prints `binference-shell`.
+- The workspace sits beside the state folder, at `/var/lib/binference/.binference/workspace`. The
+  engine and the shell user share it through the `binference-shell` group, so each reads and
+  changes what the other makes there. Each agent's own folder in it, with its `STRATEGY.md`,
+  notes and skills, stays closed to commands.
+- `docker exec binference binference check` reports the `shell.wall` row as ok: the agent's
+  commands run as a user of their own. It warns when the shell launcher does not answer.
+
+### A folder you bind
+
+A new named volume takes the three folders with their owners and modes from the image. A folder
+you bind in its place needs them made by hand before the first start:
+
+```sh
+sudo install -d -m 0750 -o 10001 -g 10003 /srv/binference/volume
+sudo install -d -m 0700 -o 10001 -g 10001 /srv/binference/volume/state
+sudo install -d -m 2770 -o 10001 -g 10003 /srv/binference/volume/workspace
+sudo install -d -m 0750 -o 10001 -g 10003 /srv/binference/volume/shell
+sudo install -d -m 0750 -o 10003 -g 10001 /srv/binference/volume/shell/run
+sudo install -d -m 2770 -o 10003 -g 10003 /srv/binference/volume/shell/home
+```
+
+Then mount it with `-v /srv/binference/volume:/var/lib/binference/.binference` in place of the
+named volume. Without `shell/` and its two folders, the shell launcher cannot listen: every
+command the agent runs fails to start, and `binference check` warns that the shell launcher is
+not running.
+
 ## Logs
 
 ```sh
@@ -180,9 +230,9 @@ docker exec binference binference report  # a support bundle with no secret in i
 ## Backups
 
 binference makes an encrypted backup every night at 03:30 your time, sealed to your owner key, in
-the volume under `backups/`. Never copy the volume's database files while the engine runs: copy
-the backups. To keep a second copy on the server, mount a folder and point `backups.copyTo` at
-it:
+the volume under `state/backups/`. Never copy the volume's database files while the engine runs:
+copy the backups. To keep a second copy on the server, mount a folder and point `backups.copyTo`
+at it:
 
 ```sh
 sudo install -d -m 0700 -o 10001 -g 10001 /srv/binference/backups
@@ -244,8 +294,11 @@ docker start binference
 
 ## When something is wrong
 
-- **"binference cannot write to /var/lib/binference/.binference"**: the volume belongs to another
-  user or is mounted read-only. Use a named volume as above, or `chown -R 10001:10001` the folder
-  you bind.
+- **"binference cannot write to /var/lib/binference/.binference/state"**: the volume belongs to
+  another user or is mounted read-only. Use a named volume as above, or make the folders that
+  "A folder you bind" lists.
+- **The agent's commands fail to start**: the container started without
+  `--init --user root --entrypoint binference-image`, or a bound folder lacks `shell/`.
+  `docker exec binference binference check` warns that the shell launcher is not running.
 - **The console does not open**: check that the SSH tunnel runs and that the container uses
   `--network host`.

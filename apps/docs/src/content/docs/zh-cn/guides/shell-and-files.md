@@ -11,7 +11,8 @@ binference 的状态文件夹（默认为 `~/.binference`）中保存着密钥�
 
 - 在 macOS 上，Seatbelt 规则集把每条命令隔离开。命令也无法访问钥匙串。
 - 在 Linux 上，bubblewrap 把每条命令隔离开。请安装 `bwrap`。它需要非特权用户命名空间，有些发行版关闭了它，使用 Docker 默认设置的容器也会拒绝它，所以 binference 在信任隔离墙之前，先通过它运行一条什么也不做的命令。缺少 `bwrap` 或它被拒绝时，每条命令都会被拒绝，并附上说明原因的消息，`binference check` 会说明原因。
-- Windows 还没有隔离墙，所以在 Windows 上 Agent 的命令行工具是关闭的。
+- 在 Docker 镜像中，Agent 的命令以单独的用户 `binference-shell` 运行，该用户无法读取 binference 自己的文件，所以镜像不需要 bubblewrap。[服务器指南](/zh-cn/guides/docker-vps/)说明了这带来的变化。
+- Windows 还没有隔离墙，所以在 Windows 上 Agent 的命令行工具是关闭的；请改为在 Docker 镜像中运行 binference。
 
 命令从不会在没有隔离墙的情况下运行。你的用户拥有的其他一切仍在它的范围内：你的其他文件，以及网络。保护你资金的仍是[安全指南](/zh-cn/guides/safety/)中的卡片、限额和上限。
 

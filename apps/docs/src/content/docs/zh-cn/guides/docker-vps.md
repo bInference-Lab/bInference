@@ -20,7 +20,7 @@ sudo adduser --disabled-password binference-admin
 sudo usermod -aG docker binference-admin
 ```
 
-`docker` 组的成员在这台服务器上等同于 `root`，所以只把它给这个用户。下面每一步都用这个用户登录操作。在容器内，binference 以它自己的用户 `binference`（ID 10001）运行，从不以 `root` 运行。
+`docker` 组的成员在这台服务器上等同于 `root`，所以只把它给这个用户。下面每一步都用这个用户登录操作。在容器内，binference 以它自己的用户 `binference`（ID 10001）运行，从不以 `root` 运行。Agent 的命令以另一个用户 `binference-shell`（ID 10003）运行，该用户无法读取 binference 自己的文件。
 
 ## 2. 防火墙
 
@@ -99,7 +99,7 @@ docker run -d --name binference --restart unless-stopped \
   binference
 ```
 
-- `--user root --entrypoint binference-image` 启动镜像入口，它是唯一以 root 运行的进程。它以 `binference` 用户启动引擎，以 `binference-plugin` 用户启动插件启动器。`binference-plugin` 是社区插件专用的用户，因此插件永远无法停止或调试引擎。镜像入口不接受任何参数，也不启动其他进程。`--init` 让 Docker 清理结束的插件进程。不带这些参数启动时，引擎照常运行，但不运行任何插件。
+- `--user root --entrypoint binference-image` 启动镜像入口，它是唯一以 root 运行的进程。它以 `binference` 用户启动引擎，以 `binference-plugin` 用户启动插件启动器，以 `binference-shell` 用户启动运行 Agent 命令的命令行启动器。`binference-plugin` 是社区插件专用的用户，因此插件永远无法停止或调试引擎。镜像入口不接受任何参数，也不启动其他进程。`--init` 让 Docker 清理结束的插件进程和命令进程。不带这些参数启动时，引擎照常运行，但不运行任何插件，也不运行 Agent 的任何命令。
 - 在这个容器中，`docker exec binference binference ...` 和健康检查以 root 运行，每条 `binference` 命令都会先切换到 `binference` 用户再做任何事，因此你的状态文件夹中不会出现 root 创建的文件。
 - `binference-plugins` 保存插件的文件和每个插件自己的数据，与你的状态数据分开。
 
@@ -141,6 +141,39 @@ docker restart binference
 
 不要把引擎的端口放在公共代理或 Tailscale `funnel` 后面。
 
+## Agent 的命令
+
+在镜像中，Agent 的[命令行工具](/zh-cn/guides/shell-and-files/)通过命令行启动器，以 `binference-shell` 用户在 bash 中运行每条命令。该用户无法读取 binference 自己的文件：状态文件夹 `/var/lib/binference/.binference/state` 只属于 `binference` 用户，所以密钥、数据库、`config.json5` 和命令行的访问令牌都在命令的范围之外。镜像不需要 bubblewrap，何况 Docker 的默认设置本来也会拒绝它。
+
+状态卷中有镜像建好的三个文件夹：
+
+| 文件夹       | 存放什么                                                              |
+| ------------ | --------------------------------------------------------------------- |
+| `state/`     | 状态文件夹，只属于 `binference`                                       |
+| `workspace/` | Agent 的工作区，由 `binference` 和 `binference-shell` 共用            |
+| `shell/`     | `run/` 中命令行启动器的套接字，以及 `binference-shell` 用户的 `home/` |
+
+你会看到：
+
+- 除非 Agent 指定其他文件夹，命令从 `binference-shell` 用户的主文件夹 `/var/lib/binference/.binference/shell/home` 开始运行。对命令行工具和文件工具来说，`~` 都指这个主文件夹，`whoami` 会打印 `binference-shell`。
+- 工作区位于状态文件夹旁边，即 `/var/lib/binference/.binference/workspace`。引擎和 `binference-shell` 用户通过 `binference-shell` 组共用它，所以双方都能读取和修改对方在其中创建的文件。其中每个 Agent 自己的文件夹（包括它的 `STRATEGY.md`、笔记和技能）对命令保持关闭。
+- `docker exec binference binference check` 报告 `shell.wall` 一项正常：Agent 的命令以单独的用户运行。命令行启动器没有应答时，它会发出警告。
+
+### 你绑定的文件夹
+
+新建的命名卷会从镜像中取得这三个文件夹及其所有者和权限。用你绑定的文件夹代替命名卷时，需要在第一次启动前手动建好它们：
+
+```sh
+sudo install -d -m 0750 -o 10001 -g 10003 /srv/binference/volume
+sudo install -d -m 0700 -o 10001 -g 10001 /srv/binference/volume/state
+sudo install -d -m 2770 -o 10001 -g 10003 /srv/binference/volume/workspace
+sudo install -d -m 0750 -o 10001 -g 10003 /srv/binference/volume/shell
+sudo install -d -m 0750 -o 10003 -g 10001 /srv/binference/volume/shell/run
+sudo install -d -m 2770 -o 10003 -g 10003 /srv/binference/volume/shell/home
+```
+
+然后用 `-v /srv/binference/volume:/var/lib/binference/.binference` 代替命名卷挂载它。缺少 `shell/` 及其中的两个文件夹时，命令行启动器无法监听：Agent 运行的每条命令都无法启动，`binference check` 会警告命令行启动器没有运行。
+
 ## 日志
 
 ```sh
@@ -151,7 +184,7 @@ docker exec binference binference report  # 不含任何密钥的支持包
 
 ## 备份
 
-binference 每晚在你的时区 03:30 做一次加密备份，用你的所有者密钥封存，放在卷中的 `backups/` 下。引擎运行时不要复制卷中的数据库文件：请复制备份。要在服务器上保留第二份，挂载一个文件夹并让 `backups.copyTo` 指向它：
+binference 每晚在你的时区 03:30 做一次加密备份，用你的所有者密钥封存，放在卷中的 `state/backups/` 下。引擎运行时不要复制卷中的数据库文件：请复制备份。要在服务器上保留第二份，挂载一个文件夹并让 `backups.copyTo` 指向它：
 
 ```sh
 sudo install -d -m 0700 -o 10001 -g 10001 /srv/binference/backups
@@ -206,5 +239,6 @@ docker start binference
 
 ## 出现问题时
 
-- **“binference 无法写入 /var/lib/binference/.binference”**：卷属于另一个用户，或以只读方式挂载。请像上面那样使用命名卷，或对你绑定的文件夹执行 `chown -R 10001:10001`。
+- **“binference 无法写入 /var/lib/binference/.binference/state”**：卷属于另一个用户，或以只读方式挂载。请像上面那样使用命名卷，或按“你绑定的文件夹”一节建好其中列出的文件夹。
+- **Agent 的命令无法启动**：容器启动时没有带 `--init --user root --entrypoint binference-image`，或者绑定的文件夹缺少 `shell/`。`docker exec binference binference check` 会警告命令行启动器没有运行。
 - **控制台打不开**：检查 SSH 隧道是否在运行，以及容器是否使用了 `--network host`。
