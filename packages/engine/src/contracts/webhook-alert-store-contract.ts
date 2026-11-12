@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import type { ContractCheck } from "@binference/core/testing";
+import { assertRefusesNulText, type ContractCheck, withNul } from "@binference/core/testing";
 import type { InboxStore } from "../ingress/ports.js";
 import type { WebhookAlertStore } from "../webhooks/ports.js";
 import {
@@ -210,6 +210,19 @@ async function numbersAfterAPrune(harness: WebhookAlertStoreHarness): Promise<vo
   assert.equal(await alertsInInbox(subject), 2);
 }
 
+// An alert holding U+0000, in its body or its id, is refused before anything is stored
+// (decision 0416).
+async function refusesNulText(harness: WebhookAlertStoreHarness): Promise<void> {
+  const rule = ruleOf(1);
+  const subject = await planted(harness, [rule]);
+  const body = { text: withNul("BNBUSDT crossed 600") };
+  await assertRefusesNulText(async () => subject.alerts.take(alertOf(rule, { body }), live()));
+  const alertId = withNul("tv-1");
+  await assertRefusesNulText(async () => subject.alerts.take(alertOf(rule, { alertId }), live()));
+  assert.equal(await alertsInInbox(subject), 0);
+  assert.equal(await subject.alerts.prune(t0 + 1, live()), 0);
+}
+
 async function refusesAborted(harness: WebhookAlertStoreHarness): Promise<void> {
   const rule = ruleOf(1);
   const subject = await planted(harness, [rule]);
@@ -237,6 +250,7 @@ export function webhookAlertStoreContract(
     checkOn("records nothing for a rule that is not answering", self, goneWhenNotAnswering),
     checkOn("prunes the rows received before a time", self, prunesEvents),
     checkOn("never numbers a row again after a prune", self, numbersAfterAPrune),
+    checkOn("refuses an alert holding U+0000 and stores nothing", self, refusesNulText),
     checkOn("refuses every call on an aborted signal and stores nothing", self, refusesAborted),
   ];
 }

@@ -45,6 +45,13 @@ describe("the end of a command the agent left running", () => {
     expect(await shell.store.watched(live)).toStrictEqual([]);
   });
 
+  it("wakes the agent with U+FFFD in place of each U+0000 its command printed", async () => {
+    const shell = await leftRunning();
+    shell.runner.finish("serve", { output: "a\u0000b\n", exitCode: 1 });
+    await shell.clock.advance(0);
+    expect(shell.wokenTexts()[0]).toContain(`a${String.fromCodePoint(0xfffd)}b`);
+  });
+
   it("wakes nobody for a quiet success, unless the setting asks for it", async () => {
     const quiet = await leftRunning();
     await quiet.job({ job: await watchedJob(quiet), action: "poll" });

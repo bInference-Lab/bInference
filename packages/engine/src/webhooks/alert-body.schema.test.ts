@@ -31,6 +31,15 @@ describe("an alert's body", () => {
     expect(readAlertBody(marked)).toStrictEqual({ body: { text: "\ufeffA" } });
   });
 
+  it("keeps a body holding U+0000 in base64, as it came, and reads an escaped one's id with U+FFFD", () => {
+    expect(readAlertBody(utf8("BNB\u0000600"))).toStrictEqual({ body: { base64: "Qk5CADYwMA==" } });
+    const text = String.raw`{"id":"tv\u000042"}`;
+    expect(readAlertBody(utf8(text))).toStrictEqual({
+      body: { text },
+      alertId: `tv${String.fromCodePoint(0xfffd)}42`,
+    });
+  });
+
   it("keeps bytes that are not UTF-8 in base64, with no id", () => {
     expect(readAlertBody(new Uint8Array([0x7b, 0xff, 0x7d]))).toStrictEqual({
       body: { base64: "e/99" },

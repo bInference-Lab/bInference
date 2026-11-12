@@ -1,4 +1,5 @@
 import { Buffer } from "node:buffer";
+import { replaceNul } from "@binference/core";
 import { z } from "zod";
 import { maxWebhookAlertIdLength, type WebhookBody } from "./webhook-alert.js";
 
@@ -36,18 +37,20 @@ function idOf(text: string): string | undefined {
     return undefined;
   }
   const alertId = alertIdSchema.safeParse(holder.data["id"]);
-  return alertId.success ? alertId.data : undefined;
+  return alertId.success ? replaceNul(alertId.data) : undefined;
 }
 
 /**
  * Reads an alert's body (spec 1, section 2.2; decisions 0299 and 0333). Any body is an alert,
- * JSON or plain text: it is kept as its text when it is UTF-8, else as its bytes in base64. Of a
- * JSON object only its own `id` is read, when it is a string of 1 to 128 characters: the alert's
- * repeat key beside the body itself. Nothing else in the body is read.
+ * JSON or plain text: it is kept as its text when it is UTF-8 with no U+0000, else as its bytes in
+ * base64, so no store meets U+0000 and the bytes stay as they came (decision 0416). Of a JSON
+ * object only its own `id` is read, when it is a string of 1 to 128 characters, with U+FFFD in
+ * place of each U+0000: the alert's repeat key beside the body itself. Nothing else in the body
+ * is read.
  */
 export function readAlertBody(bytes: Readonly<Uint8Array>): AlertBody {
   const text = textOf(bytes);
-  if (text === undefined) {
+  if (text === undefined || text.includes("\u0000")) {
     return { body: { base64: Buffer.from(bytes).toString("base64") } };
   }
   const alertId = idOf(text);

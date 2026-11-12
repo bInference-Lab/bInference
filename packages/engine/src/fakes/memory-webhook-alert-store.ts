@@ -1,3 +1,4 @@
+import { refuseNulText } from "@binference/core";
 import type { InboxStore } from "../ingress/ports.js";
 import type { WebhookAlertStore } from "../webhooks/ports.js";
 import {
@@ -86,6 +87,7 @@ export function createMemoryWebhookAlertStore(options: {
   let events: readonly MemoryEventRow[] = [];
   let lastEvent = 0;
   const record = (draft: WebhookAlertDraft): WebhookTake => {
+    refuseNulText(draft, "The webhook alert");
     const row = rowOf(rules.get(draft.rule), draft, { events, id: lastEvent + 1 });
     if (row !== undefined) {
       lastEvent = row.id;

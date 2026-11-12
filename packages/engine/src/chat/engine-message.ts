@@ -1,4 +1,4 @@
-import { err, type Id, ok, type Result } from "@binference/core";
+import { err, type Id, ok, replaceNul, type Result } from "@binference/core";
 import type { ChatSurface, Empty, ProtocolErrorCode } from "@binference/protocol";
 import { type ChatRelayOptions, pushInbox } from "./chat-relay-parts.js";
 
@@ -22,7 +22,8 @@ export interface EngineMessage {
 
 /**
  * Starts the agent's next turn with a message from the engine, as an answer to its credential
- * request or the end of an image job does: stored in the agent inbox and pushed on `inbox`.
+ * request or the end of an image job does: stored in the agent inbox and pushed on `inbox`, with
+ * U+FFFD in place of each U+0000 in its words, such as a command's last lines (decision 0416).
  * Answers the session and turn it opens, or `protocol.busy` while the inbox is full or a deletion
  * holds the agent's chats for words the runtime asked for, and `agent.not_found` for an agent the
  * inbox does not hold. Other words wait while a deletion holds the agent.
@@ -47,7 +48,7 @@ export async function wakeWithMessage(
       kind: "inbox/message",
       turnId: turn,
       payload: {
-        text: message.text,
+        text: replaceNul(message.text),
         surface: message.surface,
         ...(message.outsideContent === true ? { outsideContent: true } : {}),
         ...(message.goalTurn === true ? { goalTurn: true } : {}),

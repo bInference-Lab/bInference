@@ -7,6 +7,7 @@ import { freeze, tapCard } from "../orders/test-orders.js";
 import { present } from "../surfaces/test-venues.js";
 import { ruleFillTermsHash } from "./rule-fill-terms-hash.js";
 import { alertTo, createdRule, type CreatedRule, testRuleRequest } from "./test-webhook-rules.js";
+import { webhookInboxPrefix } from "./webhook-alert.js";
 
 const live = { signal: new AbortController().signal };
 
@@ -98,6 +99,23 @@ describe("a webhook rule's fills", () => {
     const waiting = await test.stores.inbox.unhandled({ keyPrefix: "wh:", limit: 5 }, live);
     expect(waiting).toStrictEqual([]);
     expect(await fillIntentsOf(test)).toStrictEqual([]);
+  });
+
+  it("fills an alert whose body holds U+0000 as any other, its body kept as its bytes", async () => {
+    const test = await startFillEngine();
+    const created = await activeRule(test);
+
+    expect(await alertTo(test, created.url, "BNBUSDT\u0000crossed 600")).toBe("accepted");
+    const page = { keyPrefix: webhookInboxPrefix, limit: 10 };
+    expect(await test.stores.inbox.unhandled(page, live)).toMatchObject([
+      { payload: { body: { base64: "Qk5CVVNEVABjcm9zc2VkIDYwMA==" } } },
+    ]);
+    await test.engine.fillWebhookAlerts(live);
+
+    const filled = await fillIntentsOf(test);
+    expect(filled.map(({ kind, state }) => ({ kind, state }))).toStrictEqual([
+      { kind: "sell", state: "paper_filled" },
+    ]);
   });
 
   it("fills nothing for a replayed alert: the same body is a repeat, and a run takes each alert once", async () => {
