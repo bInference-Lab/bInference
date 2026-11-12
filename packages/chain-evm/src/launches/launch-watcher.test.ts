@@ -130,7 +130,12 @@ function oddLaunches(request: LaunchLogsRequest): LaunchesFound {
     launches: [
       { ...base, token: elsewhere },
       { ...base, token: tokenRef(2), index: 999 },
-      { ...base, token: tokenRef(3), name: "N".repeat(300) },
+      {
+        ...base,
+        token: tokenRef(3),
+        symbol: "PAD\u0000\u0000",
+        name: `N\u0000${"N".repeat(300)}`,
+      },
       { ...base, token: tokenRef(4), complete: unread },
     ],
     changes: [],
@@ -409,14 +414,17 @@ describe("launch watcher", () => {
     expect(refusing.book.stored?.block).toBe(refused - 1n);
   });
 
-  it("passes over a launch a launchpad names off its chain or at no log, and keeps a launch's words short", async () => {
+  it("passes over a launch a launchpad names off its chain or at no log, and keeps a launch's words short and free of U+0000", async () => {
     const odd: LaunchReader = { launchEvents: [madeTopic], readLaunches: oddLaunches };
     const feed = newFeed(undefined, { reader: odd, callTimeoutMs: 300 });
     await caughtUp(feed);
     feed.fake.mine([launchTx(1)]);
     await caughtUp(feed);
     expect(toldTokens(feed)).toStrictEqual([tokenRef(3), tokenRef(4)]);
-    expect(toldLaunch(feed, 3).name).toBe("N".repeat(200));
+    expect(toldLaunch(feed, 3)).toMatchObject({
+      symbol: "PAD",
+      name: `N${String.fromCodePoint(0xfffd)}${"N".repeat(198)}`,
+    });
     expect(toldLaunch(feed, 4).symbol).toBeUndefined();
   });
 

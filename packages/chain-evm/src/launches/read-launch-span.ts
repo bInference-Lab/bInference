@@ -17,6 +17,7 @@ import { blockHeaderSchema, type ChainLog } from "../leaders/chain-block.schema.
 import { requestResult } from "../rpc/request-result.js";
 import type { RpcFailover } from "../rpc/rpc-call.js";
 import { accountAddressOn } from "../sending/account-address-on.js";
+import { onChainText } from "../tokens/on-chain-text.js";
 import { askLogs, type LogReader } from "../watching/ask-logs.js";
 import { readAggregate } from "../watching/read-aggregate.js";
 
@@ -221,8 +222,8 @@ function feedLaunchOf(found: Found, facts: LaunchFacts, launchedAtMs: number): F
   return {
     ...launch,
     ...facts,
-    ...(symbol === undefined ? {} : { symbol: symbol.slice(0, maxWordLength) }),
-    ...(name === undefined ? {} : { name: name.slice(0, maxWordLength) }),
+    ...(symbol === undefined ? {} : { symbol: onChainText(symbol).slice(0, maxWordLength) }),
+    ...(name === undefined ? {} : { name: onChainText(name).slice(0, maxWordLength) }),
     graduated: launch.graduated || facts.graduated === true,
     insiders: launch.insiders.slice(0, maxInsiders),
     launchpad: found.launchpad,

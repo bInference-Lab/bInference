@@ -26,7 +26,8 @@ type Answers = Partial<Readonly<Record<Field, Hex | "burn">>>;
 
 // Token 1 is a plain token; token 2 answers its symbol and name as `bytes32`; token 3 has no name;
 // token 4 has no symbol; token 5 answers decimals past a uint8; token 6 answers an empty symbol;
-// token 7 burns its gas; token 8 answers a symbol of 100 characters with a zero byte in it.
+// token 7 burns its gas; token 8 answers a symbol of 100 characters with a zero byte in it and
+// zero bytes after it; token 10 answers a `bytes32` name with a zero byte inside its padding.
 const tokens = new Map<Address, Answers>([
   [at(1), { symbol: text("XVS"), name: text("Venus"), decimals: word(18n) }],
   [
@@ -42,7 +43,15 @@ const tokens = new Map<Address, Answers>([
   [at(5), { symbol: text("BIG"), name: text("Big"), decimals: word(256n) }],
   [at(6), { symbol: text(""), name: text("Empty"), decimals: word(18n) }],
   [at(7), { symbol: "burn", decimals: word(18n) }],
-  [at(8), { symbol: text(`L\0${"O".repeat(99)}`), name: text("Long"), decimals: word(9n) }],
+  [at(8), { symbol: text(`L\0${"O".repeat(99)}\0\0`), name: text("Long"), decimals: word(9n) }],
+  [
+    at(10),
+    {
+      symbol: text("AB"),
+      name: stringToHex("A\0B", { size: 32 }),
+      decimals: word(18n),
+    },
+  ],
 ]);
 
 function answer({ target, callData }: FakeRead): Hex | undefined | "burn" {
@@ -103,14 +112,20 @@ describe("token facts", () => {
     expect([...facts.keys()]).toStrictEqual([at(1)]);
   });
 
-  it("drops zero bytes and keeps 64 characters of a symbol", async () => {
+  it("drops trailing zero bytes, puts U+FFFD for one inside, and keeps 64 characters of a symbol", async () => {
     const node = createFakeEvmNode({ multicall, head: 1n, answer });
-    const facts = await readTokenFacts(rpcOver(node), { multicall, tokens: [at(8)], signal });
-    expect(facts.get(at(8))).toStrictEqual({
-      symbol: `L${"O".repeat(63)}`,
-      name: "Long",
-      decimals: 9,
+    const facts = await readTokenFacts(rpcOver(node), {
+      multicall,
+      tokens: [at(8), at(10)],
+      signal,
     });
+    const fffd = String.fromCodePoint(0xfffd);
+    expect(facts).toStrictEqual(
+      new Map([
+        [at(8), { symbol: `L${fffd}${"O".repeat(62)}`, name: "Long", decimals: 9 }],
+        [at(10), { symbol: "AB", name: `A${fffd}B`, decimals: 18 }],
+      ]),
+    );
   });
 
   it("asks nothing for no tokens, and rejects once the signal aborted", async () => {

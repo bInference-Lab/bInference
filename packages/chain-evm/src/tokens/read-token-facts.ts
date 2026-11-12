@@ -13,6 +13,7 @@ import { hexSchema } from "../rpc/evm-wire.schema.js";
 import type { RpcFailover } from "../rpc/rpc-call.js";
 import { readAggregate } from "../watching/read-aggregate.js";
 import { batchGasOf, readIsolated } from "../watching/read-isolated.js";
+import { onChainText } from "./on-chain-text.js";
 import { decimalsOf } from "./read-token-decimals.js";
 
 /**
@@ -57,15 +58,16 @@ function abiText(field: TextField, data: Hex): string | undefined {
   }
 }
 
-// The text an answer holds, as an ABI string or a `bytes32`, with its zero bytes dropped and cut
-// to what is kept, in code points; none for an empty one or any other answer.
+// The text an answer holds, as an ABI string or a `bytes32`, with its trailing zero bytes dropped,
+// U+FFFD in place of one inside it, and cut to what is kept, in code points; none for an empty one
+// or any other answer.
 function textOf(field: TextField, answer: ReadAnswer): string | undefined {
   const parsed = hexSchema.safeParse(answer);
   if (!parsed.success) {
     return undefined;
   }
-  const text = (abiText(field, parsed.data) ?? bytes32Text(parsed.data))?.replaceAll("\0", "");
-  const kept = Array.from(text ?? "")
+  const read = abiText(field, parsed.data) ?? bytes32Text(parsed.data);
+  const kept = Array.from(read === undefined ? "" : onChainText(read))
     .slice(0, keptLength[field])
     .join("");
   return kept.trim() === "" ? undefined : kept;
