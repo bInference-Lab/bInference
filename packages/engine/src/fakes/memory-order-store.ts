@@ -9,7 +9,6 @@ import type {
   OrderDraft,
   OrderMove,
   OrderMoveRefusal,
-  OrderQuery,
   OrderRecord,
 } from "../orders/order-record.js";
 import { isOrderEnded } from "../orders/order-states.js";
@@ -18,6 +17,7 @@ import type { MemoryAgentStore } from "./memory-agent-store.js";
 import { byCreation, constraintFault, memoryCall } from "./memory-call.js";
 import type { MemoryInstallStore } from "./memory-install-store.js";
 import { createMemoryOrderFills, type MemoryOrderFills } from "./memory-order-fills.js";
+import { matchesOrderQuery } from "./memory-order-query.js";
 import { rowReadsOf } from "./memory-order-row-reads.js";
 import { createMemoryTracking, type MemoryTracking } from "./memory-tracking.js";
 
@@ -235,27 +235,6 @@ function landFill(
   return ok(structuredClone(checked.value));
 }
 
-function isAfter(order: OrderRecord, after: OrderQuery["after"]): boolean {
-  return (
-    after === undefined ||
-    order.createdAtMs > after.createdAtMs ||
-    (order.createdAtMs === after.createdAtMs && order.id > after.id)
-  );
-}
-
-// Each filter of the query the order passes; an absent filter passes every order.
-function matches(order: OrderRecord, query: OrderQuery): boolean {
-  const { agentId, walletId, isPaper, expiresByMs } = query;
-  return [
-    query.states.includes(order.state),
-    agentId === undefined || order.agentId === agentId,
-    walletId === undefined || order.walletId === walletId,
-    isPaper === undefined || order.isPaper === isPaper,
-    expiresByMs === undefined || order.expiresAtMs <= expiresByMs,
-    isAfter(order, query.after),
-  ].every(Boolean);
-}
-
 // The leaders of the live copy orders of agents not archived.
 function leadersOf(orders: Orders, options: MemoryOrderStoreOptions): ReadonlySet<AccountRef> {
   return new Set(
@@ -331,7 +310,7 @@ export function createMemoryOrderStore(options: MemoryOrderStoreOptions): Memory
       memoryCall(call, () =>
         structuredClone(
           [...orders.values()]
-            .filter((order) => matches(order, query))
+            .filter((order) => matchesOrderQuery(order, query))
             .toSorted(byCreation)
             .slice(0, query.limit),
         ),
