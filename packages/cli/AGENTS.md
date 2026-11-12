@@ -47,6 +47,10 @@ Rules for this package:
   TypeScript source. Each test stops its engine through the shutdown sequence. What only separate
   processes prove, such as the engine lock, runs `src/main.ts` as a process of its own
   (`engine-process.test.ts`).
+- `src/e2e/served-operations.test.ts` probes every protocol operation on the engine
+  `binference start` runs, with a token of every scope and args no schema takes, so no handler
+  runs: each is served, or named there with why, and no surface's code names a named one. A new
+  operation is served in the same change or named there.
 - Fork tests in `src/fork/` run engine steps over the real chain parts they are composed from,
   such as the simulation check over the EVM transaction simulator, on the fork suite's BSC fork
   through `@binference/chain-evm/fork`. `self-hosted-start.test.ts` runs `binference start

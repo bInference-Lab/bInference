@@ -69,6 +69,10 @@ version for one stable release.
   refusal with its code, and the caller without the scope.
 - A Telegram fast command may call it only when its scope is `read` or `confirm`
   (`ownerChatOperations`).
+- The self-hosted engine serves every operation of the table but those named, each with why, in
+  `packages/cli/src/e2e/served-operations.test.ts`, which probes the engine `binference start`
+  runs. A new operation is served in the same change, or named there; no surface may call a named
+  one. A surface's fake that answers it proves nothing about the engine.
 
 ## 6. Surfaces
 
@@ -80,6 +84,7 @@ version for one stable release.
 
 ```sh
 pnpm vitest run packages/protocol packages/engine/src/operations --maxWorkers=2
+pnpm vitest run packages/cli/src/e2e/served-operations.test.ts --maxWorkers=2
 pnpm check:protocol-compat
 pnpm check:i18n
 ```
