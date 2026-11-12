@@ -53,7 +53,7 @@ describe("the binference command tree", () => {
       "unlock",
       "logs",
       "approval",
-      "chat",
+      "delete",
       "live",
       "paper",
       "identity",
@@ -119,6 +119,26 @@ describe("the binference command tree", () => {
       expect(flags).toContain("--json");
       expect(flags).toContain("--yes");
     }
+  });
+
+  it("keeps chat a command of its own beside chat delete, each with its --agent", async () => {
+    const chosen: ChosenCommand[] = [];
+    const parse = async (argv: readonly string[]) =>
+      buildProgram({
+        version: "1",
+        message: (key) => key,
+        host: { out: () => undefined, err: () => undefined },
+        choose: (command) => chosen.push(command),
+      }).parseAsync([...argv], { from: "user" });
+    const agent = "agt_0190f1c2-3a4b-7c5d-8e6f-000000000001";
+    await parse(["chat", "--agent", agent]);
+    await parse(["chat", "delete", "--agent", agent, "--yes"]);
+    await parse(["chat", "delete", "--json"]);
+    expect(chosen).toStrictEqual([
+      { name: "chat", options: { json: false, yes: false, agent } },
+      { name: "chatDelete", options: { json: false, yes: true, agent } },
+      { name: "chatDelete", options: { json: true, yes: false } },
+    ]);
   });
 
   it("gives rescue its own --json and rescue set its --yes", async () => {

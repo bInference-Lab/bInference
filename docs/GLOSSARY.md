@@ -679,7 +679,7 @@ check` tries it as `network.proxy`.
   `NOTICES.md` (third-party notices).
 - **commands**: `binference init`, `start`, `status`, `health`, `logs`, `approval`, `confirm`,
   `deny`, `wallet list`, `wallet address`, `wallet create`, `wallet create --launch`, `wallet create --bridge`, `wallet export`, `ceiling`, `ceiling set`, `check`, `check --fix`, `check security`, `report`,
-  `console`, `chat`, `mcp`, `live`, `paper`, `freeze`, `unfreeze`, `rescue`, `rescue set`, `rescue cancel`,
+  `console`, `chat`, `chat delete`, `mcp`, `live`, `paper`, `freeze`, `unfreeze`, `rescue`, `rescue set`, `rescue cancel`,
   `safety status`, `address list`, `address add`, `address remove`, `webhook list`,
   `webhook create`, `webhook events`, `webhook rotate`, `webhook delete`, `limit`, `limit set`,
   `limit cancel`, `telegram pair`, `unlock`, `expose`, `expose --webhooks`, `expose --off`, `uninstall`, `uninstall --state`, `reset`,
@@ -845,6 +845,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | support bundle                              | 诊断包                   | `binference report`          |
 | uninstall                                   | 卸载                     | `binference uninstall`       |
 | reset (the local state)                     | 重置                     | `binference reset`           |
+| delete chats                                | 删除对话                 | `binference chat delete`     |
 | background service                          | 后台服务                 | `binference start`           |
 | telemetry, usage counts                     | 使用统计, 使用次数统计   | `telemetry.enabled`, opt-in  |
 | API address, base URL (of a model provider) | 接口地址                 | Where its API answers        |

@@ -106,6 +106,14 @@ description: "binference 的每个命令及其参数和选项。"
 
 - `--agent <id>`: Agent 的 ID；不填时使用唯一的 Agent。
 
+### `binference chat delete`
+
+删除一个 Agent 的对话，或每个 Agent 的对话。
+
+选项：
+
+- `--agent <id>`: Agent 的 ID；不填时使用唯一的 Agent。
+
 ## `binference live`
 
 把 Agent 切换到实盘：它的交易使用其钱包中的真实资金。

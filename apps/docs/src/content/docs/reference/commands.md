@@ -106,6 +106,14 @@ Options:
 
 - `--agent <id>`: The agent's id; the only agent when left out.
 
+### `binference chat delete`
+
+Delete an agent's chats, or every agent's.
+
+Options:
+
+- `--agent <id>`: The agent's id; the only agent when left out.
+
 ## `binference live`
 
 Switch the agent to live: its trades use real money from its wallet.

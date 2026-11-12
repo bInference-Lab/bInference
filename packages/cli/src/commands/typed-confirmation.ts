@@ -4,7 +4,7 @@ import type { CommandRun } from "../program/command-run.js";
 /** What a command that removes local state asks before it starts: its messages and its plan. */
 export interface TypedConfirmation {
   /** The `cli` messages' area: `<area>.phrase`, `<area>.title`, `<area>.ask` and `<area>.needsYes`. */
-  readonly area: "uninstall" | "reset";
+  readonly area: "uninstall" | "reset" | "chatDelete";
   /** The `cli` message that says what the command does, shown above the question. */
   readonly planKey: string;
   /** The values the plan names, such as the state folder. */

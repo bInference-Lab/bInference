@@ -10,6 +10,7 @@ import { runBackupRestore } from "../commands/backup-restore-command.js";
 import { runCardAnswer } from "../commands/card-answer-command.js";
 import { runCeiling, runCeilingSet } from "../commands/ceiling-command.js";
 import { runChat } from "../commands/chat-command.js";
+import { runChatDelete } from "../commands/chat-delete-command.js";
 import { runCheck } from "../commands/check-command.js";
 import { runConfigGet, runConfigSet } from "../commands/config-command.js";
 import { runConsole } from "../commands/console-command.js";
@@ -157,6 +158,7 @@ const runners: { readonly [N in ChosenCommand["name"]]: Runner<N> } = {
   telegramPair: async (context) => runTelegramPair(context),
   console: async (context) => runConsole(context),
   chat: async (context, chosen) => runChat(context, chosen.options),
+  chatDelete: async (context, chosen) => runChatDelete(context, chosen.options),
   agentIdentity: runAgentIdentity,
   backupCreate: async (context) => runBackupCreate(context),
   backupList: async (context) => runBackupList(context),

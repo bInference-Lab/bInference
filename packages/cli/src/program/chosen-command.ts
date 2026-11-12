@@ -48,6 +48,7 @@ export type ChosenCommand =
     }
   | { readonly name: "live" | "paper" | "walletList"; readonly options: AgentFlags }
   | { readonly name: "chat"; readonly options: AgentFlags }
+  | { readonly name: "chatDelete"; readonly options: AgentFlags }
   | { readonly name: "agentIdentity"; readonly options: AgentIdentityFlags }
   | {
       readonly name: "walletAddress" | "walletExport" | "ceiling";
