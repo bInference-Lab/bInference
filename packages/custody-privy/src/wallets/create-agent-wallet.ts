@@ -1,7 +1,7 @@
 import type { Result } from "@binference/core";
 import type { CallOptions, PrivyApi } from "../privy/privy-api.js";
 import type { PrivyId } from "../privy/privy-records.js";
-import type { PrivyWallet } from "../signing/privy-owner-signer.js";
+import type { PrivyWallet } from "../signing/privy-wallet.js";
 import { type ReadBackProblem, readBackWallet, type WalletExpectation } from "./read-back.js";
 
 /** A new agent wallet: the quorums of the owner and agent keys, and what the wallet must be. */

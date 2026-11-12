@@ -1,41 +1,16 @@
-import {
-  type AccountRef,
-  accountRefParts,
-  accountRefSchema,
-  type ChainRef,
-  chainRefParts,
-  type PrivyRequest,
-  type SignedTx,
-  type Signer,
-  type SignerProcess,
-  type SignRequest,
-  type WalletRole,
+import type {
+  AccountRef,
+  PrivyRequest,
+  SignedTx,
+  Signer,
+  SignerProcess,
+  SignRequest,
 } from "@binference/chain";
-import {
-  createEvmSigningScheme,
-  type DecodedEvmTransaction,
-  decodeEvmTransaction,
-  parseEvmAddress,
-} from "@binference/chain-evm";
-import { BinferenceError, err, type Id, ok, type Result } from "@binference/core";
+import { BinferenceError, err, ok, type Result } from "@binference/core";
 import type { PrivyApi } from "../privy/privy-api.js";
-import type { PrivyId } from "../privy/privy-records.js";
+import { checkedSigned, isOnItsChain, readableTransaction } from "./checked-transaction.js";
 import { privyTransaction } from "./privy-transaction.js";
-
-/** An agent wallet as Privy holds it, checked by the read-back when it was made. */
-export interface PrivyWallet {
-  /** Privy's id of the wallet. */
-  readonly id: PrivyId;
-  /** The wallet's EVM address, checksummed. */
-  readonly address: string;
-  /** The chains its ceiling enables. */
-  readonly chains: readonly ChainRef[];
-  /**
-   * The wallet's role: `launch` for the agent's launch wallet (decision 0217), `bridge` for its
-   * bridge wallet (decision 0303); absent for a main wallet.
-   */
-  readonly role?: WalletRole;
-}
+import { accountOf, type PrivyWallet, signingWallet, type WalletLookup } from "./privy-wallet.js";
 
 /** What the `privy-owner` adapter is built from. */
 export interface PrivyOwnerSignerOptions {
@@ -43,25 +18,10 @@ export interface PrivyOwnerSignerOptions {
   /** The signer that holds the agent key and authorizes each request. */
   readonly signerProcess: SignerProcess;
   /** The Privy wallet behind an agent wallet, as the store keeps it; undefined for no wallet. */
-  readonly walletOf: (wallet: Id<"wal">) => PrivyWallet | undefined;
+  readonly walletOf: WalletLookup;
 }
 
 const signaturePattern = /^[A-Za-z0-9+/]{16,200}={0,2}$/;
-
-function accountOf(wallet: PrivyWallet, chain: ChainRef): AccountRef | undefined {
-  return wallet.chains.includes(chain)
-    ? accountRefSchema.parse(`${chain}:${wallet.address}`)
-    : undefined;
-}
-
-// The sender is the wallet's address on the transaction's chain, in any case of its hex.
-function isTheWallets(wallet: PrivyWallet, request: SignRequest): boolean {
-  const { tx } = request;
-  const sender = parseEvmAddress(accountRefParts(tx.from).address);
-  return (
-    accountRefParts(tx.from).chain === tx.chain && sender.ok && sender.value === wallet.address
-  );
-}
 
 function checkedSignature(signature: string): string {
   if (!signaturePattern.test(signature)) {
@@ -71,18 +31,6 @@ function checkedSignature(signature: string): string {
     });
   }
   return signature;
-}
-
-function readable(request: SignRequest): DecodedEvmTransaction {
-  const decoded = decodeEvmTransaction(request.tx);
-  if (!decoded.ok) {
-    throw new BinferenceError({
-      code: "custody.transaction_unreadable",
-      message: "The transaction to sign is not an unsigned EVM type 2 call.",
-      details: { intent: request.intent },
-    });
-  }
-  return decoded.value;
 }
 
 /** The parts one signing call shares: the wallet, its account on the transaction's chain. */
@@ -122,22 +70,10 @@ async function authorize(
   return answer.ok ? ok(checkedSignature(answer.value)) : err("refused");
 }
 
-function verified(request: SignRequest, raw: string): SignedTx {
-  const signed: SignedTx = { chain: request.tx.chain, raw };
-  if (!createEvmSigningScheme().verify(request.tx, signed).ok) {
-    throw new BinferenceError({
-      code: "custody.signed_other_transaction",
-      message: "Privy answered a transaction other than the one asked, or signed by another key.",
-      details: { intent: request.intent },
-    });
-  }
-  return signed;
-}
-
 async function signWith(signing: Signing): Promise<Result<SignedTx, "unknown_wallet" | "refused">> {
   const { options, request, wallet, signal } = signing;
-  const decoded = readable(request);
-  if (chainRefParts(request.tx.chain).reference !== String(decoded.chainId)) {
+  const decoded = readableTransaction(request);
+  if (!isOnItsChain(request, decoded)) {
     return err("refused");
   }
   const raw = await options.api.signTransaction(
@@ -148,7 +84,7 @@ async function signWith(signing: Signing): Promise<Result<SignedTx, "unknown_wal
     },
     { signal },
   );
-  return raw.ok ? ok(verified(request, raw.value)) : raw;
+  return raw.ok ? ok(checkedSigned(request, raw.value).signed) : raw;
 }
 
 /**
@@ -161,23 +97,12 @@ async function signWith(signing: Signing): Promise<Result<SignedTx, "unknown_wal
  */
 export function createPrivyOwnerSigner(options: PrivyOwnerSignerOptions): Signer {
   return {
-    async account(wallet, chain, { signal }) {
-      signal.throwIfAborted();
-      const held = options.walletOf(wallet);
-      const account = held === undefined ? undefined : accountOf(held, chain);
-      return Promise.resolve(account === undefined ? err("unknown_wallet") : ok(account));
-    },
+    account: async (wallet, chain, { signal }) =>
+      accountOf(options.walletOf, { wallet, chain, signal }),
     async signTransaction(request, { signal }) {
       signal.throwIfAborted();
-      const wallet = options.walletOf(request.wallet);
-      if (wallet === undefined) {
-        return err("unknown_wallet");
-      }
-      const account = accountOf(wallet, request.tx.chain);
-      if (account === undefined || !isTheWallets(wallet, request)) {
-        return err("refused");
-      }
-      return signWith({ options, request, wallet, account, signal });
+      const signing = signingWallet(options.walletOf, request);
+      return signing.ok ? signWith({ options, request, ...signing.value, signal }) : signing;
     },
   };
 }

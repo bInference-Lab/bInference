@@ -4,7 +4,7 @@ import type { Ceiling } from "../ceiling/ceiling.js";
 import { policyRuleJson } from "../ceiling/policy-rule.js";
 import type { CallOptions, PrivyApi } from "../privy/privy-api.js";
 import type { KeyQuorum, PrivyId, PrivyPolicy, WalletRecord } from "../privy/privy-records.js";
-import type { PrivyWallet } from "../signing/privy-owner-signer.js";
+import type { PrivyWallet } from "../signing/privy-wallet.js";
 import { ruleTexts } from "./policy-rules.schema.js";
 
 /**

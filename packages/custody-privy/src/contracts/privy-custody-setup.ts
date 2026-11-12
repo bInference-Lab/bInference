@@ -20,8 +20,9 @@ import { policyRuleJson } from "../ceiling/policy-rule.js";
 import { readCeiling } from "../ceiling/read-ceiling.js";
 import type { PrivyApi } from "../privy/privy-api.js";
 import type { PrivyId } from "../privy/privy-records.js";
-import { createPrivyOwnerSigner, type PrivyWallet } from "../signing/privy-owner-signer.js";
+import { createPrivyOwnerSigner } from "../signing/privy-owner-signer.js";
 import { privyTransaction } from "../signing/privy-transaction.js";
+import type { PrivyWallet } from "../signing/privy-wallet.js";
 import {
   testCapPlan,
   testCaps,

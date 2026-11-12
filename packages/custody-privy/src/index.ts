@@ -70,7 +70,8 @@ export type {
 } from "./privy/wallet-export.js";
 export type { PrivyApiOptions } from "./privy/privy-client.js";
 export { createPrivyOwnerSigner } from "./signing/privy-owner-signer.js";
-export type { PrivyOwnerSignerOptions, PrivyWallet } from "./signing/privy-owner-signer.js";
+export type { PrivyOwnerSignerOptions } from "./signing/privy-owner-signer.js";
+export type { PrivyWallet } from "./signing/privy-wallet.js";
 export { createAgentWallet } from "./wallets/create-agent-wallet.js";
 export type { AgentWalletRequest } from "./wallets/create-agent-wallet.js";
 export { planCeilingCalls, setCeilingCalls, writePlannedEdits } from "./wallets/ceiling-calls.js";
