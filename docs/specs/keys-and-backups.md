@@ -575,7 +575,9 @@ undone.
 ## 8. bInference Cloud: the signer service
 
 Approved by the owner on 2026-11-12, on decisions [0419](../DECISIONS.md#d0419) to
-[0425](../DECISIONS.md#d0425). Sections 1 to 7 stay as they are. On bInference Cloud one signer service signs every Cloud wallet's transactions in the place
+[0425](../DECISIONS.md#d0425); decisions [0426](../DECISIONS.md#d0426) and
+[0427](../DECISIONS.md#d0427) amend sections 8.4 and 8.7. Sections 1 to 7 stay as they
+are. On bInference Cloud one signer service signs every Cloud wallet's transactions in the place
 of section 5's signer process ([ARCHITECTURE.md section 30](../ARCHITECTURE.md#section-30)). Its
 code lives outside the public repo; this section is what it does, so the public Cloud client and a
 fake of the service can be built from it alone.
@@ -747,7 +749,10 @@ app-wide caps stay one Cloud-wide backstop ([decision 0422](../DECISIONS.md#d042
   install's reservations of the window for each sum the transaction counts towards, refuses with
   `over_sums` when one would pass its cap, and writes the reservation before the key signs, so a
   crash never signs uncounted. `roomAtMs` says when enough of the window's reservations age out
-  for this one to pass.
+  for this one to pass. Only what Privy's caps refuse is refused: a call whose native value would
+  pass the chain's sum, and an approval that would pass its token's. A send to the rescue address
+  or a saved address, and a cancel, are never refused, so a rescue always leaves
+  ([decision 0426](../DECISIONS.md#d0426)).
 - **One nonce, one reservation.** A reservation belongs to one wallet's nonce on one chain and to
   one intent's step. A repeat of the request, a speed-up or the step's cancel reuses it, counting
   the larger of the two amounts of each sum. Another intent's step at that nonce is refused with
@@ -848,10 +853,11 @@ bInference Cloud's breaker freezes every Cloud agent at once ([ARCHITECTURE.md s
   past the authorization's end; the engine then ends the intent as a step it could not sign (spec
   6, section 7, item 4).
 - **What each outcome does** in the worker: `signed` is stored, then sent; `refused` ends the
-  intent with `notice.signerRefused`, naming the reason; `over_sums` ends it with
-  `notice.daySums`; `locked` leaves a confirmed intent waiting, as a locked engine does, until its
-  authorization runs out (spec 6, section 7, item 5); `lease_lost` stops the install; `down` is
-  repeated as above.
+  intent with `notice.signerRefused`, naming the reason; `over_sums` ends it as a step never
+  signed, with the reason `day_sums` and `notice.daySums`; `locked` ends it the same way, with the
+  reason `signer_locked` and the notice of an unsigned step (spec 6, section 7, item 4,
+  [decision 0427](../DECISIONS.md#d0427)); neither is asked again but by a rescue's own tries;
+  `lease_lost` stops the install; `down` is repeated as above.
 - **The audit line.** Each request leaves one row in `signer.audit`, which the service inserts and
   never changes: the time by the database's clock, the request id, the worker id and fence, the
   install, agent, intent, step and wallet, the chain, nonce and replacement, the authorization's

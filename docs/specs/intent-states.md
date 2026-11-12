@@ -722,7 +722,9 @@ On startup ([ARCHITECTURE.md section 24](../ARCHITECTURE.md#section-24)), before
    intent: `cancelled` when no step was signed, `failed_onchain` with `step_unsent` once an earlier
    step landed, each with an owner notice ([decision 0109](../DECISIONS.md#d0109)). The executor
    ends an intent the same way when a step cannot be signed or stored, custody or the signer fails
-   as it signs (`eth_signTransaction` sends nothing), or no node answers as the step is prepared. A rescue left `executing`
+   as it signs (`eth_signTransaction` sends nothing), or no node answers as the step is prepared. A signer service's `over_sums` stores
+   `day_sums`, and its `locked` stores `signer_locked`, in the place of `step_unsent`
+   ([decision 0427](../DECISIONS.md#d0427)). A rescue left `executing`
    goes on instead: a step a block holds is done, a signed or sent step goes on with its stored
    bytes, and a step with no stored transaction is signed as at its first run while the owner's
    confirmation lasts. Once it has run out, that step fails and the rescue reconciles with what

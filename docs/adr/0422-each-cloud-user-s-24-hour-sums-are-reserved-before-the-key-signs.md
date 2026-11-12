@@ -1,6 +1,6 @@
 # 0422. Each Cloud user's 24-hour sums are reserved before the key signs
 
-Status: Accepted
+Status: Amended by 0426
 
 Accepted by the owner on 2026-11-12.
 
