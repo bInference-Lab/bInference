@@ -29,8 +29,9 @@ function steps(migrations: readonly PostgresMigration[]): string {
  * The SQL that creates or replaces `<shared>.create_install(install_id)` (database spec, section
  * 6.6): a `SECURITY DEFINER` function, run by the role that owns the shared schema, that takes an
  * `ins_` id, refuses when either of the install's schemas exists, and otherwise creates
- * `engine_<digits>` and `agent_<digits>` and applies every migration in each, version by version.
- * Nobody may run it until a grant names them. The migrations are written into the function, so it
+ * `engine_<digits>` and `agent_<digits>`, applies every migration in each, version by version,
+ * and inserts the install's own lease row free: an empty agent id, no worker, fence 1 and
+ * `expires_at` 0 (decision 0418). Nobody may run it until a grant names them. The migrations are written into the function, so it
  * is replaced whenever they change.
  */
 export function createInstallFunctionSql(sharedSchema: string, plans: InstallMigrations): string {
@@ -70,6 +71,8 @@ BEGIN
       ) USING version::text;
     END LOOP;
   END LOOP;
+  INSERT INTO ${shared}.agent_leases (install_id, agent_id, fence, expires_at)
+    VALUES (create_install.install_id, '', 1, 0);
 END
 ${bodyTag};
 

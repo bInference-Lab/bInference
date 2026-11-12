@@ -52,6 +52,19 @@ async function columnsOf(database: Database, schema: string): Promise<readonly s
   return rows.rows.map((row) => row.column);
 }
 
+// Every lease row of an install, as the shared schema holds it.
+async function leaseRowsOf(database: Database, install: Id<"ins">): Promise<readonly unknown[]> {
+  const rows = await database.read(
+    async ({ kysely, execute }) =>
+      execute(
+        sql`select agent_id, worker_id, fence, taken_at, renewed_at, expires_at
+          from shared.agent_leases where install_id = ${install} order by agent_id`.compile(kysely),
+      ),
+    never,
+  );
+  return rows.rows;
+}
+
 describe.runIf(url !== "")("an install on Postgres", () => {
   let server: TestPostgresDatabase;
   let database: Database;
@@ -113,6 +126,24 @@ describe.runIf(url !== "")("an install on Postgres", () => {
       never,
     );
     expect(marker).toStrictEqual({ value: "kept" });
+  });
+
+  it("gives a new install its own lease row, free, which a second sign-up leaves alone", async () => {
+    const install = { installId: installId("8"), sharedSchema };
+    const free = {
+      agent_id: "",
+      worker_id: null,
+      fence: 1,
+      taken_at: null,
+      renewed_at: null,
+      expires_at: 0,
+    };
+    await createPostgresInstall(database, install, never);
+    await expect(leaseRowsOf(database, install.installId)).resolves.toStrictEqual([free]);
+    await expect(createPostgresInstall(database, install, never)).rejects.toMatchObject({
+      code: "store.install_exists",
+    });
+    await expect(leaseRowsOf(database, install.installId)).resolves.toStrictEqual([free]);
   });
 
   it("refuses a text that is not an install id", async () => {

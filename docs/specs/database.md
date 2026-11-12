@@ -676,7 +676,7 @@ carries the lease's fence, so a worker that lost the lease writes nothing
 | Column       | Type               | Holds                                                         |
 | ------------ | ------------------ | ------------------------------------------------------------- |
 | `install_id` | `text COLLATE "C"` | The install's `ins_` id                                       |
-| `agent_id`   | `text COLLATE "C"` | The agent's `agt_` id                                         |
+| `agent_id`   | `text COLLATE "C"` | The agent's `agt_` id; empty in the install's own row         |
 | `worker_id`  | `text COLLATE "C"` | The worker process holding it, unique per start; NULL if free |
 | `fence`      | `bigint`, `>= 1`   | Raised by one at every take                                   |
 | `taken_at`   | `bigint`           | When the holder took it                                       |
@@ -690,9 +690,12 @@ Primary key `(install_id, agent_id)`; an index on `expires_at` for the take scan
 - **One install, one holder.** A worker takes every row of an install in one transaction, and all
   its rows carry the same fence. A take sets `worker_id`, `fence = fence + 1`, `taken_at`,
   `renewed_at` and `expires_at`, and succeeds only while every row of the install has expired.
-  `create_install()` (section 6.6) inserts a new install's first rows free, with `expires_at` at
-  zero and fence 1. The holder inserts the row of a new agent with the install's fence, and
-  deletes the row of a deleted agent.
+  `create_install()` (section 6.6) inserts a new install's first row free, with `expires_at` at
+  zero and fence 1: the install's own row, with an empty `agent_id`, which nothing deletes, so an
+  install with no agent can be taken and written
+  ([decision 0418](../DECISIONS.md#d0418)). The holder inserts the row of a new agent with the
+  install's fence, and deletes the row of a deleted agent; a worker that does not hold the install
+  does neither. A row has expired once `expires_at` is at or before now.
 - **Renewal.** The holder renews every 2 seconds, setting `expires_at` 6 seconds ahead, only where
   `worker_id` and `fence` are its own. A renewal that changes no row means the lease is lost: the
   worker stops the install's engine and runtime at once and writes nothing more. A clean stop sets
@@ -731,7 +734,7 @@ keys stay in KMS and the platform's secret store.
 
 - `create_install(install_id)` is a `SECURITY DEFINER` function the migrator owns, in schema
   `cloud`. It refuses when either of the install's schemas exists; otherwise it creates the pair,
-  owned by the migrator, runs the migrations in them and inserts the install's first lease rows.
+  owned by the migrator, runs the migrations in them and inserts the install's own lease row.
   A compromised sign-up path can therefore make a new install but cannot touch an existing one.
 - No service but a deploy connects as the migrator, and the migrator is a member of no other role.
 - No role holds `UPDATE` or `DELETE` on `ledger`.
