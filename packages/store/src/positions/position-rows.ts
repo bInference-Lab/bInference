@@ -78,7 +78,7 @@ function writeOne(database: StoreConnection, { position, readVersion: read }: Po
     );
     return;
   }
-  execute(
+  const updated = execute(
     kysely
       .updateTable("positions")
       .set({ ...columns, version: read + 1 })
@@ -87,6 +87,10 @@ function writeOne(database: StoreConnection, { position, readVersion: read }: Po
       .where("paper", "=", position.isPaper ? 1 : 0)
       .where("version", "=", read),
   );
+  // The version was read in this transaction, so an update that moves no row is a broken rule.
+  if (updated.numAffectedRows !== 1n) {
+    throw positionConstraint("A position changed inside the write that read it.");
+  }
 }
 
 /**

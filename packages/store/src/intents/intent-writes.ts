@@ -209,6 +209,26 @@ function checkFillWrite(
   return checkOrderFillWrite(database, order);
 }
 
+// The moved row under the version its mover read, which this transaction read: an update that
+// moves no row is a broken rule, never a lost race, and nothing of the move stays.
+function writeMoved(database: StoreConnection, change: IntentChange, moved: IntentRecord): void {
+  const { kysely, execute } = createSyncKysely<EngineTables>(database);
+  const updated = execute(
+    kysely
+      .updateTable("intents")
+      .set(movedColumns(moved))
+      .where("id", "=", change.id)
+      .where("version", "=", change.expectedVersion),
+  );
+  if (updated.numAffectedRows !== 1n) {
+    throw new BinferenceError({
+      code: "store.constraint",
+      message: "An intent changed inside the write that read it.",
+      details: { intent: change.id },
+    });
+  }
+}
+
 /**
  * Moves an intent when its stored version is the one the mover read: its new state and parts,
  * the event, the ledger entry and the card writes, a fill's order moves and row, and a
@@ -233,14 +253,7 @@ export function moveIntent(
     changedAtMs: change.atMs,
     version: current.version + 1,
   };
-  const { kysely, execute } = createSyncKysely<EngineTables>(database);
-  execute(
-    kysely
-      .updateTable("intents")
-      .set(movedColumns(moved))
-      .where("id", "=", change.id)
-      .where("version", "=", change.expectedVersion),
-  );
+  writeMoved(database, change, moved);
   const event = addEvent(database, {
     intentId: change.id,
     fromState: current.state,
