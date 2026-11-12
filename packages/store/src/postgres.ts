@@ -1,6 +1,14 @@
 // The Postgres store, apart from the package's main entry, so a program that runs SQLite only
 // never loads `pg`.
 export type { PostgresTaskConnection, StoreConnection } from "./dialect/store-connection.js";
+export { leaseTimes, workerIdSchema } from "./leases/agent-leases.js";
+export type {
+  AgentLeases,
+  HeldLease,
+  LeaseTake,
+  LeaseTimes,
+  WorkerId,
+} from "./leases/agent-leases.js";
 export { installSchemas } from "./migrations/install-schemas.js";
 export type { InstallSchemas } from "./migrations/install-schemas.js";
 export { createPostgresInstall, migratePostgresInstall } from "./migrations/postgres-install.js";
@@ -8,6 +16,8 @@ export type { InstallMigrationReport, PostgresInstall } from "./migrations/postg
 export { prepareSharedSchema } from "./migrations/prepare-shared-schema.js";
 export type { MetaTables } from "./migrations/run-postgres-migrations.js";
 export { openPostgres } from "./postgres/open-postgres.js";
+export { createPostgresAgentLeases } from "./postgres/postgres-agent-leases.js";
+export type { PostgresAgentLeasesOptions } from "./postgres/postgres-agent-leases.js";
 export type { PostgresDatabase } from "./postgres/open-postgres.js";
 export type { PostgresSettings } from "./postgres/postgres-settings.js";
 export type { RetryPorts } from "./postgres/postgres-transaction.js";

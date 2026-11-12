@@ -8,6 +8,8 @@ export type {
   ChatRetentionHarness,
   ChatRetentionSubject,
 } from "./contracts/chat-retention-contract.js";
+export { agentLeasesContract } from "./contracts/agent-leases-contract.js";
+export type { AgentLeasesHarness, AgentLeasesSubject } from "./contracts/agent-leases-contract.js";
 export { chatQueueStoreContract } from "./contracts/chat-queue-store-contract.js";
 export type {
   ChatQueueStoreHarness,
@@ -31,6 +33,8 @@ export type {
 } from "./contracts/transcript-store-contract.js";
 export { writerFenceContract } from "./contracts/writer-fence-contract.js";
 export type { WriterFenceHarness } from "./contracts/writer-fence-contract.js";
+export { createMemoryAgentLeases } from "./fakes/memory-agent-leases.js";
+export type { MemoryAgentLeases, MemoryAgentLeasesOptions } from "./fakes/memory-agent-leases.js";
 export { createMemoryAgentDatabase } from "./fakes/memory-agent-database.js";
 export type { MemoryAgentDatabase } from "./fakes/memory-agent-database.js";
 export { createMemoryChatDeletion } from "./fakes/memory-chat-deletion.js";
