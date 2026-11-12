@@ -72,6 +72,13 @@ export async function inMemory<Output>(
   return Promise.resolve(work());
 }
 
+/** Removes, from a map of an in-memory database, the rows `isGone` names; answers how many. */
+export function removeFrom<V>(rows: Map<string, V>, isGone: (row: V) => boolean): number {
+  const gone = [...rows].filter(([, row]) => isGone(row));
+  gone.forEach(([key]) => rows.delete(key));
+  return gone.length;
+}
+
 /** Whether a write made with `fence` may change the database: its fence is the current one. */
 export function holdsFence(database: MemoryAgentDatabase, fence: number): boolean {
   return database.fence.value() === fence;

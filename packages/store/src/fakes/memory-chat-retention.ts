@@ -1,13 +1,11 @@
 import { err, ok } from "@binference/core";
 import type { ChatRetention } from "../ports.js";
-import { holdsFence, inMemory, type MemoryAgentDatabase } from "./memory-agent-database.js";
-
-// Removes, from a map, the entries `isGone` names, and answers how many.
-function removeFrom<V>(rows: Map<string, V>, isGone: (row: V) => boolean): number {
-  const gone = [...rows].filter(([, row]) => isGone(row));
-  gone.forEach(([key]) => rows.delete(key));
-  return gone.length;
-}
+import {
+  holdsFence,
+  inMemory,
+  type MemoryAgentDatabase,
+  removeFrom,
+} from "./memory-agent-database.js";
 
 /** The {@link ChatRetention} of an in-memory agent database. */
 export function createMemoryChatRetention(database: MemoryAgentDatabase): ChatRetention {

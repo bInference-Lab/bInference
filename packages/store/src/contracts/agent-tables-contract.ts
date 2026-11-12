@@ -2,22 +2,15 @@ import assert from "node:assert/strict";
 import type { Id } from "@binference/core";
 import type { ContractCheck } from "@binference/core/testing";
 import type { EventDraft } from "../chats/transcript-event.js";
-import type {
-  ChatQueueStore,
-  ChatRetention,
-  GoalStore,
-  HelperStore,
-  NoteStore,
-  SessionStore,
-  TranscriptStore,
-  WriterFence,
-} from "../ports.js";
+import type { ChatRetention } from "../ports.js";
 import { fencedCheck, go, nthId, nthSession, okValue } from "./agent-fixtures.js";
+import { deletesOnlyChosenAgents } from "./agent-tables-deletion.js";
 import { plantAcrossCutoff, plantCutoff } from "./agent-tables-plant.js";
+import type { ChatDeletionSubject } from "./chat-deletion-contract.js";
 
 // The rules the agent database keeps below its stores, which an in-memory fake has no part in:
-// the transcript's triggers (decision 0169) and what retention removes from every table (database
-// spec, sections 3, 4 and 6.3).
+// the transcript's triggers (decision 0169), and what retention and a deletion remove from every
+// table (database spec, sections 3, 4 and 6.3; decision 0415).
 
 /** A row of an agent table as a database reads it back: each column's text, number or null. */
 export type AgentRow = Readonly<Record<string, string | number | null>>;
@@ -26,15 +19,8 @@ export type AgentRow = Readonly<Record<string, string | number | null>>;
 export type AgentRows = Readonly<Record<string, readonly AgentRow[]>>;
 
 /** A fresh agent database's stores, with the reads and writes no store makes. */
-export interface AgentTablesSubject {
-  readonly sessions: SessionStore;
-  readonly transcript: TranscriptStore;
+export interface AgentTablesSubject extends ChatDeletionSubject {
   readonly retention: ChatRetention;
-  readonly queue: ChatQueueStore;
-  readonly helpers: HelperStore;
-  readonly goals: GoalStore;
-  readonly notes: NoteStore;
-  readonly fence: WriterFence;
   /** Every row of every table. */
   rows(): Promise<AgentRows>;
   /** Changes an event's content straight in its row. */
@@ -159,6 +145,11 @@ export function agentTablesContract(harness: AgentTablesHarness): readonly Contr
       "prunes the old events, ended turns and settled messages, and leaves every other row",
       create,
       prunesOnlyOldChats,
+    ),
+    fencedCheck(
+      "deletes only the chosen agent's chat rows and leaves notes, other agents and meta",
+      create,
+      deletesOnlyChosenAgents,
     ),
   ];
 }

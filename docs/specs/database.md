@@ -391,7 +391,8 @@ deletes its ticket in the transaction that claims its launch
 transcript write ([spec 8, section 2.3](runtime.md#section-2-3)). Triggers refuse every change of
 a `transcript_events` row, and every removal but the retention job's, which sets
 `meta.prune_before` to its cutoff inside its own transaction
-([decision 0169](../DECISIONS.md#d0169)). `notes_fts` uses FTS5's trigram tokenizer, so a query of
+([decision 0169](../DECISIONS.md#d0169)), and the reset's and a chat deletion's, which set it past
+every event inside theirs ([decision 0415](../DECISIONS.md#d0415)). `notes_fts` uses FTS5's trigram tokenizer, so a query of
 three characters or more finds a word inside Chinese text. `agent_inbox` in the engine
 database holds each message for the runtime until the runtime takes it into `chat_queue`
 ([spec 8, section 3.2](runtime.md#section-3-2)).
@@ -445,6 +446,13 @@ A daily job (inside the engine's schedule queue) prunes:
 `binference reset` clears every table of the agent database but `meta`, and in the engine
 database `agent_inbox`, `questions`, `question_messages` and `risk_cache`, after a backup and with
 the engine stopped ([decision 0265](../DECISIONS.md#d0265)).
+
+The owner's `chat/delete` removes one agent's chats, or every agent's, at once, with binference
+running ([decision 0415](../DECISIONS.md#d0415)): the runtime deletes every session of each agent
+with its `transcript_events`, `turns`, `chat_queue`, `goals`, `progress_notes` and `helpers` in one
+transaction, and the engine first deletes the agents' `agent_inbox` messages and lets go their open
+sessions. `notes` and every other table stay; backups made before still hold the chats until they
+are pruned or removed.
 
 <a id="section-5"></a>
 

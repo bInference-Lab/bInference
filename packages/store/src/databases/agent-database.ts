@@ -1,3 +1,4 @@
+import { deleteChatsTask } from "../chats/deletion-tasks.js";
 import { raiseFenceTask } from "../chats/fence-tasks.js";
 import {
   activeGoalsTask,
@@ -92,6 +93,7 @@ export const agentDatabase: DatabaseDefinition = {
     listNotesTask,
     searchNotesTask,
     pruneChatsTask,
+    deleteChatsTask,
     clearAgentStateTask,
   ],
 };

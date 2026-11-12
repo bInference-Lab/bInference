@@ -1,4 +1,5 @@
 import type { Id, Result } from "@binference/core";
+import type { ChatDelete, ChatsDeleted } from "./chats/chat-deletion.js";
 import type { ChatPrune, ChatPruned } from "./chats/chat-prune.js";
 import type { FenceRefusal, Fenced } from "./chats/fenced.js";
 import type { GoalDraft, GoalRecord, GoalWrite, ProgressNoteRecord } from "./chats/goal-record.js";
@@ -232,6 +233,20 @@ export interface NoteStore {
    * the oldest note first.
    */
   search(query: NoteSearch, options: StoreCall): Promise<readonly NoteRecord[]>;
+}
+
+/**
+ * Deletes chosen agents' chats at the owner's word (decision 0415), in one write: every session of
+ * each agent, a helper's own among them, with all its transcript events, turns, queued messages,
+ * goal, progress note and helpers. The agents' notes stay, and so does every row of any other
+ * agent.
+ */
+export interface ChatDeletion {
+  /** Deletes the agents' chats and answers how many rows of each kind went. */
+  delete(
+    deletion: Fenced<ChatDelete>,
+    options: StoreCall,
+  ): Promise<Result<ChatsDeleted, FenceRefusal>>;
 }
 
 /**

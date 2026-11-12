@@ -1,4 +1,6 @@
+export type { ChatDelete, ChatsDeleted } from "./chats/chat-deletion.js";
 export type { ChatPrune, ChatPruned } from "./chats/chat-prune.js";
+export { createSqliteChatDeletion } from "./chats/sqlite-chat-deletion.js";
 export { createSqliteChatQueueStore } from "./chats/sqlite-chat-queue-store.js";
 export { createSqliteChatRetention } from "./chats/sqlite-chat-retention.js";
 export { createSqliteGoalStore } from "./chats/sqlite-goal-store.js";
@@ -59,6 +61,7 @@ export type {
   NoteSearch,
 } from "./notes/note-record.js";
 export type {
+  ChatDeletion,
   ChatQueueStore,
   ChatRetention,
   GoalStore,

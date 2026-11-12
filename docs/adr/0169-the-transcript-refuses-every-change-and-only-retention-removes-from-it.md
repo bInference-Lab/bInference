@@ -1,6 +1,6 @@
 # 0169. The transcript refuses every change, and only retention removes from it
 
-Status: Accepted
+Status: Amended by 0415
 
 Accepted by the owner on 2026-10-11.
 
