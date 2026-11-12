@@ -17,6 +17,7 @@
   "failed": "未发送：{reason}",
   "otherError": "出现问题。请运行 `binference logs` 查看原因。",
   "cleared": "新的对话已开始。Agent 会忘记这段对话，它的笔记和文件仍然保留。",
+  "chatsDeleted": "Agent 的对话已删除。你的下一条消息会开始一个新的对话，它的笔记和文件仍然保留。",
   "stopped": "{answer, select, running {Agent 的回答已停止。} other {没有正在进行的回答。}}它的助手和命令都已结束，目标已暂停。你已确认的操作仍会执行。",
   "card.keys": "{seconds, plural, other {还剩 # 秒}} · Ctrl+Y 确认 · Ctrl+N 取消",
   "card.expired": "已过期",

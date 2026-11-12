@@ -17,6 +17,7 @@
   "failed": "Not sent: {reason}",
   "otherError": "Something went wrong. Run `binference logs` to see why.",
   "cleared": "A new chat has started. The agent forgets this conversation; its notes and files stay.",
+  "chatsDeleted": "The agent's chats were deleted. Your next message starts a new chat; its notes and files stay.",
   "stopped": "{answer, select, running {The agent's answer stops.} other {No answer was running.}} Its helpers and its commands end, and its goal pauses. Anything you already confirmed still goes through.",
   "card.keys": "{seconds, plural, one {# second left} other {# seconds left}} · Ctrl+Y Confirm · Ctrl+N Cancel",
   "card.expired": "Expired",

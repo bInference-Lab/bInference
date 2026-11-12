@@ -2,6 +2,7 @@ import { chartTextLines } from "@binference/chart";
 import { displayOutsideText } from "@binference/i18n";
 import {
   type ChatPush,
+  chatDeletedPushOf,
   chatPushOf,
   credentialPushes,
   goalPushOf,
@@ -157,6 +158,17 @@ function onChatPush(context: ChatContext, parts: ChatFeedParts, push: ChatPush):
   }
 }
 
+// The agent's chats were deleted (decision 0415): the answer that ran is gone, the transcript
+// starts over, and the owner reads that the next message starts a new chat.
+function chatsDeleted(context: ChatContext, parts: ChatFeedParts): void {
+  context.store.update(withoutRunning);
+  parts.queue(async () => {
+    parts.transcript.reset();
+    context.print([{ text: context.words("tui.chatsDeleted"), tone: "dim" }]);
+    return Promise.resolve();
+  });
+}
+
 // A push of what the agent asks the owner: its shell request, its credential request or its
 // question. A closing push ends the open one; any of them reads the open one again.
 function askedOf(parts: ChatFeedParts, push: PushFrame): void {
@@ -189,13 +201,18 @@ function askedOf(parts: ChatFeedParts, push: PushFrame): void {
  * Follows the agent's chat topic: the running turn and its answer so far in the live area, each
  * final answer and status line printed as it comes, each change of the chat's goal and its
  * progress note (decision 0407), the agent's question, its credential request, which opens the
- * masked entry, and its shell request (decision 0409). A turn that starts,
+ * masked entry, and its shell request (decision 0409), and the deletion of its chats (decision
+ * 0415). A turn that starts,
  * and a gap in the topic, read the transcript on, so the owner's messages from other surfaces
  * show too. Answers how to stop following.
  */
 export function followChat(context: ChatContext, parts: ChatFeedParts): () => void {
   return context.client.subscribe(`chat:${context.agent}`, {
     onPush: (push: PushFrame) => {
+      if (chatDeletedPushOf(push) !== undefined) {
+        chatsDeleted(context, parts);
+        return;
+      }
       const chat = chatPushOf(push);
       if (chat !== undefined) {
         onChatPush(context, parts, chat);

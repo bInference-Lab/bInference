@@ -42,3 +42,15 @@ describe("the terminal chat's /stop, in Chinese", () => {
     );
   });
 });
+
+describe("the terminal chat's feed, in Chinese", () => {
+  it("says the agent's chats were deleted", async () => {
+    const chat = await opened();
+    chat.push(`chat:${harnessAgent}`, "chat/deleted", { agent: harnessAgent });
+    await chat.settle();
+    expect(chat.rows().slice(-2)).toStrictEqual([
+      "Agent 的对话已删除。你的下一条消息会开始一个新的对话，它的笔记和文件仍然保留。",
+      "› ",
+    ]);
+  });
+});
