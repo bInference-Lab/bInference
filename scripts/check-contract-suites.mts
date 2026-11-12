@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import process from "node:process";
+import { postgresSuiteProblems } from "./contracts/postgres-suites.mjs";
 import {
   findImplementations,
   findPorts,
@@ -38,7 +39,10 @@ const unproven = implementations
       `${file.replace(/\.ts$/, ".test.ts")} never calls ${suiteName(port.name)}.`,
   );
 
-const problems = [...missingSuites, ...unproven];
+// Every store adapter that runs its port's suite on SQLite runs it on Postgres too.
+const notOnPostgres = postgresSuiteProblems(root, files);
+
+const problems = [...missingSuites, ...unproven, ...notOnPostgres];
 for (const problem of problems) {
   console.error(problem);
 }

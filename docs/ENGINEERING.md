@@ -533,9 +533,10 @@ Decided in [decision 0031](DECISIONS.md#d0031).
   reread the authoritative rows, then write and commit
   ([ARCHITECTURE.md section 17](ARCHITECTURE.md#section-17)). Enforcer: `check:store` (the callback
   is not `async` and holds no `await` and no Promise).
-- **Rule:** each store port has a contract test suite; the SQLite adapter passes it, and a Postgres
-  adapter will pass the same suite when the cloud plan builds one. Enforcer: the contract suites and
-  `check:contract-suites`.
+- **Rule:** each store port has a contract test suite, which the SQLite and the Postgres adapter
+  both pass. Enforcer: the contract suites and `check:contract-suites` (a store suite that a SQLite
+  test runs and no `*.postgres.test.ts` runs fails, but for the agent database's suites still
+  listed as waiting for their Postgres form).
 - **Rule:** migrations are numbered and forward-only, never edited after a release, and run by
   `binference check --fix` after a backup. Enforcer: `check:store` (`NNNN_name.ts` in order, no
   `down`, released files hash-locked); a test that `check --fix` backs up first.

@@ -1,3 +1,4 @@
+import { agentSuitesAwaitingPostgres } from "../contracts/postgres-suites.mjs";
 import { fixturePackage } from "./fixture-package.mjs";
 import type { GateCase } from "./gate-case.mjs";
 
@@ -44,6 +45,66 @@ function adapterTest(body: string): string {
 
 const checkSuites = ["pnpm", "check:contract-suites"];
 
+// A store adapter test that runs `name`, planted beside the store package's real tests.
+function storeTest(name: string): string {
+  return [
+    'import { it } from "vitest";',
+    `import { ${name} } from "./sample-contract.js";`,
+    "",
+    'it("passes", () => {',
+    `  ${name}();`,
+    "});",
+    "",
+  ].join("\n");
+}
+
+const sqliteTest = "packages/store/src/samples/sqlite-sample-store.test.ts";
+const postgresTest = "packages/store/src/samples/sample-store.postgres.test.ts";
+
+// The Postgres cases: a store suite on SQLite alone fails, beside its Postgres test it passes, and
+// a suite the list keeps waiting fails once it runs on Postgres.
+function postgresCases(): readonly GateCase[] {
+  const [waiting] = agentSuitesAwaitingPostgres;
+  const waitingCase: readonly GateCase[] =
+    waiting === undefined
+      ? []
+      : [
+          {
+            name: "a waiting agent suite that runs on Postgres fails check:contract-suites",
+            files: { [postgresTest]: storeTest(waiting) },
+            steps: [
+              {
+                command: checkSuites,
+                expect: "fail",
+                output: [new RegExp(`${waiting} runs on Postgres now`)],
+              },
+            ],
+          },
+        ];
+  return [
+    {
+      name: "a store suite that runs on SQLite alone fails check:contract-suites",
+      files: { [sqliteTest]: storeTest("sampleStoreContract") },
+      steps: [
+        {
+          command: checkSuites,
+          expect: "fail",
+          output: [/runs sampleStoreContract on SQLite, and no \*\.postgres\.test\.ts/],
+        },
+      ],
+    },
+    {
+      name: "a store suite that runs on SQLite and Postgres passes check:contract-suites",
+      files: {
+        [sqliteTest]: storeTest("sampleStoreContract"),
+        [postgresTest]: storeTest("sampleStoreContract"),
+      },
+      steps: [{ command: checkSuites, expect: "pass" }],
+    },
+    ...waitingCase,
+  ];
+}
+
 /** Cases for check:contract-suites. */
 export function contractCases(): readonly GateCase[] {
   return [
@@ -76,5 +137,6 @@ export function contractCases(): readonly GateCase[] {
       }),
       steps: [{ command: checkSuites, expect: "pass" }],
     },
+    ...postgresCases(),
   ];
 }

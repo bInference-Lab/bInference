@@ -70,6 +70,10 @@ Rules for this package:
   a new key with `returning`.
 - A store's Postgres test, `<store>.postgres.test.ts`, runs the port's contract suite on
   `createTestPostgresStores`, a fresh install's schemas per check, beside its SQLite test.
-  A suite plants the rows it needs through store tasks (`testing/plant-agent.ts`), never through
-  a SQLite connection, so one subject (`testing/money-store-subjects.ts`) serves both tests; the
+  A suite plants the rows it needs through store tasks (`testing/plant-agent.ts`,
+  `testing/plant-rows.ts`), never through a SQLite connection, so one subject
+  (`testing/money-store-subjects.ts`, `testing/engine-store-subjects.ts`) serves both tests; the
   Postgres engine thread serves those tasks from `testing/test-engine.worker.ts`.
+  `check:contract-suites` fails a suite that a SQLite test runs and no Postgres test runs, but for
+  the agent database's suites in `agentSuitesAwaitingPostgres` (`scripts/contracts/`), which wait
+  for their Postgres form.
