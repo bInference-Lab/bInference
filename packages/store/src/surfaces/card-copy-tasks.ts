@@ -85,7 +85,7 @@ export const keepCardCopyTask: StoreTask<CardCopy, null> = defineTask({
           message_id: String(copy.messageId),
           sent_at: copy.sentAtMs,
         })
-        .orIgnore(),
+        .onConflict((conflict) => conflict.doNothing()),
     );
     return null;
   },
