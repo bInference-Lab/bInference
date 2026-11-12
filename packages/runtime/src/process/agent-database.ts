@@ -1,4 +1,5 @@
 import type {
+  ChatDeletion,
   ChatQueueStore,
   GoalStore,
   HelperStore,
@@ -20,6 +21,8 @@ export interface AgentDatabase {
   readonly goals: GoalStore;
   /** Each agent's notes, which the routed `notes/*` operations read and write. */
   readonly notes: NoteStore;
+  /** The owner's deletions of chats, which the routed `chat/delete` runs (decision 0415). */
+  readonly deletion: ChatDeletion;
   /** The schema version after the migrations, which `ready` reports. */
   readonly schemaVersion: number;
   /** Closes its connections; the runtime's last step before it exits. */

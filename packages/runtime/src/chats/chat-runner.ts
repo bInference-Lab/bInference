@@ -3,6 +3,7 @@ import type { InboxMessageView } from "@binference/protocol";
 import { createAgentChats } from "./agent-chats.js";
 import { type ChatRunnerOptions, createSerial, createTracker } from "./chat-context.js";
 import { receiveMessage, resumeWaiting } from "./chat-intake.js";
+import { deleteChats } from "./delete-chats.js";
 import { followGoal } from "./goal-pace.js";
 
 /** What the runtime's health line counts. */
@@ -27,6 +28,12 @@ export interface ChatRunner {
    * 0407): an active one asks for its next goal turn once the chat rests; any other stops asking.
    */
   followGoal(chat: { readonly agent: Id<"agt">; readonly session: Id<"ses"> }): Promise<void>;
+  /**
+   * Deletes the agents' chats (decision 0415): each running turn ends and its helpers stop, and
+   * both are waited for, then `remove` runs in line with the messages taken before; the agents'
+   * next messages open new sessions.
+   */
+  deleteChats<T>(agents: readonly Id<"agt">[], remove: () => Promise<T>): Promise<T>;
 }
 
 /**
@@ -58,5 +65,6 @@ export function createChatRunner(options: ChatRunnerOptions): ChatRunner {
     },
     rested: async () => tracker.settled(),
     followGoal: async (chat) => context.serial(async () => followGoal(context, chat)),
+    deleteChats: async (agents, remove) => deleteChats(context, agents, remove),
   };
 }

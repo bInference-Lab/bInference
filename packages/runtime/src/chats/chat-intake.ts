@@ -41,7 +41,8 @@ async function waitingIn(
 async function endWaiting(context: ChatContext, view: Control): Promise<void> {
   const reason = view.kind === "inbox/stop" ? view.reason : "clear";
   context.chats.running.get(view.agent)?.turn.stop(reason);
-  context.onStop?.(view.agent);
+  // A stop does not wait for the helpers' ends; a deletion does.
+  void context.onStop?.(view.agent);
   await goalStopped(context, view);
   context.chats.resumesAt.delete(view.agent);
   const waiting = await waitingIn(context, view.session);
@@ -153,6 +154,12 @@ async function receiveOne(context: ChatContext, view: InboxMessageView): Promise
  * wait, a new one stays in the engine's inbox until a turn takes some.
  */
 export async function receiveMessage(context: ChatContext, view: InboxMessageView): Promise<void> {
+  // A message that arrives while its agent's chats are deleted waits for the deletion, so it
+  // lands in the session the engine opened for it and the deletion never takes it.
+  const deleting = context.chats.deleting.get(view.agent);
+  if (deleting !== undefined) {
+    await deleting;
+  }
   return context.serial(async () => receiveOne(context, view));
 }
 

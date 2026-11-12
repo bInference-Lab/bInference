@@ -1,7 +1,7 @@
 import { type Id, jsonValueSchema } from "@binference/core";
 import { createManualClock } from "@binference/core/testing";
 import { operations } from "@binference/protocol";
-import { createMemoryGoalStore } from "@binference/store/testing";
+import { createMemoryChatDeletion, createMemoryGoalStore } from "@binference/store/testing";
 import { describe, expect, it } from "vitest";
 import { createChatRunner } from "../chats/chat-runner.js";
 import type { NewMessageMode } from "../chats/queue-merge.js";
@@ -108,7 +108,7 @@ async function startChat(replies: readonly ScriptedReply[], mode: NewMessageMode
   const open = (): void => {
     gate.open();
   };
-  return { engine, stores, client, desk, runner, own, clock, taking, open };
+  return { engine, stores, database, client, desk, runner, own, clock, taking, open };
 }
 
 type Chat = Awaited<ReturnType<typeof startChat>>;
@@ -162,6 +162,26 @@ async function relayGoalTurn(
 }
 
 describe("a goal in the owner's chat", () => {
+  it("lets a deletion during a goal turn end at once, and asks for no next goal turn", async () => {
+    const chat = await startChat([
+      callsReply([{ name: "goal_set", args: { objective } }]),
+      textReply("On it."),
+      waits,
+    ]);
+    const posted = chat.engine.post(agent, `Keep going until done: ${objective}`);
+    await settle(chat);
+    await relayGoalTurn(chat, 1, { settles: false });
+    const deletion = createMemoryChatDeletion(chat.database);
+    const agents = [agent];
+    const deleted = await chat.runner.deleteChats(agents, async () =>
+      deletion.delete({ agents, fence: chat.stores.fence }, { signal: live() }),
+    );
+    await settle(chat);
+    expect(deleted).toMatchObject({ ok: true, value: { sessions: 1, goals: 1 } });
+    expect(continued(chat)).toHaveLength(1);
+    expect((await chat.desk.read(posted.session, live())).goal).toBeUndefined();
+  });
+
   it("is set on the owner's request, runs goal turns on its own, and ends once complete", async () => {
     const chat = await startChat([
       callsReply([{ name: "goal_set", args: { objective } }]),

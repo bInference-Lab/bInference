@@ -126,7 +126,7 @@ export async function startChat(start: ChatStart): Promise<RuntimeChat> {
     ...(start.goals === undefined ? {} : { goals: start.goals }),
     ...(start.helpers === undefined
       ? {}
-      : { onStop: (agent: Id<"agt">) => start.helpers?.stopAgent(agent) }),
+      : { onStop: async (agent: Id<"agt">) => start.helpers?.stopAgent(agent) }),
   });
   await runner.resume();
   await listAll(engine, runner, lifetime);

@@ -1,6 +1,7 @@
 import type { Id } from "@binference/core";
 import { alertFireSchema, alertViewSchema, type InboxMessageView } from "@binference/protocol";
 import type { QueuedMessage } from "@binference/store";
+import { createMemoryChatDeletion } from "@binference/store/testing";
 import { describe, expect, it } from "vitest";
 import { createGate, type TestTool } from "../loop/test-turns.js";
 import { startChatRig, type ChatRig } from "../testing/chat-rig.js";
@@ -228,6 +229,47 @@ describe("createChatRunner", () => {
     await rig.runner.rested();
     expect(again.session).toBe(next);
     expect(rig.transport.requests[1]?.messages).toStrictEqual([{ role: "owner", text: "again" }]);
+  });
+
+  it("ends the running turn before a deletion, so no row of its chat is left", async () => {
+    const started = createGate<undefined>();
+    const rig = await startChatRig({
+      replies: [callsReply([{ name: "wait" }])],
+      tools: [waiter(() => started.open(undefined))],
+    });
+    await rig.post("watch it");
+    await started.promise;
+    const deletion = createMemoryChatDeletion(rig.database);
+    const agents = [rig.agent];
+    const deleted = await rig.runner.deleteChats(agents, async () =>
+      deletion.delete({ agents, fence: rig.stores.fence }, live()),
+    );
+    await rig.runner.rested();
+    expect(deleted).toMatchObject({ ok: true, value: { sessions: 1, turns: 1, messages: 1 } });
+    expect(details(rig, "chat/turnEnded")).toStrictEqual(["stopped"]);
+    const { sessions, turns, events, queue } = rig.database;
+    expect([sessions.size, turns.size, events.length, queue.size]).toStrictEqual([0, 0, 0, 0]);
+  });
+
+  it("takes a message that arrives during a deletion once it ended, into a chat of its own", async () => {
+    const started = createGate<undefined>();
+    const rig = await startChatRig({
+      replies: [callsReply([{ name: "wait" }]), textReply("fresh")],
+      tools: [waiter(() => started.open(undefined))],
+    });
+    await rig.post("watch it");
+    await started.promise;
+    const deletion = createMemoryChatDeletion(rig.database);
+    const agents = [rig.agent];
+    const deleted = rig.runner.deleteChats(agents, async () =>
+      deletion.delete({ agents, fence: rig.stores.fence }, live()),
+    );
+    const posted = rig.post("again");
+    expect(await deleted).toMatchObject({ ok: true, value: { sessions: 1, turns: 1 } });
+    await posted;
+    await rig.runner.rested();
+    expect(rig.transport.requests[1]?.messages).toStrictEqual([{ role: "owner", text: "again" }]);
+    expect([rig.database.sessions.size, rig.database.turns.size]).toStrictEqual([1, 1]);
   });
 
   it("drops the messages of a turn the engine refuses for an archived agent", async () => {

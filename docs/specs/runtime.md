@@ -5,7 +5,8 @@ proposal rule is [decision 0167](../DECISIONS.md#d0167), accepted on 2026-10-10.
 [decision 0191](../DECISIONS.md#d0191) (usage records and the loop notice) and
 [decision 0207](../DECISIONS.md#d0207) (where skills live, how they are read and installed) and
 [decision 0221](../DECISIONS.md#d0221) (the model check) and
-[decision 0247](../DECISIONS.md#d0247) (the alert and schedule tools).
+[decision 0247](../DECISIONS.md#d0247) (the alert and schedule tools) and
+[decision 0415](../DECISIONS.md#d0415) (deleting chats).
 
 The agent runtime is the process that runs each agent's model loop: sessions, context, tools,
 compaction and model calls ([ARCHITECTURE.md section 4](../ARCHITECTURE.md#section-4)). It is a
@@ -794,6 +795,17 @@ status line (`turn.loop`) ([decision 0191](../DECISIONS.md#d0191)).
 A routed write is idempotent like any other: the engine stores its key and result as for its own
 operations.
 
+`chat/delete` ([decision 0415](../DECISIONS.md#d0415)) is answered by the engine, which routes
+its runtime part as `chat/delete` with `{ agents }`, the agents it resolved, and `origin: owner`.
+While the runtime is down the engine refuses it with `chat.needs_runtime` before anything changes.
+The runtime takes it in line with the messages it received: it ends each agent's running turn as
+`inbox/stop` does and waits for its end, stops the agent's helpers and waits for theirs, ends the
+wait of its goal, and forgets its session, so nothing starts on it again. Then one store task under
+the writer fence deletes the agents' sessions, turns, transcript events, queued messages, goals,
+progress notes and helpers, and the runtime answers how many of each it deleted. A fenced task is
+`runtime.unavailable`. A message of the agents that arrives meanwhile waits until the deletion
+ended, then opens the new session it names.
+
 <a id="section-11"></a>
 
 ## 11. What the runtime stores, and when
@@ -810,7 +822,8 @@ write checks the fence in its transaction. The order of writes is part of this s
 5. `usage/record` is answered before the runtime acts on the model's response.
 6. The final text event is written before `turn/say` with `final: true`, and `turn/end` comes last.
 
-The transcript is append-only: an update or delete of an event fails. Prompts and tool results
+The transcript is append-only: an update or delete of an event fails, except inside the one
+write of a retention prune, a reset or a chat deletion ([spec 3, section 3](database.md#section-3)). Prompts and tool results
 never reach the logs, which carry ids, counts, classes and times only.
 
 <a id="section-12"></a>

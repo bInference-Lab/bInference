@@ -294,7 +294,13 @@ async function serveConnected(host: RuntimeHost, connected: Connected): Promise<
       follow: (goalChat: Parameters<RuntimeChat["runner"]["followGoal"]>[0]) =>
         void chat.runner.followGoal(goalChat).catch(() => undefined),
     };
-    const context = { apply, notes, messages, goals, lifetime, read: await connected.reading };
+    const deletion = {
+      runner: chat.runner,
+      deletion: database.deletion,
+      fence: prepared.stores.fence,
+    };
+    const read = await connected.reading;
+    const context = { apply, notes, messages, goals, deletion, lifetime, read };
     return await serve(host, connected.lines, context);
   } finally {
     chat.unwatch();

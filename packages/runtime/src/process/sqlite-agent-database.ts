@@ -1,5 +1,6 @@
 import {
   agentWorker,
+  createSqliteChatDeletion,
   createSqliteChatQueueStore,
   createSqliteGoalStore,
   createSqliteHelperStore,
@@ -31,6 +32,7 @@ export async function openSqliteAgentDatabase(
       helpers: createSqliteHelperStore(handle),
       goals: createSqliteGoalStore(handle),
       notes: createSqliteNoteStore(handle),
+      deletion: createSqliteChatDeletion(handle),
       schemaVersion: migrated.to,
       close: async () => handle.close(),
     };

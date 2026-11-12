@@ -3,6 +3,7 @@ import { BinferenceError, type Clock } from "@binference/core";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
 import {
   createMemoryAgentDatabase,
+  createMemoryChatDeletion,
   createMemoryChatQueueStore,
   createMemoryGoalStore,
   createMemoryHelperStore,
@@ -103,6 +104,7 @@ function memoryDatabase(database: MemoryAgentDatabase): AgentDatabase {
     helpers: createMemoryHelperStore(database),
     goals: createMemoryGoalStore(database),
     notes: createMemoryNoteStore(database),
+    deletion: createMemoryChatDeletion(database),
     schemaVersion: 0,
     close: async () => Promise.resolve(),
   };

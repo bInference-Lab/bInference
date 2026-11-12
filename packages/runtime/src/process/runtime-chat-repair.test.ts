@@ -1,6 +1,7 @@
 import { createManualClock } from "@binference/core/testing";
 import {
   createMemoryAgentDatabase,
+  createMemoryChatDeletion,
   createMemoryChatQueueStore,
   createMemoryGoalStore,
   createMemoryHelperStore,
@@ -27,6 +28,7 @@ function databaseOn(rows: MemoryAgentDatabase): AgentDatabase {
     helpers: createMemoryHelperStore(rows),
     goals: createMemoryGoalStore(rows),
     notes: createMemoryNoteStore(rows),
+    deletion: createMemoryChatDeletion(rows),
     schemaVersion: 6,
     close: async () => Promise.resolve(),
   };

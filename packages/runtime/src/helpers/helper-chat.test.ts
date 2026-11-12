@@ -1,7 +1,7 @@
 import { createIdSource, type Id, jsonValueSchema } from "@binference/core";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
 import { operations } from "@binference/protocol";
-import { createMemoryHelperStore } from "@binference/store/testing";
+import { createMemoryChatDeletion, createMemoryHelperStore } from "@binference/store/testing";
 import { describe, expect, it } from "vitest";
 import { createChatRunner } from "../chats/chat-runner.js";
 import type { ModelEvent } from "../loop/model-event.js";
@@ -101,7 +101,7 @@ async function startChat(given: {
     },
     refetch: async () => Promise.resolve(),
   });
-  return { engine, stores, client, desk, runner, own, helper, taking };
+  return { engine, stores, database, client, desk, runner, own, helper, taking };
 }
 
 type Chat = Awaited<ReturnType<typeof startChat>>;
@@ -159,6 +159,23 @@ describe("a helper in the owner's chat", () => {
     await settle(chat);
     const turn = await chat.stores.sessions.turn(wake, { signal: live() });
     expect(turn?.outsideContent).toBe(true);
+  });
+
+  it("lets a deletion while a helper runs end at once, and tells the engine of no helper end", async () => {
+    const chat = await startChat({ outside: false, helperReplies: [hangs] });
+    chat.engine.post(agent, "Look up BNB news in the background.");
+    await chat.taking.last;
+    await chat.runner.rested();
+    expect((await chat.desk.list(agent, live()))[0]?.state).toBe("running");
+    const deletion = createMemoryChatDeletion(chat.database);
+    const agents = [agent];
+    const deleted = await chat.runner.deleteChats(agents, async () =>
+      deletion.delete({ agents, fence: chat.stores.fence }, { signal: live() }),
+    );
+    await settle(chat);
+    expect(deleted).toMatchObject({ ok: true, value: { sessions: 2, helpers: 1 } });
+    expect(chat.client.calls().filter(({ op }) => op === "helper/ended")).toStrictEqual([]);
+    expect(await chat.desk.list(agent, live())).toStrictEqual([]);
   });
 
   it("stops the agent's helpers with the owner's stop, and no answer follows", async () => {

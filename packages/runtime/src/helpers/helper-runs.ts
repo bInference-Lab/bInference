@@ -34,8 +34,8 @@ export interface HelperRuns {
   view(helper: Id<"ses">): HelperRunView | undefined;
   /** Stops a helper that runs here and waits for its end; false when it does not run here. */
   stop(helper: Id<"ses">): Promise<boolean>;
-  /** Stops every helper of the agent. */
-  stopAgent(agent: Id<"agt">): void;
+  /** Stops every helper of the agent and waits for their runs to end. */
+  stopAgent(agent: Id<"agt">): Promise<void>;
   /** Halts every run as the runtime stops and waits for them; their rows stay `running`. */
   stopAll(): Promise<void>;
   /** Settles once no run is open, including runs that begin while it waits. */
@@ -214,9 +214,10 @@ export function createHelperRuns(parts: HelperRunParts): HelperRuns {
       await done;
       return true;
     },
-    stopAgent(agent) {
+    async stopAgent(agent) {
       const own = [...state.agents].filter(([, each]) => each === agent).map(([helper]) => helper);
       own.forEach((helper) => stopOne(state, helper, "owner"));
+      await Promise.allSettled(own.map(async (helper) => state.dones.get(helper)));
     },
     async stopAll() {
       state.closing.add("closing");

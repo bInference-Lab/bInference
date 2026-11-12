@@ -22,6 +22,8 @@ export interface AgentChats {
   readonly full: Set<Id<"agt">>;
   /** The wait before each agent's next goal turn, which a stop or another wait ends. */
   readonly goalWaits: Map<Id<"agt">, AbortController>;
+  /** Each agent whose chats are being deleted, and what settles once the deletion ended. */
+  readonly deleting: Map<Id<"agt">, Promise<void>>;
 }
 
 /** Creates the chats of an install with no agent seen yet. */
@@ -33,5 +35,6 @@ export function createAgentChats(): AgentChats {
     resumesAt: new Map(),
     full: new Set(),
     goalWaits: new Map(),
+    deleting: new Map(),
   };
 }

@@ -102,6 +102,12 @@ export function isRoutedOperation(op: string): op is OperationName {
   return isOperationName(op) && operations[op].answeredBy === "runtime";
 }
 
+// What a route line may name: a routed operation, or `chat/delete`, which the engine answers and
+// whose part in the agent database it routes (decision 0415).
+function isRouteOp(op: string): op is OperationName {
+  return isRoutedOperation(op) || op === "chat/delete";
+}
+
 const pathSchema = z.string().min(1).max(4_096);
 
 /** Decodes an {@link EngineLine} from JSON, and encodes one back. */
@@ -117,7 +123,7 @@ export const engineLineSchema: z.ZodType<EngineLine, EngineLineWire> = z.discrim
   z.strictObject({
     t: z.literal("route"),
     id: routeIdSchema,
-    op: z.custom<OperationName>((op) => typeof op === "string" && isRoutedOperation(op)),
+    op: z.custom<OperationName>((op) => typeof op === "string" && isRouteOp(op)),
     args: jsonValueSchema,
     origin: z.enum(["owner", "agent", "untrusted", "system"]),
   }),

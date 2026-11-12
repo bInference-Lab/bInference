@@ -17,6 +17,8 @@ export type {
   StartLine,
   StopLine,
 } from "./control/control-line.schema.js";
+export { chatDeleteRouteResultSchema } from "./chats/delete-route.js";
+export type { ChatDeleteRouteResult } from "./chats/delete-route.js";
 export { maxControlLineBytes, readControlLines } from "./control/read-control-lines.js";
 export { runtimeSettingsSchema } from "./control/runtime-settings.schema.js";
 export type {

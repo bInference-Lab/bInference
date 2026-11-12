@@ -118,7 +118,7 @@ describe("the agent's helpers", () => {
       sent.push(answerOf(await rig.desk.send(follow, go().signal)));
     }
     expect(sent).toStrictEqual([true, true, true, true, "busy"]);
-    rig.desk.stopAgent(rig.agent);
+    await rig.desk.stopAgent(rig.agent);
     await rig.desk.rested();
     expect(rig.transport.requests).toHaveLength(1);
   });
@@ -131,7 +131,7 @@ describe("the agent's helpers", () => {
     }
     const fifth = await rig.desk.start(requestOf(rig, "h5"), go().signal);
     expect(fifth).toStrictEqual({ ok: false, error: "too_many" });
-    rig.desk.stopAgent(rig.agent);
+    await rig.desk.stopAgent(rig.agent);
     await rig.desk.rested();
     const all = await rig.desk.list(rig.agent, go().signal);
     expect(all.map(({ state }) => state)).toStrictEqual([

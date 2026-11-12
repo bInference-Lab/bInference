@@ -92,8 +92,11 @@ export interface HelperDesk {
 
 /** The desk as the runtime drives it: the agent's tools' side, and its stops and repair. */
 export interface HelperRunner extends HelperDesk {
-  /** The owner stopped or cleared the agent's chat, or froze it: its helpers stop, unannounced. */
-  stopAgent(agent: Id<"agt">): void;
+  /**
+   * The owner stopped, cleared or deleted the agent's chat, or froze it: its helpers stop,
+   * unannounced, and the answer settles once their runs ended.
+   */
+  stopAgent(agent: Id<"agt">): Promise<void>;
   /** The runtime stops: every run halts and is waited for; the next start ends each `stopped`. */
   stopAll(): Promise<void>;
   /**
@@ -315,7 +318,7 @@ export function createHelperDesk(options: HelperDeskOptions): HelperRunner {
     },
     send: async (request, signal) => sendHelper(desk, request, signal),
     stop: async (place, signal) => stopHelper(desk, place, signal),
-    stopAgent: (agent) => desk.runs.stopAgent(agent),
+    stopAgent: async (agent) => desk.runs.stopAgent(agent),
     stopAll: async () => desk.runs.stopAll(),
     repair: async (signal) => repairLeft(options, signal),
     rested: async () => desk.runs.rested(),

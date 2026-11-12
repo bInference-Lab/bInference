@@ -52,7 +52,8 @@ async function dropGoalTurns(context: ChatContext, session: Id<"ses">, reason: s
   await dropMessages(context, goals, reason);
 }
 
-function cancelWait(context: ChatContext, agent: Id<"agt">): void {
+/** Ends the wait for the agent's next goal turn, if one waits. */
+export function cancelWait(context: ChatContext, agent: Id<"agt">): void {
   context.chats.goalWaits.get(agent)?.abort();
   context.chats.goalWaits.delete(agent);
 }

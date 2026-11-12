@@ -51,10 +51,10 @@ export interface ChatRunnerOptions {
   /** Keeps what the engine answers of each agent's budget, which its helpers read (decision 0403). */
   readonly budgets?: BudgetMemory;
   /**
-   * Hears a stop or a clear of the agent's chat as it applies, so the agent's helpers stop with
-   * its running turn (decision 0403).
+   * Hears a stop, a clear or a deletion of the agent's chat as it applies, so the agent's helpers
+   * stop with its running turn (decision 0403); it settles once their runs ended.
    */
-  readonly onStop?: (agent: Id<"agt">) => void;
+  readonly onStop?: (agent: Id<"agt">) => Promise<void>;
   /**
    * Each chat's goal (decision 0407): the next goal turn follows a turn while it is active, and a
    * stop pauses it. Without it, no chat has a goal.
