@@ -1,4 +1,10 @@
-import { BinferenceError, type Clock, type JsonValue, type Logger } from "@binference/core";
+import {
+  BinferenceError,
+  type Clock,
+  type JsonValue,
+  type Logger,
+  replaceNulDeep,
+} from "@binference/core";
 import type { AccessStore, InboxEntry, InboxStore } from "@binference/engine";
 import type { OwnerBinding, OwnerStore } from "@binference/engine/surfaces";
 import type { MessageLocale } from "@binference/i18n";
@@ -106,6 +112,12 @@ async function handleInOrder(
   );
 }
 
+// An update stored before decision 0416 may hold U+0000, which the agent's inbox would refuse: it
+// is handled with U+FFFD in its place.
+function readable(entry: InboxEntry): InboxEntry {
+  return { ...entry, payload: replaceNulDeep(entry.payload) };
+}
+
 function updateOf(update: JsonValue): ChatUpdate {
   const parsed = chatUpdateSchema.safeParse(update);
   if (!parsed.success) {
@@ -137,7 +149,8 @@ function serialized(pass: (call: Call) => Promise<void>): (call: Call) => Promis
 }
 
 /**
- * Creates the Telegram ingress for one bot. Each update is screened (a secret is cut to its ids),
+ * Creates the Telegram ingress for one bot. Each update comes in with U+FFFD in place of every
+ * U+0000 in its text and keys (decision 0416), then is screened (a secret is cut to its ids),
  * stored under `tg:<bot id>:<update id>`, and handled after it is stored: pairing by start code,
  * owner checks by numeric id, secrets deleted with a warning, the rest handed to `onOwnerUpdate`.
  * A repeated update id is stored once and handled once.
@@ -156,7 +169,8 @@ export function createTelegramIngress(options: TelegramIngressOptions): Telegram
     onOwnerReplaced: options.onOwnerReplaced ?? (() => undefined),
   };
   const passFrom = async (call: Call, pagesLeft: number): Promise<void> => {
-    const entries = await stores.inbox.unhandled({ keyPrefix, limit: pageSize }, call);
+    const stored = await stores.inbox.unhandled({ keyPrefix, limit: pageSize }, call);
+    const entries = stored.map(readable);
     if (entries.length === 0) {
       return;
     }
@@ -167,7 +181,8 @@ export function createTelegramIngress(options: TelegramIngressOptions): Telegram
   };
   const pass = serialized(async (call) => passFrom(call, maxPages));
   return {
-    receive: async (update, call) => {
+    receive: async (sent, call) => {
+      const update = replaceNulDeep(sent);
       const parsed = updateOf(update);
       const stored = screenUpdate(update, parsed);
       await stores.inbox.admit(

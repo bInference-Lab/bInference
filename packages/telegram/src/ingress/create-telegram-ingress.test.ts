@@ -1,9 +1,10 @@
-import type { JsonValue } from "@binference/core";
+import { type JsonValue, jsonValueSchema } from "@binference/core";
 import {
   createManualClock,
   createMemoryLogger,
   createSeededRandom,
 } from "@binference/core/testing";
+import type { InboxEntry, InboxStore } from "@binference/engine";
 import {
   createMemoryAccessStore,
   createMemoryInboxStore,
@@ -26,10 +27,32 @@ const twentyFourWords = [
   "legal winner thank year wave sausage worth title",
 ].join(" ");
 
-async function setUp(options: { readonly owner?: number; readonly locale?: MessageLocale } = {}) {
+// An entry as an update stored before decision 0416 may read back: U+0000 in place of each
+// `{nul}`.
+function oldEntry(entry: InboxEntry): InboxEntry {
+  const text = JSON.stringify(entry.payload).replaceAll("{nul}", String.raw`\u0000`);
+  return { ...entry, payload: jsonValueSchema.parse(JSON.parse(text)) };
+}
+
+// An inbox whose entries read back as updates stored before decision 0416.
+function oldRowsInbox(): InboxStore {
+  const inbox = createMemoryInboxStore();
+  return {
+    ...inbox,
+    unhandled: async (page, call) => (await inbox.unhandled(page, call)).map(oldEntry),
+  };
+}
+
+async function setUp(
+  options: {
+    readonly owner?: number;
+    readonly locale?: MessageLocale;
+    readonly inbox?: InboxStore;
+  } = {},
+) {
   const botApi = createFakeBotApi();
   const stores = {
-    inbox: createMemoryInboxStore(),
+    inbox: options.inbox ?? createMemoryInboxStore(),
     access: createMemoryAccessStore(),
     owners: createMemoryOwnerStore(),
   };
@@ -187,6 +210,22 @@ describe("the Telegram ingress", () => {
       ["callback", 11],
     ]);
     expect(context.delivered[2]).toMatchObject({ isForwarded: true, text: "news" });
+  });
+
+  it("hands the owner's words on and stores them with U+FFFD in place of U+0000", async () => {
+    const context = await setUp({ owner: ownerId });
+    await context.receive(textUpdate({ updateId: 12, from: ownerId, text: "gm\u0000ser" }));
+    expect(context.delivered).toMatchObject([
+      { kind: "message", updateId: 12, text: `gm${String.fromCodePoint(0xfffd)}ser` },
+    ]);
+  });
+
+  it("hands on an update stored before decision 0416 with U+FFFD in place of its U+0000", async () => {
+    const context = await setUp({ owner: ownerId, inbox: oldRowsInbox() });
+    await context.receive(textUpdate({ updateId: 13, from: ownerId, text: "gm{nul}ser" }));
+    expect(context.delivered).toMatchObject([
+      { kind: "message", updateId: 13, text: `gm${String.fromCodePoint(0xfffd)}ser` },
+    ]);
   });
 
   it("ignores groups, bots and posts on behalf of a chat, even from the owner's id", async () => {
