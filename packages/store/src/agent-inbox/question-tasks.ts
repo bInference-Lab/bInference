@@ -247,7 +247,7 @@ export const keepQuestionCopyTask: StoreTask<QuestionCopy, null> = defineTask({
   },
 });
 
-/** The copies of a question, in the order they were sent. */
+/** The copies of a question, in the order they were sent, then by chat and surface. */
 export const questionCopiesTask: StoreTask<string, readonly QuestionCopy[]> = defineTask({
   name: "questions.copies",
   access: "read",
@@ -261,7 +261,8 @@ export const questionCopiesTask: StoreTask<string, readonly QuestionCopy[]> = de
         .selectAll()
         .where("question_id", "=", question)
         .orderBy("sent_at")
-        .orderBy("chat_id"),
+        .orderBy("chat_id")
+        .orderBy("surface"),
     ).rows;
     return rows.map((row) =>
       questionCopySchema.parse({

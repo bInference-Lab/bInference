@@ -105,6 +105,14 @@ function answer(
   return ok({ question: structuredClone(answered), message: stored.value });
 }
 
+// The order the store lists a question's copies in: when they were sent, then chat and surface.
+function bySending(left: QuestionCopy, right: QuestionCopy): number {
+  if (left.sentAtMs !== right.sentAtMs || left.chatId !== right.chatId) {
+    return left.sentAtMs - right.sentAtMs || left.chatId - right.chatId;
+  }
+  return left.surface < right.surface ? -1 : 1;
+}
+
 function keepCopy(rows: QuestionRows, copy: QuestionCopy): void {
   const kept = rows
     .copies()
@@ -145,7 +153,12 @@ export function createMemoryQuestionStore(options: MemoryQuestionStoreOptions): 
     keepCopy: async (copy, call) => memoryCall(call, () => keepCopy(rows, copy)),
     copies: async (question, call) =>
       memoryCall(call, () =>
-        structuredClone(rows.copies().filter((copy) => copy.questionId === question)),
+        structuredClone(
+          rows
+            .copies()
+            .filter((copy) => copy.questionId === question)
+            .toSorted(bySending),
+        ),
       ),
   };
 }

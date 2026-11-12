@@ -4,11 +4,12 @@ import type { ContractCheck } from "@binference/core/testing";
 import type { AgentInboxStore, QuestionStore } from "../chat/ports.js";
 import {
   type QuestionAnswerDraft,
+  type QuestionCopy,
   questionOpenMs,
   type QuestionRecord,
 } from "../chat/question-record.js";
 import { fillAgentInbox } from "./inbox-fixtures.js";
-import { assertRefusesAborted, checkOn, fixtureId, live } from "./store-fixtures.js";
+import { assertRefusesAborted, checkOn, fixtureId, inOrder, live } from "./store-fixtures.js";
 
 /** A question store under test, the agent inbox of the same database, and an agent there. */
 export interface QuestionSubject {
@@ -154,6 +155,25 @@ async function keepsCopies(subject: QuestionSubject): Promise<void> {
   assert.deepEqual(await questions.copies(fixtureId("qst", 2), live()), []);
 }
 
+// Question 1's copy to `chatId` on `surface`, sent at the one instant such copies share.
+function copyOf(surface: "telegram" | "mini", chatId: number): QuestionCopy {
+  return { questionId: fixtureId("qst", 1), surface, chatId, messageId: 7, sentAtMs: 1_100 };
+}
+
+// Copies sent in one millisecond list by chat, and one chat's copies on two surfaces by surface,
+// whatever order they were kept in.
+async function listsOneInstantByChatAndSurface(subject: QuestionSubject): Promise<void> {
+  const { questions } = subject;
+  await asked(subject, question(subject, 1));
+  const kept = [copyOf("telegram", 42), copyOf("mini", 42), copyOf("telegram", 41)];
+  await inOrder(kept, async (copy) => questions.keepCopy(copy, live()));
+  assert.deepEqual(await questions.copies(fixtureId("qst", 1), live()), [
+    copyOf("telegram", 41),
+    copyOf("mini", 42),
+    copyOf("telegram", 42),
+  ]);
+}
+
 async function refusesTakenIds(subject: QuestionSubject): Promise<void> {
   const first = question(subject, 1);
   await asked(subject, first);
@@ -191,6 +211,11 @@ export function questionStoreContract(harness: QuestionStoreHarness): readonly C
     ),
     checkOn("refuses an answer while the agent's inbox is full", create, refusesWhenTheInboxIsFull),
     checkOn("keeps each copy once, in the order they were sent", create, keepsCopies),
+    checkOn(
+      "lists the copies of one millisecond by chat, then surface",
+      create,
+      listsOneInstantByChatAndSurface,
+    ),
     checkOn("refuses an id or a reference in use", create, refusesTakenIds),
     checkOn("refuses a call on an aborted signal and stores nothing", create, refusesAborted),
   ];
