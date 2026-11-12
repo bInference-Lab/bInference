@@ -3,7 +3,13 @@ import { join } from "node:path";
 import { BinferenceError } from "@binference/core";
 import { createMemoryLogger } from "@binference/core/testing";
 import { commandRunnerContract } from "@binference/engine/testing";
-import { realPathOf, type ShellLaunch, type ShellLauncher } from "@binference/platform";
+import {
+  type CommandWallState,
+  type Platform,
+  realPathOf,
+  type ShellLaunch,
+  type ShellLauncher,
+} from "@binference/platform";
 import {
   createTempFolder,
   standInProgramsRun,
@@ -13,7 +19,7 @@ import {
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { currentConfigVersion } from "../config/migrations/config-migrations.js";
 import { configSchema } from "../config/schema/config.schema.js";
-import { commandRunnerOf, shareImageWorkspace } from "./compose-shell.js";
+import { checkCommandWall, commandRunnerOf, shareImageWorkspace } from "./compose-shell.js";
 
 const config = configSchema.parse({
   version: currentConfigVersion,
@@ -41,11 +47,22 @@ async function realOf(path: string): Promise<string> {
   return real;
 }
 
-// A launcher that records each launch and ends it at once with exit code 0.
-function recordingLauncher(wall: ShellLauncher["wall"]) {
+// A launcher that records each launch and ends it at once with exit code 0, and whose wall a
+// check finds as `checked` says.
+function recordingLauncher(state: CommandWallState, checked: CommandWallState = state) {
   const launches: ShellLaunch[] = [];
+  const seen = { state, checks: 0 };
   const launcher: ShellLauncher = {
-    wall,
+    wall: {
+      get state() {
+        return seen.state;
+      },
+      check: async () => {
+        seen.checks += 1;
+        seen.state = checked;
+        return Promise.resolve(checked);
+      },
+    },
     start(launch, onOutput) {
       launches.push(launch);
       onOutput(`${launch.command}\n`);
@@ -55,8 +72,14 @@ function recordingLauncher(wall: ShellLauncher["wall"]) {
       };
     },
   };
-  return { launcher, launches };
+  return { launcher, launches, seen };
 }
+
+const refused: CommandWallState = {
+  kind: "none",
+  cause: "refused",
+  reason: "bubblewrap could not make a namespace",
+};
 
 describe("the agent's command runner", () => {
   let home: TempFolder;
@@ -129,11 +152,28 @@ describe("the agent's command runner", () => {
     expect([started, launches]).toStrictEqual([{ ok: false, error: "folder_missing" }, []]);
   });
 
-  it("refuses every command where the wall cannot hold", () => {
-    const { launcher, launches } = recordingLauncher({ kind: "none", reason: "no bubblewrap" });
+  it("refuses every command where the wall cannot hold, and checks the wall again", () => {
+    const { launcher, launches, seen } = recordingLauncher(refused);
     const runner = commandRunnerOf({ launcher, env, homeDir: home.path, config: () => config });
     const started = runner.start({ command: "ls", timeoutMs: 0 }, () => undefined);
-    expect([started, launches]).toStrictEqual([{ ok: false, error: "no_wall" }, []]);
+    expect([started, launches, seen.checks]).toStrictEqual([
+      { ok: false, error: "no_wall" },
+      [],
+      1,
+    ]);
+  });
+
+  it("runs the next command once the wall a refused command checked again holds", async () => {
+    const { launcher, launches } = recordingLauncher(refused, { kind: "held", by: "bubblewrap" });
+    const runner = commandRunnerOf({ launcher, env, homeDir: home.path, config: () => config });
+    const refusedStart = runner.start({ command: "ls", timeoutMs: 0 }, () => undefined);
+    const next = runner.start({ command: "pwd", timeoutMs: 0 }, () => undefined);
+    assert.ok(next.ok);
+    await next.value.ended;
+    expect([refusedStart.ok, launches.map((launch) => launch.command)]).toStrictEqual([
+      false,
+      ["pwd"],
+    ]);
   });
 
   it("hides a recovery phrase in what a command prints", () => {
@@ -148,6 +188,31 @@ describe("the agent's command runner", () => {
 async function shareWorkspace(): Promise<void> {
   throw new BinferenceError({ code: "platform.share_failed", message: "not binference's" });
 }
+
+// A platform whose command wall a check finds as given.
+function platformWalled(checked: CommandWallState): Pick<Platform, "commandWall"> {
+  return {
+    commandWall: { state: checked, check: async () => Promise.resolve(checked), wrap: (l) => l },
+  };
+}
+
+describe("checking the wall at start", () => {
+  it("logs why no wall holds, and lets the start go on", async () => {
+    const logger = createMemoryLogger({ subsystem: "engine" });
+
+    await expect(checkCommandWall(platformWalled(refused), logger, live)).resolves.toBeUndefined();
+
+    expect(logger.records()).toMatchObject([{ level: "warn", event: "shell.wall_refused" }]);
+  });
+
+  it("logs nothing where the wall holds", async () => {
+    const logger = createMemoryLogger({ subsystem: "engine" });
+
+    await checkCommandWall(platformWalled({ kind: "held", by: "bubblewrap" }), logger, live);
+
+    expect(logger.records()).toStrictEqual([]);
+  });
+});
 
 describe("sharing the image's workspace at start", () => {
   it("logs a workspace it cannot share, and lets the start go on", async () => {

@@ -56,7 +56,7 @@ export function createPosixShellLauncher(
   const { loginShell, clock } = options;
   const program = posixShellProgram(loginShell);
   return {
-    wall: wall.state,
+    wall,
     start: (launch, onOutput) =>
       startWalledShell(
         launch,

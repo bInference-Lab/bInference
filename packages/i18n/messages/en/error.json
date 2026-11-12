@@ -181,7 +181,7 @@
   "remote.not_applied": "Tailscale did not take binference's change, so binference took back what it set. Run `tailscale serve status` to see what Tailscale holds, then `binference expose` again.",
   "token.not_found": "No client token has this ID, so nothing was revoked. To remove a client, run `binference mcp setup --remove`.",
   "shell.off": "The agent's shell is off in this install. Set `shell.run` to `any` in config.json5 to turn it on.",
-  "shell.no_wall": "This machine cannot keep commands away from binference's own folder, so the agent's shell does not run here. On Linux, install bubblewrap (`bwrap`); on Windows, run binference in its Docker image.",
+  "shell.no_wall": "This machine cannot keep commands away from binference's own folder, so the agent's shell does not run here. On Linux, bubblewrap (`bwrap`) is not installed or the machine refuses it user namespaces: install it and allow unprivileged user namespaces, or run binference in its Docker image, which runs the agent's commands as a user of their own. On Windows, run binference in its Docker image. `binference check` names the cause.",
   "shell.folder_missing": "That folder does not exist, so the command did not run. Name a folder that exists, or leave it out to run in your home folder.",
   "shell.job_not_found": "No running or recent command has this ID; finished commands are kept for 30 minutes. Run the command again.",
   "shell.not_listed": "Only allowed commands run in this install (`shell.run` is `listed`), and this one is not allowed. Set `shell.ask` to `unlisted` to be asked about such commands, or run it yourself.",

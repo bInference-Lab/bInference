@@ -19,6 +19,7 @@ export type {
   CommandWall,
   CommandWallKind,
   CommandWallState,
+  NoWallCause,
   ShellLauncher,
   FileAccess,
   FileAccessState,

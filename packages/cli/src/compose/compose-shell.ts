@@ -12,6 +12,7 @@ import { createPdfReader } from "@binference/pdf";
 import {
   findProgram,
   isFolder,
+  type NoWallCause,
   type Platform,
   realPathOf,
   runCommandWithin,
@@ -42,6 +43,17 @@ export interface ShellParts {
 }
 
 const recoveryWords: ReadonlySet<string> = new Set(english);
+
+// The most a check of the wall a refused command asks for may take: bubblewrap answers in
+// milliseconds.
+const wallCheckMs = 5_000;
+
+// The log line of each reason no wall holds.
+const unwalledEvents: Readonly<Record<NoWallCause, string>> = {
+  missing: "shell.wall_missing",
+  refused: "shell.wall_refused",
+  untried: "shell.wall_untried",
+};
 
 // The variables a secret source of the config names, so no command can read them. A secret source
 // is `{ fromEnv: NAME }` wherever it sits, and names hold no quote.
@@ -95,17 +107,24 @@ function commandEndOf(end: ShellEnd): CommandEnd {
   };
 }
 
+// A command the wall refused tries the wall again, so a machine fixed since runs the next one.
+function checkAgain(launcher: ShellLauncher): void {
+  void launcher.wall.check(AbortSignal.timeout(wallCheckMs)).catch(() => undefined);
+}
+
 /**
  * The runner of the agent's commands over a launcher: each starts in its folder with the
  * environment less binference's own variables, its output masked before the model reads it. A
  * launcher whose commands run as another user, as the Docker image's does, gives the home folder
- * they start in (decision 0412).
+ * they start in (decision 0412). A command the wall refuses answers `no_wall` and has the wall
+ * checked again, so the next command finds what holds then.
  */
 export function commandRunnerOf(parts: ShellParts): CommandRunner {
   const home = parts.launcher.home ?? parts.homeDir ?? homedir();
   return {
     start(request, onOutput) {
-      if (parts.launcher.wall.kind === "none") {
+      if (parts.launcher.wall.state.kind === "none") {
+        checkAgain(parts.launcher);
         return err("no_wall");
       }
       const folder = folderOf(request.folder, home);
@@ -216,6 +235,22 @@ export function agentFilesOf(opening: Opening, opened: Opened): EngineFiles {
     homeDir: commandHome(opening),
   });
   return { files, settings: () => opened.settings.current().files };
+}
+
+/**
+ * Checks the wall around the agent's commands as the engine starts (decision 0378), so its first
+ * command finds bubblewrap tried; a wall that does not hold is logged with its cause, and the
+ * start goes on with every command refused `shell.no_wall`.
+ */
+export async function checkCommandWall(
+  platform: Pick<Platform, "commandWall">,
+  logger: Logger,
+  signal: AbortSignal,
+): Promise<void> {
+  const wall = await platform.commandWall.check(signal);
+  if (wall.kind === "none") {
+    logger.warn(unwalledEvents[wall.cause]);
+  }
 }
 
 /**

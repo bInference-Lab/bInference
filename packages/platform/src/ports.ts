@@ -97,13 +97,20 @@ export interface ServiceManager {
 export type CommandWallKind = "seatbelt" | "bubblewrap" | "os_user";
 
 /**
+ * Why no wall holds: this machine has no mechanism for one (`missing`), it refused to run the one
+ * it has, as a machine that refuses bubblewrap new namespaces does (`refused`), or the wall has
+ * not been tried yet (`untried`).
+ */
+export type NoWallCause = "missing" | "refused" | "untried";
+
+/**
  * Whether this machine can keep a command away from binference's own secrets: `held`, and by
- * what, when it can, `none` with a reason when it has no mechanism to (decision 0378). A machine
+ * what, when it can, `none` with its cause and a reason when it cannot (decision 0378). A machine
  * that answers `none` never runs a command, so the reason names why and the next step.
  */
 export type CommandWallState =
   | { readonly kind: "held"; readonly by: CommandWallKind }
-  | { readonly kind: "none"; readonly reason: string };
+  | { readonly kind: "none"; readonly cause: NoWallCause; readonly reason: string };
 
 /**
  * Keeps every command the agent runs away from the parts of the state folder that would let it act
@@ -113,7 +120,15 @@ export type CommandWallState =
  * a sandbox profile that denies those paths alone, not a general sandbox.
  */
 export interface CommandWall {
+  /** Whether the wall holds, as its last {@link check} found. */
   readonly state: CommandWallState;
+  /**
+   * Checks whether the wall holds and answers {@link state} after it. Bubblewrap is tried once
+   * with a command that does nothing, so the answer is `held` only when that command ran; a wall
+   * that held answers at once from then on, and one that did not is tried again at the next
+   * check. The other walls answer at once. Rejects with the signal's reason once it aborts.
+   */
+  check(signal: AbortSignal): Promise<CommandWallState>;
   /**
    * Wraps a launch so the walled paths are unreachable to the command and everything it starts.
    * Throws `platform.no_wall` when {@link state} is `none`.
@@ -128,8 +143,11 @@ export interface CommandWall {
  * limit ends a command with every process it started.
  */
 export interface ShellLauncher {
-  /** Whether the wall holds here; a launcher whose wall answers `none` starts nothing. */
-  readonly wall: CommandWallState;
+  /**
+   * The wall around its commands, whose `state` is what its last `check` found; a launcher whose
+   * wall answers `none` starts nothing.
+   */
+  readonly wall: Pick<CommandWall, "state" | "check">;
   /**
    * The home folder of the user commands run as, when that user is not binference's own: a
    * command starts there unless it names a folder, and `~` names it.

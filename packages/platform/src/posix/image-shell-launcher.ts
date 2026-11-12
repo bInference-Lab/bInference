@@ -116,7 +116,7 @@ function startThrough(
  */
 export function createImageShellLauncher(options: ImageShellOptions): ShellLauncher {
   return {
-    wall: osUserWall.state,
+    wall: osUserWall,
     home: options.home,
     start: (launch, onOutput) => startThrough(options, launch, onOutput),
   };

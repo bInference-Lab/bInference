@@ -16,8 +16,11 @@ link into the folder does not get through either: each path is read at its real 
 call uses only the file it checked.
 
 - On macOS, a Seatbelt rule set walls every command. Commands cannot reach the keychain either.
-- On Linux, bubblewrap walls every command. Install `bwrap`; without it, every command is refused
-  with a message that says so.
+- On Linux, bubblewrap walls every command. Install `bwrap`. It needs unprivileged user
+  namespaces, which some distributions turn off and a container under Docker's default settings
+  refuses, so binference runs a command that does nothing through it before it trusts the wall.
+  Where `bwrap` is missing or refused, every command is refused with a message that says so, and
+  `binference check` names the cause.
 - Windows has no wall yet, so the agent's shell is off there.
 
 A command never runs without the wall. Everything else your user holds stays within its reach: your

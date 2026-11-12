@@ -1,18 +1,31 @@
 import { createManualClock } from "@binference/core/testing";
-import type { ShellEnd, ShellLaunch, ShellLauncher } from "@binference/platform";
+import type { CommandWallState, ShellEnd, ShellLaunch, ShellLauncher } from "@binference/platform";
 import { describe, expect, it } from "vitest";
 import { shellWallFinding } from "./shell-wall-finding.js";
 
 const clock = createManualClock();
+const signal = new AbortController().signal;
 
-// A launcher with the wall given, which ends each command as `end` says and records it.
+// A launcher whose wall a check finds as given, which ends each command as `end` says and
+// records it.
 function launcherOf(
-  wall: ShellLauncher["wall"],
+  checked: CommandWallState,
   options: { readonly home?: string; readonly end?: ShellEnd } = {},
 ) {
   const launches: ShellLaunch[] = [];
+  const seen: { state: CommandWallState } = {
+    state: { kind: "none", cause: "untried", reason: "not tried" },
+  };
   const launcher: ShellLauncher = {
-    wall,
+    wall: {
+      get state() {
+        return seen.state;
+      },
+      check: async () => {
+        seen.state = checked;
+        return Promise.resolve(checked);
+      },
+    },
     ...(options.home === undefined ? {} : { home: options.home }),
     start(launch) {
       launches.push(launch);
@@ -20,11 +33,14 @@ function launcherOf(
       return { ended: Promise.resolve(end), stop: () => undefined };
     },
   };
-  return { run: { host: { clock }, platform: { shellLauncher: () => launcher } }, launches };
+  return {
+    run: { host: { clock }, platform: { shellLauncher: () => launcher }, signal },
+    launches,
+  };
 }
 
 describe("the finding of the shell's wall", () => {
-  it("names the wall that holds, and runs nothing for it", async () => {
+  it("names the wall its check finds holding, and runs nothing for it", async () => {
     const { run, launches } = launcherOf({ kind: "held", by: "seatbelt" });
 
     expect(await shellWallFinding(run)).toStrictEqual({
@@ -37,7 +53,11 @@ describe("the finding of the shell's wall", () => {
   });
 
   it("warns that every command is refused where no wall holds", async () => {
-    const { run } = launcherOf({ kind: "none", reason: "bwrap is not installed" });
+    const { run } = launcherOf({
+      kind: "none",
+      cause: "missing",
+      reason: "bwrap is not installed",
+    });
 
     expect(await shellWallFinding(run)).toMatchObject({
       check: "shell.wall",

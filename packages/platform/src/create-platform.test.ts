@@ -56,7 +56,7 @@ describe.skipIf(process.platform === "win32")("platform on macOS and Linux", () 
     const launcher = platform.shellLauncher(createManualClock());
 
     expect(platform.commandWall.state).toStrictEqual({ kind: "held", by: "os_user" });
-    expect(launcher.wall).toStrictEqual({ kind: "held", by: "os_user" });
+    expect(launcher.wall.state).toStrictEqual({ kind: "held", by: "os_user" });
     expect(launcher.home).toBe("/var/lib/binference/.binference/shell/home");
     expect(platform.shareWorkspace).toBeTypeOf("function");
   });
@@ -67,7 +67,7 @@ describe.skipIf(process.platform === "win32")("platform on macOS and Linux", () 
 
     expect(launcher.home).toBeUndefined();
     expect(platform.shareWorkspace).toBeUndefined();
-    expect(launcher.wall).not.toStrictEqual({ kind: "held", by: "os_user" });
+    expect(launcher.wall.state).not.toStrictEqual({ kind: "held", by: "os_user" });
   });
 });
 

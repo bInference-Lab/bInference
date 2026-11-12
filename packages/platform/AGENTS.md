@@ -23,7 +23,10 @@ The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
   a socket, through the Docker image's shell launcher (decision 0412): `serveImageShell` runs in
   the image's program as `binference-shell`, and the engine's `createImageShellLauncher` checks
   every line it sends, since a command can replace it. Both pass the `ShellLauncher` contract in
-  one process, with the server on a socket of the test's folder.
+  one process, with the server on a socket of the test's folder. A wall's `state` is what its last
+  `check` found: the Linux wall holds only once a check ran a command that does nothing through
+  `bwrap` with its own arguments, keeps a wall that held, and tries again at the next check after
+  a refusal. The engine checks it at start, and a command it refuses checks it again.
 - `src/outbound/` holds the connection pools of the engine's and the agent runtime's outbound
   HTTP adapters (decision 0347), the one place here that imports undici, exported alone as
   `@binference/platform/outbound` so the runtime's bundle takes nothing else of this package. They

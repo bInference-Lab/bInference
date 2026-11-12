@@ -34,6 +34,16 @@ function launchOf(subject: ShellLauncherSubject, command: string, timeoutMs = 0)
   return { command, folder: subject.folder, timeoutMs, env: { PATH: "/usr/bin:/bin" } };
 }
 
+const signal = (): AbortSignal => AbortSignal.timeout(15_000);
+
+// A subject whose wall a check found holding, so it starts commands.
+async function ready(harness: ShellLauncherHarness): Promise<ShellLauncherSubject> {
+  const subject = await harness.create();
+  assert.equal((await subject.launcher.wall.check(signal())).kind, "held");
+  assert.equal(subject.launcher.wall.state.kind, "held");
+  return subject;
+}
+
 function started(subject: ShellLauncherSubject, launch: ShellLaunch) {
   let output = "";
   const running: RunningShell = subject.launcher.start(launch, (text) => {
@@ -48,7 +58,7 @@ function runChecks(harness: ShellLauncherHarness): readonly ContractCheck[] {
     {
       name: "runs a command and hands on its output and exit code",
       run: async () => {
-        const subject = await harness.create();
+        const subject = await ready(harness);
         const { running, output } = started(
           subject,
           launchOf(subject, subject.commands.printsAndExits),
@@ -62,7 +72,7 @@ function runChecks(harness: ShellLauncherHarness): readonly ContractCheck[] {
     {
       name: "runs a command in the folder it is given",
       run: async () => {
-        const subject = await harness.create();
+        const subject = await ready(harness);
         const { running, output } = started(
           subject,
           launchOf(subject, subject.commands.printsFolder),
@@ -80,7 +90,7 @@ function endChecks(harness: ShellLauncherHarness): readonly ContractCheck[] {
     {
       name: "ends a command and the child it started at its time limit",
       run: async () => {
-        const subject = await harness.create();
+        const subject = await ready(harness);
         const { running } = started(subject, launchOf(subject, subject.commands.waitsOnChild, 200));
         await subject.advance(200);
         const end = await running.ended;
@@ -90,7 +100,7 @@ function endChecks(harness: ShellLauncherHarness): readonly ContractCheck[] {
     {
       name: "ends a command and the child it started when stopped",
       run: async () => {
-        const subject = await harness.create();
+        const subject = await ready(harness);
         const { running } = started(subject, launchOf(subject, subject.commands.waitsOnChild));
         running.stop();
         running.stop();
@@ -109,7 +119,8 @@ export function shellLauncherContract(harness: ShellLauncherHarness): readonly C
         name: "starts nothing where the wall does not hold",
         run: async () => {
           const subject = await harness.create();
-          assert.equal(subject.launcher.wall.kind, "none");
+          assert.equal((await subject.launcher.wall.check(signal())).kind, "none");
+          assert.equal(subject.launcher.wall.state.kind, "none");
           assert.throws(
             () => subject.launcher.start(launchOf(subject, "echo"), () => undefined),
             (error: Error) => error instanceof BinferenceError && error.code === "platform.no_wall",

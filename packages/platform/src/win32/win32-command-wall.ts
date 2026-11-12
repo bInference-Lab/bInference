@@ -1,6 +1,6 @@
 import { BinferenceError } from "@binference/core";
 import type { CommandLaunch } from "../command-launch.js";
-import type { CommandWall } from "../ports.js";
+import type { CommandWall, CommandWallState } from "../ports.js";
 
 /**
  * The Windows command wall: none in v1. Windows has no built-in mechanism binference uses to deny
@@ -10,8 +10,10 @@ import type { CommandWall } from "../ports.js";
  */
 export function createWin32CommandWall(): CommandWall {
   const reason = "Windows has no command wall yet, so the agent's shell is off on Windows.";
+  const state: CommandWallState = { kind: "none", cause: "missing", reason };
   return {
-    state: { kind: "none", reason },
+    state,
+    check: async () => Promise.resolve(state),
     wrap(_launch: CommandLaunch): CommandLaunch {
       throw new BinferenceError({ code: "platform.no_wall", message: reason });
     },

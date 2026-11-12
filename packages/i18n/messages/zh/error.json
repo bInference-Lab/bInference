@@ -181,7 +181,7 @@
   "remote.not_applied": "Tailscale 没有接受 binference 的更改，因此 binference 已撤回它设置的内容。请运行 `tailscale serve status` 查看 Tailscale 当前的设置，然后再次运行 `binference expose`。",
   "token.not_found": "没有此 ID 的访问令牌，因此未撤销任何内容。如需移除某个客户端，请运行 `binference mcp setup --remove`。",
   "shell.off": "此安装中 Agent 的 shell 已关闭。在 config.json5 中把 `shell.run` 设为 `any` 即可开启。",
-  "shell.no_wall": "这台电脑无法让命令远离 binference 自己的文件夹，因此 Agent 的 shell 不在这里运行。在 Linux 上请安装 bubblewrap（`bwrap`）；在 Windows 上请在 Docker 镜像中运行 binference。",
+  "shell.no_wall": "这台电脑无法让命令远离 binference 自己的文件夹，因此 Agent 的 shell 不在这里运行。在 Linux 上，可能没有安装 bubblewrap（`bwrap`），或者系统拒绝让它使用用户命名空间：请安装它并允许非特权用户命名空间，或在 Docker 镜像中运行 binference，镜像以单独的用户运行 Agent 的命令。在 Windows 上，请在 Docker 镜像中运行 binference。`binference check` 会说明原因。",
   "shell.folder_missing": "该文件夹不存在，命令未运行。请指定一个存在的文件夹，或不填以在你的主文件夹中运行。",
   "shell.job_not_found": "没有此 ID 的运行中或近期命令；结束的命令保留 30 分钟。请重新运行该命令。",
   "shell.not_listed": "此安装只运行允许的命令（`shell.run` 为 `listed`），而这条命令不在允许范围内。把 `shell.ask` 设为 `unlisted` 即可在遇到此类命令时被询问，或自己运行它。",

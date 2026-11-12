@@ -28,7 +28,7 @@ function endTree(pid: number): void {
 export function createWin32ShellLauncher(wall: CommandWall, clock: Clock): ShellLauncher {
   const program = win32ShellProgram();
   return {
-    wall: wall.state,
+    wall,
     start: (launch, onOutput) =>
       startWalledShell(launch, { program, wall, clock, ownGroup: false, endTree }, onOutput),
   };

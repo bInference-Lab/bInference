@@ -134,7 +134,7 @@ describe.skipIf(process.platform === "win32")("the image's shell launcher", () =
     await expect(running.ended).resolves.toMatchObject({ exitCode: 0 });
     expect(output.trim()).toBe(`${served.folder} ${user} ${user} kept`);
     expect(launcher.home).toBe("/h");
-    expect(launcher.wall).toStrictEqual({ kind: "held", by: "os_user" });
+    expect(launcher.wall.state).toStrictEqual({ kind: "held", by: "os_user" });
   });
 
   it("stops every command it runs when it closes", async () => {

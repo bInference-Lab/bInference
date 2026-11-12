@@ -19,17 +19,19 @@ async function launcherAnswers(launcher: ShellLauncher, folder: string): Promise
 
 /**
  * `shell.wall` (decisions 0378 and 0412): what keeps the agent's commands from binference's own
- * folder on this machine, Seatbelt, bubblewrap or, in the Docker image, a user of their own. It
- * warns when nothing does, since every command is then refused, and in the image when the shell
- * launcher does not run a command that does nothing in its home, as when the container started
- * without the image entry.
+ * folder on this machine, Seatbelt, bubblewrap or, in the Docker image, a user of their own, as a
+ * check of the wall finds it, so bubblewrap counts only once it ran a command. It warns when
+ * nothing does, since every command is then refused, and in the image when the shell launcher
+ * does not run a command that does nothing in its home, as when the container started without
+ * the image entry.
  */
 export async function shellWallFinding(run: {
   readonly host: Pick<CliHost, "clock">;
   readonly platform: Pick<Platform, "shellLauncher">;
+  readonly signal: AbortSignal;
 }): Promise<CheckFinding> {
   const launcher = run.platform.shellLauncher(run.host.clock);
-  const { wall } = launcher;
+  const wall = await launcher.wall.check(run.signal);
   if (wall.kind === "none") {
     const message = { key: "check.shellWall.none", values: {} };
     const more = [{ key: "check.shellWall.fixNone", values: {} }];

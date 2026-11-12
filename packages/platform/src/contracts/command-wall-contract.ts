@@ -41,6 +41,7 @@ function noWallChecks(harness: CommandWallHarness): readonly ContractCheck[] {
       name: "answers none and refuses to wrap a command where it has no mechanism",
       run: async () => {
         const { wall } = await harness.create();
+        assert.equal((await wall.check(signal())).kind, "none");
         assert.equal(wall.state.kind, "none");
         assert.throws(
           () => wall.wrap({ file: "/bin/echo", args: [] }),
@@ -51,6 +52,13 @@ function noWallChecks(harness: CommandWallHarness): readonly ContractCheck[] {
   ];
 }
 
+// A subject whose wall a check found holding, so it wraps a command.
+async function checked(harness: CommandWallHarness): Promise<CommandWallSubject> {
+  const subject = await harness.create();
+  assert.equal((await subject.wall.check(signal())).kind, "held");
+  return subject;
+}
+
 /** The contract every `CommandWall` adapter passes. */
 export function commandWallContract(harness: CommandWallHarness): readonly ContractCheck[] {
   if (!harness.walls) {
@@ -58,9 +66,17 @@ export function commandWallContract(harness: CommandWallHarness): readonly Contr
   }
   return [
     {
+      name: "holds once checked, and answers the same at the next check",
+      run: async () => {
+        const { wall } = await checked(harness);
+        assert.deepEqual(await wall.check(signal()), wall.state);
+        assert.equal(wall.state.kind, "held");
+      },
+    },
+    {
       name: "runs a command and lets it read a file outside the wall",
       run: async () => {
-        const { wall, reader, allowedFile, allowedContent } = await harness.create();
+        const { wall, reader, allowedFile, allowedContent } = await checked(harness);
         const wrapped = wall.wrap({ file: reader, args: [allowedFile] });
         const exit = await runCommandToExit(wrapped.file, wrapped.args, signal());
         assert.equal(exit.exitCode, 0);
@@ -70,7 +86,7 @@ export function commandWallContract(harness: CommandWallHarness): readonly Contr
     {
       name: "keeps a command from reading a walled file's contents",
       run: async () => {
-        const { wall, reader, deniedFile, deniedContent } = await harness.create();
+        const { wall, reader, deniedFile, deniedContent } = await checked(harness);
         const wrapped = wall.wrap({ file: reader, args: [deniedFile] });
         // A wall may deny the read outright (an error) or leave an empty file in its place; either
         // way the command never sees what the file held.
@@ -83,7 +99,7 @@ export function commandWallContract(harness: CommandWallHarness): readonly Contr
     {
       name: "keeps a command from making a hard link to a walled file in an open folder",
       run: async () => {
-        const { wall, linker, deniedFile, openFolder } = await harness.create();
+        const { wall, linker, deniedFile, openFolder } = await checked(harness);
         const link = join(openFolder, "linked");
         const wrapped = wall.wrap({ file: linker, args: [deniedFile, link] });
         // The file tools read an open folder as the engine, which no wall holds, so a hard link

@@ -41,10 +41,15 @@ function rulesOf(walled: WalledPaths): string {
 export function createMacosCommandWall(walled: WalledPaths): CommandWall {
   const state: CommandWallState = existsSync(sandboxExec)
     ? { kind: "held", by: "seatbelt" }
-    : { kind: "none", reason: `${sandboxExec} is missing, so a command cannot be walled.` };
+    : {
+        kind: "none",
+        cause: "missing",
+        reason: `${sandboxExec} is missing, so a command cannot be walled.`,
+      };
   const ruleset = rulesOf(walled);
   return {
     state,
+    check: async () => Promise.resolve(state),
     wrap(launch: CommandLaunch): CommandLaunch {
       if (state.kind === "none") {
         throw new BinferenceError({ code: "platform.no_wall", message: state.reason });

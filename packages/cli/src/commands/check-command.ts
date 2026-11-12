@@ -96,7 +96,7 @@ export async function checkFindings(run: CheckRun): Promise<readonly CheckFindin
   const roles = await roleWalletFindings({ host, platform, signal });
   const remote = await remoteFindings({ host, platform, signal }, config.config);
   const sandbox = await pluginSandboxFinding({ host, platform, signal });
-  const wall = await shellWallFinding({ host, platform });
+  const wall = await shellWallFinding({ host, platform, signal });
   return [
     config.finding,
     ...access,
