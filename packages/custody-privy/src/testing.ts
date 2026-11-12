@@ -31,6 +31,28 @@ export { createFakeCustodySubject } from "./testing/fake-custody-subject.js";
 export type { FakeCustodySubject } from "./testing/fake-custody-subject.js";
 export { createFakePrivy } from "./testing/fake-privy.js";
 export type { FakePrivy, FakePrivyOptions } from "./testing/fake-privy.js";
+export { createFakeSignerBook } from "./testing/fake-signer-book.js";
+export type {
+  FakeAfterChecks,
+  FakeAsked,
+  FakeSignerBook,
+  FakeSignerBookOptions,
+} from "./testing/fake-signer-book.js";
+export type {
+  FakeAuthorization,
+  FakeLease,
+  FakeServiceIntent,
+  FakeServiceStep,
+  FakeStepDoes,
+} from "./testing/fake-signer-checks.js";
+export type { FakeReservation, FakeSumAsset } from "./testing/fake-signer-sums.js";
+export { startFakeSignerService } from "./testing/fake-signer-service.js";
+export type {
+  FakeServiceEvent,
+  FakeSignerService,
+  FakeSignerServiceOptions,
+  FakeTaken,
+} from "./testing/fake-signer-service.js";
 export { createFakeSignerProcess } from "./testing/fake-signer-process.js";
 export type { FakeSignerProcess } from "./testing/fake-signer-process.js";
 export { createLeftoverBook, leftoverKeychainService } from "./testing/leftover-book.js";
