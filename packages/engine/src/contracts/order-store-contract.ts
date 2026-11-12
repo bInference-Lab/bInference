@@ -99,6 +99,11 @@ async function refusesStrangers(subject: OrderStoreSubject): Promise<void> {
   const unknown = { ...orderDraft(subject, 2), agentId: fixtureId("agt", 99) };
   await assert.rejects(store.create(unknown, live()), { code: "store.constraint" });
   assert.deepEqual(await store.list({ states: ["awaiting_confirmation"], limit: 10 }, live()), []);
+  // An order's card intent holds that order alone.
+  assert.ok((await store.create(orderDraft(subject, 3), live())).ok);
+  const sameCard = { ...orderDraft(subject, 4), intentId: orderDraft(subject, 3).intentId };
+  await assert.rejects(store.create(sameCard, live()), { code: "store.constraint" });
+  assert.equal(await store.get(sameCard.id, live()), undefined);
 }
 
 async function movesUnderVersion(subject: OrderStoreSubject): Promise<void> {
@@ -270,7 +275,7 @@ export function orderStoreContract(harness: OrderStoreHarness): readonly Contrac
   return [
     checkOn("creates an order awaiting its card, once, its amounts exact", create, createsOrders),
     checkOn("keeps what a buy order spends and its size, exact", create, keepsBuySizes),
-    checkOn("refuses an unknown agent or another agent's wallet", create, refusesStrangers),
+    checkOn("refuses an unknown agent, another's wallet, a held card", create, refusesStrangers),
     ...copyChecks(create),
     checkOn("moves orders under their versions, all or nothing", create, movesUnderVersion),
     checkOn(

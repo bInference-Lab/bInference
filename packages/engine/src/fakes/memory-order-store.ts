@@ -70,6 +70,9 @@ function create(
   if (orders.has(draft.id)) {
     return err("exists");
   }
+  if ([...orders.values()].some((order) => order.intentId === draft.intentId)) {
+    throw constraintFault(`order ${draft.id} names a card intent another order holds`);
+  }
   if (agent.frozenAtMs !== undefined) {
     return err("frozen");
   }
