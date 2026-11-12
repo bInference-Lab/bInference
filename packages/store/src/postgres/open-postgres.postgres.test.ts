@@ -5,6 +5,7 @@ import { DatabaseError } from "pg";
 import { afterAll, beforeAll, describe, expect, inject, it } from "vitest";
 import { createTestPostgresDatabase, type TestPostgresDatabase } from "../testing/test-postgres.js";
 import { openPostgres, type PostgresDatabase } from "./open-postgres.js";
+import type { PostgresConnection } from "./postgres-connection.js";
 
 interface Tables {
   "t.items": { k: number; v: number };
@@ -29,8 +30,80 @@ function conflict(): DatabaseError {
   return error;
 }
 
+function unique(): DatabaseError {
+  const error = new DatabaseError("duplicate key value violates unique constraint", 0, "error");
+  error.code = "23505";
+  return error;
+}
+
 function ignore(): void {
   // Replaced before anything calls it.
+}
+
+// A promise and the switch that resolves it.
+function latch(): { readonly opened: Promise<void>; readonly open: () => void } {
+  let open: () => void = ignore;
+  const opened = new Promise<void>((resolve) => {
+    open = resolve;
+  });
+  return { opened, open: () => open() };
+}
+
+/** A write's work and how many times it ran. */
+interface CountedWork {
+  readonly work: (connection: PostgresConnection<Tables>) => Promise<string>;
+  readonly tries: () => number;
+}
+
+// A write's work that fails with each of `errors` in turn, one a try, and then answers.
+function failingWith(errors: readonly DatabaseError[]): CountedWork {
+  const state = { tries: 0 };
+  return {
+    tries: () => state.tries,
+    work: async () => {
+      state.tries += 1;
+      await Promise.resolve();
+      const error = errors[state.tries - 1];
+      if (error !== undefined) {
+        throw error;
+      }
+      return "done";
+    },
+  };
+}
+
+// A write's work that stores key `k` unread on its first try and reads it first on each try after,
+// answering `exists` once it is stored: a task that skipped its read, then the read its rerun makes.
+function storeUnreadFirst(k: number): CountedWork {
+  const state = { tries: 0 };
+  return {
+    tries: () => state.tries,
+    work: async ({ kysely, execute, takeFirst }) => {
+      state.tries += 1;
+      const read = kysely.selectFrom("t.items").select("k").where("k", "=", k);
+      const held = state.tries === 1 ? undefined : await takeFirst(read);
+      if (held !== undefined) {
+        return "exists";
+      }
+      await execute(kysely.insertInto("t.items").values({ k, v: k }));
+      return "stored";
+    },
+  };
+}
+
+// Waits on the server, up to five seconds, until a statement of this database waits for a lock
+// another transaction holds.
+async function waitForLockWait(database: PostgresDatabase<Tables>): Promise<void> {
+  await database.read(async ({ kysely, execute }) => {
+    await execute(
+      sql`do $$ declare deadline timestamptz := clock_timestamp() + interval '5 seconds'; begin
+        while not exists (select from pg_catalog.pg_stat_activity
+            where datname = current_database() and wait_event_type = 'Lock')
+          and clock_timestamp() < deadline loop perform pg_sleep(0.01); perform pg_stat_clear_snapshot(); end loop; end $$`.compile(
+        kysely,
+      ),
+    );
+  }, never);
 }
 
 // The first `parties` callers wait until all of them arrived; later callers pass at once.
@@ -223,7 +296,7 @@ describe.runIf(url !== "")("a Postgres store connection", () => {
     expect(waits).toHaveLength(3);
   });
 
-  it("never retries another failure", async () => {
+  it("runs a write again once after a unique violation, and fails store constraint on the next", async () => {
     let attempts = 0;
     await expect(
       database.write(async ({ kysely, execute }) => {
@@ -232,6 +305,56 @@ describe.runIf(url !== "")("a Postgres store connection", () => {
         await execute(kysely.insertInto("t.items").values({ k: 1, v: 2 }));
       }, never),
     ).rejects.toMatchObject({ code: "store.constraint", details: { sqlState: "23505" } });
+    expect(attempts).toBe(2);
+  });
+
+  it("runs a write again from its first read when a concurrent insert took its key", async () => {
+    const held = latch();
+    const stored = latch();
+    const first = database.write(async ({ kysely, execute }) => {
+      await execute(kysely.insertInto("t.items").values({ k: 7, v: 7 }));
+      stored.open();
+      await held.opened;
+    }, never);
+    await stored.opened;
+    const unread = storeUnreadFirst(7);
+    const second = database.write(unread.work, never);
+    await waitForLockWait(database);
+    held.open();
+    await first;
+
+    await expect(second).resolves.toBe("exists");
+    expect(unread.tries()).toBe(2);
+    expect(logger.records().map(({ fields }) => fields["errorCode"])).toContain("23505");
+  });
+
+  it("counts a unique violation among the three retries of a write", async () => {
+    const failing = failingWith([unique(), conflict(), conflict(), conflict()]);
+    await expect(database.write(failing.work, never)).rejects.toMatchObject({
+      code: "store.write_conflict",
+      details: { attempts: 4 },
+    });
+    expect(failing.tries()).toBe(4);
+  });
+
+  it("fails store constraint on a unique violation with no retry left", async () => {
+    const failing = failingWith([conflict(), conflict(), conflict(), unique()]);
+    await expect(database.write(failing.work, never)).rejects.toMatchObject({
+      code: "store.constraint",
+      details: { sqlState: "23505" },
+    });
+    expect(failing.tries()).toBe(4);
+  });
+
+  it("never retries another failure", async () => {
+    let attempts = 0;
+    await expect(
+      database.write(async ({ kysely, execute }) => {
+        attempts += 1;
+        await execute(kysely.insertInto("t.items").values({ k: 6, v: 6 }));
+        await execute(sql`select 1 / 0`.compile(kysely));
+      }, never),
+    ).rejects.toMatchObject({ code: "store.postgres_failed", details: { sqlState: "22012" } });
     expect(attempts).toBe(1);
   });
 

@@ -19,6 +19,16 @@ export function isWriteConflict(error: Caught): boolean {
   return conflictStates.has(sqlStateOf(error) ?? "");
 }
 
+// SQLSTATE 23505 and 23P01: a unique or exclusion key in use. A writer that never read the key
+// meets a concurrent insert of it as one of these rather than 40001, so one rerun from the first
+// read, which reads the key, answers it (decision 0413).
+const uniqueStates = new Set(["23505", "23P01"]);
+
+/** Whether the server refused a write for a unique or exclusion key in use. */
+export function isUniqueViolation(error: Caught): boolean {
+  return uniqueStates.has(sqlStateOf(error) ?? "");
+}
+
 // SQLSTATE P0001, a PL/pgSQL `RAISE EXCEPTION` with no code of its own: in the store's schemas
 // only a trigger or a migration that refuses a write raises it (the ledger's chain, the append-only
 // ledger and transcript), as SQLite's `RAISE(ABORT)` refuses one.

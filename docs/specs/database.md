@@ -477,9 +477,11 @@ is `pg_trgm`, for note search.
 
 Every write task runs at `SERIALIZABLE`, read write; every read task at `REPEATABLE READ`, read
 only. A write that fails with SQLSTATE `40001` or `40P01` runs again from its first read, at most
-three times more; then it fails `store.write_conflict`. A connection lost while `COMMIT` is in
-flight fails `store.commit_unknown` and is never retried. The worker keeps one writer per
-database: an install's write tasks run one at a time, in arrival order
+three times more; then it fails `store.write_conflict`. A write that fails with `23505` or
+`23P01`, a key another write took, runs again once from its first read, within the same three,
+and fails `store.constraint` when it meets one again ([decision 0413](../DECISIONS.md#d0413)). A
+connection lost while `COMMIT` is in flight fails `store.commit_unknown` and is never retried. The
+worker keeps one writer per database: an install's write tasks run one at a time, in arrival order
 ([decision 0366](../DECISIONS.md#d0366)).
 
 <a id="section-6-2"></a>

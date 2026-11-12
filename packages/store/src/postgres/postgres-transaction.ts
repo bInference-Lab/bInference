@@ -3,6 +3,7 @@ import { type Kysely, sql } from "kysely";
 import { connectionOf, type PostgresConnection } from "./postgres-connection.js";
 import {
   commitUnknown,
+  isUniqueViolation,
   isWriteConflict,
   sqlStateOf,
   storeFaultOf,
@@ -84,39 +85,68 @@ async function writeOnce<Schema, Output>(
 /**
  * Runs `work` in one `SERIALIZABLE`, read-write transaction and commits. A conflict (SQLSTATE
  * 40001 or 40P01) runs it again from its first read, at most three times more after 10, 40 and
- * 160 ms with jitter, each retry logged; then it throws `store.write_conflict`. A connection lost
- * or the signal aborted while `COMMIT` is in flight throws `store.commit_unknown`, never retried:
- * the caller rereads before it decides again. An abort before `COMMIT` rolls back.
+ * 160 ms with jitter, each retry logged; then it throws `store.write_conflict`. A unique or
+ * exclusion key in use (23505 or 23P01) runs it again once, inside the same three, since a writer
+ * that did not read the key meets a concurrent insert of it so (decision 0413); a second one, or
+ * one with no retry left, throws `store.constraint`. A connection lost or the signal aborted while
+ * `COMMIT` is in flight throws `store.commit_unknown`, never retried: the caller replays the write,
+ * which answers as its first run did. An abort before `COMMIT` rolls back.
  */
 export async function postgresWrite<Schema, Output>(
   kysely: Kysely<Schema>,
   work: PostgresWork<Schema, Output>,
   options: WriteOptions,
 ): Promise<Output> {
-  return writeFrom(kysely, work, { ...options, attempt: 0, startedMs: options.clock.now() });
+  const first = { attempt: 0, startedMs: options.clock.now(), hasRerunUnique: false };
+  return writeFrom(kysely, work, { ...options, ...first });
+}
+
+/** Where a write stands among its tries. */
+interface Attempt {
+  readonly attempt: number;
+  readonly startedMs: number;
+  /** Whether a unique violation already ran it again: a second one is a real constraint. */
+  readonly hasRerunUnique: boolean;
+}
+
+// The failure a write throws when it may not run again; `undefined` when it may.
+function finalFault(
+  error: Error["cause"],
+  options: WriteOptions & Attempt,
+): { readonly fault: Error["cause"] } | undefined {
+  const isUnique = isUniqueViolation(error) && !options.hasRerunUnique;
+  if (!isWriteConflict(error) && !isUnique) {
+    return { fault: storeFaultOf(error, options.signal) };
+  }
+  if (conflictWaitsMs[options.attempt] !== undefined) {
+    return undefined;
+  }
+  const fault = isUnique
+    ? storeFaultOf(error, options.signal)
+    : writeConflict(options.attempt + 1, error);
+  return { fault };
 }
 
 async function writeFrom<Schema, Output>(
   kysely: Kysely<Schema>,
   work: PostgresWork<Schema, Output>,
-  options: WriteOptions & { readonly attempt: number; readonly startedMs: number },
+  options: WriteOptions & Attempt,
 ): Promise<Output> {
   try {
     return await writeOnce(kysely, work, options.signal);
   } catch (error) {
-    if (!isWriteConflict(error)) {
-      throw storeFaultOf(error, options.signal);
-    }
-    const waitMs = conflictWaitsMs[options.attempt];
-    if (waitMs === undefined) {
-      throw writeConflict(options.attempt + 1, error);
+    const final = finalFault(error, options);
+    if (final !== undefined) {
+      throw final.fault;
     }
     options.logger.warn("store.write_retried", {
       errorCode: sqlStateOf(error) ?? "",
       durationMs: options.clock.now() - options.startedMs,
     });
+    const waitMs = conflictWaitsMs[options.attempt] ?? 0;
     await options.clock.sleep(jittered(waitMs, options.random), options.signal);
-    return writeFrom(kysely, work, { ...options, attempt: options.attempt + 1 });
+    const hasRerunUnique = options.hasRerunUnique || isUniqueViolation(error);
+    return writeFrom(kysely, work, { ...options, attempt: options.attempt + 1, hasRerunUnique });
   }
 }
 
