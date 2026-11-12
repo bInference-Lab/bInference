@@ -1,3 +1,4 @@
+import { maxJsonDepth } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { channelLines } from "./channel-lines.js";
 import { parsePluginLine } from "./plugin-line.schema.js";
@@ -41,7 +42,17 @@ describe("channelLines", () => {
   });
 });
 
+// A result line whose output nests `depth` deep, inside the line's own object.
+const output = (depth: number): string =>
+  `{"kind":"result","id":"c1","output":${"[".repeat(depth)}${"]".repeat(depth)}}`;
+
 describe("parsePluginLine", () => {
+  it("reads no message from a line nested past the bound, and reads one at the bound", () => {
+    expect(parsePluginLine(output(maxJsonDepth - 1))).toMatchObject({ kind: "result" });
+    expect(parsePluginLine(output(maxJsonDepth))).toBeUndefined();
+    expect(parsePluginLine(output(10_000))).toBeUndefined();
+  });
+
   it("reads each message a plugin may send", () => {
     const messages = [
       { kind: "ready", tools: ["fear_index"] },
