@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import type { ContractCheck } from "@binference/core/testing";
+import type { EventDraft } from "../chats/transcript-event.js";
 import type {
   ChatQueueStore,
   ChatRetention,
@@ -111,6 +112,28 @@ async function prunesOldChats(subject: ChatRetentionSubject, fence: number): Pro
   assert.notEqual(await subject.sessions.get(sessionId, go()), undefined);
 }
 
+function said(atMs: number): EventDraft {
+  return { role: "owner", kind: "text", content: { atMs }, outside: false, atMs };
+}
+
+// A session's next event after a prune is numbered past the last one kept, so its events still
+// read in the order they were said.
+async function numbersPastKept(subject: ChatRetentionSubject, fence: number): Promise<void> {
+  await subject.sessions.open({ ...nthSession(1), fence }, go());
+  const events = [said(100), said(200), said(2_000)];
+  await subject.transcript.append({ sessionId, events, fence }, go());
+  await subject.retention.prune({ beforeMs: cutoff, fence }, go());
+  await subject.transcript.append({ sessionId, events: [said(3_000)], fence }, go());
+  const read = await subject.transcript.events({ sessionId, limit: 10 }, go());
+  assert.deepEqual(
+    read.map((event) => [event.seq, event.atMs]),
+    [
+      [3, 2_000],
+      [4, 3_000],
+    ],
+  );
+}
+
 async function refusesStaleFence(subject: ChatRetentionSubject, old: number): Promise<void> {
   await subject.sessions.open({ ...nthSession(1), fence: old }, go());
   await plantTurn(subject, old, { n: 1, endedAtMs: 500, saidAtMs: 400 });
@@ -138,6 +161,11 @@ export function chatRetentionContract(harness: ChatRetentionHarness): readonly C
       "removes the events, ended turns and settled messages older than the cutoff, and no more",
       create,
       prunesOldChats,
+    ),
+    fencedCheck(
+      "numbers a session's next event past the last one a prune kept",
+      create,
+      numbersPastKept,
     ),
     fencedCheck("refuses a prune made with a fence raised since", create, refusesStaleFence),
     fencedCheck("refuses a prune on an aborted signal and removes nothing", create, refusesAborted),

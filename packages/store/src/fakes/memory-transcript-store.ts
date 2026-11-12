@@ -17,7 +17,11 @@ function numbered(database: MemoryAgentDatabase, append: EventAppend): Appended 
   if (!append.events.every((event) => isOwn(event.turnId))) {
     return err("no_turn");
   }
-  const last = database.events.filter((event) => event.sessionId === sessionId).length;
+  // The session's highest number, as the database reads it: a prune may have taken the ones before.
+  const last = Math.max(
+    0,
+    ...database.events.filter((event) => event.sessionId === sessionId).map((event) => event.seq),
+  );
   return ok(
     append.events.map((event, index) => ({
       ...event,
