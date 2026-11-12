@@ -1,7 +1,8 @@
 # @binference/custody-privy
 
 The `privy-owner` custody adapter: key quorums, the ceiling, agent wallets and signing calls
-through Privy's API (spec 5, decision 0085).
+through Privy's API (spec 5, decision 0085); and the `privy-service` adapter, which signs through
+bInference Cloud's signer service (spec 5, section 8).
 
 The root [AGENTS.md](../../AGENTS.md) and [core's schema pattern](../core/AGENTS.md) apply here.
 Rules for this package:
@@ -50,6 +51,19 @@ Rules for this package:
   `AuthorizeInput` (spec 5, section 5.1). The port's suite runs against the fake signer here and
   against the signer's real process in `@binference/signer`. This package never holds the agent
   key or the owner key's private half.
+- `createPrivyServiceSigner` is the `privy-service` adapter of bInference Cloud's signer service
+  (spec 5, section 8). It sends `POST /v1/sign` naming the step under the worker's lease, never
+  the transaction, its terms or its grant, through an `Http` the composition root makes with
+  `@binference/platform/client-cert-http` from the worker's certificate, key and the service's
+  authority. The wire is `src/signing/signer-service-wire.schema.ts`. It maps each answer onto the
+  `Signer` port as decision 0425 says, asks again with the same request id only after `down` or no
+  answer within 30 seconds and never past the authorization's end, and reads any other answer as
+  no answer, never as signed. No composition root wires it yet.
+- `src/testing/fake-signer-*.ts` is a signer service built from spec 5, section 8 alone: TLS 1.3
+  on the loopback, the worker id from the client certificate, one answer per request id, the
+  lease, the sums of decisions 0422 and 0426, the nonce rule and a breaker that keeps rescues.
+  `src/signing/privy-service-signer.test.ts` runs the `Signer` contract on the adapter against
+  it, with the test certificates and the mutual TLS `Http` of `src/contracts/signer-service-setup.ts`.
 - `src/testing/` holds the Privy fake, the fake signer and the fixtures; only it imports viem. The
   custody contract in `src/contracts/` runs against the fake in `pnpm check` and against the Privy
   test app when `BINFERENCE_PRIVY_TESTS=1` and the app's id and secret are in the environment.
@@ -63,4 +77,4 @@ Rules for this package:
   smoke's does, keeps only its owner key before it starts. Two live runs never run at once: a sweep removes what any kept record names, a running
   suite's too. The removals the sweep sends (a wallet's policies, a policy, a key quorum) live in
   `src/testing/` and never in the runtime code; `platform` is imported in `src/contracts/` only,
-  for the keychain.
+  for the keychain, test certificates and the mutual TLS `Http`.

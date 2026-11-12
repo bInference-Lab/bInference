@@ -2,7 +2,7 @@
   "name": "@binference/custody-privy",
   "version": "0.0.0",
   "private": true,
-  "description": "The privy-owner custody adapter: key quorums, the ceiling, agent wallets and signing calls through Privy's API.",
+  "description": "The privy-owner custody adapter: key quorums, the ceiling, agent wallets and signing calls through Privy's API; and the privy-service adapter, which signs through a signer service.",
   "license": "MIT",
   "files": [
     "dist"

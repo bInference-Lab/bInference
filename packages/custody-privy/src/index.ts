@@ -72,6 +72,14 @@ export type { PrivyApiOptions } from "./privy/privy-client.js";
 export { createPrivyOwnerSigner } from "./signing/privy-owner-signer.js";
 export type { PrivyOwnerSignerOptions } from "./signing/privy-owner-signer.js";
 export type { PrivyWallet } from "./signing/privy-wallet.js";
+export { createPrivyServiceSigner } from "./signing/privy-service-signer.js";
+export type {
+  PrivyServiceSignerOptions,
+  ServiceRefusalNotice,
+} from "./signing/privy-service-signer.js";
+export { signerServiceAnswerBytes } from "./signing/service-answer.js";
+export type { ServiceLease } from "./signing/service-request.js";
+export type { ServiceRefusalReason } from "./signing/signer-service-wire.schema.js";
 export { createAgentWallet } from "./wallets/create-agent-wallet.js";
 export type { AgentWalletRequest } from "./wallets/create-agent-wallet.js";
 export { planCeilingCalls, setCeilingCalls, writePlannedEdits } from "./wallets/ceiling-calls.js";
