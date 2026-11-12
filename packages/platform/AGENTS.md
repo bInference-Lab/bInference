@@ -30,7 +30,10 @@ The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
 - `src/outbound/` holds the connection pools of the engine's and the agent runtime's outbound
   HTTP adapters (decision 0347), the one place here that imports undici, exported alone as
   `@binference/platform/outbound` so the runtime's bundle takes nothing else of this package. They
-  refuse every request until a route is put in force.
+  refuse every request until a route is put in force. `client-cert-http.ts`, exported alone as
+  `@binference/platform/client-cert-http`, is the outbound `Http` for mutual TLS to one service
+  (decision 0420): it presents the certificate the composition root hands in as data and trusts
+  only the authority it names, by no proxy route.
 - The IPC address is not a security boundary: every connection authenticates through
   `openIpcChannel`. Node cannot set a named pipe's access list.
 - Tests use real files, sockets, pipes and signals in a fresh temporary folder, with no sleeps

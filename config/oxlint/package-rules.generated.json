@@ -12941,6 +12941,7 @@
         "packages/mcp/src/index.ts",
         "packages/pdf/src/index.ts",
         "packages/platform/src/index.ts",
+        "packages/platform/src/outbound/client-cert-http.ts",
         "packages/platform/src/outbound/outbound-pools.ts",
         "packages/platform/src/posix/image-shell.ts",
         "packages/platform/src/testing.ts",

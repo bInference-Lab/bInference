@@ -24,6 +24,11 @@
       "types": "./dist/outbound/outbound-pools.d.mts",
       "default": "./dist/outbound/outbound-pools.mjs"
     },
+    "./client-cert-http": {
+      "@binference/source": "./src/outbound/client-cert-http.ts",
+      "types": "./dist/outbound/client-cert-http.d.mts",
+      "default": "./dist/outbound/client-cert-http.mjs"
+    },
     "./image-shell": {
       "@binference/source": "./src/posix/image-shell.ts",
       "types": "./dist/posix/image-shell.d.mts",
@@ -31,7 +36,7 @@
     }
   },
   "scripts": {
-    "build": "tsdown src/index.ts src/testing.ts src/outbound/outbound-pools.ts src/posix/image-shell.ts --format esm --dts --tsconfig tsconfig.json"
+    "build": "tsdown src/index.ts src/testing.ts src/outbound/outbound-pools.ts src/outbound/client-cert-http.ts src/posix/image-shell.ts --format esm --dts --tsconfig tsconfig.json"
   },
   "dependencies": {
     "@binference/core": "workspace:*",
