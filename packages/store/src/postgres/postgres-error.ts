@@ -19,11 +19,22 @@ export function isWriteConflict(error: Caught): boolean {
   return conflictStates.has(sqlStateOf(error) ?? "");
 }
 
+// SQLSTATE P0001, a PL/pgSQL `RAISE EXCEPTION` with no code of its own: in the store's schemas
+// only a trigger or a migration that refuses a write raises it (the ledger's chain, the append-only
+// ledger and transcript), as SQLite's `RAISE(ABORT)` refuses one.
+const refusedState = "P0001";
+
+/** Whether the server refused a write for a broken constraint or a trigger's refusal. */
+function isConstraintState(state: string): boolean {
+  return state.startsWith("23") || state === refusedState;
+}
+
 /**
  * Turns an error a Postgres store call caught into the fault it throws: a `BinferenceError` or an
- * abort's reason passes unchanged, a broken constraint is `store.constraint` as on SQLite, any
- * other error the server sent is `store.postgres_failed` with its SQLSTATE, and an error with no
- * SQLSTATE, such as a lost connection, is the retryable `store.postgres_unreachable`.
+ * abort's reason passes unchanged, a broken constraint or a trigger's refusal is
+ * `store.constraint` as on SQLite, any other error the server sent is `store.postgres_failed` with
+ * its SQLSTATE, and an error with no SQLSTATE, such as a lost connection, is the retryable
+ * `store.postgres_unreachable`.
  */
 export function storeFaultOf(error: Caught, signal: AbortSignal): Caught {
   if (error instanceof BinferenceError || (signal.aborted && error === signal.reason)) {
@@ -40,7 +51,7 @@ export function storeFaultOf(error: Caught, signal: AbortSignal): Caught {
     });
   }
   return new BinferenceError({
-    code: state.startsWith("23") ? "store.constraint" : "store.postgres_failed",
+    code: isConstraintState(state) ? "store.constraint" : "store.postgres_failed",
     message: `Postgres: ${message}`,
     cause: error,
     details: { sqlState: state },

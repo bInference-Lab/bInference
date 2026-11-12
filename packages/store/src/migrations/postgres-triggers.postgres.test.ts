@@ -157,12 +157,17 @@ describe.runIf(url !== "")("the Postgres schemas' triggers and checks", () => {
   it.each([
     ["a seq past the next", entry(4, entry(2, zeroHash).hash)],
     ["a hash off the chain", entry(3, zeroHash)],
-  ])("refuses a ledger entry with %s", async (_case, refused) => {
-    await expect(
-      write(async ({ kysely, execute }) =>
-        execute(kysely.withSchema(schemas.engine).insertInto("ledger").values(refused)),
-      ),
-    ).rejects.toThrow("a ledger entry takes the next seq and the last entry's hash");
+  ])("refuses a ledger entry with %s as a constraint fault", async (_case, refused) => {
+    const writing = write(async ({ kysely, execute }) =>
+      execute(kysely.withSchema(schemas.engine).insertInto("ledger").values(refused)),
+    );
+    await expect(writing).rejects.toThrow(
+      "a ledger entry takes the next seq and the last entry's hash",
+    );
+    await expect(writing).rejects.toMatchObject({
+      code: "store.constraint",
+      details: { sqlState: "P0001" },
+    });
   });
 
   it("refuses a change or a removal of a ledger entry", async () => {
