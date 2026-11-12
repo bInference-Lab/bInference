@@ -5,8 +5,8 @@ import { createServer as createProxyServer, type IncomingMessage } from "node:ht
 import { createServer as createTlsServer } from "node:https";
 import { connect, type Server, type Socket } from "node:net";
 import type { Http } from "@binference/core";
+import { makeTestCertificate } from "@binference/platform/testing";
 import { answerFromFakes } from "../e2e/fake-service-answer.js";
-import { makeSmokeCertificate } from "./smoke-certificate.js";
 
 /**
  * The outside services of the packed-install smoke as the binference under test reaches them: an
@@ -65,7 +65,14 @@ export async function startSmokeEdge(
   fakes: ReadonlyMap<string, Http>,
   nowMs: number,
 ): Promise<SmokeEdge> {
-  const made = makeSmokeCertificate([...fakes.keys()], nowMs);
+  // A self-signed authority that is its own leaf, trusted through NODE_EXTRA_CA_CERTS by the
+  // processes under test.
+  const made = makeTestCertificate({
+    name: "binference packed-install smoke",
+    nowMs,
+    isAuthority: true,
+    dnsNames: [...fakes.keys()],
+  });
   const tls = createTlsServer({ cert: made.cert, key: made.key }, answerFromFakes(fakes));
   const tlsPort = await listen(tls);
   const tunnels: string[] = [];

@@ -25,6 +25,8 @@ export type {
   ServiceManagerHarness,
   ServiceManagerSubject,
 } from "./contracts/service-manager-contract.js";
+export { makeTestCertificate } from "./fakes/test-certificates.js";
+export type { TestCertificate, TestCertificateRequest } from "./fakes/test-certificates.js";
 export { startLoopbackFiles } from "./fakes/loopback-files.js";
 export type { LoopbackAnswer, LoopbackFiles } from "./fakes/loopback-files.js";
 export { createMemoryServiceManager } from "./fakes/memory-service-manager.js";
