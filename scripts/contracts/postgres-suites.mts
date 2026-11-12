@@ -5,10 +5,7 @@ import { readSource } from "./source-scan.mjs";
  * Postgres form is built. Each leaves this list once its store's Postgres test runs it; the check
  * refuses a listed suite that already runs there, so the list only shrinks.
  */
-export const agentSuitesAwaitingPostgres: ReadonlySet<string> = new Set([
-  "chatRetentionContract",
-  "transcriptStoreContract",
-]);
+export const agentSuitesAwaitingPostgres: ReadonlySet<string> = new Set(["chatRetentionContract"]);
 
 const listFile = "scripts/contracts/postgres-suites.mts";
 const storeSource = "packages/store/src/";
