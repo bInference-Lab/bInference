@@ -11,7 +11,9 @@ The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
   and idempotency keys, and nothing else. A scope case reaches its handler, which decides it.
 - Before a frame is decoded, its text takes U+FFFD in place of each U+0000 (`replaceNulInJsonText`),
   so the words of the console, the terminal, MCP clients and the agent runtime reach no store with
-  it (decision 0416).
+  it (decision 0416). Before that, a frame nested past `maxJsonDepth` is refused (decision 0417):
+  nothing that recurses reads a frame first. A throw while a frame is read ends that connection
+  with `protocol.bad_frame`, logged as `server.frame_failed`, never the engine.
 - Frames, credentials, error codes, scopes and the operation table come from
   `@binference/protocol`. A call fails only with a protocol error code; a code the server raises
   itself starts with `server.` and is a fault of the engine's own wiring.

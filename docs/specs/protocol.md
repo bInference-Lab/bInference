@@ -88,8 +88,9 @@ The engine listens on two transports. Both carry the same frames (section 3) ove
   so they need a shell on the machine.
 - WebSocket options: no compression; a ping every 20 seconds; the connection closes after 60 seconds
   without a pong.
-- Limits: 1 MiB per frame; 64 calls in flight per connection; 20 calls per second with a burst
-  of 60. Over a limit, the call fails with `protocol.busy` or `protocol.too_large`.
+- Limits: 1 MiB per frame; objects and arrays nested at most 64 deep in a frame
+  ([decision 0417](../DECISIONS.md#d0417)); 64 calls in flight per connection; 20 calls per second
+  with a burst of 60. Over a limit, the call fails with `protocol.busy` or `protocol.too_large`.
 - Failed sign-ins and pairings count per source address (the first `X-Forwarded-For` address for a
   proxy on this machine) and per credential: one that fails 10 times within a minute is refused
   for 5 minutes, a sign-in with `bye protocol.busy` and `POST /pair` with 429 `protocol.busy`. Each

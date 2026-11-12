@@ -291,7 +291,16 @@ export function serveConnection(
   socket.on("error", (error) => {
     context.logger.warn("server.socket_error", { traceId: link.id, errorCode: errorCodeOf(error) });
   });
-  socket.on("message", (data, isBinary) => receive(link, { data, isBinary }));
+  // A throw while a frame is read ends this connection alone, never the engine (decision 0417).
+  socket.on("message", (data, isBinary) => {
+    try {
+      receive(link, { data, isBinary });
+    } catch (error) {
+      const errorCode = error instanceof Error ? errorCodeOf(error) : "unexpected";
+      context.logger.error("server.frame_failed", { traceId: link.id, errorCode });
+      sayBye(link, "protocol.bad_frame", "The frame could not be read.");
+    }
+  });
   startTimers(link);
   if (!peer.isOriginAllowed) {
     sayBye(link, "auth.origin", "This origin may not connect.");

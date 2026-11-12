@@ -1663,6 +1663,10 @@
     "0416": {
       "status": "Accepted",
       "sha256": "fbc9c344f67c701e99af440ef94c1127a86fef031d95503c83446748b2437e04"
+    },
+    "0417": {
+      "status": "Accepted",
+      "sha256": "d6fcf70cf22b32b8d88c4f3e2badbe4563db601ed8fe23a42403e030048ec0e7"
     }
   }
 }
