@@ -1,4 +1,3 @@
-import { Buffer } from "node:buffer";
 import { type ErrorCode, replaceNulInJsonText } from "@binference/core";
 import {
   type CallFrame,
@@ -11,7 +10,7 @@ import {
   type PushFrame,
   type ReplyFrame,
 } from "@binference/protocol";
-import type { RawData, WebSocket } from "ws";
+import type { WebSocket } from "ws";
 import { createCallBudget } from "./call-budget.js";
 import {
   type ConnectionContext,
@@ -21,6 +20,7 @@ import {
   sayBye,
   sendFrame,
 } from "./connection-link.js";
+import { type FrameMessage, frameTextOf } from "./frame-text.js";
 import { keepAlive } from "./keep-alive.js";
 import { endIfLockedOut, refuseSignIn } from "./sign-in-refusal.js";
 import type { Identity } from "./sign-in.js";
@@ -186,49 +186,17 @@ function route(link: Link, frame: ClientFrame): void {
   }
 }
 
-function bytesOf(data: RawData): Buffer {
-  if (Array.isArray(data)) {
-    return Buffer.concat(data);
-  }
-  return Buffer.isBuffer(data) ? data : Buffer.from(new Uint8Array(data));
-}
-
-function tooLarge(link: Link, text: string): void {
-  const decoded = link.phase.get().name === "ready" ? decodeClientFrame(text) : undefined;
-  if (decoded?.ok === true && decoded.value.t === "call") {
-    const error = { code: "protocol.too_large", message: "The frame is too large." } as const;
-    sendFrame(link, { t: "fail", id: decoded.value.id, error: { ...error, retryable: false } });
+function receive(link: Link, message: FrameMessage): void {
+  if (link.phase.get().name === "closed") {
     return;
   }
-  sayBye(link, "protocol.too_large", "The frame is too large.");
-}
-
-/** One WebSocket message as `ws` hands it over. */
-interface Message {
-  readonly data: RawData;
-  readonly isBinary: boolean;
-}
-
-function receive(link: Link, message: Message): void {
-  const phase = link.phase.get();
-  if (phase.name === "closed") {
-    return;
-  }
-  const { data } = message;
-  if (message.isBinary) {
-    sayBye(link, "protocol.bad_frame", "Frames are text.");
-    return;
-  }
-  const bytes = bytesOf(data);
-  const { limits } = link.context;
-  const limit = phase.name === "ready" ? limits.maxFrameBytes : limits.maxSignInFrameBytes;
-  if (bytes.byteLength > limit) {
-    tooLarge(link, bytes.toString("utf8"));
+  const text = frameTextOf(link, message);
+  if (text === undefined) {
     return;
   }
   // Decision 0416: every text of a frame comes in with U+FFFD in place of each U+0000, the
   // escape JSON writes it as, before anything reads, keys or stores it.
-  const decoded = decodeClientFrame(replaceNulInJsonText(bytes.toString("utf8")));
+  const decoded = decodeClientFrame(replaceNulInJsonText(text));
   if (decoded.ok) {
     route(link, decoded.value);
   } else {
