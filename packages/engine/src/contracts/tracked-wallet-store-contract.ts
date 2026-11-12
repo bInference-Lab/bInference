@@ -1,19 +1,13 @@
 import assert from "node:assert/strict";
-import {
-  type AccountRef,
-  assetRefParts,
-  chainRefSchema,
-  isTxHash,
-  type TxHash,
-} from "@binference/chain";
-import { bpsSchema } from "@binference/core";
+import type { AccountRef } from "@binference/chain";
 import type { ContractCheck } from "@binference/core/testing";
-import { testCoin } from "../intents/test-intents.js";
 import type { TrackedWalletStore } from "../leaders/ports.js";
-import type { LeaderReadRecord, WalletActivity } from "../leaders/tracked-wallet-record.js";
-import { alertOf, priceAsset, walletCondition } from "./alert-fire-checks.js";
+import type { LeaderReadRecord } from "../leaders/tracked-wallet-record.js";
+import { alertOf, walletCondition } from "./alert-fire-checks.js";
 import type { AlertSubject } from "./alert-store-contract.js";
 import { assertRefusesAborted, checkOn, fixtureId, live } from "./store-fixtures.js";
+import { trackedActivityChecks } from "./tracked-activity-checks.js";
+import { accountOf, chain, other, readOf, saleOf, track } from "./tracked-wallet-fixtures.js";
 
 /** A tracked wallet store under test, with the alert store of the same database. */
 export interface TrackedWalletSubject extends AlertSubject {
@@ -23,68 +17,6 @@ export interface TrackedWalletSubject extends AlertSubject {
 /** Makes a fresh subject for each check. */
 export interface TrackedWalletStoreHarness {
   create(): Promise<TrackedWalletSubject>;
-}
-
-// The alert checks' fixture token and accounts are on the test chain; nothing is on the other.
-const token = priceAsset;
-const coin = testCoin;
-const chain = assetRefParts(token).chain;
-const other = chainRefSchema.parse("fake:2");
-
-function accountOf(n: number): AccountRef {
-  const condition = walletCondition(n);
-  return condition.kind === "wallet" ? condition.account : assert.fail("no wallet condition");
-}
-
-function txOf(n: number): TxHash {
-  const hash = `0x${n.toString(16).padStart(64, "0")}`;
-  return isTxHash(hash) ? hash : assert.fail("not a hash");
-}
-
-/** A sale of wallet `n` at `block`, at `block` seconds, its amount past 64 bits. */
-function saleOf(n: number, block: number, logIndex = 0): WalletActivity {
-  return {
-    account: accountOf(n),
-    block: BigInt(block),
-    txHash: txOf(block),
-    logIndex,
-    side: "sell",
-    asset: token,
-    amount: 2n ** 64n + 1n,
-    counterAsset: coin,
-    counterAmount: 3n,
-    valueUsdMicros: 7n,
-    shareSoldBps: bpsSchema.parse(4_000),
-    venue: "test-venue",
-    atMs: block * 1_000,
-  };
-}
-
-// A read of blocks `from` to `to`, block `n` at `n` seconds, of wallet 1 from `from`.
-function readOf(
-  span: readonly [number, number],
-  extra: Partial<Omit<LeaderReadRecord, "from" | "to">> = {},
-): LeaderReadRecord {
-  const [from, to] = span.map((block) => BigInt(block));
-  return {
-    chain,
-    from: from ?? 0n,
-    to: to ?? 0n,
-    toHash: `0x${span[1].toString(16).padStart(64, "0")}`,
-    atMs: span[1] * 1_000,
-    wallets: [{ account: accountOf(1), sinceBlock: from ?? 0n, readFrom: from ?? 0n }],
-    trades: [],
-    overflows: [],
-    ...extra,
-  };
-}
-
-async function track(subject: TrackedWalletSubject, n: number, alert = n): Promise<void> {
-  const created = await subject.alerts.create(
-    alertOf(subject, alert, { condition: walletCondition(n) }),
-    live(),
-  );
-  assert.equal(created.ok, true);
 }
 
 async function accounts(subject: TrackedWalletSubject): Promise<readonly AccountRef[]> {
@@ -143,13 +75,17 @@ async function movesOnlyWhatTheReadReached(subject: TrackedWalletSubject): Promi
   assert.deepEqual(await subject.tracked.activity({ account: accountOf(9), limit: 5 }, live()), []);
 }
 
-async function tellsCutBlocksOnceADay(subject: TrackedWalletSubject): Promise<void> {
-  await track(subject, 1);
-  await track(subject, 2, 2);
-  const cut = (block: number) => [
+// Wallet 1's blocks `block` and the next, each cut short.
+function cut(block: number): LeaderReadRecord["overflows"] {
+  return [
     { account: accountOf(1), block: BigInt(block) },
     { account: accountOf(1), block: BigInt(block + 1) },
   ];
+}
+
+async function tellsCutBlocksOnceADay(subject: TrackedWalletSubject): Promise<void> {
+  await track(subject, 1);
+  await track(subject, 2, 2);
   await subject.tracked.record(readOf([10, 12], { overflows: cut(10) }), live());
   const day = { everyMs: 86_400_000, limit: 10 };
   const first = await subject.tracked.overflowsToTell({ ...day, atMs: 1_000 }, live());
@@ -187,101 +123,6 @@ async function leavesArchivedAgents(subject: TrackedWalletSubject): Promise<void
   assert.deepEqual(await accounts(subject), [accountOf(2)]);
 }
 
-async function pagesActivity(subject: TrackedWalletSubject): Promise<void> {
-  await track(subject, 1);
-  const trades = [saleOf(1, 11), saleOf(1, 12), saleOf(1, 13)];
-  await subject.tracked.record(readOf([10, 13], { trades }), live());
-  const account = accountOf(1);
-  const [newest, middle] = await subject.tracked.activity({ account, limit: 2 }, live());
-  assert.equal(newest?.block, 13n);
-  const before = { atMs: middle?.atMs ?? 0, id: middle?.id ?? 0 };
-  const rest = await subject.tracked.activity({ account, before, limit: 5 }, live());
-  assert.deepEqual(
-    rest.map(({ block }) => block),
-    [11n],
-  );
-  const ranged = await subject.tracked.activity(
-    { account, fromMs: 12_000, toMs: 12_000, limit: 5 },
-    live(),
-  );
-  assert.deepEqual(
-    ranged.map(({ block }) => block),
-    [12n],
-  );
-}
-
-async function listsTradesSince(subject: TrackedWalletSubject): Promise<void> {
-  await track(subject, 1);
-  await track(subject, 2, 2);
-  const trades = [saleOf(1, 11), saleOf(2, 11, 1), saleOf(1, 12), saleOf(1, 13)];
-  const stored = await subject.tracked.record(readOf([10, 13], { trades }), live());
-  const account = accountOf(1);
-  const [first, , second, third] = stored.map(({ id }) => id);
-  const all = await subject.tracked.since({ account, afterId: 0, limit: 5 }, live());
-  assert.deepEqual(
-    all.map(({ id }) => id),
-    [first, second, third],
-  );
-  const after = await subject.tracked.since({ account, afterId: first ?? 0, limit: 1 }, live());
-  assert.deepEqual(
-    after.map(({ id }) => id),
-    [second],
-  );
-  const recent = { account, afterId: 0, fromMs: 13_000, limit: 5 };
-  assert.deepEqual(
-    (await subject.tracked.since(recent, live())).map(({ id }) => id),
-    [third],
-  );
-}
-
-// A sale of wallet 1 at `block`, at the one instant such sales share.
-function saleAtOneInstant(block: number): WalletActivity {
-  return { ...saleOf(1, block), atMs: 20_000 };
-}
-
-// Trades of one millisecond page newest stored first and list since one in the order stored.
-async function ordersOneInstantByStore(subject: TrackedWalletSubject): Promise<void> {
-  await track(subject, 1);
-  const trades = [13, 11, 12].map(saleAtOneInstant);
-  const stored = await subject.tracked.record(readOf([10, 13], { trades }), live());
-  const ids = stored.map(({ id }) => id);
-  const account = accountOf(1);
-  const page = await subject.tracked.activity({ account, limit: 2 }, live());
-  assert.deepEqual(
-    page.map(({ id }) => id),
-    ids.toReversed().slice(0, 2),
-  );
-  const since = await subject.tracked.since({ account, afterId: 0, limit: 5 }, live());
-  assert.deepEqual(
-    since.map(({ id }) => id),
-    ids,
-  );
-}
-
-async function dropsRemovedTrades(subject: TrackedWalletSubject): Promise<void> {
-  await track(subject, 1);
-  const account = accountOf(1);
-  const [moved] = await subject.tracked.record(
-    readOf([10, 12], { trades: [saleOf(1, 11), saleOf(1, 12)] }),
-    live(),
-  );
-  const again = readOf([11, 13], {
-    wallets: [{ account, sinceBlock: 10n, readFrom: 11n }],
-    trades: [saleOf(1, 12), saleOf(1, 13)],
-  });
-  const [added] = await subject.tracked.record(again, live());
-  const left = await subject.tracked.since({ account, afterId: 0, limit: 10 }, live());
-  assert.deepEqual(
-    left.map(({ block }) => block),
-    [12n, 13n],
-  );
-  assert.equal(
-    left.some(({ id }) => id === moved?.id),
-    false,
-  );
-  assert.equal((added?.id ?? 0) > (moved?.id ?? 0), true);
-}
-
 async function refusesAborted(subject: TrackedWalletSubject): Promise<void> {
   await track(subject, 1);
   const read = readOf([10, 12], { trades: [saleOf(1, 11)] });
@@ -306,18 +147,7 @@ export function trackedWalletStoreContract(
     checkOn("tells each wallet's cut blocks at most once a day", create, tellsCutBlocksOnceADay),
     checkOn("starts a new span when a wallet is tracked again", create, startsANewSpan),
     checkOn("tracks no wallet only an archived agent names", create, leavesArchivedAgents),
-    checkOn("pages a wallet's trades newest first, by time", create, pagesActivity),
-    checkOn("lists a wallet's trades stored after a given one, in order", create, listsTradesSince),
-    checkOn(
-      "pages and lists a wallet's trades of one millisecond in the order stored",
-      create,
-      ordersOneInstantByStore,
-    ),
-    checkOn(
-      "drops the trades of a block read again that the read no longer holds",
-      create,
-      dropsRemovedTrades,
-    ),
+    ...trackedActivityChecks(create),
     checkOn("refuses a call on an aborted signal and stores nothing", create, refusesAborted),
   ];
 }
