@@ -8,9 +8,29 @@ import {
   createSqliteSessionStore,
   createSqliteTranscriptStore,
   createSqliteWriterFence,
+  type DatabaseHandle,
   openDatabase,
 } from "@binference/store";
 import type { AgentDatabase } from "./agent-database.js";
+
+/**
+ * The agent database's stores on an open, migrated `agent.sqlite` handle at `schemaVersion`; its
+ * `close` closes the handle.
+ */
+export function agentDatabaseOn(handle: DatabaseHandle, schemaVersion: number): AgentDatabase {
+  return {
+    fence: createSqliteWriterFence(handle),
+    sessions: createSqliteSessionStore(handle),
+    transcript: createSqliteTranscriptStore(handle),
+    queue: createSqliteChatQueueStore(handle),
+    helpers: createSqliteHelperStore(handle),
+    goals: createSqliteGoalStore(handle),
+    notes: createSqliteNoteStore(handle),
+    deletion: createSqliteChatDeletion(handle),
+    schemaVersion,
+    close: async () => handle.close(),
+  };
+}
 
 /**
  * Opens `agent.sqlite` on the store's worker threads and migrates it (runtime spec, section 2.1).
@@ -24,18 +44,7 @@ export async function openSqliteAgentDatabase(
   const handle = await openDatabase({ file, worker: agentWorker, execArgv, signal });
   try {
     const migrated = await handle.migrate({ signal });
-    return {
-      fence: createSqliteWriterFence(handle),
-      sessions: createSqliteSessionStore(handle),
-      transcript: createSqliteTranscriptStore(handle),
-      queue: createSqliteChatQueueStore(handle),
-      helpers: createSqliteHelperStore(handle),
-      goals: createSqliteGoalStore(handle),
-      notes: createSqliteNoteStore(handle),
-      deletion: createSqliteChatDeletion(handle),
-      schemaVersion: migrated.to,
-      close: async () => handle.close(),
-    };
+    return agentDatabaseOn(handle, migrated.to);
   } catch (error) {
     await handle.close();
     throw error;

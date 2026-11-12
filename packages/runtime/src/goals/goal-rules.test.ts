@@ -39,6 +39,13 @@ describe("stepAfterTurn", () => {
     });
   });
 
+  it("keeps a note stored before decision 0416 with U+FFFD in place of its U+0000", () => {
+    const stored = { ...goal, note: "two found\u0000 one left" };
+    expect(stepAfterTurn(stored, worked).next.note).toBe(
+      `two found${String.fromCodePoint(0xfffd)} one left`,
+    );
+  });
+
   it("waits a minute after a goal turn that called no tool, and counts a strike", () => {
     const step = stepAfterTurn(goal, { ...worked, toolCalls: 0 });
     expect([step.next.strikes, step.after]).toStrictEqual([1, { waitMs: 60_000 }]);

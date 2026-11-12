@@ -1,11 +1,17 @@
 import type { Id } from "@binference/core";
-import { type InboxMessageView, inboxMessageViewSchema } from "@binference/protocol";
+import type { InboxMessageView } from "@binference/protocol";
 import type { QueuedMessage } from "@binference/store";
 import { written } from "../sessions/agent-stores.js";
 import type { ChatContext } from "./chat-context.js";
 import { dropMessages } from "./drop-messages.js";
 import { goalStopped } from "./goal-pace.js";
-import { payloadOf, startsTurns, turnMessageOf } from "./queued-view.js";
+import {
+  payloadOf,
+  queuedViewOf,
+  startsTurns,
+  turnMessageOf,
+  viewWithoutNul,
+} from "./queued-view.js";
 import { closeSession, kickAgent, kickAll } from "./turn-starts.js";
 
 /** The most messages the chat queue holds waiting for one agent (runtime spec, section 3.4). */
@@ -151,9 +157,11 @@ async function receiveOne(context: ChatContext, view: InboxMessageView): Promise
  * Takes one message of the engine's inbox (runtime spec, section 3.2): it is written into the chat
  * queue, a message already there is not written again, a stop or clear is applied, then the engine
  * hears it was taken, and a turn message wakes its agent's chat. While 200 of an agent's messages
- * wait, a new one stays in the engine's inbox until a turn takes some.
+ * wait, a new one stays in the engine's inbox until a turn takes some. A message the engine stored
+ * before decision 0416 is taken with U+FFFD in place of each U+0000.
  */
-export async function receiveMessage(context: ChatContext, view: InboxMessageView): Promise<void> {
+export async function receiveMessage(context: ChatContext, sent: InboxMessageView): Promise<void> {
+  const view = viewWithoutNul(sent);
   // A message that arrives while its agent's chats are deleted waits for the deletion, so it
   // lands in the session the engine opened for it and the deletion never takes it.
   const deleting = context.chats.deleting.get(view.agent);
@@ -164,8 +172,7 @@ export async function receiveMessage(context: ChatContext, view: InboxMessageVie
 }
 
 function controlOf(message: QueuedMessage): Control | undefined {
-  const parsed = inboxMessageViewSchema.safeParse(message.payload);
-  const view = parsed.success ? parsed.data : undefined;
+  const view = queuedViewOf(message);
   return view?.kind === "inbox/stop" || view?.kind === "inbox/clear" ? view : undefined;
 }
 

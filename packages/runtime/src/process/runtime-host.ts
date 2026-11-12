@@ -1,4 +1,4 @@
-import type { Clock, Random } from "@binference/core";
+import type { Clock, Logger, Random } from "@binference/core";
 import type { TurnSetup } from "../chats/chat-context.js";
 import type { StartLine } from "../control/control-line.schema.js";
 import type { RuntimeSettings } from "../control/runtime-settings.schema.js";
@@ -46,6 +46,8 @@ export interface RuntimeHost {
   /** Random bytes for the ids of the agents' helpers and their turns. */
   readonly random: Random;
   readonly clock: Clock;
+  /** Hears what the runtime leaves undone, such as a message its chat could not take. */
+  readonly logger: Logger;
   /** Calls `onTick` every 10 seconds until the signal aborts: when the runtime writes its health. */
   readonly everyTenSeconds: (onTick: () => Promise<void>, signal: AbortSignal) => void;
   /** This build's release. */

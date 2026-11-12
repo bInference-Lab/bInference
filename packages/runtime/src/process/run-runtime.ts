@@ -209,14 +209,14 @@ function turnsOf(host: RuntimeHost, connected: Connected, settings: () => Runtim
   return { setup, helpers, budgets, goals };
 }
 
-// Starts the chat, writes `ready` and the health, and serves the engine's lines; on the way out
-// it ends every running turn as the runtime's stop, keeping the waiting messages.
-async function serveConnected(host: RuntimeHost, connected: Connected): Promise<RuntimeExit> {
-  const { lifetime } = connected;
-  const settings = { current: connected.start.settings };
-  host.applySettings?.(settings.current);
-  const turns = turnsOf(host, connected, () => settings.current);
-  const chat = await startChat({
+// Starts the chat of one start, its turns set up under the settings in force.
+async function chatOf(
+  host: RuntimeHost,
+  connected: Connected,
+  parts: { readonly turns: Turns; readonly settings: { readonly current: RuntimeSettings } },
+): Promise<RuntimeChat> {
+  const { turns, settings } = parts;
+  return startChat({
     prepared: connected.prepared,
     engine: connected.link.chat,
     turnContext: connected.link.context,
@@ -224,11 +224,22 @@ async function serveConnected(host: RuntimeHost, connected: Connected): Promise<
     settings: () => settings.current,
     setup: (place) => turns.setup(place),
     clock: host.clock,
-    lifetime,
+    logger: host.logger,
+    lifetime: connected.lifetime,
     helpers: turns.helpers,
     budgets: turns.budgets,
     goals: turns.goals,
   });
+}
+
+// Starts the chat, writes `ready` and the health, and serves the engine's lines; on the way out
+// it ends every running turn as the runtime's stop, keeping the waiting messages.
+async function serveConnected(host: RuntimeHost, connected: Connected): Promise<RuntimeExit> {
+  const { lifetime } = connected;
+  const settings = { current: connected.start.settings };
+  host.applySettings?.(settings.current);
+  const turns = turnsOf(host, connected, () => settings.current);
+  const chat = await chatOf(host, connected, { turns, settings });
   try {
     const { schemaVersion } = connected.database;
     await host.write(encode({ t: "ready", version: host.version, schemaVersion }));

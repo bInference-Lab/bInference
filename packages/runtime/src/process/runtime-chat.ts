@@ -1,4 +1,5 @@
-import type { Clock, Id } from "@binference/core";
+import { BinferenceError, type Clock, type Id, type Logger } from "@binference/core";
+import type { InboxMessageView } from "@binference/protocol";
 import type { TurnSetup } from "../chats/chat-context.js";
 import { type ChatRunner, createChatRunner } from "../chats/chat-runner.js";
 import type { RuntimeSettings } from "../control/runtime-settings.schema.js";
@@ -54,6 +55,8 @@ export interface ChatStart {
   /** Each chat's goal (decision 0407); a start picks up every active one. */
   readonly goals?: GoalDesk;
   readonly clock: Clock;
+  /** Hears a message the chat could not take, which stays in the engine's inbox. */
+  readonly logger: Logger;
   readonly lifetime: AbortSignal;
 }
 
@@ -79,12 +82,24 @@ async function endRepaired(start: ChatStart, signal: AbortSignal): Promise<void>
   }
 }
 
-async function listAll(engine: EngineChat, runner: ChatRunner, signal: AbortSignal): Promise<void> {
+// One message the chat cannot take stays in the engine's inbox for the next listing, with a log
+// line naming its agent and the error's code, and the messages after it go on: it never fails the
+// start or its agent's line.
+async function take(start: ChatStart, runner: ChatRunner, view: InboxMessageView): Promise<void> {
+  try {
+    await runner.receive(view);
+  } catch (error) {
+    const errorCode = error instanceof BinferenceError ? error.code : "unexpected";
+    start.logger.warn("runtime.message_left", { agentId: view.agent, errorCode });
+  }
+}
+
+async function listAll(start: ChatStart, runner: ChatRunner, signal: AbortSignal): Promise<void> {
   for (let cursor: string | undefined; ;) {
     // oxlint-disable-next-line eslint/no-await-in-loop -- each page starts after the one before
-    const page = await engine.listInbox(cursor, signal);
+    const page = await start.engine.listInbox(cursor, signal);
     // oxlint-disable-next-line eslint/no-await-in-loop -- messages are taken in their order
-    await Promise.all(page.items.map(async (view) => runner.receive(view)));
+    await Promise.all(page.items.map(async (view) => take(start, runner, view)));
     cursor = page.next;
     if (cursor === undefined) {
       return;
@@ -105,13 +120,14 @@ async function pickUpGoals(start: ChatStart, runner: ChatRunner): Promise<void> 
  * ends go to the engine, each helper a stop left running ends `stopped` and its agent hears it,
  * the chat queue's waiting messages start their turns, every untaken message is read with
  * `inbox/list`, every active goal asks for its next goal turn, and the `inbox` topic is watched,
- * read again after a gap; a stop or clear of an agent's chat stops its helpers.
+ * read again after a gap; a stop or clear of an agent's chat stops its helpers. A message the chat
+ * cannot take stays in the engine's inbox with a log line, and the start goes on.
  */
 export async function startChat(start: ChatStart): Promise<RuntimeChat> {
   const { engine, lifetime } = start;
   await endRepaired(start, lifetime);
   await start.helpers?.repair(lifetime).catch(() => undefined);
-  const relist = (): void => void listAll(engine, runner, lifetime).catch(() => undefined);
+  const relist = (): void => void listAll(start, runner, lifetime).catch(() => undefined);
   const runner = createChatRunner({
     stores: start.prepared.stores,
     engine,
@@ -129,11 +145,11 @@ export async function startChat(start: ChatStart): Promise<RuntimeChat> {
       : { onStop: async (agent: Id<"agt">) => start.helpers?.stopAgent(agent) }),
   });
   await runner.resume();
-  await listAll(engine, runner, lifetime);
+  await listAll(start, runner, lifetime);
   await pickUpGoals(start, runner);
   const unwatch = engine.watchInbox({
-    onMessage: (view) => void runner.receive(view).catch(() => undefined),
-    refetch: async (signal) => listAll(engine, runner, signal),
+    onMessage: (view) => void take(start, runner, view),
+    refetch: async (signal) => listAll(start, runner, signal),
   });
   return { runner, unwatch };
 }

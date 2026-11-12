@@ -1,6 +1,10 @@
 import type { ProtocolClient } from "@binference/client";
 import { BinferenceError, type Clock } from "@binference/core";
-import { createManualClock, createSeededRandom } from "@binference/core/testing";
+import {
+  createManualClock,
+  createMemoryLogger,
+  createSeededRandom,
+} from "@binference/core/testing";
 import {
   createMemoryAgentDatabase,
   createMemoryChatDeletion,
@@ -196,7 +200,10 @@ function chatHost(
   options: InProcessRuntimeOptions,
   database: MemoryAgentDatabase,
   recorded: Recorded,
-): Pick<RuntimeHost, "openAgentDatabase" | "turnSetup" | "applySettings" | "clock" | "random"> & {
+): Pick<
+  RuntimeHost,
+  "openAgentDatabase" | "turnSetup" | "applySettings" | "clock" | "random" | "logger"
+> & {
   readonly transports: InProcessRuntime["transports"];
 } {
   const tools = testToolBox(options.tools ?? []);
@@ -230,6 +237,7 @@ function chatHost(
     },
     clock,
     random: createSeededRandom(7),
+    logger: createMemoryLogger({ subsystem: "runtime" }),
   };
 }
 

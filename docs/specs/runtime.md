@@ -147,6 +147,10 @@ untaken ones come back from `inbox/list`.
   pushed twice or read again from `inbox/list` is taken once.
 - On start and after a `resync`, the runtime reads every untaken message with `inbox/list`, in the
   order they arrived.
+- A message the runtime cannot write into its chat queue stays untaken in the engine's inbox for
+  the next listing, with a log line naming its agent and the error's code; the start and the
+  messages after it go on. A message the engine or the chat queue held from before
+  [decision 0416](../DECISIONS.md#d0416) is taken with U+FFFD in place of each U+0000.
 - The engine keeps at most 200 untaken messages per agent. Past that, `chat/post` fails
   `protocol.busy`, and a message the engine makes is dropped and logged; its facts still reach the
   owner as cards and notices.

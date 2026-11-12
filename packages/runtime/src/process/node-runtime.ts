@@ -188,6 +188,7 @@ export async function runNodeRuntime(
     random: processPorts.random,
     applySettings: (settings) => http.use(networkRouteOf(settings.network)),
     clock: processPorts.clock,
+    logger: processPorts.logger,
     everyTenSeconds: (onTick, signal) => {
       // A write that fails means the engine has gone; the end of the input stops the runtime.
       const timer = setInterval(() => void onTick().catch(() => undefined), healthEveryMs);

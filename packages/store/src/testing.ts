@@ -42,3 +42,7 @@ export { createMemoryNoteStore } from "./fakes/memory-note-store.js";
 export { createMemorySessionStore } from "./fakes/memory-session-store.js";
 export { createMemoryTranscriptStore } from "./fakes/memory-transcript-store.js";
 export { createMemoryWriterFence } from "./fakes/memory-writer-fence.js";
+export { setQueuedPayloadTextTask } from "./testing/old-queued-payload.js";
+export type { QueuedPayloadText } from "./testing/old-queued-payload.js";
+export { openTestAgentSqlite } from "./testing/test-agent-sqlite.js";
+export type { TestAgentSqlite } from "./testing/test-agent-sqlite.js";

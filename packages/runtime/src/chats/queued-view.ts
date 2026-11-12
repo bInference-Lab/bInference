@@ -1,4 +1,10 @@
-import { type Id, idSchema, type JsonValue, jsonValueSchema } from "@binference/core";
+import {
+  type Id,
+  idSchema,
+  type JsonValue,
+  jsonValueSchema,
+  replaceNulDeep,
+} from "@binference/core";
 import {
   alertConditionSchema,
   alertFireSchema,
@@ -45,14 +51,28 @@ export function payloadOf(view: InboxMessageView): JsonValue {
   return jsonValueSchema.parse(inboxMessageViewSchema.encode(view));
 }
 
+/**
+ * A message's view with U+FFFD in place of each U+0000 (decision 0416): the engine may still hold
+ * one it stored before that decision, which the chat queue would refuse.
+ */
+export function viewWithoutNul(view: InboxMessageView): InboxMessageView {
+  return inboxMessageViewSchema.parse(replaceNulDeep(payloadOf(view)));
+}
+
+/**
+ * The view a queued message holds, when it holds one this runtime reads, with U+FFFD in place of
+ * each U+0000: a message queued before decision 0416 may hold it, and a turn writes its words
+ * again.
+ */
+export function queuedViewOf(message: QueuedMessage): InboxMessageView | undefined {
+  const parsed = inboxMessageViewSchema.safeParse(replaceNulDeep(message.payload));
+  return parsed.success ? parsed.data : undefined;
+}
+
 /** The view a queued message holds, when it holds one this runtime reads and it can start a turn. */
 export function turnMessageOf(message: QueuedMessage): TurnMessage | undefined {
-  const parsed = inboxMessageViewSchema.safeParse(message.payload);
-  if (!parsed.success) {
-    return undefined;
-  }
-  const view = parsed.data;
-  return "turn" in view ? view : undefined;
+  const view = queuedViewOf(message);
+  return view !== undefined && "turn" in view ? view : undefined;
 }
 
 /**
@@ -117,11 +137,11 @@ function resumeText(view: ResumeReport): string {
  * as one line the model reads (runtime spec, section 3.3); `undefined` for any other message.
  */
 export function noteOf(message: QueuedMessage): OwnerMessage | undefined {
-  const parsed = inboxMessageViewSchema.safeParse(message.payload);
-  if (!parsed.success || parsed.data.kind !== "inbox/resumeReport") {
+  const view = queuedViewOf(message);
+  if (view?.kind !== "inbox/resumeReport") {
     return undefined;
   }
-  return { id: parsed.data.message, text: resumeText(parsed.data), outside: false };
+  return { id: view.message, text: resumeText(view), outside: false };
 }
 
 /**

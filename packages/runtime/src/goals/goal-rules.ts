@@ -1,4 +1,4 @@
-import { err, ok, type Result } from "@binference/core";
+import { err, ok, replaceNul, type Result } from "@binference/core";
 import type { GoalChange, GoalPauseReason } from "@binference/protocol";
 import type { GoalRecord, GoalState, TurnOutcome } from "@binference/store";
 
@@ -37,13 +37,14 @@ export interface GoalStep {
   readonly after: "stop" | "continue" | { readonly waitMs: number };
 }
 
-// A goal's state as a write keeps it, its pause reason and note dropped or kept as asked.
+// A goal's state as a write keeps it, its pause reason and note dropped or kept as asked. A goal
+// stored before decision 0416 may hold U+0000 in them, which the write would refuse.
 function stateOf(goal: GoalRecord): GoalState {
   const { status, pauseReason, note, spentMicros, goalTurns, strikes, updatedAtMs } = goal;
   return {
     status,
-    ...(pauseReason === undefined ? {} : { pauseReason }),
-    ...(note === undefined ? {} : { note }),
+    ...(pauseReason === undefined ? {} : { pauseReason: replaceNul(pauseReason) }),
+    ...(note === undefined ? {} : { note: replaceNul(note) }),
     spentMicros,
     goalTurns,
     strikes,
