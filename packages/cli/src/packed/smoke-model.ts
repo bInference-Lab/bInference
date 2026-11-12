@@ -40,24 +40,34 @@ function usageEvent(): string {
   return `data: ${JSON.stringify(chunk)}\n\ndata: [DONE]\n\n`;
 }
 
-function callEvents(call: SmokeToolCall): readonly string[] {
-  const named = { index: 0, id: "call_smoke", type: "function" };
+/**
+ * A streamed Chat Completions answer, as the server-sent events a model provider writes, that
+ * makes one tool call under the call id given.
+ */
+export function toolCallStream(call: SmokeToolCall, id = "call_smoke"): string {
+  const named = { index: 0, id, type: "function" };
   const fn = { name: call.name, arguments: JSON.stringify(call.args) };
   return [
     event({ role: "assistant", content: "" }),
     event({ tool_calls: [{ ...named, function: fn }] }),
     event({}, "tool_calls"),
-  ];
+    usageEvent(),
+  ].join("");
 }
 
-function textEvents(text: string): readonly string[] {
-  return [event({ role: "assistant", content: "" }), event({ content: text }), event({}, "stop")];
+/** A streamed Chat Completions answer, as server-sent events, that says `text`. */
+export function textStream(text: string): string {
+  return [
+    event({ role: "assistant", content: "" }),
+    event({ content: text }),
+    event({}, "stop"),
+    usageEvent(),
+  ].join("");
 }
 
-function stream(response: ServerResponse, events: readonly string[]): void {
+function stream(response: ServerResponse, body: string): void {
   response.writeHead(200, { "content-type": "text/event-stream" });
-  events.forEach((text) => response.write(text));
-  response.end(usageEvent());
+  response.end(body);
 }
 
 /**
@@ -75,7 +85,7 @@ export async function startSmokeModel(script: {
     const body = await readBody(incoming);
     if (streamSchema.parse(JSON.parse(body)).stream === true) {
       seen.turns += 1;
-      stream(response, seen.turns === 1 ? callEvents(script.call) : textEvents(script.report));
+      stream(response, seen.turns === 1 ? toolCallStream(script.call) : textStream(script.report));
       return;
     }
     const url = `http://127.0.0.1${incoming.url ?? "/"}`;
