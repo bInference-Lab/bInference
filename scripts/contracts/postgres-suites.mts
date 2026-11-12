@@ -8,7 +8,6 @@ import { readSource } from "./source-scan.mjs";
 export const agentSuitesAwaitingPostgres: ReadonlySet<string> = new Set([
   "chatQueueStoreContract",
   "chatRetentionContract",
-  "noteStoreContract",
   "transcriptStoreContract",
 ]);
 
