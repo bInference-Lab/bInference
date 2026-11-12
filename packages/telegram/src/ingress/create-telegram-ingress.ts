@@ -4,8 +4,9 @@ import {
   type JsonValue,
   type Logger,
   replaceNulDeep,
+  valueNestsDeeperThan,
 } from "@binference/core";
-import type { AccessStore, InboxEntry, InboxStore } from "@binference/engine";
+import type { AccessStore, InboxDraft, InboxEntry, InboxStore } from "@binference/engine";
 import type { OwnerBinding, OwnerStore } from "@binference/engine/surfaces";
 import type { MessageLocale } from "@binference/i18n";
 import type { Api } from "grammy";
@@ -129,6 +130,20 @@ function updateOf(update: JsonValue): ChatUpdate {
   return parsed.data;
 }
 
+// An update as the inbox keeps it: with U+FFFD in place of each U+0000 (decision 0416), screened,
+// under its bot's key.
+function draftOf(sent: JsonValue, keyPrefix: string, receivedAtMs: number): InboxDraft {
+  const update = replaceNulDeep(sent);
+  const parsed = updateOf(update);
+  const stored = screenUpdate(update, parsed);
+  return {
+    source: "telegram",
+    sourceKey: `${keyPrefix}${String(parsed.updateId)}`,
+    payload: { update: stored.update, isRedacted: stored.isRedacted },
+    receivedAtMs,
+  };
+}
+
 // At most one pass runs and one waits; a caller that finds one waiting shares it.
 function serialized(pass: (call: Call) => Promise<void>): (call: Call) => Promise<void> {
   let running: Promise<void> = Promise.resolve();
@@ -149,8 +164,10 @@ function serialized(pass: (call: Call) => Promise<void>): (call: Call) => Promis
 }
 
 /**
- * Creates the Telegram ingress for one bot. Each update comes in with U+FFFD in place of every
- * U+0000 in its text and keys (decision 0416), then is screened (a secret is cut to its ids),
+ * Creates the Telegram ingress for one bot. An update nested past `maxJsonDepth` is dropped with
+ * the log line `telegram.update_too_deep` and acknowledged (decision 0417). Each other update
+ * comes in with U+FFFD in place of every U+0000 in its text and keys (decision 0416), then is
+ * screened (a secret is cut to its ids),
  * stored under `tg:<bot id>:<update id>`, and handled after it is stored: pairing by start code,
  * owner checks by numeric id, secrets deleted with a warning, the rest handed to `onOwnerUpdate`.
  * A repeated update id is stored once and handled once.
@@ -182,18 +199,13 @@ export function createTelegramIngress(options: TelegramIngressOptions): Telegram
   const pass = serialized(async (call) => passFrom(call, maxPages));
   return {
     receive: async (sent, call) => {
-      const update = replaceNulDeep(sent);
-      const parsed = updateOf(update);
-      const stored = screenUpdate(update, parsed);
-      await stores.inbox.admit(
-        {
-          source: "telegram",
-          sourceKey: `${keyPrefix}${String(parsed.updateId)}`,
-          payload: { update: stored.update, isRedacted: stored.isRedacted },
-          receivedAtMs: clock.now(),
-        },
-        call,
-      );
+      // Decision 0417: an update nested past the bound is dropped before anything walks it, and
+      // resolving acknowledges it, so the updates after it go on.
+      if (valueNestsDeeperThan(sent)) {
+        logger.warn("telegram.update_too_deep");
+        return;
+      }
+      await stores.inbox.admit(draftOf(sent, keyPrefix, clock.now()), call);
       // Stored is what the caller waits for; a failed pass is retried by the next one.
       try {
         await pass(call);

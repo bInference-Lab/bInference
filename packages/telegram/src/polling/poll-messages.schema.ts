@@ -4,6 +4,7 @@ import {
   isErrorCode,
   type JsonValue,
   jsonValueSchema,
+  valueNestsDeeperThan,
 } from "@binference/core";
 import { z } from "zod";
 
@@ -75,16 +76,21 @@ const pollReplySchema: z.ZodType<PollReply> = z.discriminatedUnion("kind", [
 ]);
 
 const answerSchema = z.array(jsonValueSchema);
-const updateHeadSchema = z.looseObject({ update_id: updateIdSchema });
+// Each update's id alone: the rest of an update is not read here.
+const headsSchema = z.array(z.looseObject({ update_id: updateIdSchema }));
 
 /**
  * Reads a `getUpdates` answer. Throws a retryable `telegram.bad_answer` when it is not a list of
- * updates, each with a whole `update_id`.
+ * updates, each with a whole `update_id`. An update nested past `maxJsonDepth` goes on as its id
+ * alone, read before anything walks it (decision 0417), so its offset still acknowledges it.
  */
 export function polledBatchOf(answer: unknown): readonly PolledUpdate[] {
-  const updates = answerSchema.safeParse(answer);
-  const heads = updates.success ? z.array(updateHeadSchema).safeParse(updates.data) : undefined;
-  if (!updates.success || heads?.success !== true) {
+  const heads = headsSchema.safeParse(answer);
+  const kept = heads.success
+    ? heads.data.map((head) => (valueNestsDeeperThan(head) ? { update_id: head.update_id } : head))
+    : undefined;
+  const updates = answerSchema.safeParse(kept);
+  if (!updates.success || !heads.success) {
     throw new BinferenceError({
       code: "telegram.bad_answer",
       message: "getUpdates answered something other than a list of updates.",

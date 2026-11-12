@@ -27,6 +27,15 @@ const twentyFourWords = [
   "legal winner thank year wave sausage worth title",
 ].join(" ");
 
+// A JSON value nested `depth` deep, built without recursion.
+function nestedValue(depth: number): JsonValue {
+  let value: JsonValue = [];
+  for (let level = 1; level < depth; level += 1) {
+    value = [value];
+  }
+  return value;
+}
+
 // An entry as an update stored before decision 0416 may read back: U+0000 in place of each
 // `{nul}`.
 function oldEntry(entry: InboxEntry): InboxEntry {
@@ -226,6 +235,16 @@ describe("the Telegram ingress", () => {
     expect(context.delivered).toMatchObject([
       { kind: "message", updateId: 13, text: `gm${String.fromCodePoint(0xfffd)}ser` },
     ]);
+  });
+
+  it("drops an update nested past the bound with a log line, and handles the next one", async () => {
+    const context = await setUp({ owner: ownerId });
+    const deep = { update_id: 14, message: { x: nestedValue(10_000) } };
+    await context.receive(deep, textUpdate({ updateId: 15, from: ownerId, text: "status" }));
+    expect(context.delivered.map((update) => update.updateId)).toStrictEqual([15]);
+    expect(context.logger.records().map(({ event }) => event)).toContain(
+      "telegram.update_too_deep",
+    );
   });
 
   it("ignores groups, bots and posts on behalf of a chat, even from the owner's id", async () => {

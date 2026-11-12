@@ -8,7 +8,9 @@ Rules for this package:
 
 - Updates enter only through `UpdateIntake.receive`. Long polling and a webhook relay both feed
   it, and acknowledge an update to Telegram only after `receive` resolves: it resolves once the
-  update is stored in the inbox under `tg:<bot id>:<update id>`.
+  update is stored in the inbox under `tg:<bot id>:<update id>`. An update nested past
+  `maxJsonDepth` is dropped with `telegram.update_too_deep` and acknowledged, before anything
+  walks it (decision 0417); the poll worker hands one on as its id alone.
 - Screening runs before anything stores, logs or hands on an update. A text that looks like a
   secret never reaches the inbox, a log, an error or the agent: the inbox keeps the update's ids
   only, and the owner's message is deleted with a warning.

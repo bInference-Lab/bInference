@@ -20,6 +20,17 @@ describe("the poll worker's messages", () => {
     }
   });
 
+  it("hands an update nested past the bound on as its id alone, and the rest whole", () => {
+    const deep: unknown = JSON.parse(
+      `{"update_id":4,"message":{"x":${"[".repeat(10_000)}${"]".repeat(10_000)}}}`,
+    );
+    const plain = { update_id: 5, message: { text: "x" } };
+    expect(polledBatchOf([deep, plain])).toStrictEqual([
+      { updateId: 4, update: { update_id: 4 } },
+      { updateId: 5, update: plain },
+    ]);
+  });
+
   it("reads requests, replies and setups, and nothing else", () => {
     expect(pollRequestOf({ kind: "fetch", id: 1, offset: 4 })).toStrictEqual({
       kind: "fetch",
