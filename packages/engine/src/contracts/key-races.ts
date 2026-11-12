@@ -5,7 +5,7 @@ import { identityOf } from "./identity-store-contract.js";
 import { intentDraft, intentMove } from "./intent-fixtures.js";
 import {
   answerOf,
-  conflict,
+  assertOneWon,
   firstOf,
   type MoneyRaceSubject,
   race,
@@ -16,13 +16,6 @@ import { checkOn, fixtureId, inOrder, live } from "./store-fixtures.js";
 // Writers that insert one key their caller chose at once (decision 0413): the first to commit
 // stores it, and every other gets the port's own answer, never a broken constraint, on any
 // database, whether the loser read the key first or met it on a rerun.
-
-function assertOneWon(answers: readonly string[], refusal: string): void {
-  for (const answer of answers) {
-    assert.ok(["ok", refusal, conflict].includes(answer), answer);
-  }
-  assert.equal(answers.filter((answer) => answer === "ok").length, 1);
-}
 
 /** Writers that create one intent id at once store it once; every other create is `exists`. */
 async function createsOneIntentIdOnce(subject: MoneyRaceSubject): Promise<void> {

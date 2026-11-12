@@ -61,6 +61,14 @@ export async function settled<Output>(work: Promise<Output>): Promise<Output | t
   }
 }
 
+/** Asserts that one answer is `ok` and every other the refusal, or a write that gave up. */
+export function assertOneWon(answers: readonly string[], refusal: string): void {
+  for (const answer of answers) {
+    assert.ok(["ok", refusal, conflict].includes(answer), answer);
+  }
+  assert.equal(answers.filter((answer) => answer === "ok").length, 1);
+}
+
 /** A settled write's answer as one word: `ok`, its refusal, or {@link conflict}. */
 export function answerOf<Value, Refusal extends string>(
   outcome: Result<Value, Refusal> | typeof conflict,
@@ -78,13 +86,19 @@ export function firstOf(subject: MoneyRaceSubject): MoneyWriter {
   return writer;
 }
 
+/** Writers of one database that race, and, on a database that retries, the count of reruns. */
+export interface RacingWriters<Writer> {
+  readonly writers: readonly Writer[];
+  readonly retries?: () => number;
+}
+
 /**
  * Runs `work` on every writer at once, each writer's own calls in order. On a subject that counts
  * retries, the race must have run a write again after a conflict.
  */
-export async function race<Output>(
-  subject: MoneyRaceSubject,
-  work: (writer: MoneyWriter, index: number) => Promise<Output>,
+export async function race<Writer, Output>(
+  subject: RacingWriters<Writer>,
+  work: (writer: Writer, index: number) => Promise<Output>,
 ): Promise<readonly Output[]> {
   const before = subject.retries?.();
   const outcomes = await Promise.all(
