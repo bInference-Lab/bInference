@@ -33,7 +33,7 @@ export const recordChangeTask: StoreTask<ConfigChange, ConfigJournalEntry> = def
   input: configChangeSchema,
   output: configJournalEntrySchema,
   run(database, change) {
-    const { kysely, execute } = createSyncKysely<EngineTables>(database);
+    const { kysely, takeOne } = createSyncKysely<EngineTables>(database);
     const row = {
       at: change.atMs,
       by: change.by,
@@ -43,8 +43,8 @@ export const recordChangeTask: StoreTask<ConfigChange, ConfigJournalEntry> = def
       after: optionalJsonText(change.after),
       reason: orNull(change.reason),
     };
-    const inserted = execute(kysely.insertInto("config_journal").values(row));
-    return toJournalEntry({ ...row, id: Number(inserted.insertId) });
+    const inserted = takeOne(kysely.insertInto("config_journal").values(row).returning("id"));
+    return toJournalEntry({ ...row, id: inserted.id });
   },
 });
 

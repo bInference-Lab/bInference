@@ -45,17 +45,20 @@ export const admitTask: StoreTask<InboxDraft, InboxAdmission> = defineTask({
     if (stored !== undefined) {
       return { kind: "repeat", entry: stored };
     }
-    const { kysely, execute } = createSyncKysely<EngineTables>(database);
-    const inserted = execute(
-      kysely.insertInto("inbox").values({
-        source: draft.source,
-        source_key: draft.sourceKey,
-        payload: jsonText(draft.payload),
-        received_at: draft.receivedAtMs,
-        handled_at: null,
-      }),
+    const { kysely, takeOne } = createSyncKysely<EngineTables>(database);
+    const inserted = takeOne(
+      kysely
+        .insertInto("inbox")
+        .values({
+          source: draft.source,
+          source_key: draft.sourceKey,
+          payload: jsonText(draft.payload),
+          received_at: draft.receivedAtMs,
+          handled_at: null,
+        })
+        .returning("id"),
     );
-    return { kind: "new", entry: { ...draft, id: Number(inserted.insertId) } };
+    return { kind: "new", entry: { ...draft, id: inserted.id } };
   },
 });
 

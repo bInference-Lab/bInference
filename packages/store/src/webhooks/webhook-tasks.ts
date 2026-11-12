@@ -95,23 +95,26 @@ function outcomeOf(
 
 // Writes an accepted alert's rule time and inbox entry, and answers the entry's id.
 function admit(database: StoreConnection, draft: WebhookAlertDraft, event: number): number {
-  const { kysely, execute } = createSyncKysely<EngineTables>(database);
+  const { kysely, execute, takeOne } = createSyncKysely<EngineTables>(database);
   execute(
     kysely
       .updateTable("webhook_rules")
       .set({ last_alert_at: draft.receivedAtMs })
       .where("id", "=", draft.rule),
   );
-  const inserted = execute(
-    kysely.insertInto("inbox").values({
-      source: "webhook",
-      source_key: webhookInboxKey(event),
-      payload: jsonText(webhookInboxPayload(draft, event)),
-      received_at: draft.receivedAtMs,
-      handled_at: null,
-    }),
+  const inserted = takeOne(
+    kysely
+      .insertInto("inbox")
+      .values({
+        source: "webhook",
+        source_key: webhookInboxKey(event),
+        payload: jsonText(webhookInboxPayload(draft, event)),
+        received_at: draft.receivedAtMs,
+        handled_at: null,
+      })
+      .returning("id"),
   );
-  return Number(inserted.insertId);
+  return inserted.id;
 }
 
 /**
@@ -134,19 +137,21 @@ export const takeAlertTask: StoreTask<WebhookAlertDraft, WebhookTake> = defineTa
       return { kind: "gone" };
     }
     const outcome = outcomeOf(database, rule, draft);
-    const { kysely, execute } = createSyncKysely<EngineTables>(database);
-    const inserted = execute(
-      kysely.insertInto("webhook_events").values({
-        rule_id: draft.rule,
-        alert_id: draft.alertId ?? null,
-        body_hash: draft.bodyHash,
-        received_at: draft.receivedAtMs,
-        outcome,
-        engine_locked: draft.isEngineLocked === true ? 1 : 0,
-        intent_id: null,
-      }),
+    const { kysely, takeOne } = createSyncKysely<EngineTables>(database);
+    const { id: event } = takeOne(
+      kysely
+        .insertInto("webhook_events")
+        .values({
+          rule_id: draft.rule,
+          alert_id: draft.alertId ?? null,
+          body_hash: draft.bodyHash,
+          received_at: draft.receivedAtMs,
+          outcome,
+          engine_locked: draft.isEngineLocked === true ? 1 : 0,
+          intent_id: null,
+        })
+        .returning("id"),
     );
-    const event = Number(inserted.insertId);
     return outcome === "accepted"
       ? { kind: outcome, event, entry: admit(database, draft, event) }
       : { kind: outcome, event };
