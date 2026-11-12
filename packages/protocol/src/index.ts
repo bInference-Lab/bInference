@@ -56,7 +56,9 @@ export type { ImageContentType, ImagePart } from "./operations/image-operations.
 export * from "./values/image-type.js";
 export * from "./operations/media-operations.schema.js";
 export * from "./values/media-type.js";
+/** The limits of the agent's file and PDF calls: text sizes, pages and files sent to the owner. */
 export * as fileLimits from "./operations/file-limits.js";
+/** The limits of the agent's browser calls: snapshot and page text sizes, tabs and action time. */
 export * as browserLimits from "./operations/browser-limits.js";
 export * from "./requests/browser-request.schema.js";
 export type * from "./views/browser-view.schema.js";
@@ -80,6 +82,7 @@ export type {
   HttpRequestView,
 } from "./operations/http-operations.schema.js";
 export type { PortableChart } from "./views/portable-chart.schema.js";
+/** The pushes that open and close a credential request on an agent's chat topic. */
 export * as credentialPushes from "./views/credential-push.schema.js";
 export * from "./views/shell-push.schema.js";
 export * from "./views/shell-request-view.schema.js";
