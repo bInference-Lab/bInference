@@ -34,6 +34,16 @@ async function writeAll(subject: NoteStoreSubject, fence: number, drafts: readon
   }, Promise.resolve([]));
 }
 
+// The numbers of the first agent's notes a search finds, in the order it gives them.
+async function foundIds(
+  subject: NoteStoreSubject,
+  query: string,
+  limit = 10,
+): Promise<readonly number[]> {
+  const found = await subject.store.search({ agentId: nthId("agt", 1), query, limit }, go());
+  return found.map((record) => record.id);
+}
+
 async function keepsNotes(subject: NoteStoreSubject, fence: number): Promise<void> {
   const { store } = subject;
   const written = okValue(await store.write({ ...note("Prefers stablecoins"), fence }, go()));
@@ -110,16 +120,48 @@ async function foldsAsciiOnly(subject: NoteStoreSubject, fence: number): Promise
     note(`${capitalUmlaut}RGER with the bank`),
     note(`${helloCapitals} to the market`),
   ]);
-  const search = async (query: string): Promise<readonly number[]> =>
-    (await subject.store.search({ agentId: nthId("agt", 1), query, limit: 10 }, go())).map(
-      (record) => record.id,
-    );
-  assert.deepEqual(await search(`${capitalUmlaut}rger WITH`), [ids[0]]);
-  assert.deepEqual(await search(`${smallUmlaut}rger`), []);
-  assert.deepEqual(await search(capitalUmlaut), [ids[0]]);
-  assert.deepEqual(await search(smallUmlaut), []);
-  assert.deepEqual(await search(`${helloCapitals} TO`), [ids[1]]);
-  assert.deepEqual(await search(helloSmall), []);
+  assert.deepEqual(await foundIds(subject, `${capitalUmlaut}rger WITH`), [ids[0]]);
+  assert.deepEqual(await foundIds(subject, `${smallUmlaut}rger`), []);
+  assert.deepEqual(await foundIds(subject, capitalUmlaut), [ids[0]]);
+  assert.deepEqual(await foundIds(subject, smallUmlaut), []);
+  assert.deepEqual(await foundIds(subject, `${helloCapitals} TO`), [ids[1]]);
+  assert.deepEqual(await foundIds(subject, helloSmall), []);
+}
+
+async function matchesWildcardsAsWritten(subject: NoteStoreSubject, fence: number): Promise<void> {
+  const ids = await writeAll(subject, fence, [
+    note("Sell 50% at 2x"),
+    note("snake_case names"),
+    note("snakeXcase names"),
+    note("path C:\\bin\\tools"),
+  ]);
+  assert.deepEqual(await foundIds(subject, "50%"), [ids[0]]);
+  assert.deepEqual(await foundIds(subject, "s%s"), []);
+  assert.deepEqual(await foundIds(subject, "e_c"), [ids[1]]);
+  assert.deepEqual(await foundIds(subject, "\\bin"), [ids[3]]);
+  assert.deepEqual(await foundIds(subject, "%"), [ids[0]]);
+  assert.deepEqual(await foundIds(subject, "_"), [ids[1]]);
+  assert.deepEqual(await foundIds(subject, "\\"), [ids[3]]);
+}
+
+// Notes written in one millisecond list in the order they were written, and a search gives notes
+// of one rank in that order too (decision 0366).
+async function ordersOneInstant(subject: NoteStoreSubject, fence: number): Promise<void> {
+  const ids = await writeAll(subject, fence, [
+    note("buy the dip"),
+    note("hold"),
+    note("buy the dip"),
+    note("buy the dip"),
+  ]);
+  const listed = await subject.store.list({ agentId: nthId("agt", 1), limit: 10 }, go());
+  assert.deepEqual(
+    listed.map((record) => record.id),
+    ids,
+  );
+  const alike = [ids[0], ids[2], ids[3]];
+  assert.deepEqual(await foundIds(subject, "the dip"), alike);
+  assert.deepEqual(await foundIds(subject, "di"), alike);
+  assert.deepEqual(await foundIds(subject, "THE DIP", 2), alike.slice(0, 2));
 }
 
 async function deletesNotes(subject: NoteStoreSubject, fence: number): Promise<void> {
@@ -183,6 +225,16 @@ export function noteStoreContract(harness: NoteStoreHarness): readonly ContractC
       "ignores the case of ASCII letters only, so other letters match as written",
       create,
       foldsAsciiOnly,
+    ),
+    fencedCheck(
+      "finds %, _ and \\ in a query of any length as themselves",
+      create,
+      matchesWildcardsAsWritten,
+    ),
+    fencedCheck(
+      "lists and finds notes of one instant and one rank in the order they were written",
+      create,
+      ordersOneInstant,
     ),
     fencedCheck("removes a note from lists and searches, once", create, deletesNotes),
     fencedCheck("refuses every write made with a fence raised since", create, refusesStaleFence),
