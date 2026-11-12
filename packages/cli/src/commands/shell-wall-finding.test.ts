@@ -1,10 +1,22 @@
 import { createManualClock } from "@binference/core/testing";
+import { createFormatter } from "@binference/i18n";
 import type { CommandWallState, ShellEnd, ShellLaunch, ShellLauncher } from "@binference/platform";
 import { describe, expect, it } from "vitest";
+import type { CheckFinding } from "./check-finding.js";
 import { shellWallFinding } from "./shell-wall-finding.js";
 
 const clock = createManualClock();
 const signal = new AbortController().signal;
+const english = createFormatter({ locale: "en", timeZone: "UTC" });
+
+// What the finding's message and its lines say in English.
+function wordsOf(finding: CheckFinding): readonly string[] {
+  const lines = [
+    ...(finding.message === undefined ? [] : [finding.message]),
+    ...(finding.more ?? []),
+  ];
+  return lines.map(({ key, values }) => english.message(`cli.${key}`, values));
+}
 
 // A launcher whose wall a check finds as given, which ends each command as `end` says and
 // records it.
@@ -62,10 +74,28 @@ describe("the finding of the shell's wall", () => {
     expect(await shellWallFinding(run)).toMatchObject({
       check: "shell.wall",
       level: "warn",
-      message: { key: "check.shellWall.none" },
-      more: [{ key: "check.shellWall.fixNone" }],
-      details: { wall: "none" },
+      message: { key: "check.shellWall.none", values: { cause: "missing" } },
+      more: [{ key: "check.shellWall.fixNone", values: { cause: "missing" } }],
+      details: { wall: "none", cause: "missing" },
     });
+  });
+
+  it("names namespaces bubblewrap is refused and the next step where it cannot run", async () => {
+    const { run } = launcherOf({
+      kind: "none",
+      cause: "refused",
+      reason: "bubblewrap could not run a command here",
+    });
+
+    const finding = await shellWallFinding(run);
+
+    expect(finding).toMatchObject({ level: "warn", details: { wall: "none", cause: "refused" } });
+    expect(wordsOf(finding)).toStrictEqual([
+      "The agent cannot run commands on this machine: bubblewrap is installed, but the machine " +
+        "refuses it the user namespaces it walls commands with.",
+      "Allow unprivileged user namespaces, so bubblewrap can run, or run binference in its " +
+        "Docker image, which runs the agent's commands as a user of their own.",
+    ]);
   });
 
   it("runs a command that does nothing in the image's shell home", async () => {
