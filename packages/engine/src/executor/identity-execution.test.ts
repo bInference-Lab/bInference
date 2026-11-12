@@ -88,16 +88,12 @@ function withRegistrationOnItsWay(store: IntentStore): IntentStore {
 }
 
 // The executor's intent store over an agent that holds an identity already: a move that stores
-// another breaks the table's key, as the SQLite store's does.
+// another is stale and writes nothing, as the SQLite store's is (decision 0413).
 function withIdentityHeld(store: IntentStore): IntentStore {
   return {
     ...store,
-    transition: async (change, options) => {
-      if (change.identity !== undefined) {
-        throw new BinferenceError({ code: "store.constraint", message: "Held already." });
-      }
-      return store.transition(change, options);
-    },
+    transition: async (change, options) =>
+      change.identity === undefined ? store.transition(change, options) : err("stale"),
   };
 }
 

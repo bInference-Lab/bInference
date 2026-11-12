@@ -44,7 +44,7 @@ async function readsWhatAMoveStored(subject: IdentityStoreSubject): Promise<void
   assert.equal(await identities.get(fixtureId("agt", 9), live()), undefined);
 }
 
-// A second identity for the agent throws and writes nothing, its move included.
+// A second identity for the agent makes its move stale and writes nothing, its move included.
 async function keepsOnePerAgent(subject: IdentityStoreSubject): Promise<void> {
   const { identities, store, agentId } = subject;
   await store.create(intentDraft(subject, 1), live());
@@ -52,8 +52,9 @@ async function keepsOnePerAgent(subject: IdentityStoreSubject): Promise<void> {
   const identity = identityOf(subject, "42");
   await store.transition({ ...intentMove(1, 0, "checked"), identity }, live());
   const again = { ...intentMove(2, 0, "checked"), identity: identityOf(subject, "43") };
-  await assert.rejects(store.transition(again, live()), { code: "store.constraint" });
+  assert.deepEqual(await store.transition(again, live()), { ok: false, error: "stale" });
   assert.equal((await store.get(fixtureId("int", 2), live()))?.state, "proposed");
+  assert.equal((await store.events(fixtureId("int", 2), live())).length, 1);
   assert.deepEqual(await identities.get(agentId, live()), identity);
 }
 
@@ -66,7 +67,11 @@ export function identityStoreContract(harness: IdentityStoreHarness): readonly C
   const create = async (): Promise<IdentityStoreSubject> => harness.create();
   return [
     checkOn("reads the identity a move stored, by its agent", create, readsWhatAMoveStored),
-    checkOn("keeps one identity per agent and writes nothing more", create, keepsOnePerAgent),
+    checkOn(
+      "keeps one identity per agent, a second move stale and nothing more written",
+      create,
+      keepsOnePerAgent,
+    ),
     checkOn("refuses a read on an aborted signal", create, refusesAborted),
   ];
 }

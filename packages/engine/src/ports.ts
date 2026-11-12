@@ -204,7 +204,8 @@ export interface IntentStore extends LandedLate, StoredAssetsRead {
    * A fill's order write lands in the same transaction: each order move under its version, which
    * the order store's rules check, and the fill's row; an order at another version, or one a move
    * may not take, is `stale` and writes nothing. A registration's identity lands in the same
-   * transaction too; an agent that holds one already throws `store.constraint`, writing nothing.
+   * transaction too; an agent that holds one already is `stale` and writes nothing, so of two
+   * registrations that race the first wins (decision 0413).
    */
   transition(
     change: IntentChange,

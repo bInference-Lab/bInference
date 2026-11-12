@@ -17,10 +17,7 @@ export interface MemoryIntentTables {
   readonly cards: (id: Id<"int">) => readonly CardRecord[];
   readonly cardByRef: (callbackRef: string) => CardRecord | undefined;
   readonly confirmation: (id: Id<"int">) => StoredConfirmation | undefined;
-  /**
-   * Throws, before anything is written, when a move's card, confirmation or identity write would
-   * fail: an identity of an agent that holds one already.
-   */
+  /** Throws, before anything is written, when a move's card or confirmation write would fail. */
   readonly checkCardWrites: (change: IntentChange) => void;
   readonly saveIntent: (intent: IntentRecord) => void;
   /** Saves a move's card, confirmation and identity writes. */
@@ -95,9 +92,6 @@ export function createMemoryIntentTables(): MemoryIntentTables {
       checkCloseCard(cards, change);
       checkOpenCard(cards, change);
       checkConfirmation(cards, confirmations, change);
-      if (change.identity !== undefined && identities.has(change.identity.agentId)) {
-        throw constraintFault(`agent ${change.identity.agentId} holds an identity already`);
-      }
     },
     saveIntent: (intent) => intents.set(intent.id, structuredClone(intent)),
     saveCardWrites(change) {

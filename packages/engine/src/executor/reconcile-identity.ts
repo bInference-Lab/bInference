@@ -1,5 +1,4 @@
 import { isSameAccount } from "@binference/chain";
-import { BinferenceError } from "@binference/core";
 import type { IdentityRecord } from "../identity/identity-record.js";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import type { IdentityQuote } from "../intents/identity-quote.js";
@@ -54,9 +53,10 @@ async function settleMismatch(
   }
 }
 
-// The move to `reconciled` with the identity it stores; an agent that holds one already, as after
-// a second registration that slipped past every check, breaks the store's key, which is told as
-// a duplicate rather than thrown on every try.
+// The move to `reconciled` with the identity it stores. An agent that holds one already, as after
+// a second registration that slipped past every check, makes the move stale (decision 0413): when
+// no other write moved the intent, that is the one reason, which is told as a duplicate rather
+// than tried again on every pass.
 async function storeIdentity(
   run: ExecutionRun,
   finalized: IntentSnapshot,
@@ -64,12 +64,11 @@ async function storeIdentity(
 ): Promise<void> {
   const trigger = { type: "fills_reconciled" } as const;
   const named = { identityId: identity.onchainId };
-  try {
-    await moveIntent(run, finalized, { trigger, identity, named });
-  } catch (error) {
-    if (!(error instanceof BinferenceError) || error.code !== "store.constraint") {
-      throw error;
-    }
+  if ((await moveIntent(run, finalized, { trigger, identity, named })) !== undefined) {
+    return;
+  }
+  const now = await run.parts.stored.snapshot(finalized.record.id, { signal: run.signal });
+  if (now?.stored.version === finalized.stored.version) {
     await settleMismatch(run, finalized, duplicateNoticeKey);
   }
 }

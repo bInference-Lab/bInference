@@ -113,7 +113,8 @@ function create(
   return ok(commitOf(tables, options, { intent, event, ledgerEntry }));
 }
 
-// A move whose intent is unknown or at another version; its card writes throw when they would fail.
+// A move whose intent is unknown, or at another version, or whose registration's agent holds an
+// identity (`stale`, decision 0413); its card writes throw when they would fail.
 function checkMove(
   tables: MemoryIntentTables,
   change: IntentChange,
@@ -122,7 +123,9 @@ function checkMove(
   if (current === undefined) {
     return err("not_found");
   }
-  if (current.version !== change.expectedVersion) {
+  const { identity } = change;
+  const isHeld = identity !== undefined && tables.identityOf(identity.agentId) !== undefined;
+  if (current.version !== change.expectedVersion || isHeld) {
     return err("stale");
   }
   tables.checkCardWrites(change);

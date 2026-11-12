@@ -23,7 +23,7 @@ import { writeOrderMoves } from "../orders/order-writes.js";
 import { decimalText, jsonText, optionalJsonText, orNull } from "../rows/column-values.js";
 import { checkAlertEnd, isRuleDeleted, writeAlertEnd } from "../webhooks/webhook-rule-writes.js";
 import { writeCardChanges } from "./card-writes.js";
-import { insertIdentity } from "./identity-rows.js";
+import { identityOf, insertIdentity } from "./identity-rows.js";
 import { toIntentEvent, toIntentRecord } from "./intent-rows.js";
 
 interface EventDraft {
@@ -193,20 +193,21 @@ export function checkRuleFill(
 }
 
 // A fill's order write, checked before anything is written: an alert or rule another write moved,
-// or an order at another version or one a move may not take, is the move's `stale`.
-function checkFillWrite(
+// or an order at another version or one a move may not take, is the move's `stale`, and so is a
+// registration's identity for an agent that holds one (decision 0413).
+function checkCarriedWrites(
   database: StoreConnection,
   change: IntentChange,
 ): Result<undefined, "stale"> {
-  const { order, alert } = change;
+  const { order, alert, identity } = change;
   const ruleFill = { intent: change.id, isLanding: false };
   if (alert !== undefined && !checkRuleFill(database, { alert, ...ruleFill }).ok) {
     return err("stale");
   }
-  if (order === undefined) {
-    return ok(undefined);
+  if (identity !== undefined && identityOf(database, identity.agentId) !== undefined) {
+    return err("stale");
   }
-  return checkOrderFillWrite(database, order);
+  return order === undefined ? ok(undefined) : checkOrderFillWrite(database, order);
 }
 
 // The moved row under the version its mover read, which this transaction read: an update that
@@ -232,15 +233,16 @@ function writeMoved(database: StoreConnection, change: IntentChange, moved: Inte
 /**
  * Moves an intent when its stored version is the one the mover read: its new state and parts,
  * the event, the ledger entry and the card writes, a fill's order moves and row, and a
- * registration's identity, all in the caller's transaction.
+ * registration's identity, all in the caller's transaction. An identity of an agent that holds
+ * one is `stale`, as a fill's order the move may not take is.
  */
 export function moveIntent(
   database: StoreConnection,
   change: IntentChange,
 ): Result<IntentCommit, "not_found" | "stale"> {
   const read = readMoved(database, change);
-  const fill = read.ok ? checkFillWrite(database, change) : ok(undefined);
-  if (!read.ok || !fill.ok) {
+  const carried = read.ok ? checkCarriedWrites(database, change) : ok(undefined);
+  if (!read.ok || !carried.ok) {
     return read.ok ? err("stale") : read;
   }
   const current = read.value;
