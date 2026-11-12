@@ -11,14 +11,15 @@ import { newOwnerKey, rescueAddress } from "../e2e/init-fixtures.js";
 import { testModelId, testModelKey } from "../e2e/model-fixtures.js";
 import { createSystemClock } from "../runtime/system-clock.js";
 import { createSystemRandom } from "../runtime/system-random.js";
-import { edgeCertFolder, edgeHosts } from "./image-names.js";
+import { edgeCertFolder, edgeHosts, modelPort } from "./image-names.js";
 
 // The image smoke test (ENGINEERING section 24.5, decision 0292): it builds the image from this
 // checkout, checks its user, health check and volume, sets an install up with `binference init
-// --yes`, starts the engine, trades on paper, stops it with `docker stop`, then removes every
-// container, volume, network and image it made. Privy, Telegram and the model provider are the
-// e2e fakes, served over HTTPS by an edge container the test network names after them; the paper
-// trade quotes on BNB Smart Chain's public RPCs and KyberSwap's API.
+// --yes`, starts the engine, trades on paper, runs the agent's commands through the shell launcher
+// (decision 0412), stops it with `docker stop`, then removes every container, volume, network and
+// image it made. Privy, Telegram and the model provider are the e2e fakes and a scripted model,
+// served over HTTPS by an edge container the test network names after them; the paper trade
+// quotes on BNB Smart Chain's public RPCs and KyberSwap's API.
 
 const root = fileURLToPath(new URL("../../../../", import.meta.url));
 const run = randomBytes(4).toString("hex");
@@ -31,8 +32,10 @@ const names = {
   certs: `bnf-smoke-certs-${run}`,
   edge: `bnf-smoke-edge-${run}`,
   engine: `bnf-smoke-engine-${run}`,
+  model: `bnf-smoke-model-${run}`,
 };
-const stateFolder = "/var/lib/binference/.binference";
+const stateVolume = "/var/lib/binference/.binference";
+const stateFolder = `${stateVolume}/state`;
 const pluginsFolder = "/var/lib/binference-plugins";
 const imageSocket = `${pluginsFolder}/run/launcher.sock`;
 const buildMs = 900_000;
@@ -93,19 +96,24 @@ async function waitFor(check: () => Promise<boolean>, until: number): Promise<bo
 
 // The engine container, as the server guide runs it, on the test's network and volumes, with a
 // read-only root and the edge's certificate trusted: detached, the image entry as root under
-// Docker's init (decision 0344); else the image's own command.
+// Docker's init (decision 0344), its model at the scripted model on its loopback; else the image's
+// own command.
 function engineRun(command: readonly string[], options: { readonly detach: boolean }) {
-  const engine = ["-d", "--name", names.engine, "--stop-timeout", "45", "--init", "--user", "root"];
+  const engine = [
+    ["-d", "--name", names.engine, "--stop-timeout", "45", "--init", "--user", "root"],
+    ["-e", `BINFERENCE_MODELS__PROVIDERS__OPENAI__BASE_URL=http://127.0.0.1:${modelPort}/v1`],
+    ["--entrypoint", "binference-image"],
+  ].flat();
   return [
     "run",
-    ...(options.detach ? [...engine, "--entrypoint", "binference-image"] : ["--rm"]),
+    ...(options.detach ? engine : ["--rm"]),
     "--network",
     names.network,
     "--read-only",
     "--tmpfs",
     "/tmp",
     "-v",
-    `${names.state}:${stateFolder}`,
+    `${names.state}:${stateVolume}`,
     "-v",
     `${names.plugins}:${pluginsFolder}`,
     "-v",
@@ -158,6 +166,23 @@ async function startEdge(): Promise<void> {
   expect(listening).toBe(true);
 }
 
+// The scripted model on the engine container's loopback, in a container of the build stage that
+// shares the engine's network.
+async function startModel(): Promise<void> {
+  const tsx = ["node", "--conditions=@binference/source", "--import", "tsx"];
+  await dockerOk(
+    [
+      ["run", "-d", "--name", names.model, "--network", `container:${names.engine}`],
+      ["-w", "/src", names.buildStage, ...tsx, "packages/cli/src/image/image-model-server.ts"],
+    ].flat(),
+  );
+  const listening = await waitFor(async () => {
+    const logs = await docker(["logs", names.model]);
+    return logs.stdout.includes('"model":"listening"');
+  }, Date.now() + 60_000);
+  expect(listening).toBe(true);
+}
+
 const healthSchema = z.object({
   state: z.string(),
   health: z.array(z.object({ signal: z.string(), state: z.string() })),
@@ -192,25 +217,72 @@ async function dockerSaysHealthy(): Promise<boolean> {
   return (await dockerHealth()) === "healthy";
 }
 
-async function paperTrade(): Promise<string> {
-  const driver = fileURLToPath(new URL("./image-paper-trade.ts", import.meta.url));
-  const mounted = "/opt/binference/image-paper-trade.ts";
-  const exit = await docker([
-    "run",
-    "--rm",
-    "--read-only",
-    "--network",
-    "none",
-    "-v",
-    `${names.state}:${stateFolder}`,
-    "-v",
-    `${driver}:${mounted}:ro`,
-    "--entrypoint",
-    "node",
-    names.image,
-    mounted,
-  ]);
-  return exit.exitCode === 0 ? exit.stdout.trim() : exit.stderr;
+// Runs one step of the driver in a container of the image, over the engine's IPC socket on the
+// state volume: `paper`, `shell` or `ask`. A driver that fails fails the test with what it said.
+async function drive(step: string): Promise<string> {
+  const driver = fileURLToPath(new URL("./image-driver.ts", import.meta.url));
+  const mounted = "/opt/binference/image-driver.ts";
+  return dockerOk(
+    [
+      ["run", "--rm", "--read-only", "--network", "none"],
+      ["-v", `${names.state}:${stateVolume}`, "-v", `${driver}:${mounted}:ro`],
+      ["--entrypoint", "node", names.image, mounted, step],
+    ].flat(),
+    300_000,
+  ).then((stdout) => stdout.trim());
+}
+
+const shellTurnsSchema = z.object({
+  probed: z.string(),
+  read: z.string(),
+  appended: z.string(),
+  background: z.string(),
+});
+
+const askedSchema = z.object({
+  asked: z.boolean(),
+  command: z.string().optional(),
+  approved: z.string().optional(),
+});
+
+// Whether a command's output says that reading `path` was refused for want of permission.
+function refused(output: string, path: string): boolean {
+  return output.split("\n").some((line) => line.includes(path) && /Permission denied/u.test(line));
+}
+
+async function shellFinding(): Promise<unknown> {
+  const checked = await docker(["exec", names.engine, "binference", "check", "--json"]);
+  const { findings } = checkSchema.parse(lastJson(checked.stdout));
+  return findings.find(({ check }) => check === "shell.wall");
+}
+
+// The agent's commands run as the shell user (decision 0412): they cannot read the engine's token,
+// keys or database, the engine reads and changes what they write in the workspace and they change
+// what the engine writes, and a command left running tells the agent when it ends.
+async function checkShell(): Promise<void> {
+  const shell = shellTurnsSchema.parse(lastJson(await drive("shell")));
+  expect(shell.probed).toContain("binference-shell");
+  const walled = ["auth/cli.token", "keys", "engine.sqlite"].map(
+    (path) => `${stateFolder}/${path}`,
+  );
+  expect(walled.filter((path) => !refused(shell.probed, path))).toStrictEqual([]);
+  const token = await dockerOk(["exec", names.engine, "cat", `${stateFolder}/auth/cli.token`]);
+  expect(shell.probed).not.toContain(token.trim());
+  expect(shell.read).toContain("made-by-42");
+  expect(shell.appended).toMatch(/engine-wrote\s+shell-4/u);
+  expect(shell.background).toContain("background-10");
+  expect(await shellFinding()).toStrictEqual({ check: "shell.wall", level: "ok", wall: "os_user" });
+}
+
+// A command that asks first waits for the owner, who allows it once, and its result wakes the
+// agent (decision 0409).
+async function checkAskedCommand(): Promise<void> {
+  const set = ["exec", names.engine, "binference", "config", "set", "shell.ask"];
+  await dockerOk([...set, "always"]);
+  const asked = askedSchema.parse(lastJson(await drive("ask")));
+  await dockerOk([...set, "never"]);
+  expect(asked).toMatchObject({ asked: true, command: "echo approved-$((3*3))" });
+  expect(asked.approved).toContain("approved-9");
 }
 
 // Each process of the engine container: its user id and its command line, read from /proc.
@@ -291,7 +363,7 @@ async function sandboxFinding(): Promise<unknown> {
 }
 
 async function removeAll(): Promise<void> {
-  await docker(["rm", "--force", names.engine, names.edge]);
+  await docker(["rm", "--force", names.model, names.engine, names.edge]);
   await docker(["network", "rm", names.network]);
   await docker(["volume", "rm", names.state, names.plugins, names.certs]);
   await docker(["image", "rm", names.image, names.buildStage]);
@@ -319,10 +391,13 @@ describe("the Docker image", () => {
       Entrypoint: ["binference"],
       Cmd: ["start", "--foreground"],
     });
-    expect(Object.keys(image.Config.Volumes).toSorted()).toEqual([pluginsFolder, stateFolder]);
+    expect(Object.keys(image.Config.Volumes).toSorted()).toEqual([pluginsFolder, stateVolume]);
     expect(image.Size).toBeLessThan(200 * 1024 * 1024);
     const id = await dockerOk(["run", "--rm", "--entrypoint", "id", names.image]);
-    expect(id.trim()).toBe("uid=10001(binference) gid=10001(binference) groups=10001(binference)");
+    // The engine's user shares the shell user's group, which no other user holds (decision 0412).
+    expect(id.trim()).toBe(
+      "uid=10001(binference) gid=10001(binference) groups=10001(binference),10003(binference-shell)",
+    );
     const pluginUser = await dockerOk([
       "run",
       "--rm",
@@ -334,6 +409,17 @@ describe("the Docker image", () => {
     expect(pluginUser.trim()).toBe(
       "uid=10002(binference-plugin) gid=10002(binference-plugin) groups=10002(binference-plugin)",
     );
+    const shellUser = await dockerOk([
+      "run",
+      "--rm",
+      "--entrypoint",
+      "id",
+      names.image,
+      "binference-shell",
+    ]);
+    expect(shellUser.trim()).toBe(
+      "uid=10003(binference-shell) gid=10003(binference-shell) groups=10003(binference-shell)",
+    );
   });
 
   it("says which folder it cannot write when the state volume is read-only", async () => {
@@ -343,7 +429,7 @@ describe("the Docker image", () => {
       "-e",
       "LANG=en_US.UTF-8",
       "-v",
-      `${names.state}:${stateFolder}:ro`,
+      `${names.state}:${stateVolume}:ro`,
       names.image,
     ]);
     expect(exit.exitCode).toBe(1);
@@ -352,7 +438,7 @@ describe("the Docker image", () => {
     );
   });
 
-  it("sets up without prompts, runs healthy, fills a paper trade and stops on docker stop", async () => {
+  it("sets up without prompts, runs healthy, fills a paper trade, runs the agent's commands as their own user and stops on docker stop", async () => {
     await startEdge();
     const init = await dockerOk(engineRun(initFlags(), { detach: false }));
     expect(lastJson(init)).toMatchObject({
@@ -366,8 +452,9 @@ describe("the Docker image", () => {
     const logs = await docker(["logs", names.engine]);
     expect(ready, `${logs.stdout}${logs.stderr}`).toBe(true);
     expect(await waitFor(dockerSaysHealthy, Date.now() + 90_000)).toBe(true);
+    await startModel();
 
-    expect(await paperTrade()).toBe(JSON.stringify({ mode: "paper", state: "paper_filled" }));
+    expect(await drive("paper")).toBe(JSON.stringify({ mode: "paper", state: "paper_filled" }));
 
     // A plugin runs under the plugin user, through the launcher, and cannot signal the engine.
     expect(await sandboxFinding()).toStrictEqual({
@@ -375,8 +462,8 @@ describe("the Docker image", () => {
       level: "ok",
       ownUser: true,
     });
-    // As root run only Docker's init and the image entry; the launcher runs as the plugin user,
-    // the engine and its processes as binference.
+    // As root run only Docker's init and the image entry; the launchers run as the plugin and the
+    // shell users, the engine and its processes as binference.
     const running = await processes();
     const asRoot = running.filter(({ uid }) => uid === 0).map(({ cmd }) => cmd);
     expect(asRoot).toHaveLength(2);
@@ -384,6 +471,8 @@ describe("the Docker image", () => {
     expect(asRoot[1]).toMatch(/node \/usr\/local\/bin\/binference-image$/);
     const asPlugin = running.filter(({ uid }) => uid === 10_002).map(({ cmd }) => cmd);
     expect(asPlugin).toStrictEqual([expect.stringMatching(/plugin-launcher\.mjs$/)]);
+    const asShell = running.filter(({ uid }) => uid === 10_003).map(({ cmd }) => cmd);
+    expect(asShell).toStrictEqual([expect.stringMatching(/shell-launcher\.mjs$/)]);
     expect(running.filter(({ uid }) => uid === 10_001).map(({ cmd }) => cmd)).toContainEqual(
       expect.stringMatching(/main\.mjs start --foreground$/),
     );
@@ -401,11 +490,14 @@ describe("the Docker image", () => {
     // A removed plugin's data goes through the launcher: the engine's user cannot remove it.
     expect(await removeDataThroughLauncher()).toStrictEqual([1, "removed", 1]);
 
+    await checkShell();
+    await checkAskedCommand();
+
     const stopped = Date.now();
     await dockerOk(["stop", names.engine], 60_000);
     expect(Date.now() - stopped).toBeLessThan(45_000);
     const format = "{{.State.ExitCode}} {{.State.OOMKilled}}";
     expect((await dockerOk(["inspect", "--format", format, names.engine])).trim()).toBe("0 false");
     expect((await docker(["logs", names.engine])).stdout).toContain("binference stopped.");
-  });
+  }, 600_000);
 });

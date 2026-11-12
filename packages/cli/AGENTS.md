@@ -73,9 +73,11 @@ Rules for this package:
 - The image test in `src/image/` builds the Docker image from the repo root's `Dockerfile`
   (decision 0292) and runs the image's own `binference`. `image-edge.ts` serves the e2e fakes of
   Privy, Telegram and the model provider over HTTPS in a container of the image's build stage,
-  which the test's network names after their hosts; `image-paper-trade.ts` runs in a container of
-  the image beside the installed package and trades on paper over the engine's IPC socket. It
-  runs in `pnpm test:image`, never in `pnpm check`.
+  which the test's network names after their hosts; its model is `image-model.ts`, whose tool
+  calls the owner's messages name. `image-driver.ts` runs in a container of the image beside the
+  installed package and, over the engine's IPC socket, trades on paper or drives the agent's
+  shell, which runs as the image's shell user (decision 0412). It runs in `pnpm test:image`, never
+  in `pnpm check`.
 - The built-package smoke's paper trade lives in `src/packed/` (decision 0354):
   `packed-paper-trade.ts`, which `pnpm release:smoke` runs from source with the folder the packed
   tarballs were installed in. It drives that install's own `binference`, each command a process of

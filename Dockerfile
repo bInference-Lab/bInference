@@ -1,6 +1,7 @@
 # The binference image: the engine, the agent runtime and the signer on Node, run by a user of
-# their own, with the state folder as a volume (decision 0292), and community plugins run by a
-# second user through the plugin launcher, with their files on a second volume (decision 0344).
+# their own, with the state folder as a volume (decision 0292), community plugins run by a second
+# user through the plugin launcher, with their files on a second volume (decision 0344), and the
+# agent's commands run by a third user through the shell launcher (decision 0412).
 #
 #   docker build -t binference .
 #
@@ -37,12 +38,24 @@ FROM ${RUN_BASE}
 LABEL org.opencontainers.image.title="binference" \
       org.opencontainers.image.description="An AI agent that trades on BNB Smart Chain for its owner and asks before every transaction" \
       org.opencontainers.image.licenses="MIT"
-# A system user of its own, apart from the base image's `node`, with its home under /var/lib. Its
-# state folder exists before the volume is mounted, so a new named volume takes its owner and its
-# owner-only mode.
+# A system user of its own, apart from the base image's `node`, with its home under /var/lib.
 RUN ["groupadd", "--system", "--gid", "10001", "binference"]
 RUN ["useradd", "--system", "--uid", "10001", "--gid", "binference", "--home-dir", "/var/lib/binference", "--create-home", "--shell", "/usr/sbin/nologin", "binference"]
-RUN ["install", "-d", "-m", "0700", "-o", "binference", "-g", "binference", "/var/lib/binference/.binference"]
+# The shell user, which runs the agent's commands through the shell launcher (decision 0412). The
+# engine's user is a member of its group, which no other user holds, and that group is the
+# workspace's, so both read and write what the other makes there.
+RUN ["groupadd", "--system", "--gid", "10003", "binference-shell"]
+RUN ["useradd", "--system", "--uid", "10003", "--gid", "binference-shell", "--no-create-home", "--home-dir", "/var/lib/binference/.binference/shell/home", "--shell", "/usr/sbin/nologin", "binference-shell"]
+RUN ["usermod", "--append", "--groups", "binference-shell", "binference"]
+# The state volume holds the state folder, owner-only, so the shell user cannot cross it; the
+# workspace, shared through the shell's group; and the shell's socket folder and home. They exist
+# before the volume is mounted, so a new named volume takes their owners and modes.
+RUN ["install", "-d", "-m", "0750", "-o", "binference", "-g", "binference-shell", "/var/lib/binference/.binference"]
+RUN ["install", "-d", "-m", "0700", "-o", "binference", "-g", "binference", "/var/lib/binference/.binference/state"]
+RUN ["install", "-d", "-m", "2770", "-o", "binference", "-g", "binference-shell", "/var/lib/binference/.binference/workspace"]
+RUN ["install", "-d", "-m", "0750", "-o", "binference", "-g", "binference-shell", "/var/lib/binference/.binference/shell"]
+RUN ["install", "-d", "-m", "0750", "-o", "binference-shell", "-g", "binference", "/var/lib/binference/.binference/shell/run"]
+RUN ["install", "-d", "-m", "2770", "-o", "binference-shell", "-g", "binference-shell", "/var/lib/binference/.binference/shell/home"]
 # The plugin user, which runs every community plugin and the launcher that starts them. Plugins'
 # files belong to the engine's user, which installs them, and each plugin writes only its own
 # data folder, which belongs to the plugin user. The launcher's socket sits in `run/`, the plugin
@@ -62,7 +75,12 @@ ENV BINFERENCE_PLUGIN_LAUNCHER=/var/lib/binference-plugins/run/launcher.sock
 # A `binference` command started as root, as `docker exec` and the health check are in the
 # engine's container, drops to this user before it does anything, in this state folder.
 ENV BINFERENCE_IMAGE_USER=10001
-ENV BINFERENCE_HOME=/var/lib/binference/.binference
+ENV BINFERENCE_HOME=/var/lib/binference/.binference/state
+# The engine runs the agent's commands through the image entry's shell launcher on this socket,
+# as the shell user, with the workspace beside the state folder; a container started without the
+# image entry has no shell launcher, so its commands cannot start.
+ENV BINFERENCE_WORKSPACE=/var/lib/binference/.binference/workspace
+ENV BINFERENCE_SHELL_LAUNCHER=/var/lib/binference/.binference/shell/run/launcher.sock
 USER binference
 WORKDIR /var/lib/binference
 VOLUME ["/var/lib/binference/.binference", "/var/lib/binference-plugins"]
@@ -72,7 +90,7 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=90s --retries=3 CMD ["bi
 STOPSIGNAL SIGTERM
 # Commands run as `binference`. The engine runs as `docker run --init --user root --entrypoint
 # binference-image`: the image entry, which takes no argument and touches no path, starts the
-# engine as `binference` and the plugin launcher as `binference-plugin`, and Docker's init reaps
-# what they leave.
+# engine as `binference`, the plugin launcher as `binference-plugin` and the shell launcher as
+# `binference-shell`, and Docker's init reaps what they leave.
 ENTRYPOINT ["binference"]
 CMD ["start", "--foreground"]
