@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { z } from "zod";
 import { callsReply, textReply } from "../testing/scripted-transport.js";
 import type { RecordedStep, TurnRecorder } from "../testing/turn-recorder.js";
+import { defineTool } from "../tools/define-tool.js";
 import type { ModelEvent, ResponseReplay } from "./model-event.js";
 import { createTestTurn, ownerMessage, type TestTool, testTurnId } from "./test-turns.js";
 import type { ToolOutcome } from "./turn-records.js";
@@ -19,6 +21,21 @@ const usageStep = (n: number): RecordedStep => ({
   key: `${testTurnId}.usage.${String(n)}`,
 });
 const portfolio: TestTool = { name: "portfolio", kind: "read" };
+
+// A tool box of one defined read, `note`, which takes a text, as the agent's own tools parse it.
+const noteBox = (() => {
+  const note = defineTool({
+    name: "note",
+    kind: "read",
+    description: "Notes a text.",
+    args: z.strictObject({ text: z.string() }),
+    run: async () => Promise.resolve({ text: "noted", isError: false }),
+  });
+  return {
+    declarations: [note.declaration],
+    prepare: (call: { readonly argumentsText: string }) => note.prepare(call.argumentsText),
+  };
+})();
 const alert: TestTool = { name: "alert_create", kind: "control" };
 
 describe("createChatTurn", () => {
@@ -131,6 +148,22 @@ describe("createChatTurn", () => {
         isError: false,
       },
     ]);
+  });
+
+  it("refuses a call whose arguments nest past the bound as a malformed one, and goes on", async () => {
+    const deep = `{"text":${"[".repeat(2_000)}${"]".repeat(2_000)}}`;
+    const { turn, recorder } = createTestTurn({
+      replies: [callsReply([{ name: "note", args: deep }]), textReply("Done.")],
+      box: noteBox,
+    });
+    await expect(turn.run()).resolves.toMatchObject({ outcome: "ok", modelCalls: 2 });
+    expect(recorder.steps).toContainEqual({
+      kind: "result",
+      id: "note",
+      text: "not run: the arguments of note are nested deeper than 64 levels",
+      ran: false,
+      outside: false,
+    });
   });
 
   it("refuses to start when the engine refuses, and calls no model", async () => {

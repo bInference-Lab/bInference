@@ -4,15 +4,13 @@ import {
   type JsonValue,
   jsonShapeProblem,
   jsonValueSchema,
+  maxJsonDepth,
   ok,
   type Result,
 } from "@binference/core";
 
 /** The longest arguments text a call may have: far above what 4,096 output tokens can write. */
 export const maxArgumentsChars = 65_536;
-
-/** The deepest nesting of objects and arrays a call's arguments may have. */
-export const maxArgumentsDepth = 64;
 
 /** Why a call's arguments are refused. */
 export type ArgumentsProblem =
@@ -63,7 +61,7 @@ function parsed(text: string): Result<JsonValue, ArgumentsProblem> {
  * Parses a tool call's arguments (runtime spec, section 5.2). An integer past 2^53 written as
  * plain digits becomes a string of those exact digits; one written any other way is
  * `unsafe_number`, never rounded. Text over {@link maxArgumentsChars}, nesting past
- * {@link maxArgumentsDepth} and a key written twice in one object are refused before the parse.
+ * `maxJsonDepth` (decision 0417) and a key written twice in one object are refused before the parse.
  * Empty text is an empty object, as models send for a tool with no arguments. Nothing here throws.
  */
 export function parseArgumentsJson(text: string): Result<JsonValue, ArgumentsProblem> {
@@ -73,6 +71,6 @@ export function parseArgumentsJson(text: string): Result<JsonValue, ArgumentsPro
   if (text.trim() === "") {
     return ok({});
   }
-  const problem = jsonShapeProblem(text, maxArgumentsDepth);
+  const problem = jsonShapeProblem(text, maxJsonDepth);
   return problem === undefined ? parsed(text) : err(problem);
 }

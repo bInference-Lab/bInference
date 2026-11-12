@@ -1,11 +1,7 @@
-import { decimalStringSchema } from "@binference/core";
+import { decimalStringSchema, maxJsonDepth } from "@binference/core";
 import * as fc from "fast-check";
 import { describe, expect, it } from "vitest";
-import {
-  maxArgumentsChars,
-  maxArgumentsDepth,
-  parseArgumentsJson,
-} from "./arguments-json.schema.js";
+import { maxArgumentsChars, parseArgumentsJson } from "./arguments-json.schema.js";
 
 // The amount a tool reads from parsed arguments: a safe integer stays a number, a larger one its digits.
 function amountOf(text: string): bigint | undefined {
@@ -58,7 +54,7 @@ describe("parseArgumentsJson", () => {
   });
 
   it("takes arguments nested to the limit", () => {
-    const depth = maxArgumentsDepth - 1;
+    const depth = maxJsonDepth - 1;
     const nested = `{"a":${"[".repeat(depth)}${"]".repeat(depth)}}`;
     expect(parseArgumentsJson(nested).ok).toBe(true);
   });

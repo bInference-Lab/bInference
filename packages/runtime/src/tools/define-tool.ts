@@ -1,11 +1,10 @@
-import { BinferenceError, type JsonValue } from "@binference/core";
+import { BinferenceError, type JsonValue, maxJsonDepth } from "@binference/core";
 import { z } from "zod";
 import type { ToolDeclaration } from "../loop/model-message.js";
 import type { PreparedCall, ToolKind, ToolOutcome, ToolRunContext } from "../loop/turn-records.js";
 import {
   type ArgumentsProblem,
   maxArgumentsChars,
-  maxArgumentsDepth,
   parseArgumentsJson,
 } from "./arguments-json.schema.js";
 import { allowsUnnamedFields, coerces, inputJsonSchema } from "./schema-rules.schema.js";
@@ -120,7 +119,7 @@ function argumentsRefusal(name: string, error: z.ZodError): string {
 const problemTexts: Readonly<Record<ArgumentsProblem, string>> = {
   not_json: "are not valid JSON",
   too_large: `are longer than ${String(maxArgumentsChars)} characters`,
-  too_deep: `are nested deeper than ${String(maxArgumentsDepth)} levels`,
+  too_deep: `are nested deeper than ${String(maxJsonDepth)} levels`,
   duplicate_key: "name a field twice",
   unsafe_number:
     "hold an integer past 2^53 not written as plain digits; write amounts as decimal strings",

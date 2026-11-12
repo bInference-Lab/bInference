@@ -1,4 +1,4 @@
-import { jsonValueSchema } from "@binference/core";
+import { jsonValueSchema, valueNestsDeeperThan } from "@binference/core";
 import { z } from "zod";
 import type { ModelUsage } from "../loop/model-event.js";
 
@@ -165,6 +165,10 @@ const readers = new Map<string, (raw: unknown) => MessagesEvent | undefined>(
  * `undefined`.
  */
 export function messagesEventOf(raw: unknown): MessagesEvent | undefined {
+  // Decision 0417: an event nested past the bound is malformed before any schema walks it.
+  if (valueNestsDeeperThan(raw)) {
+    return undefined;
+  }
   const typed = typedSchema.safeParse(raw);
   if (!typed.success) {
     return undefined;
