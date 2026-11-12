@@ -2,11 +2,22 @@ import assert from "node:assert/strict";
 import type { Id } from "@binference/core";
 import type { ContractCheck } from "@binference/core/testing";
 import type { EventDraft } from "../chats/transcript-event.js";
-import type { ChatRetention, SessionStore, TranscriptStore, WriterFence } from "../ports.js";
+import type {
+  ChatQueueStore,
+  ChatRetention,
+  GoalStore,
+  HelperStore,
+  NoteStore,
+  SessionStore,
+  TranscriptStore,
+  WriterFence,
+} from "../ports.js";
 import { fencedCheck, go, nthId, nthSession, okValue } from "./agent-fixtures.js";
+import { plantAcrossCutoff, plantCutoff } from "./agent-tables-plant.js";
 
 // The rules the agent database keeps below its stores, which an in-memory fake has no part in:
-// the transcript's triggers (decision 0169; database spec, sections 3 and 6.3).
+// the transcript's triggers (decision 0169) and what retention removes from every table (database
+// spec, sections 3, 4 and 6.3).
 
 /** A row of an agent table as a database reads it back: each column's text, number or null. */
 export type AgentRow = Readonly<Record<string, string | number | null>>;
@@ -19,6 +30,10 @@ export interface AgentTablesSubject {
   readonly sessions: SessionStore;
   readonly transcript: TranscriptStore;
   readonly retention: ChatRetention;
+  readonly queue: ChatQueueStore;
+  readonly helpers: HelperStore;
+  readonly goals: GoalStore;
+  readonly notes: NoteStore;
   readonly fence: WriterFence;
   /** Every row of every table. */
   rows(): Promise<AgentRows>;
@@ -84,6 +99,51 @@ async function letsRetentionRemove(subject: AgentTablesSubject, fence: number): 
   await assert.rejects(subject.removeEvents(nthId("ses", 2)), appendOnly);
 }
 
+function isBefore(value: AgentRow[string] | undefined): boolean {
+  return typeof value === "number" && value < plantCutoff;
+}
+
+// A message received before the cutoff that a turn took or that was dropped.
+function isSettledBefore(message: AgentRow): boolean {
+  return (
+    isBefore(message["received_at"]) &&
+    (message["turn_id"] !== null || message["dropped_at"] !== null)
+  );
+}
+
+// The rows retention leaves (decision 0169): the events said from the cutoff on, every turn but
+// those that ended before it and hold no event left, every message but those received before it
+// that a turn took or that were dropped, and every other table as it was.
+function keptByRetention(rows: AgentRows): AgentRows {
+  const events = (rows["transcript_events"] ?? []).filter((event) => !isBefore(event["at"]));
+  const holdEvents = new Set(events.map((event) => event["turn_id"]));
+  const isGoneTurn = (turn: AgentRow): boolean =>
+    isBefore(turn["ended_at"]) && !holdEvents.has(turn["id"] ?? null);
+  return {
+    ...rows,
+    transcript_events: events,
+    turns: (rows["turns"] ?? []).filter((turn) => !isGoneTurn(turn)),
+    chat_queue: (rows["chat_queue"] ?? []).filter((message) => !isSettledBefore(message)),
+  };
+}
+
+async function prunesOnlyOldChats(subject: AgentTablesSubject, fence: number): Promise<void> {
+  await plantAcrossCutoff(subject, fence);
+  const before = await subject.rows();
+  const empty = Object.keys(before).filter((table) => before[table]?.length === 0);
+  assert.deepEqual(empty, [], "The case leaves a table empty.");
+  const pruned = okValue(await subject.retention.prune({ beforeMs: plantCutoff, fence }, go()));
+  const kept = keptByRetention(before);
+  assert.deepEqual(await subject.rows(), kept);
+  const gone = (table: string): number => (before[table]?.length ?? 0) - (kept[table]?.length ?? 0);
+  assert.deepEqual(pruned, {
+    events: gone("transcript_events"),
+    turns: gone("turns"),
+    messages: gone("chat_queue"),
+  });
+  assert.deepEqual(pruned, { events: 4, turns: 2, messages: 2 });
+}
+
 /** The agent database's own rules, which every database adapter keeps. */
 export function agentTablesContract(harness: AgentTablesHarness): readonly ContractCheck[] {
   const create = async (): Promise<AgentTablesSubject> => harness.create();
@@ -94,6 +154,11 @@ export function agentTablesContract(harness: AgentTablesHarness): readonly Contr
       "lets retention remove the events before its cutoff and leaves no cutoff behind",
       create,
       letsRetentionRemove,
+    ),
+    fencedCheck(
+      "prunes the old events, ended turns and settled messages, and leaves every other row",
+      create,
+      prunesOnlyOldChats,
     ),
   ];
 }
