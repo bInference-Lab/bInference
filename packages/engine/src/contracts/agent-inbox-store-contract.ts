@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import type { Id } from "@binference/core";
-import type { ContractCheck } from "@binference/core/testing";
+import { assertRefusesNulText, type ContractCheck, withNul } from "@binference/core/testing";
 import {
   type AgentInboxDraft,
   maxUntakenMessages,
@@ -217,6 +217,18 @@ async function deletesChats(subject: AgentInboxSubject): Promise<void> {
   assert.equal(await agentInbox.deleteChats([agentId], live()), 1);
 }
 
+// A message holding U+0000 is refused before anything is stored, as every database refuses it
+// alike (decision 0416).
+async function refusesNulText(subject: AgentInboxSubject): Promise<void> {
+  const { agentInbox, agentId } = subject;
+  const payload = { text: withNul("watch BNB"), surface: "telegram" };
+  await assertRefusesNulText(async () =>
+    agentInbox.add({ ...message(subject, 1), payload }, live()),
+  );
+  assert.deepEqual(await agentInbox.untaken({ limit: 10 }, live()), []);
+  assert.equal(await agentInbox.openSession(agentId, live()), undefined);
+}
+
 async function refusesAborted(subject: AgentInboxSubject): Promise<void> {
   const { agentInbox, agentId } = subject;
   await assertRefusesAborted(async (options) => agentInbox.add(message(subject, 1), options));
@@ -253,6 +265,7 @@ export function agentInboxStoreContract(harness: AgentInboxStoreHarness): readon
       create,
       deletesChats,
     ),
+    checkOn("refuses a message holding U+0000 and stores nothing", create, refusesNulText),
     checkOn("refuses every call on an aborted signal and stores nothing", create, refusesAborted),
   ];
 }

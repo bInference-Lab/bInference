@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import type { ContractCheck } from "@binference/core/testing";
+import { assertRefusesNulText, type ContractCheck, withNul } from "@binference/core/testing";
 import type { InboxDraft } from "../ingress/inbox-entry.js";
 import type { InboxStore } from "../ingress/ports.js";
 import { assertRefusesAborted, checkOn, inOrder, live } from "./store-fixtures.js";
@@ -94,6 +94,16 @@ async function prunesHandled(inbox: InboxStore): Promise<void> {
   assert.equal((await inbox.admit(update(1), live())).kind, "new");
 }
 
+// An event holding U+0000, in its payload or its key, is refused before anything is stored
+// (decision 0416).
+async function refusesNulText(inbox: InboxStore): Promise<void> {
+  const payload = { update_id: 1, message: { text: withNul("hi") } };
+  await assertRefusesNulText(async () => inbox.admit({ ...update(1), payload }, live()));
+  const sourceKey = withNul("tg:7012345678:1");
+  await assertRefusesNulText(async () => inbox.admit({ ...update(1), sourceKey }, live()));
+  assert.deepEqual(await inbox.unhandled(page(10), live()), []);
+}
+
 async function refusesAborted(inbox: InboxStore): Promise<void> {
   await assertRefusesAborted(async (options) => inbox.admit(update(1), options));
   await assertRefusesAborted(async (options) => inbox.unhandled(page(1), options));
@@ -115,6 +125,7 @@ export function inboxStoreContract(harness: InboxStoreHarness): readonly Contrac
     checkOn("pages only the entries whose key starts with the prefix", create, pagesOnePrefix),
     checkOn("marks an entry handled once", create, handlesOnce),
     checkOn("prunes only the entries handled before a time", create, prunesHandled),
+    checkOn("refuses an event holding U+0000 and stores nothing", create, refusesNulText),
     checkOn("refuses every call on an aborted signal and stores nothing", create, refusesAborted),
   ];
 }

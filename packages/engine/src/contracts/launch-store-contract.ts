@@ -9,7 +9,7 @@ import {
   type TxHash,
 } from "@binference/chain";
 import { bpsSchema } from "@binference/core";
-import type { ContractCheck } from "@binference/core/testing";
+import { assertRefusesNulText, type ContractCheck, withNul } from "@binference/core/testing";
 import {
   creatorWindowMs,
   type LaunchReadRecord,
@@ -88,6 +88,14 @@ const tokens = (launches: readonly StoredLaunch[]): readonly AssetRef[] =>
 
 async function listed(store: LaunchStore, extra: object = {}): Promise<readonly AssetRef[]> {
   return tokens(await store.list({ chain, limit: 50, ...extra }, live()));
+}
+
+// A launch whose words hold U+0000 is refused with its read, cursor and all (decision 0416).
+async function refusesNulText(store: LaunchStore): Promise<void> {
+  const named = launchOf(1, 1, { name: withNul("Pepe") });
+  await assertRefusesNulText(async () => store.record(readOf([1, 1], [named]), live()));
+  assert.deepEqual(await listed(store), []);
+  assert.equal(await store.cursor(chain, live()), undefined);
 }
 
 async function storesEachLaunchOnce(store: LaunchStore): Promise<void> {
@@ -210,6 +218,7 @@ export function launchStoreContract(harness: LaunchStoreHarness): readonly Contr
       create,
       storesEachLaunchOnce,
     ),
+    checkOn("refuses a launch whose words hold U+0000 and stores nothing", create, refusesNulText),
     checkOn(
       "counts the launches of a launch's creator in the 30 days before it",
       create,

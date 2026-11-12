@@ -1,4 +1,5 @@
 import type { ChainRef } from "@binference/chain";
+import { refuseNulText } from "@binference/core";
 import {
   creatorWindowMs,
   type LaunchCurveChange,
@@ -147,6 +148,7 @@ export function createMemoryLaunchStore(): LaunchStore {
     async record(read, { signal }) {
       await Promise.resolve();
       signal.throwIfAborted();
+      refuseNulText(read, "The launch read");
       forget(state, read);
       const added = read.launches.flatMap((launch) => store(state, read, launch));
       for (const curve of read.changes) {

@@ -1,4 +1,4 @@
-import { err, type Id, type JsonValue, ok, type Result } from "@binference/core";
+import { err, type Id, type JsonValue, ok, refuseNulText, type Result } from "@binference/core";
 import {
   type AgentInboxDraft,
   type AgentInboxMessage,
@@ -230,6 +230,7 @@ export function createMemoryAgentInboxStore(
     replaceNow: (id, payload) => rows.replace(id, payload),
     async add(draft, call) {
       call.signal.throwIfAborted();
+      refuseNulText(draft, "The agent inbox message");
       const agent = await options.agents.get(draft.agentId, call);
       return agent === undefined ? err("not_found") : add(rows, structuredClone(draft));
     },

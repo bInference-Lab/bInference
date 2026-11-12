@@ -47,6 +47,9 @@ Conventions ([ENGINEERING.md section 24.2](../ENGINEERING.md#section-24-2)):
 - Basis points are `INTEGER` (`_bps`). Booleans are `INTEGER` 0 or 1.
 - `JSON` columns hold `TEXT` that a zod schema parses on every read
   ([ENGINEERING.md section 9](../ENGINEERING.md#section-9)).
+- No text and no JSON string holds U+0000. Each boundary replaces it with U+FFFD first, and every
+  store task refuses input that still holds it with `store.nul_text`, on both databases, before it
+  reads or writes anything ([decision 0416](../DECISIONS.md#d0416)).
 - Rows that change carry `version INTEGER NOT NULL DEFAULT 0`; every update sets
   `version = version + 1 WHERE version = ?` and fails on a stale read.
 - Queries use Kysely through the synchronous dialect; raw SQL only in migrations.

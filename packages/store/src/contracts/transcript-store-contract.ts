@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import type { ContractCheck } from "@binference/core/testing";
+import { assertRefusesNulText, type ContractCheck, withNul } from "@binference/core/testing";
 import type { EventDraft, TranscriptEvent } from "../chats/transcript-event.js";
 import type { SessionStore, TranscriptStore, WriterFence } from "../ports.js";
 import { fencedCheck, go, nthId, nthSession, okValue, rejectsAborted } from "./agent-fixtures.js";
@@ -171,6 +171,27 @@ async function refusesAborted(subject: TranscriptStoreSubject, fence: number): P
   assert.deepEqual(await store.events({ sessionId, limit: 10 }, go()), []);
 }
 
+// Events holding U+0000, in their text or anywhere in their content, are refused whole before
+// anything is written (decision 0416).
+async function refusesNulText(subject: TranscriptStoreSubject, fence: number): Promise<void> {
+  await plant(subject, fence);
+  const { store } = subject;
+  const sessionId = nthId("ses", 1);
+  const events = [said("hi", 1), said(withNul("there"), 2)];
+  await assertRefusesNulText(async () => store.append({ sessionId, events, fence }, go()));
+  const call = {
+    turnId: nthId("trn", 1),
+    role: "agent",
+    kind: "tool_call",
+    content: { tool: "notes_write", args: { [withNul("key")]: "value" } },
+    outside: false,
+    atMs: 3,
+  } as const;
+  const committing = { sessionId, turn: nthId("trn", 1), events: [call], fence };
+  await assertRefusesNulText(async () => store.appendCommitting(committing, go()));
+  assert.deepEqual(await store.events({ sessionId, limit: 10 }, go()), []);
+}
+
 /** The contract every `TranscriptStore` adapter passes. */
 export function transcriptStoreContract(harness: TranscriptStoreHarness): readonly ContractCheck[] {
   const create = async (): Promise<TranscriptStoreSubject> => harness.create();
@@ -192,6 +213,7 @@ export function transcriptStoreContract(harness: TranscriptStoreHarness): readon
     ),
     fencedCheck("refuses events of a session or a turn it does not hold", create, refusesStrangers),
     fencedCheck("refuses an append made with a fence raised since", create, refusesStaleFence),
+    fencedCheck("refuses events holding U+0000 and writes none of them", create, refusesNulText),
     fencedCheck(
       "refuses every call on an aborted signal and writes nothing",
       create,

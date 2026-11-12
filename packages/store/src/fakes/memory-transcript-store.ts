@@ -1,4 +1,4 @@
-import { err, ok, type Result } from "@binference/core";
+import { err, ok, refuseNulText, type Result } from "@binference/core";
 import { commitRefusalOf } from "../chats/commit-refusal.js";
 import type { EventAppend, TranscriptEvent } from "../chats/transcript-event.js";
 import type { TranscriptStore } from "../ports.js";
@@ -42,6 +42,7 @@ export function createMemoryTranscriptStore(database: MemoryAgentDatabase): Tran
   return {
     append: async ({ fence, ...append }, options) =>
       inMemory(options, () => {
+        refuseNulText(append, "The transcript events");
         if (!holdsFence(database, fence)) {
           return err("fenced");
         }
@@ -53,6 +54,7 @@ export function createMemoryTranscriptStore(database: MemoryAgentDatabase): Tran
       }),
     appendCommitting: async ({ fence, ...append }, options) =>
       inMemory(options, () => {
+        refuseNulText(append, "The transcript events");
         if (!holdsFence(database, fence)) {
           return err("fenced");
         }

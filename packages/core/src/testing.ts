@@ -10,6 +10,7 @@ export type {
 export type { HttpHarness, HttpSubject } from "./contracts/http-contract.js";
 export { loggerContract } from "./contracts/logger-contract.js";
 export type { LoggerHarness, LoggerSubject } from "./contracts/logger-contract.js";
+export { assertRefusesNulText, withNul } from "./contracts/nul-refusal.js";
 export { randomContract } from "./contracts/random-contract.js";
 export type { RandomHarness } from "./contracts/random-contract.js";
 export { secretStoreContract } from "./contracts/secret-store-contract.js";

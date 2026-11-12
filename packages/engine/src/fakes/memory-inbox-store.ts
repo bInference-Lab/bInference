@@ -1,4 +1,4 @@
-import { err, ok } from "@binference/core";
+import { err, ok, refuseNulText } from "@binference/core";
 import type { InboxEntry } from "../ingress/inbox-entry.js";
 import type { InboxStore } from "../ingress/ports.js";
 import { memoryCall } from "./memory-call.js";
@@ -9,6 +9,7 @@ export function createMemoryInboxStore(): InboxStore {
   return {
     admit: async (draft, options) =>
       memoryCall(options, () => {
+        refuseNulText(draft, "The inbox event");
         const stored = entries.find((entry) => entry.sourceKey === draft.sourceKey);
         if (stored !== undefined) {
           return { kind: "repeat", entry: structuredClone(stored) };

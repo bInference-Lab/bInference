@@ -1,3 +1,4 @@
+import { refuseNulText } from "@binference/core";
 import { z } from "zod";
 import type { StoreConnection } from "../dialect/store-connection.js";
 import type { WorkerValue } from "../worker/worker-messages.schema.js";
@@ -39,7 +40,9 @@ export interface StoreTask<Input, Output> extends TaskRunner {
 /**
  * Defines a store task. The database's worker entry lists it, and `DatabaseHandle.run` sends it
  * to a worker by name. Input and output cross the thread encoded by their schemas and are decoded
- * on the other side, so a codec such as an amount's decimal text works both ways.
+ * on the other side, so a codec such as an amount's decimal text works both ways. An input that
+ * holds U+0000 in any text or key is refused with `store.nul_text` before the task runs, on either
+ * database (decision 0416).
  */
 export function defineTask<Input, Output>(spec: TaskSpec<Input, Output>): StoreTask<Input, Output> {
   return {
@@ -48,6 +51,9 @@ export function defineTask<Input, Output>(spec: TaskSpec<Input, Output>): StoreT
     input: spec.input,
     output: spec.output,
     encodeInput: (input) => z.encode(spec.input, input),
-    handle: (database, input) => z.encode(spec.output, spec.run(database, spec.input.parse(input))),
+    handle: (database, input) => {
+      refuseNulText(input, `The input of ${spec.name}`);
+      return z.encode(spec.output, spec.run(database, spec.input.parse(input)));
+    },
   };
 }

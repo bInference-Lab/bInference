@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import type { ContractCheck } from "@binference/core/testing";
+import { assertRefusesNulText, type ContractCheck, withNul } from "@binference/core/testing";
 import type { NoteDraft } from "../notes/note-record.js";
 import type { NoteStore, WriterFence } from "../ports.js";
 import { fencedCheck, go, nthId, okValue, rejectsAborted } from "./agent-fixtures.js";
@@ -206,6 +206,13 @@ async function refusesAborted({ store }: NoteStoreSubject, fence: number): Promi
   assert.deepEqual(await store.list(agentOne, go()), []);
 }
 
+// A note holding U+0000 is refused before anything is written (decision 0416).
+async function refusesNulText(subject: NoteStoreSubject, fence: number): Promise<void> {
+  const draft = note(withNul("keep 20% in stablecoins"));
+  await assertRefusesNulText(async () => subject.store.write({ ...draft, fence }, go()));
+  assert.deepEqual(await subject.store.list({ agentId: nthId("agt", 1), limit: 10 }, go()), []);
+}
+
 /** The contract every `NoteStore` adapter passes. */
 export function noteStoreContract(harness: NoteStoreHarness): readonly ContractCheck[] {
   const create = async (): Promise<NoteStoreSubject> => harness.create();
@@ -238,6 +245,7 @@ export function noteStoreContract(harness: NoteStoreHarness): readonly ContractC
     ),
     fencedCheck("removes a note from lists and searches, once", create, deletesNotes),
     fencedCheck("refuses every write made with a fence raised since", create, refusesStaleFence),
+    fencedCheck("refuses a note holding U+0000 and writes nothing", create, refusesNulText),
     fencedCheck(
       "refuses every call on an aborted signal and writes nothing",
       create,

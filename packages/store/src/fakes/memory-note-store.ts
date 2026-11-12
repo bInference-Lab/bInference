@@ -1,4 +1,4 @@
-import { err, ok } from "@binference/core";
+import { err, ok, refuseNulText } from "@binference/core";
 import type { NoteRecord } from "../notes/note-record.js";
 import type { NoteStore } from "../ports.js";
 import { holdsFence, inMemory, type MemoryAgentDatabase } from "./memory-agent-database.js";
@@ -32,6 +32,7 @@ export function createMemoryNoteStore(database: MemoryAgentDatabase): NoteStore 
   return {
     write: async ({ fence, atMs, ...draft }, options) =>
       inMemory(options, () => {
+        refuseNulText(draft, "The note");
         if (!holdsFence(database, fence)) {
           return err("fenced");
         }
