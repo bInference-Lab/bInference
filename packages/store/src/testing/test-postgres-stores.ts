@@ -31,11 +31,11 @@ export interface TestPostgresStores {
    */
   open(database: InstallDatabase): Promise<StoreHost>;
   /**
-   * `count` store hosts on one new install's engine schema, each with its own pool, task thread
-   * and write queue: writers of one install whose writes interleave under `SERIALIZABLE`
-   * (decision 0366). A retry waits as it does in production.
+   * `count` store hosts on one new install's schema of `database`, the engine's unless named,
+   * each with its own pool, task thread and write queue: writers of one install whose writes
+   * interleave under `SERIALIZABLE` (decision 0366). A retry waits as it does in production.
    */
-  writers(count: number): Promise<readonly StoreHost[]>;
+  writers(count: number, database?: InstallDatabase): Promise<readonly StoreHost[]>;
   /** How many writes the writers' pools ran again after a conflict, so far. */
   retries(): number;
   /** Ends the task threads, closes the pool and drops the test database. */
@@ -69,40 +69,44 @@ interface Writer {
 
 /** The racing writers of a file: each its own pool and task thread, which serve every install. */
 interface Writers {
-  hostsOn(schema: string, count: number): Promise<readonly StoreHost[]>;
+  hostsOn(database: InstallDatabase, schema: string, count: number): Promise<readonly StoreHost[]>;
   retries(): number;
   close(): Promise<void>;
 }
 
-// A writer's pool and task thread start once and serve every install of the file, as a task
-// thread serves many installs' schemas; each `hostsOn` binds new hosts to the schema it names.
+// A writer's pool and task thread of a database start once and serve every install of the file,
+// as a task thread serves many installs' schemas; each `hostsOn` binds new hosts to the schema it
+// names.
 function createWriters(settings: PostgresSettings): Writers {
   const log = createMemoryLogger({ subsystem: "store", maxRecords: 100_000 });
-  const started: Promise<Writer>[] = [];
-  const start = async (n: number): Promise<Writer> => {
+  const started = new Map<string, Promise<Writer>>();
+  const start = async (database: InstallDatabase, n: number): Promise<Writer> => {
     const ports = { clock: waitingClock, random: createSeededRandom(100 + n), logger: log };
     const pool = await openPostgres<MetaTables>(settings, { ...ports, signal: call() });
     const thread = await startPostgresTaskThread({
-      worker: workers.engine,
+      worker: workers[database],
       execArgv,
       signal: call(),
     });
     return { pool, thread };
   };
-  const hostOn = async (schema: string, n: number): Promise<StoreHost> => {
-    const writer = started[n] ?? start(n);
-    started[n] = writer;
+  const hostOn = async (database: InstallDatabase, schema: string, n: number) => {
+    const key = `${database} ${String(n)}`;
+    const writer = started.get(key) ?? start(database, n);
+    started.set(key, writer);
     const { pool, thread } = await writer;
     return createPostgresStoreHost({ database: pool, thread, schema });
   };
   return {
-    hostsOn: async (schema, count) =>
-      Promise.all(Array.from({ length: count }, async (_, n) => hostOn(schema, n))),
+    hostsOn: async (database, schema, count) =>
+      Promise.all(Array.from({ length: count }, async (_, n) => hostOn(database, schema, n))),
     retries: () => log.records().filter(({ event }) => event === "store.write_retried").length,
     // Each writer's thread ends before its pool closes.
     close: async () => {
+      const writers = [...started.values()];
+      started.clear();
       await Promise.all(
-        started.splice(0).map(async (writer) => {
+        writers.map(async (writer) => {
           const { pool, thread } = await writer;
           await thread.close();
           await pool.close();
@@ -148,7 +152,7 @@ export async function createTestPostgresStores(url: string): Promise<TestPostgre
       const schema = await newSchema(name);
       return createPostgresStoreHost({ database, thread: await threadOf(name), schema });
     },
-    writers: async (count) => writers.hostsOn(await newSchema("engine"), count),
+    writers: async (count, name = "engine") => writers.hostsOn(name, await newSchema(name), count),
     retries: () => writers.retries(),
     async closeAll() {
       const started = await Promise.all(threads.values());

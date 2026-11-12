@@ -8,10 +8,23 @@ import { createSqliteHelperStore } from "../chats/sqlite-helper-store.js";
 import { createSqliteSessionStore } from "../chats/sqlite-session-store.js";
 import { createSqliteTranscriptStore } from "../chats/sqlite-transcript-store.js";
 import { createSqliteWriterFence } from "../chats/sqlite-writer-fence.js";
+import type { AgentRaceSubject } from "../contracts/agent-key-races.js";
 import type { AgentTablesSubject } from "../contracts/agent-tables-contract.js";
 import { createSqliteNoteStore } from "../notes/sqlite-note-store.js";
 import type { StoreHost } from "../tasks/store-host.js";
 import { agentRowsOn, changeEventOn, removeEventsOn } from "./agent-rows.js";
+
+/** The key races' writers, one per host, all on one agent database, and its writer fence. */
+export function agentRaceSubject(hosts: readonly StoreHost[]): AgentRaceSubject {
+  const [first] = hosts;
+  if (first === undefined) {
+    throw new Error("A race needs a writer.");
+  }
+  return {
+    writers: hosts.map((host) => ({ queue: createSqliteChatQueueStore(host) })),
+    fence: createSqliteWriterFence(first),
+  };
+}
 
 /** The agent tables' subject: every agent store bound to `host`, and its rows through its tasks. */
 export function agentTablesSubject(host: StoreHost): AgentTablesSubject {

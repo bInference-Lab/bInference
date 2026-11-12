@@ -38,6 +38,7 @@ export type {
 } from "./contracts/confirmation-store-contract.js";
 export { heldConfirmations, type HoldingStores } from "./intents/test-confirmations.js";
 export { moneyWriteRaces } from "./contracts/money-write-races.js";
+export { answerOf, assertOneWon, race, settled } from "./contracts/money-race-runs.js";
 export type {
   MoneyRaceHarness,
   MoneyRaceSubject,
