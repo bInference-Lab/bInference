@@ -535,8 +535,7 @@ Decided in [decision 0031](DECISIONS.md#d0031).
   is not `async` and holds no `await` and no Promise).
 - **Rule:** each store port has a contract test suite, which the SQLite and the Postgres adapter
   both pass. Enforcer: the contract suites and `check:contract-suites` (a store suite that a SQLite
-  test runs and no `*.postgres.test.ts` runs fails, but for the agent database's suites still
-  listed as waiting for their Postgres form).
+  test runs and no `*.postgres.test.ts` runs fails).
 - **Rule:** migrations are numbered and forward-only, never edited after a release, and run by
   `binference check --fix` after a backup. Enforcer: `check:store` (`NNNN_name.ts` in order, no
   `down`, released files hash-locked); a test that `check --fix` backs up first.

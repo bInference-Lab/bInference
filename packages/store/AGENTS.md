@@ -74,6 +74,4 @@ Rules for this package:
   `testing/plant-rows.ts`), never through a SQLite connection, so one subject
   (`testing/money-store-subjects.ts`, `testing/engine-store-subjects.ts`) serves both tests; the
   Postgres engine thread serves those tasks from `testing/test-engine.worker.ts`.
-  `check:contract-suites` fails a suite that a SQLite test runs and no Postgres test runs, but for
-  the agent database's suites in `agentSuitesAwaitingPostgres` (`scripts/contracts/`), which wait
-  for their Postgres form.
+  `check:contract-suites` fails a suite that a SQLite test runs and no Postgres test runs.

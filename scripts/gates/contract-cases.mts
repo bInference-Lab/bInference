@@ -1,4 +1,3 @@
-import { agentSuitesAwaitingPostgres } from "../contracts/postgres-suites.mjs";
 import { fixturePackage } from "./fixture-package.mjs";
 import type { GateCase } from "./gate-case.mjs";
 
@@ -61,26 +60,8 @@ function storeTest(name: string): string {
 const sqliteTest = "packages/store/src/samples/sqlite-sample-store.test.ts";
 const postgresTest = "packages/store/src/samples/sample-store.postgres.test.ts";
 
-// The Postgres cases: a store suite on SQLite alone fails, beside its Postgres test it passes, and
-// a suite the list keeps waiting fails once it runs on Postgres.
+// The Postgres cases: a store suite on SQLite alone fails, and beside its Postgres test it passes.
 function postgresCases(): readonly GateCase[] {
-  const [waiting] = agentSuitesAwaitingPostgres;
-  const waitingCase: readonly GateCase[] =
-    waiting === undefined
-      ? []
-      : [
-          {
-            name: "a waiting agent suite that runs on Postgres fails check:contract-suites",
-            files: { [postgresTest]: storeTest(waiting) },
-            steps: [
-              {
-                command: checkSuites,
-                expect: "fail",
-                output: [new RegExp(`${waiting} runs on Postgres now`)],
-              },
-            ],
-          },
-        ];
   return [
     {
       name: "a store suite that runs on SQLite alone fails check:contract-suites",
@@ -101,7 +82,6 @@ function postgresCases(): readonly GateCase[] {
       },
       steps: [{ command: checkSuites, expect: "pass" }],
     },
-    ...waitingCase,
   ];
 }
 
