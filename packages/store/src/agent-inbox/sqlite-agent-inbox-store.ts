@@ -3,6 +3,7 @@ import { bindTask, type StoreHost } from "../tasks/store-host.js";
 import type { TaskRunner } from "../tasks/store-task.js";
 import {
   addInboxMessageTask,
+  deleteChatsTask,
   getInboxMessageTask,
   openSessionTask,
   takeMessagesTask,
@@ -16,6 +17,7 @@ export const agentInboxTasks: readonly TaskRunner[] = [
   openSessionTask,
   untakenMessagesTask,
   takeMessagesTask,
+  deleteChatsTask,
 ];
 
 /** The {@link AgentInboxStore} on `engine.sqlite`: each call runs one store task. */
@@ -26,5 +28,6 @@ export function createSqliteAgentInboxStore(host: StoreHost): AgentInboxStore {
     openSession: bindTask(host, openSessionTask),
     untaken: bindTask(host, untakenMessagesTask),
     take: bindTask(host, takeMessagesTask),
+    deleteChats: bindTask(host, deleteChatsTask),
   };
 }

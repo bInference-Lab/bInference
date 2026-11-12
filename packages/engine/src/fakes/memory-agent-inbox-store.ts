@@ -64,6 +64,8 @@ interface InboxRows {
   readonly replace: (id: Id<"msg">, payload: JsonValue) => AgentInboxMessage | undefined;
   readonly sessionOf: (agent: Id<"agt">) => Id<"ses"> | undefined;
   readonly open: (agent: Id<"agt">, session: Id<"ses">) => void;
+  /** Deletes the agents' messages and open sessions; answers how many messages went. */
+  readonly forget: (agents: ReadonlySet<string>) => number;
 }
 
 function createRows(): InboxRows {
@@ -101,6 +103,17 @@ function createRows(): InboxRows {
     sessionOf: (agent) => sessions.get(agent),
     open(agent, session) {
       sessions.set(agent, session);
+    },
+    forget(agents) {
+      const kept = messages.filter((stored) => !agents.has(stored.agentId));
+      const gone = messages.length - kept.length;
+      messages.splice(0, messages.length, ...kept);
+      [...sessions.keys()]
+        .filter((agent) => agents.has(agent))
+        .forEach((agent) => {
+          sessions.delete(agent);
+        });
+      return gone;
     },
   };
 }
@@ -226,5 +239,6 @@ export function createMemoryAgentInboxStore(
     untaken: async (query, call) => memoryCall(call, () => untaken(rows, query)),
     take: async (taken, call) =>
       memoryCall(call, () => rows.markTaken(new Set(taken.ids), taken.atMs)),
+    deleteChats: async (agents, call) => memoryCall(call, () => rows.forget(new Set(agents))),
   };
 }

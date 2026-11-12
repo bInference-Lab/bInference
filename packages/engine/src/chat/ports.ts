@@ -55,6 +55,15 @@ export interface AgentInboxStore {
    * unknown id is skipped. Answers how many this take marked.
    */
   take(take: InboxTake, options: { readonly signal: AbortSignal }): Promise<number>;
+  /**
+   * Deletes every message of the agents, taken or not, and lets go each one's open session, so
+   * its next message opens the session that message names, in one write (decision 0415). Answers
+   * how many messages went; an agent the inbox does not know changes nothing.
+   */
+  deleteChats(
+    agents: readonly Id<"agt">[],
+    options: { readonly signal: AbortSignal },
+  ): Promise<number>;
 }
 
 /**

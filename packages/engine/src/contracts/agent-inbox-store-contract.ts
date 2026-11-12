@@ -7,6 +7,7 @@ import {
   settleIdsOf,
 } from "../chat/agent-inbox-record.js";
 import type { AgentInboxStore } from "../chat/ports.js";
+import { testAgentDraft } from "../intents/test-intents.js";
 import { type IntentStoreSubject, intentDraft, intentMove } from "./intent-fixtures.js";
 import { assertRefusesAborted, checkOn, fixtureId, inOrder, live } from "./store-fixtures.js";
 
@@ -196,6 +197,26 @@ async function settlesInTheOpenSession(subject: AgentInboxSubject): Promise<void
   assert.equal(await agentInbox.openSession(agentId, live()), firstSession);
 }
 
+// A deletion of the agent's chats takes every message of it, taken or not, and its open session;
+// another agent's stay (decision 0415).
+async function deletesChats(subject: AgentInboxSubject): Promise<void> {
+  const { agentInbox, agentId } = subject;
+  const other = fixtureId("agt", 2);
+  await subject.agents.create(testAgentDraft({ id: other, name: "other" }), live());
+  await added(subject, message(subject, 1));
+  await added(subject, message(subject, 2));
+  await agentInbox.take({ ids: [fixtureId("msg", 1)], atMs: 2_000 }, live());
+  const kept = await added(subject, { ...message(subject, 3), agentId: other });
+  assert.equal(await agentInbox.deleteChats([agentId, fixtureId("agt", 99)], live()), 2);
+  assert.equal(await agentInbox.get(fixtureId("msg", 1), live()), undefined);
+  assert.equal(await agentInbox.openSession(agentId, live()), undefined);
+  assert.deepEqual(await agentInbox.untaken({ limit: 10 }, live()), [kept]);
+  assert.equal(await agentInbox.openSession(other, live()), firstSession);
+  const fresh = await added(subject, { ...message(subject, 4), opens: nextSession });
+  assert.equal(fresh.sessionId, nextSession);
+  assert.equal(await agentInbox.deleteChats([agentId], live()), 1);
+}
+
 async function refusesAborted(subject: AgentInboxSubject): Promise<void> {
   const { agentInbox, agentId } = subject;
   await assertRefusesAborted(async (options) => agentInbox.add(message(subject, 1), options));
@@ -205,6 +226,7 @@ async function refusesAborted(subject: AgentInboxSubject): Promise<void> {
   await assertRefusesAborted(async (options) =>
     agentInbox.take({ ids: [fixtureId("msg", 1)], atMs: 1 }, options),
   );
+  await assertRefusesAborted(async (options) => agentInbox.deleteChats([agentId], options));
   assert.deepEqual(await agentInbox.untaken({ limit: 10 }, live()), []);
 }
 
@@ -226,6 +248,11 @@ export function agentInboxStoreContract(harness: AgentInboxStoreHarness): readon
       settlesRuntimeIntents,
     ),
     checkOn("settles into the agent's open session", create, settlesInTheOpenSession),
+    checkOn(
+      "deletes an agent's messages, taken or not, and lets go its open session",
+      create,
+      deletesChats,
+    ),
     checkOn("refuses every call on an aborted signal and stores nothing", create, refusesAborted),
   ];
 }

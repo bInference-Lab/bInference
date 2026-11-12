@@ -147,3 +147,22 @@ export const takeMessagesTask: StoreTask<InboxTake, number> = defineTask({
     );
   },
 });
+
+/**
+ * Deletes every message of the agents, taken or not, and lets go each one's open session, in one
+ * write (decision 0415); answers how many messages went.
+ */
+export const deleteChatsTask: StoreTask<readonly Id<"agt">[], number> = defineTask({
+  name: "agentInbox.delete_chats",
+  access: "write",
+  input: z.array(idSchema("agt")).min(1).max(1_000),
+  output: rowCountSchema,
+  run(database, agents) {
+    const { kysely, execute } = createSyncKysely<EngineTables>(database);
+    const gone = changedRows(
+      execute(kysely.deleteFrom("agent_inbox").where("agent_id", "in", agents)),
+    );
+    execute(kysely.updateTable("agents").set({ chat_session_id: null }).where("id", "in", agents));
+    return gone;
+  },
+});
