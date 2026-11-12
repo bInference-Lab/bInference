@@ -4,10 +4,8 @@ import { afterAll, describe, expect, it } from "vitest";
 import { engineDatabase } from "../databases/engine-database.js";
 import type { EngineTables } from "../databases/engine-tables.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
-import { createSqliteInboxStore } from "../ingress/sqlite-inbox-store.js";
-import { plantAgent } from "../testing/plant-agent.js";
+import { webhookAlertSubject } from "../testing/engine-store-subjects.js";
 import { createTestDatabases } from "../testing/test-databases.worker.js";
-import { createSqliteWebhookAlertStore } from "./sqlite-webhook-alert-store.js";
 
 const databases = createTestDatabases();
 const live = { signal: new AbortController().signal };
@@ -15,44 +13,14 @@ afterAll(() => {
   databases.closeAll();
 });
 
-function ruleRow(rule: WebhookRuleKey, agentId: string) {
-  return {
-    id: rule.id,
-    agent_id: agentId,
-    name: "breakout",
-    secret_hash: rule.secretHash,
-    action: "{}",
-    state: rule.state,
-    rate_per_min: rule.ratePerMinute,
-    last_alert_at: null,
-    max_fills: null,
-    expires_at: rule.expiresAtMs ?? null,
-    card_id: null,
-    created_at: 1,
-    changed_at: 1,
-  };
-}
-
-function openStore() {
+async function openStore() {
   const { host, database } = databases.open(engineDatabase);
-  const { agentId } = plantAgent(database, 1);
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
-  const plant = async (rule: WebhookRuleKey): Promise<void> => {
-    const row = ruleRow(rule, agentId);
-    execute(
-      kysely
-        .insertInto("webhook_rules")
-        .values(row)
-        .onConflict((conflict) => conflict.column("id").doUpdateSet(row)),
-    );
-    await Promise.resolve();
-  };
-  const alerts = createSqliteWebhookAlertStore(host);
-  return { alerts, inbox: createSqliteInboxStore(host), plant, database, kysely, execute };
+  return { ...(await webhookAlertSubject(host)), kysely, execute };
 }
 
 describe("sqlite webhook alert store", () => {
-  it.each(webhookAlertStoreContract({ create: async () => Promise.resolve(openStore()) }))(
+  it.each(webhookAlertStoreContract({ create: openStore }))(
     "follows the contract: $name",
     async ({ run }) => {
       await expect(run()).resolves.toBeUndefined();
@@ -60,14 +28,14 @@ describe("sqlite webhook alert store", () => {
   );
 
   it("takes two identical alerts at once as one accepted and one repeat", async () => {
-    const { alerts, plant } = openStore();
+    const { alerts, ...subject } = await openStore();
     const rule: WebhookRuleKey = {
       id: "whr_0190f1c2-3a4b-7c5d-8e6f-000000000001" as WebhookRuleKey["id"],
       secretHash: "a".repeat(64) as WebhookRuleKey["secretHash"],
       state: "active",
       ratePerMinute: 60,
     };
-    await plant(rule);
+    await subject.plant(rule);
     const draft = {
       rule: rule.id,
       secretHash: rule.secretHash,
@@ -80,14 +48,14 @@ describe("sqlite webhook alert store", () => {
   });
 
   it("keeps the last accepted alert's time on its rule", async () => {
-    const { alerts, plant, kysely, execute } = openStore();
+    const { alerts, kysely, execute, ...subject } = await openStore();
     const rule: WebhookRuleKey = {
       id: "whr_0190f1c2-3a4b-7c5d-8e6f-000000000001" as WebhookRuleKey["id"],
       secretHash: "a".repeat(64) as WebhookRuleKey["secretHash"],
       state: "active",
       ratePerMinute: 1,
     };
-    await plant(rule);
+    await subject.plant(rule);
     const alert = { rule: rule.id, secretHash: rule.secretHash, body: { text: "buy" } };
     const body = "b".repeat(64) as WebhookRuleKey["secretHash"];
     await alerts.take({ ...alert, bodyHash: body, receivedAtMs: 5_000 }, live);
@@ -98,14 +66,14 @@ describe("sqlite webhook alert store", () => {
   });
 
   it("refuses an alert's end that breaks its row: a skip with no reason, notices that are not JSON", async () => {
-    const { alerts, plant, kysely, execute } = openStore();
+    const { alerts, kysely, execute, ...subject } = await openStore();
     const rule: WebhookRuleKey = {
       id: "whr_0190f1c2-3a4b-7c5d-8e6f-000000000001" as WebhookRuleKey["id"],
       secretHash: "a".repeat(64) as WebhookRuleKey["secretHash"],
       state: "active",
       ratePerMinute: 5,
     };
-    await plant(rule);
+    await subject.plant(rule);
     const bodyHash = "b".repeat(64) as WebhookRuleKey["secretHash"];
     const alert = { rule: rule.id, secretHash: rule.secretHash, body: { text: "buy" }, bodyHash };
     expect((await alerts.take({ ...alert, receivedAtMs: 5_000 }, live)).kind).toBe("accepted");

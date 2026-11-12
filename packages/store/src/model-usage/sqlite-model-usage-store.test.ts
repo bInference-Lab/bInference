@@ -1,8 +1,8 @@
-import { type Id, idSchema } from "@binference/core";
-import { modelUsageStoreContract, testAgentDraft } from "@binference/engine/testing";
+import { idSchema } from "@binference/core";
+import { fixtureId, modelUsageStoreContract } from "@binference/engine/testing";
 import { afterAll, describe, expect, it } from "vitest";
-import { createSqliteAgentStore } from "../agents/sqlite-agent-store.js";
 import { engineDatabase } from "../databases/engine-database.js";
+import { withTwoAgents } from "../testing/engine-store-subjects.js";
 import { createTestDatabases } from "../testing/test-databases.worker.js";
 import { createSqliteModelUsageStore } from "./sqlite-model-usage-store.js";
 
@@ -13,18 +13,10 @@ afterAll(() => {
 
 const live = { signal: new AbortController().signal };
 
-// The id the contract gives its agent `n`.
-function fixtureAgent(n: number): Id<"agt"> {
-  return idSchema("agt").parse(`agt_0190f1c2-3a4b-7c5d-8e6f-${n.toString(16).padStart(12, "0")}`);
-}
-
 // A usage store on a fresh database that holds the contract's two agents.
 async function storeWithAgents() {
   const { host, database } = databases.open(engineDatabase);
-  const agents = createSqliteAgentStore(host);
-  await agents.create(testAgentDraft({ id: fixtureAgent(1), name: "one" }), live);
-  await agents.create(testAgentDraft({ id: fixtureAgent(2), name: "two" }), live);
-  return { store: createSqliteModelUsageStore(host), database };
+  return { store: createSqliteModelUsageStore(await withTwoAgents(host)), database };
 }
 
 describe("sqlite model usage store", () => {
@@ -38,7 +30,7 @@ describe("sqlite model usage store", () => {
   it("keeps one row for each attempt's key, with its cost as decimal text", async () => {
     const { store, database } = await storeWithAgents();
     const charge = {
-      agent: fixtureAgent(1),
+      agent: fixtureId("agt", 1),
       turn: idSchema("trn").parse("trn_0190f1c2-3a4b-7c5d-8e6f-000000000001"),
       key: "trn_0190f1c2-3a4b-7c5d-8e6f-000000000001.usage.1",
       model: "openai/gpt-5.4",
@@ -58,7 +50,7 @@ describe("sqlite model usage store", () => {
   it("refuses usage of an agent it does not hold", async () => {
     const { store } = await storeWithAgents();
     const charge = {
-      agent: fixtureAgent(9),
+      agent: fixtureId("agt", 9),
       turn: idSchema("trn").parse("trn_0190f1c2-3a4b-7c5d-8e6f-000000000001"),
       key: "k",
       model: "m",

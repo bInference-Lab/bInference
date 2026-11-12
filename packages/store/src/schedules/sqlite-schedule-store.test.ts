@@ -1,10 +1,10 @@
 import { idSchema } from "@binference/core";
 import { scheduleStoreContract } from "@binference/engine/testing";
 import { afterAll, describe, expect, it } from "vitest";
-import { createSqliteAgentInboxStore } from "../agent-inbox/sqlite-agent-inbox-store.js";
 import { engineDatabase } from "../databases/engine-database.js";
 import type { EngineTables } from "../databases/engine-tables.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
+import { scheduleSubject } from "../testing/engine-store-subjects.js";
 import { plantAgent } from "../testing/plant-agent.js";
 import { createTestDatabases } from "../testing/test-databases.worker.js";
 import { createSqliteScheduleStore, scheduleTasks } from "./sqlite-schedule-store.js";
@@ -19,15 +19,7 @@ const live = { signal: new AbortController().signal };
 describe("sqlite schedule store", () => {
   it.each(
     scheduleStoreContract({
-      create: async () => {
-        const { host, database } = databases.open(engineDatabase);
-        const { agentId } = plantAgent(database, 1);
-        return {
-          schedules: createSqliteScheduleStore(host),
-          agentInbox: createSqliteAgentInboxStore(host),
-          agentId,
-        };
-      },
+      create: async () => scheduleSubject(databases.open(engineDatabase).host),
     }),
   )("follows the contract: $name", async ({ run }) => {
     await expect(run()).resolves.toBeUndefined();

@@ -1,9 +1,8 @@
-import { noticeStoreContract, testAgent, testAgentDraft } from "@binference/engine/testing";
+import { noticeStoreContract } from "@binference/engine/testing";
 import { afterAll, describe, expect, it } from "vitest";
-import { createSqliteAgentStore } from "../agents/sqlite-agent-store.js";
 import { engineDatabase } from "../databases/engine-database.js";
+import { noticeSubject } from "../testing/engine-store-subjects.js";
 import { createTestDatabases } from "../testing/test-databases.worker.js";
-import { createSqliteNoticeStore } from "./sqlite-notice-store.js";
 
 const databases = createTestDatabases();
 afterAll(() => {
@@ -11,11 +10,7 @@ afterAll(() => {
 });
 
 async function subject() {
-  const { host } = databases.open(engineDatabase);
-  await createSqliteAgentStore(host).create(testAgentDraft(), {
-    signal: new AbortController().signal,
-  });
-  return { notices: createSqliteNoticeStore(host), agent: testAgent };
+  return noticeSubject(databases.open(engineDatabase).host);
 }
 
 describe("sqlite notice store", () => {
