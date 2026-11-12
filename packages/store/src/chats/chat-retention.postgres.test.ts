@@ -1,5 +1,7 @@
 import { afterAll, beforeAll, describe, expect, inject, it } from "vitest";
+import { agentTablesContract } from "../contracts/agent-tables-contract.js";
 import { chatRetentionContract } from "../contracts/chat-retention-contract.js";
+import { agentTablesSubject } from "../testing/agent-store-subjects.js";
 import {
   createTestPostgresStores,
   type TestPostgresStores,
@@ -37,6 +39,14 @@ describe.runIf(url !== "")("chat retention on Postgres", () => {
       },
     }),
   )("follows the contract: $name", async ({ run }) => {
+    await expect(run()).resolves.toBeUndefined();
+  });
+
+  it.each(
+    agentTablesContract({
+      create: async () => agentTablesSubject(await stores.open("agent")),
+    }),
+  )("keeps the agent tables' rules: $name", async ({ run }) => {
     await expect(run()).resolves.toBeUndefined();
   });
 });

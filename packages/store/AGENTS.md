@@ -73,5 +73,7 @@ Rules for this package:
   A suite plants the rows it needs through store tasks (`testing/plant-agent.ts`,
   `testing/plant-rows.ts`), never through a SQLite connection, so one subject
   (`testing/money-store-subjects.ts`, `testing/engine-store-subjects.ts`) serves both tests; the
-  Postgres engine thread serves those tasks from `testing/test-engine.worker.ts`.
+  Postgres engine thread serves those tasks from `testing/test-engine.worker.ts`. The agent
+  database's own rules (`agentTablesContract`: its triggers, what retention removes) read and write
+  its rows through `testing/agent-rows.ts`, which `testing/test-agent.worker.ts` serves.
   `check:contract-suites` fails a suite that a SQLite test runs and no Postgres test runs.

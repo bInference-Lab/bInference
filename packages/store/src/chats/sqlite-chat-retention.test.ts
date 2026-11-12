@@ -1,6 +1,8 @@
 import { afterAll, describe, expect, it } from "vitest";
+import { agentTablesContract } from "../contracts/agent-tables-contract.js";
 import { chatRetentionContract } from "../contracts/chat-retention-contract.js";
 import { agentDatabase } from "../databases/agent-database.js";
+import { agentTablesSubject } from "../testing/agent-store-subjects.js";
 import { createTestDatabases } from "../testing/test-databases.worker.js";
 import { createSqliteChatQueueStore } from "./sqlite-chat-queue-store.js";
 import { createSqliteChatRetention } from "./sqlite-chat-retention.js";
@@ -31,18 +33,11 @@ describe("sqlite chat retention", () => {
     await expect(run()).resolves.toBeUndefined();
   });
 
-  it("leaves no cutoff behind, so a removal outside retention still fails", async () => {
-    const { host, database } = databases.open(agentDatabase);
-    const fence = await createSqliteWriterFence(host).raise({
-      signal: new AbortController().signal,
-    });
-    const pruned = await createSqliteChatRetention(host).prune(
-      { beforeMs: 5_000, fence },
-      { signal: new AbortController().signal },
-    );
-    expect(pruned.ok).toBe(true);
-    expect(
-      database.prepare("SELECT value FROM meta WHERE key = 'prune_before'").all(),
-    ).toStrictEqual([]);
+  it.each(
+    agentTablesContract({
+      create: async () => agentTablesSubject(databases.open(agentDatabase).host),
+    }),
+  )("keeps the agent tables' rules: $name", async ({ run }) => {
+    await expect(run()).resolves.toBeUndefined();
   });
 });

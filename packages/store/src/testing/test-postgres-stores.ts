@@ -4,7 +4,6 @@ import { type Clock, idSchema } from "@binference/core";
 // with the tasks on a task thread, as the SQLite tests run it on a fresh file. Nothing in
 // production uses this file.
 import { createMemoryLogger, createSeededRandom } from "@binference/core/testing";
-import { agentWorker } from "../databases/agent-database.js";
 import { installSchemas } from "../migrations/install-schemas.js";
 import { createPostgresInstall } from "../migrations/postgres-install.js";
 import { prepareSharedSchema } from "../migrations/prepare-shared-schema.js";
@@ -17,6 +16,7 @@ import {
   startPostgresTaskThread,
 } from "../postgres/postgres-task-thread.js";
 import type { StoreHost } from "../tasks/store-host.js";
+import { testAgentWorker } from "./test-agent-database.js";
 import { testEngineWorker } from "./test-engine-database.js";
 import { createTestPostgresDatabase } from "./test-postgres.js";
 
@@ -42,10 +42,10 @@ export interface TestPostgresStores {
   closeAll(): Promise<void>;
 }
 
-// The engine's task thread also serves the tasks the tests plant rows through.
+// Each database's task thread also serves the tasks the tests read and plant rows through.
 const workers: Readonly<Record<InstallDatabase, URL>> = {
   engine: testEngineWorker,
-  agent: agentWorker,
+  agent: testAgentWorker,
 };
 // Task threads run the TypeScript source, as the store's other worker tests do.
 const execArgv = ["--conditions=@binference/source", "--import", "tsx"];
