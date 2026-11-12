@@ -10,6 +10,7 @@ import {
   type InstallStoreSubject,
   type NoticeStoreSubject,
   type QuestionSubject,
+  type RiskCacheStoreSubject,
   type ScheduleSubject,
   testAgent,
   testAgentDraft,
@@ -27,6 +28,7 @@ import { createSqliteInstallStore } from "../install/sqlite-install-store.js";
 import { createSqliteIntentStore } from "../intents/sqlite-intent-store.js";
 import { createSqliteTrackedWalletStore } from "../leaders/sqlite-tracked-wallet-store.js";
 import { createSqliteNoticeStore } from "../notices/sqlite-notice-store.js";
+import { createSqliteRiskCacheStore } from "../risk-cache/sqlite-risk-cache-store.js";
 import { createSqliteScheduleStore } from "../schedules/sqlite-schedule-store.js";
 import type { StoreHost } from "../tasks/store-host.js";
 import { createSqliteWebhookAlertStore } from "../webhooks/sqlite-webhook-alert-store.js";
@@ -103,6 +105,15 @@ export async function installSubject(host: StoreHost): Promise<InstallStoreSubje
 export async function noticeSubject(host: StoreHost): Promise<NoticeStoreSubject> {
   await createSqliteAgentStore(host).create(testAgentDraft(), call());
   return { notices: createSqliteNoticeStore(host), agent: testAgent };
+}
+
+/** The risk cache's subject: the two sources the engine database keeps reports for. */
+export function riskCacheSubject(host: StoreHost): RiskCacheStoreSubject {
+  return {
+    store: createSqliteRiskCacheStore(host),
+    sources: ["goplus", "honeypot"],
+    refused: "codex",
+  };
 }
 
 /** The schedule store's subject, with agent 1. */
