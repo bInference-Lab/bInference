@@ -1,5 +1,5 @@
 import { Buffer } from "node:buffer";
-import type { ErrorCode } from "@binference/core";
+import { type ErrorCode, replaceNulInJsonText } from "@binference/core";
 import {
   type CallFrame,
   type ClientFrame,
@@ -226,7 +226,9 @@ function receive(link: Link, message: Message): void {
     tooLarge(link, bytes.toString("utf8"));
     return;
   }
-  const decoded = decodeClientFrame(bytes.toString("utf8"));
+  // Decision 0416: every text of a frame comes in with U+FFFD in place of each U+0000, the
+  // escape JSON writes it as, before anything reads, keys or stores it.
+  const decoded = decodeClientFrame(replaceNulInJsonText(bytes.toString("utf8")));
   if (decoded.ok) {
     route(link, decoded.value);
   } else {

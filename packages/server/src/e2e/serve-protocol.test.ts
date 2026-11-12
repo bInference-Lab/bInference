@@ -51,6 +51,38 @@ describe("the protocol server with the real client", () => {
     });
   });
 
+  it("hands the console's and the terminal's words over with U+FFFD in place of U+0000", async () => {
+    const said: string[] = [];
+    const session = protocolIdSchema("chatSession").parse(
+      "ses_0190f1c2-3a4b-7c5d-8e6f-000000000001",
+    );
+    const turn = protocolIdSchema("chatTurn").parse("trn_0190f1c2-3a4b-7c5d-8e6f-000000000001");
+    const server = await start({
+      "chat/post": async ({ args }) => {
+        said.push(args.text);
+        return ok({ session, turn });
+      },
+    });
+    const terminal = client(server, {
+      url: server.ipcUrl,
+      credential: { token: server.cliToken.secret },
+    });
+    const console = client(server, {
+      url: server.wsUrl,
+      credential: { device: server.device.id },
+      kind: "console",
+      origin: server.origin,
+      device: server.device,
+    });
+    const post = { agent, text: "gm\u0000ser" };
+    const options = { signal: AbortSignal.timeout(5_000) };
+    await Promise.all([terminal.connect(options.signal), console.connect(options.signal)]);
+    await terminal.call("chat/post", post, options);
+    await console.call("chat/post", post, options);
+    const words = `gm${String.fromCodePoint(0xfffd)}ser`;
+    expect(said).toStrictEqual([words, words]);
+  });
+
   it("fails a call outside the caller's scopes and never runs it", async () => {
     const freeze = vi.fn<OperationHandler<"safety/freeze">>(async () => ok({ frozenAt: 1 }));
     const server = await start({ "safety/freeze": freeze });

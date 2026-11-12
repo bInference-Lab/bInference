@@ -9,6 +9,9 @@ The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
 - It is the transport, never the domain. Operations are answered by the handlers the composition
   root passes in (`OperationHandlers`); the server checks scopes, the transport, the engine's state
   and idempotency keys, and nothing else. A scope case reaches its handler, which decides it.
+- Before a frame is decoded, its text takes U+FFFD in place of each U+0000 (`replaceNulInJsonText`),
+  so the words of the console, the terminal, MCP clients and the agent runtime reach no store with
+  it (decision 0416).
 - Frames, credentials, error codes, scopes and the operation table come from
   `@binference/protocol`. A call fails only with a protocol error code; a code the server raises
   itself starts with `server.` and is a fault of the engine's own wiring.
