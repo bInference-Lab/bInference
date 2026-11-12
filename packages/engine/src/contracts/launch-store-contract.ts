@@ -182,6 +182,17 @@ async function pagesAndFilters(store: LaunchStore): Promise<void> {
   assert.deepEqual(await listed(store, { chain: other }), []);
 }
 
+// Launches of one millisecond list by block as a number, 100 before 99, then by log index, and two
+// at one log by token, each newest first; a page before a place goes on from it.
+async function ordersOneInstantByPlace(store: LaunchStore): Promise<void> {
+  const at = { launchedAtMs: startMs, logIndex: 0 };
+  const launches = [launchOf(3, 99, at), launchOf(2, 100, at), launchOf(1, 100, at)];
+  await store.record(readOf([99, 100], launches), live());
+  assert.deepEqual(await listed(store), [tokenOf(2), tokenOf(1), tokenOf(3)]);
+  const before = { launchedAtMs: startMs, block: 100n, logIndex: 0 };
+  assert.deepEqual(await listed(store, { before }), [tokenOf(3)]);
+}
+
 async function keepsNinetyDays(store: LaunchStore): Promise<void> {
   await store.record(readOf([0, 0], [launchOf(1, 0)]), live());
   await store.record(readOf([1, 1], [launchOf(2, 1)]), live());
@@ -218,6 +229,11 @@ export function launchStoreContract(harness: LaunchStoreHarness): readonly Contr
       "lists newest first, a page at a time, from a time and through the filters",
       create,
       pagesAndFilters,
+    ),
+    checkOn(
+      "lists launches of one millisecond by block, log index and token",
+      create,
+      ordersOneInstantByPlace,
     ),
     checkOn("keeps a chain's launches 90 days", create, keepsNinetyDays),
     checkOn("refuses calls on an aborted signal", create, async (store) => {

@@ -32,6 +32,14 @@ function isBefore(a: LaunchPlace, b: LaunchPlace): boolean {
   return a.block === b.block ? a.logIndex < b.logIndex : a.block < b.block;
 }
 
+// The feed's order: the newest first, two launches at one place by token, the greater first.
+function newestFirst(a: StoredLaunch, b: StoredLaunch): number {
+  if (isBefore(a, b) || isBefore(b, a)) {
+    return isBefore(a, b) ? 1 : -1;
+  }
+  return a.token < b.token ? 1 : -1;
+}
+
 // A bound given holds only on a value known.
 const atMost = (bound: number | undefined, value: number | undefined): boolean =>
   bound === undefined || (value !== undefined && value <= bound);
@@ -155,7 +163,7 @@ export function createMemoryLaunchStore(): LaunchStore {
         .filter(({ chain }) => chain === query.chain)
         .map((row) => withCount(state, row))
         .filter((launch) => placePasses(query, launch) && boundsPass(query, launch))
-        .toSorted((a, b) => (isBefore(a, b) ? 1 : -1))
+        .toSorted(newestFirst)
         .slice(0, query.limit);
     },
   };

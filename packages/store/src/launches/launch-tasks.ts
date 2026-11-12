@@ -249,6 +249,7 @@ export const listLaunchesTask: StoreTask<LaunchQuery, readonly StoredLaunch[]> =
       .orderBy("launches.launched_at", "desc")
       .orderBy((eb) => forms.decimalNumber(eb.ref("launches.block")), "desc")
       .orderBy("launches.log_index", "desc")
+      .orderBy("launches.token", "desc")
       .limit(query.limit);
     return execute(listed).rows.map((row) =>
       toStoredLaunch({ ...row, creator_launches: row.creator_launches ?? 0 }),
