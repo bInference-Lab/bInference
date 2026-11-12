@@ -3,6 +3,7 @@ import type { StoreHost } from "../tasks/store-host.js";
 import type { StoreTask } from "../tasks/store-task.js";
 import type { WorkerValue } from "../worker/worker-messages.schema.js";
 import { createCallQueue } from "./call-queue.js";
+import { assertLeaseSchema, checkLease, leaseLost, type StoreLease } from "./lease-fence.js";
 import type { PostgresDatabase } from "./open-postgres.js";
 import type { PostgresTaskThread } from "./postgres-task-thread.js";
 
@@ -16,6 +17,11 @@ export interface PostgresStoreHostOptions<Schema> {
   readonly schema: string;
   /** How long one call may run, its retries included; 30 s by default, as on SQLite. */
   readonly timeoutMs?: number;
+  /**
+   * The install's lease its writes carry (spec 3, section 6.5), whose install `schema` must be
+   * one of. Without one the host reads but refuses every write with `store.lease_lost`.
+   */
+  readonly lease?: StoreLease;
 }
 
 const taskTimeoutMs = 30_000;
@@ -46,11 +52,19 @@ function badReply(task: string, cause: Error["cause"]): BinferenceError {
  * `REPEATABLE READ` transaction. The caller's signal and the call's time bound abort the
  * transaction where it is: before `COMMIT` it rolls back, during it the call fails
  * `store.commit_unknown`, and a read's statement is cancelled on the server.
+ *
+ * Every write first checks the host's lease in its own transaction and fails `store.lease_lost`,
+ * having changed nothing, unless the lease's worker still holds the install under its fence. The
+ * caller never retries that fault: it stops the install's engine and runtime at once and writes
+ * nothing more. A lease of another install's schema throws `store.lease_mismatch` here.
  */
 export function createPostgresStoreHost<Schema>(
   options: PostgresStoreHostOptions<Schema>,
 ): StoreHost {
-  const { database, thread, schema } = options;
+  const { database, thread, schema, lease } = options;
+  if (lease !== undefined) {
+    assertLeaseSchema(lease, schema);
+  }
   const writes = createCallQueue(maxWaitingWrites, "store writes on this Postgres schema");
   const call = async <Input, Output>(
     task: StoreTask<Input, Output>,
@@ -63,11 +77,21 @@ export function createPostgresStoreHost<Schema>(
     const signal = AbortSignal.any([caller, stop.signal, deadline]);
     const control = { signal, stop };
     try {
-      return task.access === "write"
-        ? await writes.run(async () =>
-            database.write(async (connection) => thread.run(job, connection, control), signal),
-          )
-        : await database.read(async (connection) => thread.run(job, connection, control), signal);
+      if (task.access === "read") {
+        return await database.read(
+          async (connection) => thread.run(job, connection, control),
+          signal,
+        );
+      }
+      if (lease === undefined) {
+        throw leaseLost(undefined);
+      }
+      return await writes.run(async () =>
+        database.write(async (connection) => {
+          await checkLease(connection, lease);
+          return thread.run(job, connection, control);
+        }, signal),
+      );
     } catch (error) {
       throw deadline.aborted && error === deadline.reason ? timedOut(error) : error;
     }

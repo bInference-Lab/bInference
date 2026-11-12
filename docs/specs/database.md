@@ -705,7 +705,10 @@ Primary key `(install_id, agent_id)`; an index on `expires_at` for the take scan
   reads the install's rows `FOR SHARE`. Unless there are rows and each names this worker and its
   fence and has not expired, the task fails `store.lease_lost` and changes nothing. A take updates
   the rows, so it waits until every write that passed the check has ended; no write that passed
-  commits after another worker holds the install.
+  commits after another worker holds the install. The check lives in the store host that binds an
+  install's schemas to its lease: a host with no lease writes nothing, and one bound to another
+  install's lease is refused at its start (`store.lease_mismatch`). `store.lease_lost` is never
+  retried.
 - **A paused worker.** A worker paused inside a transaction loses it to
   `idle_in_transaction_session_timeout`, which frees its locks; its next write fails the fence
   check.

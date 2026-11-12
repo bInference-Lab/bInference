@@ -15,6 +15,7 @@ export { createPostgresInstall, migratePostgresInstall } from "./migrations/post
 export type { InstallMigrationReport, PostgresInstall } from "./migrations/postgres-install.js";
 export { prepareSharedSchema } from "./migrations/prepare-shared-schema.js";
 export type { MetaTables } from "./migrations/run-postgres-migrations.js";
+export type { StoreLease } from "./postgres/lease-fence.js";
 export { openPostgres } from "./postgres/open-postgres.js";
 export { createPostgresAgentLeases } from "./postgres/postgres-agent-leases.js";
 export type { PostgresAgentLeasesOptions } from "./postgres/postgres-agent-leases.js";

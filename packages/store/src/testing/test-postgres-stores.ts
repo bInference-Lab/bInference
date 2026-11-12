@@ -4,11 +4,15 @@ import { type Clock, idSchema } from "@binference/core";
 // with the tasks on a task thread, as the SQLite tests run it on a fresh file. Nothing in
 // production uses this file.
 import { createMemoryLogger, createSeededRandom } from "@binference/core/testing";
+import { okValue } from "../contracts/agent-fixtures.js";
+import { workerIdSchema } from "../leases/agent-leases.js";
 import { installSchemas } from "../migrations/install-schemas.js";
 import { createPostgresInstall } from "../migrations/postgres-install.js";
 import { prepareSharedSchema } from "../migrations/prepare-shared-schema.js";
 import type { MetaTables } from "../migrations/run-postgres-migrations.js";
+import type { StoreLease } from "../postgres/lease-fence.js";
 import { openPostgres, type PostgresDatabase } from "../postgres/open-postgres.js";
+import { createPostgresAgentLeases } from "../postgres/postgres-agent-leases.js";
 import type { PostgresSettings } from "../postgres/postgres-settings.js";
 import { createPostgresStoreHost } from "../postgres/postgres-store-host.js";
 import {
@@ -50,6 +54,9 @@ const workers: Readonly<Record<InstallDatabase, URL>> = {
 // Task threads run the TypeScript source, as the store's other worker tests do.
 const execArgv = ["--conditions=@binference/source", "--import", "tsx"];
 const sharedSchema = "shared";
+// The file's one worker holds each install's lease for longer than a file runs; nothing renews it.
+const testWorker = workerIdSchema.parse("test-worker");
+const testLeaseMs = 3_600_000;
 
 // The writers' retries wait out decision 0366's backoff, so racing writes spread as they do live.
 const waitingClock: Clock = {
@@ -67,9 +74,19 @@ interface Writer {
   readonly thread: PostgresTaskThread;
 }
 
+/** Where a store host writes: an install's schema, under the install's lease. */
+interface HostPlace {
+  readonly schema: string;
+  readonly lease: StoreLease;
+}
+
 /** The racing writers of a file: each its own pool and task thread, which serve every install. */
 interface Writers {
-  hostsOn(database: InstallDatabase, schema: string, count: number): Promise<readonly StoreHost[]>;
+  hostsOn(
+    database: InstallDatabase,
+    place: HostPlace,
+    count: number,
+  ): Promise<readonly StoreHost[]>;
   retries(): number;
   close(): Promise<void>;
 }
@@ -90,16 +107,16 @@ function createWriters(settings: PostgresSettings): Writers {
     });
     return { pool, thread };
   };
-  const hostOn = async (database: InstallDatabase, schema: string, n: number) => {
+  const hostOn = async (database: InstallDatabase, place: HostPlace, n: number) => {
     const key = `${database} ${String(n)}`;
     const writer = started.get(key) ?? start(database, n);
     started.set(key, writer);
     const { pool, thread } = await writer;
-    return createPostgresStoreHost({ database: pool, thread, schema });
+    return createPostgresStoreHost({ database: pool, thread, ...place });
   };
   return {
-    hostsOn: async (database, schema, count) =>
-      Promise.all(Array.from({ length: count }, async (_, n) => hostOn(database, schema, n))),
+    hostsOn: async (database, place, count) =>
+      Promise.all(Array.from({ length: count }, async (_, n) => hostOn(database, place, n))),
     retries: () => log.records().filter(({ event }) => event === "store.write_retried").length,
     // Each writer's thread ends before its pool closes.
     close: async () => {
@@ -118,8 +135,8 @@ function createWriters(settings: PostgresSettings): Writers {
 
 /**
  * Opens a database of its own on the test server that `url` names (`inject("postgres")`), with
- * the shared schema prepared; each `open` adds an install. One task thread per database serves
- * every install of the file.
+ * the shared schema prepared; each `open` adds an install, whose lease the file's one worker takes
+ * for its hosts. One task thread per database serves every install of the file.
  */
 export async function createTestPostgresStores(url: string): Promise<TestPostgresStores> {
   const server = await createTestPostgresDatabase(url);
@@ -138,21 +155,25 @@ export async function createTestPostgresStores(url: string): Promise<TestPostgre
     threads.set(name, thread);
     return thread;
   };
+  const leases = createPostgresAgentLeases({ database, sharedSchema, leaseMs: testLeaseMs });
   let installs = 0;
-  const newSchema = async (name: InstallDatabase): Promise<string> => {
+  const newPlace = async (name: InstallDatabase): Promise<HostPlace> => {
     installs += 1;
     const digits = String(installs).padStart(12, "0");
     const installId = idSchema("ins").parse(`ins_0190f1c2-3a4b-7c5d-8e6f-${digits}`);
     await createPostgresInstall(database, { installId, sharedSchema }, call());
-    return installSchemas(installId)[name];
+    const held = okValue(
+      await leases.take({ installId, workerId: testWorker }, { signal: call() }),
+    );
+    return { schema: installSchemas(installId)[name], lease: { sharedSchema, held } };
   };
   const writers = createWriters(server.settings);
   return {
     async open(name) {
-      const schema = await newSchema(name);
-      return createPostgresStoreHost({ database, thread: await threadOf(name), schema });
+      const place = await newPlace(name);
+      return createPostgresStoreHost({ database, thread: await threadOf(name), ...place });
     },
-    writers: async (count, name = "engine") => writers.hostsOn(name, await newSchema(name), count),
+    writers: async (count, name = "engine") => writers.hostsOn(name, await newPlace(name), count),
     retries: () => writers.retries(),
     async closeAll() {
       const started = await Promise.all(threads.values());
