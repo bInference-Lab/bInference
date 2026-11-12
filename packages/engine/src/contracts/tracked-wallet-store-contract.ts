@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
-import type { AccountRef } from "@binference/chain";
+import { type AccountRef, accountRefSchema, chainRefSchema } from "@binference/chain";
 import type { ContractCheck } from "@binference/core/testing";
 import type { TrackedWalletStore } from "../leaders/ports.js";
 import type { LeaderReadRecord } from "../leaders/tracked-wallet-record.js";
 import { alertOf, walletCondition } from "./alert-fire-checks.js";
 import type { AlertSubject } from "./alert-store-contract.js";
-import { assertRefusesAborted, checkOn, fixtureId, live } from "./store-fixtures.js";
+import { assertRefusesAborted, checkOn, fixtureId, inOrder, live } from "./store-fixtures.js";
 import { trackedActivityChecks } from "./tracked-activity-checks.js";
 import { accountOf, chain, other, readOf, saleOf, track } from "./tracked-wallet-fixtures.js";
 
@@ -32,6 +32,22 @@ async function followsAlerts(subject: TrackedWalletSubject): Promise<void> {
   assert.deepEqual(await accounts(subject), [accountOf(1)]);
   await subject.alerts.end({ id: fixtureId("alr", 2), atMs: 6 }, live());
   assert.deepEqual(await accounts(subject), []);
+}
+
+// A chain's tracked wallets are those whose account starts with its id exactly: no other case of
+// its letters, and no other character where its id has `_`.
+async function readsTheChainExactly(subject: TrackedWalletSubject): Promise<void> {
+  const chains = ["fake:a_c", "fake:a-c", "fake:A_c"];
+  await inOrder([...chains.keys()], async (n) => {
+    const account = accountRefSchema.parse(`${chains[n] ?? ""}:0x0000000${String(n)}`);
+    const alert = alertOf(subject, n + 1, { condition: { kind: "wallet", account } });
+    assert.equal((await subject.alerts.create(alert, live())).ok, true);
+  });
+  const tracked = await subject.tracked.tracked(chainRefSchema.parse("fake:a_c"), live());
+  assert.deepEqual(
+    tracked.map(({ account }) => account),
+    ["fake:a_c:0x00000000"],
+  );
 }
 
 async function storesEachTradeOnce(subject: TrackedWalletSubject): Promise<void> {
@@ -138,6 +154,7 @@ export function trackedWalletStoreContract(
   const create = async () => harness.create();
   return [
     checkOn("tracks a wallet alert's account until its last alert ends", create, followsAlerts),
+    checkOn("tracks a chain's wallets by its exact id", create, readsTheChainExactly),
     checkOn("stores each trade once and answers only the new ones", create, storesEachTradeOnce),
     checkOn(
       "moves only what a read reached, for tracked wallets",

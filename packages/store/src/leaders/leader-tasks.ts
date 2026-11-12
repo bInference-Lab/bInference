@@ -34,7 +34,12 @@ import { namedAccounts } from "./tracked-sync.js";
 // The leader watcher's row in `watch_cursors`.
 const watcher: CursorWatcher = "wallets";
 
-/** The wallets tracked on a chain now, whose account something still names. */
+/**
+ * The wallets tracked on a chain now, whose account something still names. An account on the
+ * chain starts with its id and a colon, so its accounts are the range up to `;`, the character
+ * after the colon: a range compares bytes on both databases, where SQLite's `LIKE` would ignore
+ * case and read `_` in a chain id as any character.
+ */
 export const trackedWalletsTask: StoreTask<ChainRef, readonly TrackedWalletRecord[]> = defineTask({
   name: "leaders.tracked",
   access: "read",
@@ -48,7 +53,8 @@ export const trackedWalletsTask: StoreTask<ChainRef, readonly TrackedWalletRecor
         .selectFrom("tracked_wallets")
         .selectAll()
         .where("untracked_at", "is", null)
-        .where("account", "like", `${chain}:%`)
+        .where("account", ">=", `${chain}:`)
+        .where("account", "<", `${chain};`)
         .orderBy("account"),
     ).rows;
     return rows.filter(({ account }) => named.has(account)).map(toTrackedWallet);
