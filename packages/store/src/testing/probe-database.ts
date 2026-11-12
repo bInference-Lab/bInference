@@ -212,6 +212,42 @@ export const recordThenStall: StoreTask<ProbeStall, number> = defineTask({
   },
 });
 
+/**
+ * Postgres only: records a write, blocks its task thread for `stallMs` when it is above 0, and
+ * answers the database's clock in epoch milliseconds as the write's last statement reads it,
+ * before its commit.
+ */
+export const recordStamped: StoreTask<ProbeStall, number> = defineTask({
+  name: "probe.record_stamped",
+  access: "write",
+  input: z.strictObject({
+    writer: z.number().int().nonnegative(),
+    seq: z.number().int().nonnegative(),
+    stallMs: z.number().int().nonnegative(),
+  }),
+  output: z.number().int(),
+  run(database, input) {
+    recordWrite.handle(database, { writer: input.writer, seq: input.seq });
+    if (input.stallMs > 0) {
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, input.stallMs);
+    }
+    const { kysely, takeFirst } = createSyncKysely<ProbeTables>(database);
+    const clock = takeFirst(
+      kysely.selectNoFrom((expression) =>
+        expression(
+          expression.fn<number>("date_part", [
+            expression.val("epoch"),
+            expression.fn("clock_timestamp"),
+          ]),
+          "*",
+          1_000,
+        ).as("atMs"),
+      ),
+    );
+    return Math.floor(z.number().parse(clock?.atMs));
+  },
+});
+
 /** The probe database: the engine's `meta` migration, the probe tables and the probe tasks. */
 export const probeDatabase: DatabaseDefinition = {
   name: "probe",
@@ -225,6 +261,7 @@ export const probeDatabase: DatabaseDefinition = {
     recordThenSleep,
     recordAfterLock,
     recordThenStall,
+    recordStamped,
   ],
 };
 

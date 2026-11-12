@@ -1147,6 +1147,9 @@ importers:
       '@types/pg':
         specifier: 'catalog:'
         version: 8.23.1
+      fast-check:
+        specifier: 'catalog:'
+        version: 4.10.2
 
   packages/telegram:
     dependencies:
