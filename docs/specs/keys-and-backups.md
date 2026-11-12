@@ -5,6 +5,9 @@ Status: accepted on 2026-10-06 ([decision 0097](../DECISIONS.md#d0097)), amended
 [0119](../DECISIONS.md#d0119), [0148](../DECISIONS.md#d0148), [0149](../DECISIONS.md#d0149), [0210](../DECISIONS.md#d0210), [0211](../DECISIONS.md#d0211) and [0217](../DECISIONS.md#d0217). It follows Privy custody (decisions
 [0085](../DECISIONS.md#d0085), [0087](../DECISIONS.md#d0087) and [0091](../DECISIONS.md#d0091)).
 
+Approved by the owner on 2026-11-12: the Cloud signer service, section 8, on decisions
+[0419](../DECISIONS.md#d0419) to [0425](../DECISIONS.md#d0425).
+
 <a id="section-1"></a>
 
 ## 1. The model
@@ -566,3 +569,150 @@ foreground in the restore's terminal. An engine that was not running stays stopp
 the stop starts the engine again as it ran. `init --attach --restore` makes this machine's new
 agent key the wallets' signer after the swap; when it stops before a wallet moves, the restore is
 undone.
+
+<a id="section-8"></a>
+
+## 8. bInference Cloud: the signer service
+
+Approved by the owner on 2026-11-12, on decisions [0419](../DECISIONS.md#d0419) to
+[0425](../DECISIONS.md#d0425). Sections 1 to 7 stay as they are. On bInference Cloud one signer service signs every Cloud wallet's transactions in the place
+of section 5's signer process ([ARCHITECTURE.md section 30](../ARCHITECTURE.md#section-30)). Its
+code lives outside the public repo; this section is what it does, so the public Cloud client and a
+fake of the service can be built from it alone.
+
+<a id="section-8-1"></a>
+
+### 8.1 The service and its key
+
+- **The key.** bInference's Privy authorization key is a P-256 signing key made inside a KMS that
+  signs SHA-256 digests and exports nothing private ([decision 0419](../DECISIONS.md#d0419)). The
+  service reaches it through its own port, `SigningKey`: `publicKey`, `sign` and `readBack`. The
+  KMS is AWS KMS (`ECC_NIST_P256`, `SIGN_VERIFY`, origin `AWS_KMS`), in an AWS account that holds
+  only the signer service; Google Cloud KMS with `HSM` protection stays the alternative.
+- **The app secret** of bInference's Privy app lives only in the service, which sends every
+  signing request to Privy itself: no worker holds the key or the secret.
+- **Its own network.** It takes connections only from the workers' network, on one port, over
+  mutual TLS ([decision 0420](../DECISIONS.md#d0420)); it reaches only the KMS's private
+  endpoint, Privy's API and the Cloud database; it has no public address.
+- **Its own database role,** `binference_signer` (spec 3, section 6.6): it reads the install's
+  rows the checks need and the shared schema's `agent_leases` and `breaker`, and writes only its
+  own schema, `signer` (section 8.4).
+- **The key policy** allows the service's runtime role `kms:Sign` with `ECDSA_SHA_256` on a
+  digest, and `kms:GetPublicKey`, `kms:DescribeKey`, `kms:GetKeyPolicy` and `kms:ListGrants`; it
+  allows a break-glass role, behind a second factor, to read, replace, disable, enable or schedule
+  the deletion of the key, and never to sign; it denies every principal `kms:CreateGrant`,
+  `kms:ReplicateKey`, `kms:UpdatePrimaryRegion` and `kms:ImportKeyMaterial`, and `kms:Sign` to any
+  principal but the runtime role. It names no account root.
+- **The read-back.** At start, and every hour after, the service reads the key's spec, usage,
+  origin and state, its policy, which must equal the list above statement by statement, its
+  grants, which must be none, and its public half, which must equal the key in Privy's key quorum
+  of the service. Until every part matches, it signs nothing and answers `locked` with
+  `key_check`.
+
+<a id="section-8-2"></a>
+
+### 8.2 What it signs
+
+`eth_signTransaction` only, under section 5.2's hard rules, from the public `signer` package
+unchanged, which exports its rule check for the service. What differs is where each fact comes
+from: the service reads it from the install's rows, never from the worker
+([decision 0421](../DECISIONS.md#d0421)).
+
+| Rule                          | On Cloud                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1. The chain                  | Unchanged. The enabled chains and their fee caps are the service's own settings.                                                                                                                                                                                                                                                                                                                                                                                                      |
+| 2. `to` and the call's inputs | Unchanged. The allowed set is the service's own: the registry and the venues' declarations of the release it runs, the confirmed plan's recipients and bridge terms, and a launch's contracts from the confirmed quote.                                                                                                                                                                                                                                                               |
+| 3. Value and amounts          | Unchanged. The plan is the intent's stored plan.                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| 4. Method and expiry          | Unchanged. The service builds the Privy request, with `privy-request-expiry` at most 5 minutes ahead.                                                                                                                                                                                                                                                                                                                                                                                 |
+| 5. Fee cap and authorization  | Unchanged checks, on facts a worker cannot forge alone: the terms hash worked out again from the intent's stored request, quote, plan and card version; a confirmation row, which only the ingress writes; an auto grant only while the agent's approval mode, which only the ingress turns to `auto`, says so; a fill grant only while its source's own confirmation holds its terms hash. The fills signed per source are the service's stored reservations, which a restart keeps. |
+| 6. Speed-up and cancel        | Unchanged. The transaction signed before at the nonce is the one the service's own reservation records, never one the worker names.                                                                                                                                                                                                                                                                                                                                                   |
+
+The service also refuses what no self-hosted rule covers: a worker that does not hold the
+install's lease, a pulled breaker, a step that would pass the user's 24-hour sums (section 8.4),
+and a nonce another intent's step holds.
+
+Section 5's rules for the signer process differ by design: the key never sits in the service's
+memory, since the KMS signs, so no key buffer needs zeroing; the service has a network, its own,
+where the process has none; and two requests for one wallet's nonce meet at that nonce's
+reservation (section 8.4), in the place of the process's one request at a time.
+
+<a id="section-8-3"></a>
+
+### 8.3 How a worker asks
+
+A worker sends `POST /v1/sign`, at most 4 KiB of JSON, over TLS 1.3 with its client certificate,
+whose URI name `spiffe://binference.io/worker/<worker id>` carries the worker id
+([decision 0420](../DECISIONS.md#d0420)). The service takes the worker id from the certificate
+alone. The request names; it never describes:
+
+```json5
+{
+  version: 1,
+  requestId: "0190f1c2-3a4b-7c5d-8e6f-000000000001", // a UUIDv7 the worker picks, one per request
+  install: "ins_0190f1c2-3a4b-7c5d-8e6f-000000000001",
+  fence: 7, // the lease fence the worker holds for the install
+  intent: "int_0190f1c2-3a4b-7c5d-8e6f-000000000001",
+  step: 0, // the step of the intent's plan, from 0
+  // or { kind: "fill", source: "ord_…" or "whr_…" }, or { kind: "approvalMode" }
+  authorization: { kind: "confirmation", id: "cnf_0190f1c2-3a4b-7c5d-8e6f-000000000001" },
+  nonce: 41,
+  gasLimit: "180000",
+  // or { maxFeePerGas, maxPriorityFeePerGas } on a chain of EIP-1559 transactions; decimal wei
+  fees: { gasPrice: "1000000000" },
+  replaces: "speedUp", // or "cancel"; absent on a step's first transaction
+}
+```
+
+Every answer is a JSON object with `version: 1`, the request's `requestId` and an `outcome`, and
+the Cloud client maps each outcome onto the `Signer` port of `@binference/chain`
+([decision 0425](../DECISIONS.md#d0425)):
+
+| `outcome`    | HTTP | Its other fields                                                                                                  | On the `Signer` port                                    |
+| ------------ | ---- | ----------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| `signed`     | 200  | `tx`: `chain` (CAIP-2), `raw` and `hash`, both `0x` and hex                                                       | The signed transaction                                  |
+| `refused`    | 200  | `reason`, below                                                                                                   | `refused`; `unknown_wallet` for that reason             |
+| `over_sums`  | 200  | `chain`, `asset` (CAIP-19), `capBase`, `usedBase` and `askedBase` as decimal base units, `roomAtMs` (section 8.4) | `over_sums`, a refusal the port gains                   |
+| `locked`     | 200  | `reason`: `breaker` (section 8.6), `key_check` (section 8.1) or `privy_app` (Privy refused the app secret)        | `locked`, a refusal the port gains                      |
+| `lease_lost` | 200  | none                                                                                                              | Throws `store.lease_lost`: the worker stops the install |
+| `down`       | 503  | `reason`: `store` (the Cloud database), `kms` or `privy`                                                          | Throws `custody.signer_down`                            |
+
+```json5
+{
+  version: 1,
+  requestId: "0190f1c2-3a4b-7c5d-8e6f-000000000001",
+  outcome: "over_sums",
+  chain: "eip155:56",
+  asset: "eip155:56/slip44:714", // the native coin's sum
+  capBase: "10000000000000000000",
+  usedBase: "9500000000000000000", // reserved in the window before this request
+  askedBase: "1000000000000000000", // what this request would add
+  roomAtMs: 1767225600000, // when enough of the window's reservations age out
+}
+```
+
+A refusal's `reason` is one of `rule_1` to `rule_6` (section 5.2), `malformed`, `unknown_wallet`,
+`intent_state` (the intent is not live and `executing`), `no_authorization`, `authorization_ended`,
+`terms_changed` (the terms hash worked out again differs from the authorization's), `nonce_held`
+and `privy_refused` (Privy refused it: the ceiling, or the user removed bInference's signer).
+`GET /v1/ready` answers 200 once the read-back of section 8.1 matched, and 503 before.
+
+The service checks a request in this order, and the first check that fails answers:
+
+1. The certificate, then the request's schema and version. A request id seen before from this
+   worker answers its first answer.
+2. In one serializable transaction on the Cloud database, which reads the install's rows and
+   writes only the `signer` schema: the breaker; the lease, whose rows must exist and each name the
+   certificate's worker and the request's fence and not have expired by the database's clock; the
+   intent, live and `executing`, and its wallet; the authorization, from the install's rows; the
+   transaction, built from the plan's step and the request's nonce, gas limit, fees and
+   replacement; the hard rules; the user's sums, which it reserves. Then it commits.
+3. Outside any transaction: the KMS signs the Privy request's payload, the service sends it to
+   Privy with the app secret and the request id as Privy's idempotency key, and checks that the
+   signed transaction Privy returns is the one it built.
+4. It reads the lease again. A worker that lost it gets `lease_lost`, the signature goes to no
+   one, and the reservation is released.
+5. It marks the reservation signed, writes the audit line, and answers `signed`.
+
+A worker stores the signed transaction before it sends it, as the executor does (spec 6, section
+6). A worker that lost its lease after the service's second read is refused by its own store's
+fence ([decision 0418](../DECISIONS.md#d0418)), so it never sends.
