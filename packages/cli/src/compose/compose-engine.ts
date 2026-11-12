@@ -28,7 +28,6 @@ import {
   markRuntimeTurns,
   type RunningTurns,
   type UploadShelf,
-  type ViewImageSource,
 } from "@binference/engine/chat";
 import type { HeldWallet } from "@binference/engine/executor";
 import { isNoticeMutedFor } from "@binference/engine/notices";
@@ -47,6 +46,7 @@ import { composeServer } from "./compose-server.js";
 import { type ComposedTelegram, composeTelegram, type TelegramParts } from "./compose-telegram.js";
 import { composeWebPush, type WebPushParts } from "./compose-web-push.js";
 import { consoleOriginCell } from "./console-origin.js";
+import { agentPartsOf, type EngineAgentParts } from "./engine-agent-parts.js";
 import { chainPartsOf, type EngineChainParts } from "./engine-chain-parts.js";
 import { createNoticeLog, type NoticeLog } from "./notice-log.js";
 import type { ProfileParts } from "./profile-parts.js";
@@ -78,7 +78,7 @@ interface RiskParts {
 }
 
 /** What the engine and its protocol server are built from besides the profile parts. */
-export interface ComposeEngineOptions extends EngineChainParts {
+export interface ComposeEngineOptions extends EngineChainParts, EngineAgentParts {
   readonly chains: ChainRegistry;
   /**
    * The launchpads the registry lists, on each chain, as running a launch's first buy inside its
@@ -159,12 +159,6 @@ export interface ComposeEngineOptions extends EngineChainParts {
    * without them no rule is made.
    */
   readonly webhooks?: Pick<EngineOptions, "secretRandom" | "webhookBase">;
-  /** The agent's shell on this machine (decision 0378); off when absent. */
-  readonly shell?: EngineOptions["shell"];
-  /** The images the agent views on this machine (decision 0385); none when absent. */
-  readonly viewImages?: ViewImageSource;
-  /** The config file a confirmed config change writes (decision 0393). */
-  readonly configChanges?: EngineOptions["configChanges"];
   readonly logger: Logger;
 }
 
@@ -322,9 +316,7 @@ function engineOf(
     ids: given.ids,
     random: options.random,
     ...options.webhooks,
-    ...(options.shell === undefined ? {} : { shell: options.shell }),
-    ...(options.viewImages === undefined ? {} : { viewImages: options.viewImages }),
-    ...(options.configChanges === undefined ? {} : { configChanges: options.configChanges }),
+    ...agentPartsOf(options),
     publish: given.publish,
     turns: given.turns,
     ownerTimeZone: () => options.owner().timezone,
