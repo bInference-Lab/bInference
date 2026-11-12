@@ -67,6 +67,7 @@ const statuses: Readonly<Record<WebhookAnswer | "too_large" | "unavailable", num
   not_found: 404,
   repeat: 409,
   rate: 429,
+  too_deep: 400,
   too_large: 413,
   unavailable: 503,
 };
@@ -205,8 +206,9 @@ async function shutdown(server: Server, clock: Clock, graceMs: number): Promise<
  * route, `POST /hook/:ruleId/:secret` with a body of at most 16 KiB, and nothing else: every other
  * method, path, malformed rule id or secret and WebSocket upgrade gets the same empty 404 an
  * unknown rule gets, from its request line alone. An alert is answered only once the intake
- * recorded it: 202 accepted, 404, 409 repeat, 429 over the rule's rate, 413 over 16 KiB, 503 when
- * it was not confirmed stored in time (it may still be). Any body is an alert, JSON or not. No
+ * recorded it: 202 accepted, 404, 409 repeat, 429 over the rule's rate, 400 for a JSON body
+ * nested past 64 levels (decision 0417), 413 over 16 KiB, 503 when it was not confirmed stored in
+ * time (it may still be). Any body is an alert, JSON or not. No
  * answer carries a body, every answer closes its connection, and no log line holds a path or a
  * body. A body that never arrives whole ends its connection, never the process. Nothing binds
  * until `start`.

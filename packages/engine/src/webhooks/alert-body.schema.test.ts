@@ -1,5 +1,10 @@
+import { maxJsonDepth } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { readAlertBody } from "./alert-body.schema.js";
+
+// A JSON object whose `pad` nests arrays so the body nests `depth` deep in all.
+const nestedBody = (depth: number): string =>
+  `{"id":"tv-1","pad":${"[".repeat(depth - 1)}${"]".repeat(depth - 1)}}`;
 
 const utf8 = (text: string): Readonly<Uint8Array> => new TextEncoder().encode(text);
 
@@ -38,6 +43,21 @@ describe("an alert's body", () => {
       body: { text },
       alertId: `tv${String.fromCodePoint(0xfffd)}42`,
     });
+  });
+
+  it("reads a JSON body nested at the bound, and refuses one nested one level more", () => {
+    const atBound = nestedBody(maxJsonDepth);
+    expect(readAlertBody(utf8(atBound))).toStrictEqual({
+      body: { text: atBound },
+      alertId: "tv-1",
+    });
+    expect(readAlertBody(utf8(nestedBody(maxJsonDepth + 1)))).toBe("too_deep");
+    expect(readAlertBody(utf8(nestedBody(2_000)))).toBe("too_deep");
+  });
+
+  it("keeps plain text full of brackets as text, since it is not JSON", () => {
+    const text = `crossed ${"[".repeat(100)}`;
+    expect(readAlertBody(utf8(text))).toStrictEqual({ body: { text } });
   });
 
   it("keeps bytes that are not UTF-8 in base64, with no id", () => {

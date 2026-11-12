@@ -1,5 +1,5 @@
 import { Buffer } from "node:buffer";
-import { replaceNul } from "@binference/core";
+import { nestsDeeperThan, replaceNul } from "@binference/core";
 import { z } from "zod";
 import { maxWebhookAlertIdLength, type WebhookBody } from "./webhook-alert.js";
 
@@ -25,13 +25,16 @@ function textOf(bytes: Readonly<Uint8Array>): string | undefined {
   }
 }
 
-function idOf(text: string): string | undefined {
-  let value: unknown;
+// The body's JSON value, or `undefined` for a body that is not JSON.
+function jsonOf(text: string): unknown {
   try {
-    value = JSON.parse(text);
+    return JSON.parse(text);
   } catch {
     return undefined;
   }
+}
+
+function idOf(value: unknown): string | undefined {
   const holder = objectSchema.safeParse(value);
   if (!holder.success || !Object.hasOwn(holder.data, "id")) {
     return undefined;
@@ -46,13 +49,17 @@ function idOf(text: string): string | undefined {
  * base64, so no store meets U+0000 and the bytes stay as they came (decision 0416). Of a JSON
  * object only its own `id` is read, when it is a string of 1 to 128 characters, with U+FFFD in
  * place of each U+0000: the alert's repeat key beside the body itself. Nothing else in the body
- * is read.
+ * is read. A JSON body nested past `maxJsonDepth` is `too_deep` (decision 0417): no alert.
  */
-export function readAlertBody(bytes: Readonly<Uint8Array>): AlertBody {
+export function readAlertBody(bytes: Readonly<Uint8Array>): AlertBody | "too_deep" {
   const text = textOf(bytes);
   if (text === undefined || text.includes("\u0000")) {
     return { body: { base64: Buffer.from(bytes).toString("base64") } };
   }
-  const alertId = idOf(text);
+  const value = jsonOf(text);
+  if (value !== undefined && nestsDeeperThan(text)) {
+    return "too_deep";
+  }
+  const alertId = idOf(value);
   return alertId === undefined ? { body: { text } } : { body: { text }, alertId };
 }

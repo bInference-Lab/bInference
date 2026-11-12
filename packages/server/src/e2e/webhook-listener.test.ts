@@ -185,6 +185,16 @@ describe("the webhook listener", () => {
     expect(await alerts()).toHaveLength(1);
   });
 
+  it("answers a JSON body nested past 64 levels with 400 and stores nothing", async () => {
+    const { post, alerts } = await start();
+    const deep = `{"id":"deep","pad":${"[".repeat(2_000)}${"]".repeat(2_000)}}`;
+    await expect(post(hook(ruleId, secret), deep)).resolves.toMatchObject({
+      status: 400,
+      body: "",
+    });
+    expect(await alerts()).toHaveLength(0);
+  });
+
   it("accepts a plain-text alert with its body, and answers its repeat with 409", async () => {
     const { post, alerts } = await start();
     const text = "BNBUSDT crossed 600";

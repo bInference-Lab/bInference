@@ -5,7 +5,12 @@ import { type Sha256Hex, sha256Hex, sha256HexOfBytes } from "../records/sha256-h
 import { readAlertBody } from "./alert-body.schema.js";
 import { createReadBudget, createRefusalCounts } from "./intake-bounds.js";
 import type { WebhookAlertStore } from "./ports.js";
-import { isAnswering, type WebhookRuleKey, type WebhookTake } from "./webhook-alert.js";
+import {
+  isAnswering,
+  type WebhookAlertDraft,
+  type WebhookRuleKey,
+  type WebhookTake,
+} from "./webhook-alert.js";
 
 /** One request to the webhook listener's route, `POST /hook/:ruleId/:secret`. */
 export interface WebhookRequest {
@@ -19,9 +24,10 @@ export interface WebhookRequest {
 
 /**
  * The listener's answer: `accepted` (202), `not_found` (404) for an unknown rule, a wrong secret
- * or a rule that is not answering, alike; `repeat` (409) and `rate` (429).
+ * or a rule that is not answering, alike; `repeat` (409), `rate` (429), and `too_deep` (400) for a
+ * JSON body nested past `maxJsonDepth`, which records nothing (decision 0417).
  */
-export type WebhookAnswer = "accepted" | "not_found" | "repeat" | "rate";
+export type WebhookAnswer = "accepted" | "not_found" | "repeat" | "rate" | "too_deep";
 
 /** Takes the alerts the webhook listener receives. */
 export interface WebhookIntake {
@@ -51,6 +57,31 @@ const answers: Readonly<Record<WebhookTake["kind"], WebhookAnswer>> = {
   rate: "rate",
   gone: "not_found",
 };
+
+// The alert a request's body makes for its rule, or `too_deep` for a JSON body nested past the bound,
+// which records nothing (decision 0417).
+function draftOf(
+  request: WebhookRequest,
+  at: {
+    readonly rule: WebhookRuleKey;
+    readonly secretHash: Sha256Hex;
+    readonly receivedAtMs: number;
+    readonly isLocked: boolean;
+  },
+): WebhookAlertDraft | "too_deep" {
+  const read = readAlertBody(request.body);
+  if (read === "too_deep") {
+    return read;
+  }
+  return {
+    rule: at.rule.id,
+    secretHash: at.secretHash,
+    ...read,
+    bodyHash: sha256HexOfBytes(request.body),
+    receivedAtMs: at.receivedAtMs,
+    ...(at.isLocked ? { isEngineLocked: true as const } : {}),
+  };
+}
 
 /**
  * Creates the intake of the webhook listener (spec 1, section 2.2; decisions 0299 and 0333). The
@@ -94,16 +125,11 @@ export function createWebhookIntake(options: {
       if (refusals.isFull(rule.id, rule.ratePerMinute)) {
         return "rate";
       }
-      const read = readAlertBody(request.body);
-      const bodyHash = sha256HexOfBytes(request.body);
-      const draft = {
-        rule: rule.id,
-        secretHash,
-        ...read,
-        bodyHash,
-        receivedAtMs,
-        ...(isLocked() ? { isEngineLocked: true as const } : {}),
-      };
+      const draft = draftOf(request, { rule, secretHash, receivedAtMs, isLocked: isLocked() });
+      if (draft === "too_deep") {
+        refusals.count(rule.id);
+        return "too_deep";
+      }
       const taken = await store.take(draft, call);
       if (taken.kind === "repeat" || taken.kind === "rate") {
         refusals.count(rule.id);
