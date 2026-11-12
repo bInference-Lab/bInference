@@ -1,6 +1,6 @@
 # 0366. Postgres writes run serializable and every ordered read names its order
 
-Status: Accepted
+Status: Amended by 0413
 
 Accepted by the owner on 2026-11-05.
 
