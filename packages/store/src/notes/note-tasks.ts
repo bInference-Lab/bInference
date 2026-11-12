@@ -152,13 +152,16 @@ function searchShort(database: StoreConnection, query: NoteSearch): readonly Not
 }
 
 // SQLite's search: the FTS5 trigram index matches the query as one phrase and ranks the notes.
+// FTS5 folds more letters than ASCII, so a note stays only when it holds the query in the case of
+// every other letter, as on Postgres (decision 0414).
 function searchFts5(database: StoreConnection, query: NoteSearch): readonly NoteRecord[] {
-  const { kysely, execute } = createSyncKysely<AgentTables>(database);
+  const { kysely, execute, holdsText } = createSyncKysely<AgentTables>(database);
   const found = kysely
     .selectFrom("notes_fts")
     .innerJoin("notes", "notes.id", "notes_fts.rowid")
     .selectAll("notes")
     .where("notes_fts.notes_fts", "match", phraseOf(query.query))
+    .where(holdsText("notes.text", query.query))
     .where("notes.agent_id", "=", query.agentId)
     .where("notes.deleted_at", "is", null)
     .orderBy("notes_fts.rank")

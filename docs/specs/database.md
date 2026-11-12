@@ -411,7 +411,8 @@ whole, and one with no markdown and no step is removed.
 Notes never hold a contract or token address as a source for actions
 ([rule 10](../ARCHITECTURE.md#rule-10)); the runtime does not pass note text to propose tools as an
 address ([decision 0206](../DECISIONS.md#d0206)). A query under three characters finds the notes
-whose text holds it.
+whose text holds it. A search of any length ignores the case of ASCII letters only, so other
+letters match as written ([decision 0414](../DECISIONS.md#d0414)).
 
 <a id="section-4"></a>
 

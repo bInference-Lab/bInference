@@ -98,6 +98,30 @@ async function searchesShortQueries(subject: NoteStoreSubject, fence: number): P
   assert.deepEqual(await search("on"), [ids[2]]);
 }
 
+// Letters outside ASCII from their code points: a capital and a small A with diaeresis, and the
+// Russian "hello" in capitals and in small letters.
+const capitalUmlaut = String.fromCodePoint(0xc4);
+const smallUmlaut = String.fromCodePoint(0xe4);
+const helloCapitals = String.fromCodePoint(0x41f, 0x420, 0x418, 0x412, 0x415, 0x422);
+const helloSmall = String.fromCodePoint(0x43f, 0x440, 0x438, 0x432, 0x435, 0x442);
+
+async function foldsAsciiOnly(subject: NoteStoreSubject, fence: number): Promise<void> {
+  const ids = await writeAll(subject, fence, [
+    note(`${capitalUmlaut}RGER with the bank`),
+    note(`${helloCapitals} to the market`),
+  ]);
+  const search = async (query: string): Promise<readonly number[]> =>
+    (await subject.store.search({ agentId: nthId("agt", 1), query, limit: 10 }, go())).map(
+      (record) => record.id,
+    );
+  assert.deepEqual(await search(`${capitalUmlaut}rger WITH`), [ids[0]]);
+  assert.deepEqual(await search(`${smallUmlaut}rger`), []);
+  assert.deepEqual(await search(capitalUmlaut), [ids[0]]);
+  assert.deepEqual(await search(smallUmlaut), []);
+  assert.deepEqual(await search(`${helloCapitals} TO`), [ids[1]]);
+  assert.deepEqual(await search(helloSmall), []);
+}
+
 async function deletesNotes(subject: NoteStoreSubject, fence: number): Promise<void> {
   const { store } = subject;
   const [kept, removed] = await writeAll(subject, fence, [note("keep this"), note("drop this")]);
@@ -154,6 +178,11 @@ export function noteStoreContract(harness: NoteStoreHarness): readonly ContractC
       "finds a note by a query under three characters as a substring, wildcards as themselves",
       create,
       searchesShortQueries,
+    ),
+    fencedCheck(
+      "ignores the case of ASCII letters only, so other letters match as written",
+      create,
+      foldsAsciiOnly,
     ),
     fencedCheck("removes a note from lists and searches, once", create, deletesNotes),
     fencedCheck("refuses every write made with a fence raised since", create, refusesStaleFence),

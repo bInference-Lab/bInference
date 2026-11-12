@@ -3,14 +3,6 @@ import type { NoteRecord } from "../notes/note-record.js";
 import type { NoteStore } from "../ports.js";
 import { holdsFence, inMemory, type MemoryAgentDatabase } from "./memory-agent-database.js";
 
-// The shortest query the trigram index matches; a shorter one is looked for as a substring.
-const shortestQuery = 3;
-
-// The characters of a text, as the trigram index counts them: code points.
-function characters(text: string): number {
-  return text.match(/./gsu)?.length ?? 0;
-}
-
 function isListed(note: NoteRecord, agentId: string): boolean {
   return note.agentId === agentId && note.deletedAtMs === undefined;
 }
@@ -21,15 +13,16 @@ function listedOf(notes: ReadonlyMap<number, NoteRecord>, agentId: string): read
     .toSorted((left, right) => left.id - right.id);
 }
 
-// The notes whose text holds the query: a short one as a substring in any ASCII letter case, as
-// the database's does, a longer one in any letter case.
+// A text with its ASCII capitals made small and every other letter as written, as both databases
+// fold a note search (decision 0414).
+function foldAscii(text: string): string {
+  return text.replace(/[A-Z]+/g, (run) => run.toLowerCase());
+}
+
+// The notes whose text holds the query, folded alike.
 function found(notes: readonly NoteRecord[], query: string): readonly NoteRecord[] {
-  const fold = (text: string): string =>
-    characters(query) < shortestQuery
-      ? text.replace(/[A-Z]+/g, (run) => run.toLowerCase())
-      : text.toLowerCase();
-  const wanted = fold(query);
-  return notes.filter((note) => fold(note.text).includes(wanted));
+  const wanted = foldAscii(query);
+  return notes.filter((note) => foldAscii(note.text).includes(wanted));
 }
 
 /** The {@link NoteStore} of an in-memory agent database. */

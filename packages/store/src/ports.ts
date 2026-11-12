@@ -225,10 +225,11 @@ export interface NoteStore {
   /** An agent's notes that are not removed, oldest first. */
   list(query: NoteList, options: StoreCall): Promise<readonly NoteRecord[]>;
   /**
-   * An agent's notes that are not removed and whose text holds the query, the best match first.
-   * Matching is by runs of three characters, ignoring letter case, so it finds a word inside
-   * Chinese text; a query shorter than three characters is looked for as a substring, ignoring
-   * the case of ASCII letters, oldest note first.
+   * An agent's notes that are not removed and whose text holds the query, ignoring the case of
+   * ASCII letters only (decision 0414), so `%`, `_` and letters of other scripts match as written.
+   * A query of three characters or more is matched by runs of three characters, which finds a
+   * word inside Chinese text, the best match first; a shorter one is looked for as a substring,
+   * the oldest note first.
    */
   search(query: NoteSearch, options: StoreCall): Promise<readonly NoteRecord[]>;
 }
