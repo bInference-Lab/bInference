@@ -32,8 +32,12 @@ export function createSmokeBot(): SmokeBot {
   };
   const http: Http = {
     request: async (request) => {
-      // A long poll for updates holds its answer, so each call is heard as it arrives too.
+      // A long poll for updates holds its answer, so it is heard once the fake holds it too. The
+      // fake records a call only after it read its body, so one heard as it is sent is missed.
       const answering = api.http.request(request);
+      if (new URL(request.url).pathname.endsWith("/getUpdates")) {
+        await Promise.race([answering, api.idle()]);
+      }
       heard();
       const answer = await answering;
       heard();
