@@ -81,6 +81,23 @@ async function storesAndLists(subject: ScheduleSubject): Promise<void> {
   assert.equal(await schedules.get(fixtureId("sch", 9), live()), undefined);
 }
 
+const idsOf = (records: readonly ScheduleRecord[]): readonly string[] =>
+  records.map(({ id }) => id);
+const byNumber = (numbers: readonly number[]): readonly string[] =>
+  numbers.map((n) => fixtureId("sch", n));
+
+// Schedules made in one millisecond and due at one instant list by id, a page of the due at a
+// time, whatever order they were made in.
+async function listsOneInstantById(subject: ScheduleSubject): Promise<void> {
+  const { schedules, agentId } = subject;
+  await inOrder([3, 1, 2], async (n) =>
+    created(subject, { ...schedule(subject, n), nextAtMs: hourMs, createdAtMs: 7 }),
+  );
+  assert.deepEqual(idsOf(await schedules.active({ agentId }, live())), byNumber([1, 2, 3]));
+  const due = await schedules.due({ atMs: hourMs, limit: 2 }, live());
+  assert.deepEqual(idsOf(due), byNumber([1, 2]));
+}
+
 async function holdsFiftyActive(subject: ScheduleSubject): Promise<void> {
   const numbers = Array.from({ length: maxActiveSchedules }, (_, index) => index + 1);
   await inOrder(numbers, async (n) => created(subject, schedule(subject, n)));
@@ -198,6 +215,7 @@ export function scheduleStoreContract(harness: ScheduleStoreHarness): readonly C
   const create = async () => harness.create();
   return [
     checkOn("stores schedules and lists the active and the due ones", create, storesAndLists),
+    checkOn("lists schedules of one millisecond by id", create, listsOneInstantById),
     checkOn("holds at most 50 active schedules per agent", create, holdsFiftyActive),
     checkOn("cancels an active schedule once", create, cancelsOnce),
     checkOn("refuses a schedule id in use, keeping the first", create, refusesIdsInUse),

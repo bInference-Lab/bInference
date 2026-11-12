@@ -230,8 +230,11 @@ function ticketMethods(
       return err("exists");
     }
     tickets.set(ticket.ticketHash, structuredClone(ticket));
-    const over = [...tickets.keys()].slice(0, Math.max(0, tickets.size - maxLaunchTickets));
-    over.forEach((hash) => tickets.delete(hash));
+    // The oldest go first, the least hash first among those of one millisecond, as SQL sorts.
+    const over = [...tickets.values()]
+      .toSorted((a, b) => a.issuedAtMs - b.issuedAtMs || (a.ticketHash < b.ticketHash ? -1 : 1))
+      .slice(0, Math.max(0, tickets.size - maxLaunchTickets));
+    over.forEach(({ ticketHash }) => tickets.delete(ticketHash));
     return ok(structuredClone(ticket));
   };
   return { addLaunchTicket: async (ticket, call) => memoryCall(call, () => add(ticket)) };

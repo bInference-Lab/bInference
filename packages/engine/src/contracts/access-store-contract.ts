@@ -8,6 +8,7 @@ import {
 } from "../access/web-push-subscription-record.js";
 import type { AccessStore } from "../ports.js";
 import { launchChecks } from "./access-launch-checks.js";
+import { accessOrderChecks } from "./access-order-checks.js";
 import { assertRefusesAborted, checkOn, fixtureHash, fixtureId, live } from "./store-fixtures.js";
 
 /** Makes a fresh, empty access store for each check. */
@@ -272,6 +273,7 @@ export function accessStoreContract(harness: AccessStoreHarness): readonly Contr
     ),
     checkOn("uses a pairing code once, before it expires", create, usesCodesOnce),
     ...launchChecks(create),
+    ...accessOrderChecks(create),
     checkOn("refuses every call on an aborted signal and stores nothing", create, refusesAborted),
   ];
 }

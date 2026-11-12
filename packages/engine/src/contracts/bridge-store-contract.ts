@@ -161,6 +161,25 @@ async function listsByState(subject: BridgeStoreSubject): Promise<void> {
   );
 }
 
+// Bridges sent in one millisecond, opened against their intents' order, page by intent id.
+async function pagesOneInstantByIntent(subject: BridgeStoreSubject): Promise<void> {
+  const { store, intentIds } = subject;
+  const [first, second] = intentIds;
+  await store.open(draftOf(second, { depositTx: hashOf("b2") }), live());
+  await store.open(draftOf(first), live());
+  const states = ["in_transit", "late"] as const;
+  const page = await store.list({ states, limit: 1 }, live());
+  assert.deepEqual(
+    page.map((bridge) => bridge.intentId),
+    [first],
+  );
+  const next = await store.list({ states, limit: 1, after: { sentAtMs, intentId: first } }, live());
+  assert.deepEqual(
+    next.map((bridge) => bridge.intentId),
+    [second],
+  );
+}
+
 // Settles the bridge of the intent, under version 0, with the transaction as its fill or refund.
 async function settle(
   store: BridgeStore,
@@ -255,6 +274,7 @@ export function bridgeStoreContract(harness: BridgeStoreHarness): readonly Contr
     ),
     checkOn("settles at most one bridge with one refund", create, refundsOncePerTransaction),
     checkOn("refuses a bridge of an intent it does not hold", create, refusesUnknownIntent),
+    checkOn("pages bridges sent in one millisecond by intent id", create, pagesOneInstantByIntent),
     checkOn("rejects with the signal's reason once the signal aborts", create, refusesAborted),
   ];
 }

@@ -11,6 +11,7 @@ import {
   priceCondition,
   walletCondition,
 } from "./alert-fire-checks.js";
+import { alertOrderChecks } from "./alert-order-checks.js";
 import { assertRefusesAborted, checkOn, fixtureId, inOrder, live } from "./store-fixtures.js";
 
 /** An alert store under test, the agent inbox of the same database, and two agents there. */
@@ -173,6 +174,7 @@ export function alertStoreContract(harness: AlertStoreHarness): readonly Contrac
     checkOn("ends the alerts whose expiry came", create, endsAtExpiry),
     checkOn("refuses an alert id in use, keeping the first", create, refusesIdsInUse),
     ...alertFireChecks.map(([name, check]) => checkOn(name, create, check)),
+    ...alertOrderChecks(create),
     checkOn("refuses a call on an aborted signal and stores nothing", create, refusesAborted),
   ];
 }

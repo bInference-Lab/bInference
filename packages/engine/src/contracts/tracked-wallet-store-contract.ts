@@ -234,6 +234,30 @@ async function listsTradesSince(subject: TrackedWalletSubject): Promise<void> {
   );
 }
 
+// A sale of wallet 1 at `block`, at the one instant such sales share.
+function saleAtOneInstant(block: number): WalletActivity {
+  return { ...saleOf(1, block), atMs: 20_000 };
+}
+
+// Trades of one millisecond page newest stored first and list since one in the order stored.
+async function ordersOneInstantByStore(subject: TrackedWalletSubject): Promise<void> {
+  await track(subject, 1);
+  const trades = [13, 11, 12].map(saleAtOneInstant);
+  const stored = await subject.tracked.record(readOf([10, 13], { trades }), live());
+  const ids = stored.map(({ id }) => id);
+  const account = accountOf(1);
+  const page = await subject.tracked.activity({ account, limit: 2 }, live());
+  assert.deepEqual(
+    page.map(({ id }) => id),
+    ids.toReversed().slice(0, 2),
+  );
+  const since = await subject.tracked.since({ account, afterId: 0, limit: 5 }, live());
+  assert.deepEqual(
+    since.map(({ id }) => id),
+    ids,
+  );
+}
+
 async function dropsRemovedTrades(subject: TrackedWalletSubject): Promise<void> {
   await track(subject, 1);
   const account = accountOf(1);
@@ -284,6 +308,11 @@ export function trackedWalletStoreContract(
     checkOn("tracks no wallet only an archived agent names", create, leavesArchivedAgents),
     checkOn("pages a wallet's trades newest first, by time", create, pagesActivity),
     checkOn("lists a wallet's trades stored after a given one, in order", create, listsTradesSince),
+    checkOn(
+      "pages and lists a wallet's trades of one millisecond in the order stored",
+      create,
+      ordersOneInstantByStore,
+    ),
     checkOn(
       "drops the trades of a block read again that the read no longer holds",
       create,

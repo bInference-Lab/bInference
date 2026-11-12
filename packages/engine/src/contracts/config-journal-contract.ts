@@ -40,6 +40,22 @@ async function recordsInOrder(journal: ConfigJournal): Promise<void> {
   assert.deepEqual(await journal.list({ after: second.id, limit: 2 }, live()), [recorded[2]]);
 }
 
+// A change of `path` at the one instant such changes share.
+function atOneInstant(path: string): ConfigChange {
+  return { atMs: 5_000, by: "engine", surface: "cli", path };
+}
+
+// Changes recorded in one millisecond list in the order recorded, whatever their paths.
+async function listsOneInstantInRecordOrder(journal: ConfigJournal): Promise<void> {
+  const paths = ["agents.main.locale", "agents.main.approval", "agents.main.models"];
+  await inOrder(paths, async (path) => journal.record(atOneInstant(path), live()));
+  const listed = await journal.list({ after: 0, limit: 10 }, live());
+  assert.deepEqual(
+    listed.map((entry) => entry.path),
+    paths,
+  );
+}
+
 async function refusesAborted(journal: ConfigJournal): Promise<void> {
   const [change] = changes;
   assert.ok(change !== undefined);
@@ -53,6 +69,11 @@ export function configJournalContract(harness: ConfigJournalHarness): readonly C
   const create = async (): Promise<ConfigJournal> => harness.create();
   return [
     checkOn("records changes in order and lists them page by page", create, recordsInOrder),
+    checkOn(
+      "lists changes of one millisecond in the order recorded",
+      create,
+      listsOneInstantInRecordOrder,
+    ),
     checkOn("refuses every call on an aborted signal and records nothing", create, refusesAborted),
   ];
 }

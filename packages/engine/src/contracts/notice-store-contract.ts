@@ -135,6 +135,22 @@ async function pagesInRecordedOrder(subject: NoticeStoreSubject): Promise<void> 
   assert.deepEqual(await notices.list({ after: fixtureId("ntc", 99), limit: 10 }, live()), []);
 }
 
+// Low gas notice `n`, recorded at the one instant every such notice shares.
+function lowGasAtOneInstant(n: number, agent: Id<"agt">): NoticeRecord {
+  return { ...lowGas(n, agent), atMs: 5_000 };
+}
+
+// Deliveries of notices of one millisecond queue in the order the notices were recorded.
+async function queuesInRecordedOrder(subject: NoticeStoreSubject): Promise<void> {
+  const records = [9, 8, 7].map((n) => lowGasAtOneInstant(n, subject.agent));
+  await inOrder(records, async (record) => subject.notices.record(record, live()));
+  const queued = await subject.notices.queued({ surface: "telegram", limit: 10 }, live());
+  assert.deepEqual(
+    queued.map((delivery) => delivery.record),
+    records,
+  );
+}
+
 async function firstQueued(subject: NoticeStoreSubject): Promise<number> {
   const [delivery] = await subject.notices.queued({ surface: "telegram", limit: 1 }, live());
   assert.ok(delivery !== undefined);
@@ -253,6 +269,11 @@ export function noticeStoreContract(harness: NoticeStoreHarness): readonly Contr
       "pages notices of one instant in the order recorded, whatever their ids",
       create,
       pagesInRecordedOrder,
+    ),
+    checkOn(
+      "queues the deliveries of one instant in the order recorded",
+      create,
+      queuesInRecordedOrder,
     ),
     checkOn(
       "moves a delivery only from the state it was read in, the notice with it",

@@ -29,6 +29,10 @@ import {
   takenAlert,
   type WebhookRuleStoreSubject,
 } from "./webhook-rule-fixtures.js";
+import {
+  listsRulesOfOneInstantById,
+  ordersAlertsOfOneInstant,
+} from "./webhook-rule-order-checks.js";
 
 /** Makes a fresh, empty rule store for each check. */
 export interface WebhookRuleStoreHarness {
@@ -224,6 +228,12 @@ export function webhookRuleStoreContract(
       listsAlertsAndAnnounces,
     ),
     checkOn("pages a rule's alerts in every outcome, the newest first", fresh, pagesEveryAlert),
+    checkOn("lists rules of one millisecond by id", fresh, listsRulesOfOneInstantById),
+    checkOn(
+      "lists a rule's alerts of one millisecond in the order stored",
+      fresh,
+      ordersAlertsOfOneInstant,
+    ),
     checkOn("refuses every call on an aborted signal and stores nothing", fresh, refusesAborted),
   ];
 }

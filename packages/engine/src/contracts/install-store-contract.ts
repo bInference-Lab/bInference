@@ -147,6 +147,21 @@ async function storesANewWallet(subject: InstallStoreSubject): Promise<void> {
   assert.deepEqual((await store.read(live())).wallets, [made, first.wallet]);
 }
 
+// Wallets made in the setup's millisecond list by id, so the first of a role is the same on every
+// store, whatever order they were made in.
+async function listsOneInstantById(subject: InstallStoreSubject): Promise<void> {
+  const { store } = subject;
+  const first = setup(subject, 2);
+  await store.setUp(first, live());
+  const atSetup = (n: number) => ({ ...wallet(subject, n), createdAtMs: first.atMs });
+  await store.createWallet(atSetup(3), live());
+  await store.createWallet(atSetup(1), live());
+  assert.deepEqual(
+    (await store.read(live())).wallets.map(({ id }) => id),
+    [1, 2, 3].map((n) => fixtureId("wal", n)),
+  );
+}
+
 async function storesRoleWallets(subject: InstallStoreSubject): Promise<void> {
   const { store } = subject;
   const first = setup(subject, 2);
@@ -227,6 +242,7 @@ async function refusesAbortedCalls(subject: InstallStoreSubject): Promise<void> 
 function walletChecks(create: () => Promise<InstallStoreSubject>): readonly ContractCheck[] {
   return [
     checkOn("stores a new wallet beside the ones it holds", create, storesANewWallet),
+    checkOn("lists the wallets made in one millisecond by id", create, listsOneInstantById),
     checkOn(
       "stores an agent's launch and bridge wallets with their role, as a rebuild adopts each",
       create,

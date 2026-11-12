@@ -64,6 +64,16 @@ async function listsByIntent(store: CardCopyStore): Promise<void> {
   assert.deepEqual(await store.ofIntent(otherIntent, live()), [elsewhere]);
 }
 
+// Copies of one millisecond, kept against their message ids' order, list by message id.
+async function listsOneInstantByMessage(store: CardCopyStore): Promise<void> {
+  const inGroup = { ...first, chatId: -100, messageId: 1002 };
+  await store.keep(second, live());
+  await store.keep(inGroup, live());
+  await store.keep(first, live());
+  assert.deepEqual(await store.find(first.ref, live()), [first, inGroup]);
+  assert.deepEqual(await store.ofIntent(intent, live()), [first, inGroup, second]);
+}
+
 async function refusesAborted(store: CardCopyStore): Promise<void> {
   const reason = new Error("stopped by the caller");
   const stopped = { signal: AbortSignal.abort(reason) };
@@ -83,6 +93,10 @@ export function cardCopyStoreContract(harness: CardCopyStoreHarness): readonly C
     { name: "finds no copy before one is kept", run: on(startsEmpty) },
     { name: "finds a card version's copies by its reference, each once", run: on(findsByRef) },
     { name: "lists an intent's copies, the oldest card version first", run: on(listsByIntent) },
+    {
+      name: "lists the copies of one millisecond by message id",
+      run: on(listsOneInstantByMessage),
+    },
     { name: "refuses every call on an aborted signal and keeps nothing", run: on(refusesAborted) },
   ];
 }

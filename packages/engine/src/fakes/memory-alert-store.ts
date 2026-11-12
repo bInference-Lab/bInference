@@ -231,7 +231,10 @@ function fire(
 function end(rows: Rows, atMs: number, limit: number): readonly AlertRecord[] {
   const due = activeOf(rows)
     .filter(({ expiresAtMs }) => expiresAtMs !== undefined && expiresAtMs <= atMs)
-    .toSorted((left, right) => (left.expiresAtMs ?? 0) - (right.expiresAtMs ?? 0))
+    .toSorted(
+      (left, right) =>
+        (left.expiresAtMs ?? 0) - (right.expiresAtMs ?? 0) || (left.id < right.id ? -1 : 1),
+    )
     .slice(0, limit);
   return due.map((alert) => put(rows, { ...alert, state: "ended", changedAtMs: atMs }));
 }
