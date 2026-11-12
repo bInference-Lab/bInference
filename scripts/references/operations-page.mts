@@ -1,5 +1,6 @@
 import type { Formatter } from "@binference/i18n";
 import { type Operation, operations, protocolVersion } from "@binference/protocol";
+import { unservedOperations } from "binference";
 import { code, type ReferencePage, table } from "./reference-page.mjs";
 
 function scopeText(operation: Operation, formatter: Formatter): string {
@@ -16,13 +17,27 @@ function scopeText(operation: Operation, formatter: Formatter): string {
   return `${own}; ${instead}`;
 }
 
+// Who answers a call: the protocol's responder, or no one for an operation the engine leaves
+// unserved.
+function responderText(operation: Operation, formatter: Formatter): string {
+  const reason = unservedOperations.get(operation.name);
+  if (reason === undefined) {
+    return formatter.message(`docs.operations.responder.${operation.answeredBy}`);
+  }
+  if (reason.kind === "replaced") {
+    return formatter.message("docs.operations.unserved.replaced", { operation: code(reason.by) });
+  }
+  const key = reason.kind === "in_cli" ? "inCli" : "notBuilt";
+  return formatter.message(`docs.operations.unserved.${key}`);
+}
+
 function rowOf(operation: Operation, formatter: Formatter): readonly string[] {
   return [
     code(operation.name),
     scopeText(operation, formatter),
     formatter.message(`docs.operations.kind.${operation.kind}`),
     formatter.message(`docs.operations.transport.${operation.transport}`),
-    formatter.message(`docs.operations.responder.${operation.answeredBy}`),
+    responderText(operation, formatter),
   ];
 }
 

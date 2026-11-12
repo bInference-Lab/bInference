@@ -25,6 +25,8 @@ export {
   renderConfigReference,
 } from "./config/reference/config-reference.js";
 export { commandReference } from "./program/command-reference.js";
+export { unservedOperations } from "./compose/unserved-operations.js";
+export type { UnservedReason } from "./compose/unserved-operations.js";
 export type { ReferenceCommand, ReferenceTerm } from "./program/command-reference.js";
 export type { ConfigSchemaSnapshot } from "./config/reference/config-reference.js";
 export type {

@@ -5,7 +5,7 @@ description: "Every operation of the engine protocol: the scope a call needs, wh
 
 <!-- Generated from the code by pnpm docs:gen. Never edit this file: change the code, then run pnpm docs:gen. -->
 
-Every operation of the engine protocol, version 1, by domain. A client calls an operation by its name; the engine refuses a call whose connection lacks the operation's scope. A read changes nothing, a write changes what the engine stores, and a subscription starts or stops pushes for its connection.
+Every operation of the engine protocol, version 1, by domain. A client calls an operation by its name; the engine refuses a call whose connection lacks the operation's scope. A read changes nothing, a write changes what the engine stores, and a subscription starts or stops pushes for its connection. An operation answered by no one is part of the protocol, but the engine does not serve it: a call fails with `protocol.unknown_op`.
 
 ## `engine`
 
@@ -48,9 +48,9 @@ Every operation of the engine protocol, version 1, by domain. A client calls an 
 | --- | --- | --- | --- | --- |
 | `agent/list` | `read` | read | any connection | engine |
 | `agent/get` | `read` | read | any connection | engine |
-| `agent/create` | `admin` | write | any connection | engine |
-| `agent/rename` | `admin` | write | any connection | engine |
-| `agent/archive` | `admin` | write | any connection | engine |
+| `agent/create` | `admin` | write | any connection | no one yet: not built |
+| `agent/rename` | `admin` | write | any connection | no one yet: not built |
+| `agent/archive` | `admin` | write | any connection | no one yet: not built |
 | `agent/goLive` | `admin` | write | IPC only | engine |
 | `agent/goPaper` | `confirm` | write | any connection | engine |
 | `agent/readFile` | `read` | read | any connection | engine |
@@ -78,8 +78,8 @@ Every operation of the engine protocol, version 1, by domain. A client calls an 
 | --- | --- | --- | --- | --- |
 | `wallet/list` | `read` | read | any connection | engine |
 | `wallet/create` | `admin` | write | IPC only | engine |
-| `wallet/rename` | `admin` | write | any connection | engine |
-| `wallet/exportKey` | `admin` | write | IPC only | engine |
+| `wallet/rename` | `admin` | write | any connection | no one yet: not built |
+| `wallet/exportKey` | `admin` | write | IPC only | no one: use `wallet/exportSealed` instead |
 | `wallet/exportSealed` | `admin` | read | IPC only | engine |
 | `wallet/activity` | `read` | read | any connection | engine |
 
@@ -181,7 +181,7 @@ Every operation of the engine protocol, version 1, by domain. A client calls an 
 | `intent/list` | `read` | read | any connection | engine |
 | `intent/confirm` | `confirm` | write | any connection | engine |
 | `intent/deny` | `confirm` | write | any connection | engine |
-| `intent/cancel` | `confirm`; `propose` when the caller cancels its own proposal | write | any connection | engine |
+| `intent/cancel` | `confirm`; `propose` when the caller cancels its own proposal | write | any connection | no one yet: not built |
 
 ## `order`
 
@@ -301,7 +301,7 @@ Every operation of the engine protocol, version 1, by domain. A client calls an 
 | --- | --- | --- | --- | --- |
 | `config/view` | `read` | read | any connection | engine |
 | `config/propose` | `propose` | write | any connection | engine |
-| `config/read` | `admin` | read | any connection | engine |
+| `config/read` | `admin` | read | any connection | no one yet: not built |
 | `config/change` | `admin` | write | any connection | engine |
 | `config/history` | `read` | read | any connection | engine |
 
@@ -448,7 +448,7 @@ Every operation of the engine protocol, version 1, by domain. A client calls an 
 | Operation | Scope | Kind | Accepted | Answered by |
 | --- | --- | --- | --- | --- |
 | `ledger/list` | `read` | read | any connection | engine |
-| `ledger/export` | `read` | write | any connection | engine |
+| `ledger/export` | `read` | write | any connection | no one yet: not built |
 
 ## `backup`
 
@@ -456,7 +456,7 @@ Every operation of the engine protocol, version 1, by domain. A client calls an 
 | --- | --- | --- | --- | --- |
 | `backup/list` | `read` | read | any connection | engine |
 | `backup/create` | `admin` | write | any connection | engine |
-| `backup/restore` | `admin` | write | IPC only | engine |
+| `backup/restore` | `admin` | write | IPC only | no one: the CLI does it without the engine |
 
 ## `update`
 
@@ -469,13 +469,13 @@ Every operation of the engine protocol, version 1, by domain. A client calls an 
 
 | Operation | Scope | Kind | Accepted | Answered by |
 | --- | --- | --- | --- | --- |
-| `check/run` | `read`; `admin` when it repairs what it finds | write | any connection | engine |
+| `check/run` | `read`; `admin` when it repairs what it finds | write | any connection | no one yet: not built |
 
 ## `report`
 
 | Operation | Scope | Kind | Accepted | Answered by |
 | --- | --- | --- | --- | --- |
-| `report/create` | `admin` | write | any connection | engine |
+| `report/create` | `admin` | write | any connection | no one: the CLI does it without the engine |
 
 ## `device`
 
@@ -490,7 +490,7 @@ Every operation of the engine protocol, version 1, by domain. A client calls an 
 | Operation | Scope | Kind | Accepted | Answered by |
 | --- | --- | --- | --- | --- |
 | `token/list` | `admin` | read | any connection | engine |
-| `token/create` | `admin` | write | IPC only | engine |
+| `token/create` | `admin` | write | IPC only | no one: use `token/register` instead |
 | `token/revoke` | `confirm` | write | any connection | engine |
 | `token/register` | `admin` | write | IPC only | engine |
 
@@ -506,9 +506,9 @@ Every operation of the engine protocol, version 1, by domain. A client calls an 
 
 | Operation | Scope | Kind | Accepted | Answered by |
 | --- | --- | --- | --- | --- |
-| `cex/status` | `read` | read | any connection | engine |
-| `cex/connect` | `admin` | write | IPC only | engine |
-| `cex/disconnect` | `confirm` | write | any connection | engine |
+| `cex/status` | `read` | read | any connection | no one yet: not built |
+| `cex/connect` | `admin` | write | IPC only | no one yet: not built |
+| `cex/disconnect` | `confirm` | write | any connection | no one yet: not built |
 
 ## `webPush`
 
@@ -535,19 +535,19 @@ Every operation of the engine protocol, version 1, by domain. A client calls an 
 
 | Operation | Scope | Kind | Accepted | Answered by |
 | --- | --- | --- | --- | --- |
-| `log/follow` | `admin` | subscription | any connection | engine |
-| `log/unfollow` | `admin` | subscription | any connection | engine |
+| `log/follow` | `admin` | subscription | any connection | no one yet: not built |
+| `log/unfollow` | `admin` | subscription | any connection | no one yet: not built |
 
 ## `binanceAgent`
 
 | Operation | Scope | Kind | Accepted | Answered by |
 | --- | --- | --- | --- | --- |
-| `binanceAgent/list` | `read` | read | any connection | engine |
-| `binanceAgent/connect` | `admin` | write | IPC only | engine |
-| `binanceAgent/timeline` | `read` | read | any connection | engine |
-| `binanceAgent/setLimits` | `confirm`; `admin` when a change loosens a limit | write | any connection | engine |
-| `binanceAgent/pause` | `confirm` | write | any connection | engine |
-| `binanceAgent/resume` | `admin` | write | any connection | engine |
-| `binanceAgent/stop` | `confirm` | write | any connection | engine |
-| `binanceAgent/record` | `read` | write | any connection | engine |
-| `binanceAgent/report` | `agent` | write | any connection | engine |
+| `binanceAgent/list` | `read` | read | any connection | no one yet: not built |
+| `binanceAgent/connect` | `admin` | write | IPC only | no one yet: not built |
+| `binanceAgent/timeline` | `read` | read | any connection | no one yet: not built |
+| `binanceAgent/setLimits` | `confirm`; `admin` when a change loosens a limit | write | any connection | no one yet: not built |
+| `binanceAgent/pause` | `confirm` | write | any connection | no one yet: not built |
+| `binanceAgent/resume` | `admin` | write | any connection | no one yet: not built |
+| `binanceAgent/stop` | `confirm` | write | any connection | no one yet: not built |
+| `binanceAgent/record` | `read` | write | any connection | no one yet: not built |
+| `binanceAgent/report` | `agent` | write | any connection | no one yet: not built |

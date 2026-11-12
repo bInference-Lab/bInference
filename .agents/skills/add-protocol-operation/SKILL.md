@@ -70,9 +70,10 @@ version for one stable release.
 - A Telegram fast command may call it only when its scope is `read` or `confirm`
   (`ownerChatOperations`).
 - The self-hosted engine serves every operation of the table but those named, each with why, in
-  `packages/cli/src/e2e/served-operations.test.ts`, which probes the engine `binference start`
-  runs. A new operation is served in the same change, or named there; no surface may call a named
-  one. A surface's fake that answers it proves nothing about the engine.
+  `packages/cli/src/compose/unserved-operations.ts`; `packages/cli/src/e2e/served-operations.test.ts`
+  probes the engine `binference start` runs against it. A new operation is served in the same
+  change, or named there, and `pnpm docs:gen` then shows it on the operations reference; no surface
+  may call a named one. A surface's fake that answers it proves nothing about the engine.
 
 ## 6. Surfaces
 

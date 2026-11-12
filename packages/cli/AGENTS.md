@@ -49,8 +49,9 @@ Rules for this package:
   (`engine-process.test.ts`).
 - `src/e2e/served-operations.test.ts` probes every protocol operation on the engine
   `binference start` runs, with a token of every scope and args no schema takes, so no handler
-  runs: each is served, or named there with why, and no surface's code names a named one. A new
-  operation is served in the same change or named there.
+  runs: each is served, or named with why in `src/compose/unserved-operations.ts`, and no
+  surface's code names a named one. A new operation is served in the same change or named there;
+  the operations reference shows the list.
 - Fork tests in `src/fork/` run engine steps over the real chain parts they are composed from,
   such as the simulation check over the EVM transaction simulator, on the fork suite's BSC fork
   through `@binference/chain-evm/fork`. `self-hosted-start.test.ts` runs `binference start

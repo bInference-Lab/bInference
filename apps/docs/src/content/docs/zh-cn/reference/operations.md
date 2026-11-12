@@ -5,7 +5,7 @@ description: "引擎协议的每个操作：调用所需的权限范围、操作
 
 <!-- Generated from the code by pnpm docs:gen. Never edit this file: change the code, then run pnpm docs:gen. -->
 
-引擎协议第 1 版的每个操作，按领域分组。客户端按名称调用操作；连接缺少该操作的权限范围时，引擎拒绝调用。读取不改变任何状态，写入改变引擎存储的内容，订阅为其连接开始或停止推送。
+引擎协议第 1 版的每个操作，按领域分组。客户端按名称调用操作；连接缺少该操作的权限范围时，引擎拒绝调用。读取不改变任何状态，写入改变引擎存储的内容，订阅为其连接开始或停止推送。回复方为“无”或“暂无”的操作属于协议，但引擎不提供：调用会以 `protocol.unknown_op` 失败。
 
 ## `engine`
 
@@ -48,9 +48,9 @@ description: "引擎协议的每个操作：调用所需的权限范围、操作
 | --- | --- | --- | --- | --- |
 | `agent/list` | `read` | 读取 | 任何连接 | 引擎 |
 | `agent/get` | `read` | 读取 | 任何连接 | 引擎 |
-| `agent/create` | `admin` | 写入 | 任何连接 | 引擎 |
-| `agent/rename` | `admin` | 写入 | 任何连接 | 引擎 |
-| `agent/archive` | `admin` | 写入 | 任何连接 | 引擎 |
+| `agent/create` | `admin` | 写入 | 任何连接 | 暂无：尚未实现 |
+| `agent/rename` | `admin` | 写入 | 任何连接 | 暂无：尚未实现 |
+| `agent/archive` | `admin` | 写入 | 任何连接 | 暂无：尚未实现 |
 | `agent/goLive` | `admin` | 写入 | 仅 IPC | 引擎 |
 | `agent/goPaper` | `confirm` | 写入 | 任何连接 | 引擎 |
 | `agent/readFile` | `read` | 读取 | 任何连接 | 引擎 |
@@ -78,8 +78,8 @@ description: "引擎协议的每个操作：调用所需的权限范围、操作
 | --- | --- | --- | --- | --- |
 | `wallet/list` | `read` | 读取 | 任何连接 | 引擎 |
 | `wallet/create` | `admin` | 写入 | 仅 IPC | 引擎 |
-| `wallet/rename` | `admin` | 写入 | 任何连接 | 引擎 |
-| `wallet/exportKey` | `admin` | 写入 | 仅 IPC | 引擎 |
+| `wallet/rename` | `admin` | 写入 | 任何连接 | 暂无：尚未实现 |
+| `wallet/exportKey` | `admin` | 写入 | 仅 IPC | 无：请改用 `wallet/exportSealed` |
 | `wallet/exportSealed` | `admin` | 读取 | 仅 IPC | 引擎 |
 | `wallet/activity` | `read` | 读取 | 任何连接 | 引擎 |
 
@@ -181,7 +181,7 @@ description: "引擎协议的每个操作：调用所需的权限范围、操作
 | `intent/list` | `read` | 读取 | 任何连接 | 引擎 |
 | `intent/confirm` | `confirm` | 写入 | 任何连接 | 引擎 |
 | `intent/deny` | `confirm` | 写入 | 任何连接 | 引擎 |
-| `intent/cancel` | `confirm`; 调用方取消自己的提议时为 `propose` | 写入 | 任何连接 | 引擎 |
+| `intent/cancel` | `confirm`; 调用方取消自己的提议时为 `propose` | 写入 | 任何连接 | 暂无：尚未实现 |
 
 ## `order`
 
@@ -301,7 +301,7 @@ description: "引擎协议的每个操作：调用所需的权限范围、操作
 | --- | --- | --- | --- | --- |
 | `config/view` | `read` | 读取 | 任何连接 | 引擎 |
 | `config/propose` | `propose` | 写入 | 任何连接 | 引擎 |
-| `config/read` | `admin` | 读取 | 任何连接 | 引擎 |
+| `config/read` | `admin` | 读取 | 任何连接 | 暂无：尚未实现 |
 | `config/change` | `admin` | 写入 | 任何连接 | 引擎 |
 | `config/history` | `read` | 读取 | 任何连接 | 引擎 |
 
@@ -448,7 +448,7 @@ description: "引擎协议的每个操作：调用所需的权限范围、操作
 | 操作 | 权限范围 | 类型 | 接受位置 | 回复方 |
 | --- | --- | --- | --- | --- |
 | `ledger/list` | `read` | 读取 | 任何连接 | 引擎 |
-| `ledger/export` | `read` | 写入 | 任何连接 | 引擎 |
+| `ledger/export` | `read` | 写入 | 任何连接 | 暂无：尚未实现 |
 
 ## `backup`
 
@@ -456,7 +456,7 @@ description: "引擎协议的每个操作：调用所需的权限范围、操作
 | --- | --- | --- | --- | --- |
 | `backup/list` | `read` | 读取 | 任何连接 | 引擎 |
 | `backup/create` | `admin` | 写入 | 任何连接 | 引擎 |
-| `backup/restore` | `admin` | 写入 | 仅 IPC | 引擎 |
+| `backup/restore` | `admin` | 写入 | 仅 IPC | 无：由命令行在不经过引擎的情况下完成 |
 
 ## `update`
 
@@ -469,13 +469,13 @@ description: "引擎协议的每个操作：调用所需的权限范围、操作
 
 | 操作 | 权限范围 | 类型 | 接受位置 | 回复方 |
 | --- | --- | --- | --- | --- |
-| `check/run` | `read`; 修复发现的问题时为 `admin` | 写入 | 任何连接 | 引擎 |
+| `check/run` | `read`; 修复发现的问题时为 `admin` | 写入 | 任何连接 | 暂无：尚未实现 |
 
 ## `report`
 
 | 操作 | 权限范围 | 类型 | 接受位置 | 回复方 |
 | --- | --- | --- | --- | --- |
-| `report/create` | `admin` | 写入 | 任何连接 | 引擎 |
+| `report/create` | `admin` | 写入 | 任何连接 | 无：由命令行在不经过引擎的情况下完成 |
 
 ## `device`
 
@@ -490,7 +490,7 @@ description: "引擎协议的每个操作：调用所需的权限范围、操作
 | 操作 | 权限范围 | 类型 | 接受位置 | 回复方 |
 | --- | --- | --- | --- | --- |
 | `token/list` | `admin` | 读取 | 任何连接 | 引擎 |
-| `token/create` | `admin` | 写入 | 仅 IPC | 引擎 |
+| `token/create` | `admin` | 写入 | 仅 IPC | 无：请改用 `token/register` |
 | `token/revoke` | `confirm` | 写入 | 任何连接 | 引擎 |
 | `token/register` | `admin` | 写入 | 仅 IPC | 引擎 |
 
@@ -506,9 +506,9 @@ description: "引擎协议的每个操作：调用所需的权限范围、操作
 
 | 操作 | 权限范围 | 类型 | 接受位置 | 回复方 |
 | --- | --- | --- | --- | --- |
-| `cex/status` | `read` | 读取 | 任何连接 | 引擎 |
-| `cex/connect` | `admin` | 写入 | 仅 IPC | 引擎 |
-| `cex/disconnect` | `confirm` | 写入 | 任何连接 | 引擎 |
+| `cex/status` | `read` | 读取 | 任何连接 | 暂无：尚未实现 |
+| `cex/connect` | `admin` | 写入 | 仅 IPC | 暂无：尚未实现 |
+| `cex/disconnect` | `confirm` | 写入 | 任何连接 | 暂无：尚未实现 |
 
 ## `webPush`
 
@@ -535,19 +535,19 @@ description: "引擎协议的每个操作：调用所需的权限范围、操作
 
 | 操作 | 权限范围 | 类型 | 接受位置 | 回复方 |
 | --- | --- | --- | --- | --- |
-| `log/follow` | `admin` | 订阅 | 任何连接 | 引擎 |
-| `log/unfollow` | `admin` | 订阅 | 任何连接 | 引擎 |
+| `log/follow` | `admin` | 订阅 | 任何连接 | 暂无：尚未实现 |
+| `log/unfollow` | `admin` | 订阅 | 任何连接 | 暂无：尚未实现 |
 
 ## `binanceAgent`
 
 | 操作 | 权限范围 | 类型 | 接受位置 | 回复方 |
 | --- | --- | --- | --- | --- |
-| `binanceAgent/list` | `read` | 读取 | 任何连接 | 引擎 |
-| `binanceAgent/connect` | `admin` | 写入 | 仅 IPC | 引擎 |
-| `binanceAgent/timeline` | `read` | 读取 | 任何连接 | 引擎 |
-| `binanceAgent/setLimits` | `confirm`; 修改放宽了限额时为 `admin` | 写入 | 任何连接 | 引擎 |
-| `binanceAgent/pause` | `confirm` | 写入 | 任何连接 | 引擎 |
-| `binanceAgent/resume` | `admin` | 写入 | 任何连接 | 引擎 |
-| `binanceAgent/stop` | `confirm` | 写入 | 任何连接 | 引擎 |
-| `binanceAgent/record` | `read` | 写入 | 任何连接 | 引擎 |
-| `binanceAgent/report` | `agent` | 写入 | 任何连接 | 引擎 |
+| `binanceAgent/list` | `read` | 读取 | 任何连接 | 暂无：尚未实现 |
+| `binanceAgent/connect` | `admin` | 写入 | 仅 IPC | 暂无：尚未实现 |
+| `binanceAgent/timeline` | `read` | 读取 | 任何连接 | 暂无：尚未实现 |
+| `binanceAgent/setLimits` | `confirm`; 修改放宽了限额时为 `admin` | 写入 | 任何连接 | 暂无：尚未实现 |
+| `binanceAgent/pause` | `confirm` | 写入 | 任何连接 | 暂无：尚未实现 |
+| `binanceAgent/resume` | `admin` | 写入 | 任何连接 | 暂无：尚未实现 |
+| `binanceAgent/stop` | `confirm` | 写入 | 任何连接 | 暂无：尚未实现 |
+| `binanceAgent/record` | `read` | 写入 | 任何连接 | 暂无：尚未实现 |
+| `binanceAgent/report` | `agent` | 写入 | 任何连接 | 暂无：尚未实现 |

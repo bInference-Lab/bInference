@@ -311,6 +311,17 @@ Operation names are `domain/action`: a singular domain, then a camelCase action.
 **write** (needs `key`); **local** (IPC only). Routed operations (marked R) are answered by the
 agent runtime through the engine; when the runtime is down they fail with `runtime.unavailable`.
 
+Some rows are not served, and a call of one fails with `protocol.unknown_op`. Not built yet:
+`agent/create`, `agent/rename`, `agent/archive`, `wallet/rename`, `intent/cancel`, `check/run`,
+`config/read`, `ledger/export`, `log/follow`, `log/unfollow`, and the `binanceAgent` and `cex`
+rows. Served by no engine: `backup/restore` and `report/create`, which the CLI runs itself
+([decisions 0152](../DECISIONS.md#d0152) and [0263](../DECISIONS.md#d0263)); `token/create`, in
+whose place the CLI calls `token/register` ([decision 0154](../DECISIONS.md#d0154)); and
+`wallet/exportKey`, in whose place a key leaves only through `wallet/exportSealed`
+([decision 0131](../DECISIONS.md#d0131)). The CLI's `unservedOperations` holds this list; a test
+fails when the engine `binference start` runs serves an operation outside it or leaves one unlisted,
+and when a surface's code names one. The generated operations reference shows the same.
+
 Long operations return `{ job }` at once and report through the `job` topic. A job ends with one
 push: `job/done` `{ job, op, result }`, whose `result` has the shape the operation's row names, or
 `job/failed` `{ job, op, error }`, whose `error` is an error of section 10. A client subscribes to

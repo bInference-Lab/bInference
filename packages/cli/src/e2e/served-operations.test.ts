@@ -16,60 +16,17 @@ import { afterEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 import { ipcWebSocket } from "../commands/connect-engine.js";
 import { engineEndpoint, platformOf } from "../compose/engine-locations.js";
+import { type UnservedReason, unservedOperations } from "../compose/unserved-operations.js";
 import type { InitMachine } from "./init-fixtures.js";
 import { connectClient, hostOn } from "./test-host.js";
 import { createRunningEngines } from "./unlock-fixtures.js";
 
-// Every protocol operation is served by the engine `binference start` runs, but those named
-// below, and no surface names one of those. A surface's own tests can pass on a fake that answers
-// an operation the engine never serves: the agent's wallets, quote and token tools once called
-// four such operations, and every call failed `protocol.unknown_op`.
+// Every protocol operation is served by the engine `binference start` runs, but those
+// `unservedOperations` names, and no surface names one of those. A surface's own tests can pass on
+// a fake that answers an operation the engine never serves: the agent's wallets, quote and token
+// tools once called four such operations, and every call failed `protocol.unknown_op`.
 
-const notBuiltExchange = "Not built: the Binance exchange account and its agents come later.";
-const logsInTheCli = "Not built: `binference logs` reads and follows the log files in the CLI.";
-
-/** The operations the self-hosted engine leaves unserved, each with why. */
-const unservedOperations: Readonly<Partial<Record<OperationName, string>>> = {
-  "agent/archive": "Not built: no surface archives an agent yet.",
-  "agent/create": "Not built: `binference init` makes the install's one agent.",
-  "agent/rename": "Not built: an agent keeps the name `binference init` gave it.",
-  "backup/restore":
-    "Decision 0152: `binference backup restore` restores in the CLI, which needs the owner key " +
-    "for the whole restore.",
-  "binanceAgent/connect": notBuiltExchange,
-  "binanceAgent/list": notBuiltExchange,
-  "binanceAgent/pause": notBuiltExchange,
-  "binanceAgent/record": notBuiltExchange,
-  "binanceAgent/report": notBuiltExchange,
-  "binanceAgent/resume": notBuiltExchange,
-  "binanceAgent/setLimits": notBuiltExchange,
-  "binanceAgent/stop": notBuiltExchange,
-  "binanceAgent/timeline": notBuiltExchange,
-  "cex/connect": notBuiltExchange,
-  "cex/disconnect": notBuiltExchange,
-  "cex/status": notBuiltExchange,
-  "check/run": "Not built: `binference check` runs its checks in the CLI.",
-  "config/read":
-    "Not built: `binference config` reads config.json5 in the CLI, and chats read the settings " +
-    "with `config/view`.",
-  "intent/cancel":
-    "Not built: the owner turns a card down with `intent/deny`; a proposer cannot withdraw its " +
-    "own card yet.",
-  "ledger/export": "Not built: no surface exports the ledger as CSV yet.",
-  "log/follow": logsInTheCli,
-  "log/unfollow": logsInTheCli,
-  "report/create":
-    "Decision 0263: `binference report` writes the support bundle in the CLI, so it works while " +
-    "the engine is stopped.",
-  "token/create":
-    "Decision 0154: the CLI makes a token and registers only its hash with `token/register`, so " +
-    "no secret reaches the idempotency store.",
-  "wallet/exportKey":
-    "Decision 0131: a key leaves custody only sealed, with `wallet/exportSealed`.",
-  "wallet/rename": "Not built: a wallet keeps the label it was made with.",
-};
-
-const unservedNames = (Object.keys(unservedOperations) as OperationName[]).toSorted();
+const unservedNames = [...unservedOperations.keys()].toSorted();
 
 // What the probe sends: no operation's args schema takes it, so no handler runs.
 const probeArgs = { servedProbe: true };
@@ -189,6 +146,11 @@ function namesAnswering(found: ReadonlyMap<OperationName, Answer>, answer: Answe
 
 const callable = (Object.keys(operations) as OperationName[]).filter(isCallable);
 
+// The operations served in the place of those an operation replaced.
+function replacementsOf(reasons: ReadonlyMap<string, UnservedReason>): readonly OperationName[] {
+  return [...reasons.values()].flatMap((reason) => (reason.kind === "replaced" ? [reason.by] : []));
+}
+
 // The packages that call the engine: the agent runtime, the MCP server, the owner's bot, terminal
 // chat, the console and the CLI's commands. Tests, fakes and the CLI's test machines and model
 // evaluation answer operations in the engine's place, so they are not read.
@@ -196,13 +158,20 @@ const repo = fileURLToPath(new URL("../../../../", import.meta.url));
 const surfaces = ["runtime", "mcp", "telegram", "tui", "console", "cli"];
 const notSurfaceCode =
   /\.test\.tsx?$|(?:^|\/)(?:testing|fakes|e2e|fork|crash|image|packed|evaluation)\//;
+// The list of unserved operations names each one, and is read by no surface.
+const unservedList = "cli/src/compose/unserved-operations.ts";
 // An operation's name in quotes is a call or a type naming one; a name in backticks is prose.
 const quotedName = /["']([a-zA-Z]+\/[a-zA-Z]+)["']/g;
 
 async function quotedNamesIn(surface: string): Promise<readonly string[]> {
   const folder = join(repo, "packages", surface, "src");
   const files = await listFolderFiles(folder, live().signal);
-  const sources = files.filter((file) => /\.tsx?$/.test(file) && !notSurfaceCode.test(file));
+  const sources = files.filter(
+    (file) =>
+      /\.tsx?$/.test(file) &&
+      !notSurfaceCode.test(file) &&
+      `${surface}/src/${file}` !== unservedList,
+  );
   const reads = await Promise.all(
     sources.map(async (file) => ({
       file,
@@ -236,12 +205,17 @@ describe("the operations the self-hosted engine serves", () => {
     expect(namesAnswering(found, "device_only")).toStrictEqual(
       [...deviceOnlyOperations].toSorted(),
     );
+    const replacements = replacementsOf(unservedOperations);
+    expect(replacements.map((name) => [name, found.get(name)])).toStrictEqual(
+      replacements.map((name) => [name, "served"]),
+    );
   });
 
   it("names no unserved operation in a surface's code", async () => {
     const named = (await Promise.all(surfaces.map(quotedNamesIn))).flat();
-    const unserved = new Set<string>(unservedNames);
-    const calls = named.filter((line) => unserved.has(line.slice(line.lastIndexOf(" ") + 1)));
+    const calls = named.filter((line) =>
+      unservedOperations.has(line.slice(line.lastIndexOf(" ") + 1)),
+    );
     expect(named.length).toBeGreaterThan(100);
     expect(calls).toStrictEqual([]);
   });
