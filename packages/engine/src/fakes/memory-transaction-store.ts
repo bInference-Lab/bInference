@@ -164,15 +164,34 @@ function nextNonceOf(
   return grant;
 }
 
+// The same save run again, its intent, step and bytes at the account's nonce in a state that
+// still holds the nonce or a block's, answers the transaction it stored, as its first run did
+// (decision 0413).
 function saveSigned(
   rows: MemoryRows,
   transaction: SignedTransaction,
 ): Result<TransactionRecord, "nonce_taken"> {
-  if (!isNonceFree(transaction.nonce, heldNonces(rows.all(), transaction.account))) {
-    return err("nonce_taken");
+  const { account, nonce, intentId, step, raw } = transaction;
+  const replayed = rows
+    .all()
+    .find((stored) =>
+      [
+        stored.account === account,
+        stored.nonce === nonce,
+        stored.intentId === intentId,
+        stored.step === step,
+        stored.raw === raw,
+        [...holdingStates, ...inBlockStates].includes(stored.state),
+      ].every(Boolean),
+    );
+  if (replayed !== undefined) {
+    return ok(structuredClone(replayed));
   }
   if (rows.all().some((stored) => stored.id === transaction.id)) {
     throw constraintFault(`the transaction id ${transaction.id} is in use`);
+  }
+  if (!isNonceFree(transaction.nonce, heldNonces(rows.all(), transaction.account))) {
+    return err("nonce_taken");
   }
   const record: TransactionRecord = { ...structuredClone(transaction), state: "signed" };
   rows.add(record);

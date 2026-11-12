@@ -255,8 +255,9 @@ export interface IntentStore extends LandedLate, StoredAssetsRead {
  */
 export interface LedgerStore {
   /**
-   * Places a draft at the end of the chain and returns it with its `seq` and hashes. An id in use
-   * throws `store.constraint` and appends nothing.
+   * Places a draft at the end of the chain and returns it with its `seq` and hashes. The same
+   * append run again, after a commit in doubt, answers the entry it stored (decision 0413); an id
+   * in use with other content throws `store.constraint` and appends nothing.
    */
   append(draft: LedgerDraft, options: StoreCall): Promise<LedgerEntry>;
   /** Entries with a `seq` after `page.after`, in order, at most `page.limit`. */
@@ -276,7 +277,9 @@ export interface PositionStore {
   /**
    * Stores an execution and its position writes, and returns the execution with its number. A
    * position whose row is not at the write's `readVersion`, or a new position whose row exists,
-   * is `stale` and stores nothing. Two writes to one position throw `store.constraint`.
+   * is `stale` and stores nothing. Two writes to one position throw `store.constraint`. The same
+   * write run again, after a commit in doubt, answers the execution its intent stored with the
+   * same content, number included (decision 0413).
    */
   record(write: ExecutionWrite, options: StoreCall): Promise<Result<ExecutionRecord, "stale">>;
   /** Executions that match the query, in the order recorded. */
@@ -324,7 +327,10 @@ export interface TransactionStore {
   /**
    * Stores a signed transaction in `signed`, before any send. A nonce that is not free (a
    * `signed` or `sent` transaction of the account holds it, or a block holds it or a later nonce)
-   * is `nonce_taken` and stores nothing. An id in use throws `store.constraint`.
+   * is `nonce_taken` and stores nothing. The same save run again, after a commit in doubt, with
+   * the same intent, step and bytes at the account's nonce, answers the transaction it stored
+   * while that one holds the nonce or a block does (decision 0413); other bytes there stay
+   * `nonce_taken`. An id in use with other content throws `store.constraint`.
    */
   saveSigned(
     transaction: SignedTransaction,

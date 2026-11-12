@@ -66,8 +66,10 @@ export interface OrderStore {
    * Counts a live fill that landed on its order apart from its intent's move (decision 0211): the
    * write's order moves and its `filled` row, which names the intent, all or nothing. An intent
    * that has a `filled` row already is `counted`, and an order at another version `stale`; either
-   * writes nothing. A row that is no `filled` row naming its intent, or one without its order's
-   * own move to one fill more, throws `store.constraint`.
+   * writes nothing. The same write run again, after a commit in doubt, whose row is the one that
+   * counts its intent, answers the orders its moves name as they stand (decision 0413). A row
+   * that is no `filled` row naming its intent, or one without its order's own move to one fill
+   * more, throws `store.constraint`.
    */
   recordLandedFill(
     write: OrderFillWrite,

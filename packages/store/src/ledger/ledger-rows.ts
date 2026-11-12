@@ -1,6 +1,7 @@
 import { BinferenceError } from "@binference/core";
 import {
   chainLedgerEntry,
+  holdsLedgerDraft,
   type LedgerDraft,
   type LedgerEntry,
   ledgerEntrySchema,
@@ -32,6 +33,15 @@ function ledgerEntryOf(database: StoreConnection, id: string): LedgerEntry | und
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
   const row = takeFirst(kysely.selectFrom("ledger").selectAll().where("id", "=", id));
   return row === undefined ? undefined : toLedgerEntry(row);
+}
+
+/**
+ * The entry a draft's append stored, when the entry under its id holds exactly the draft: the
+ * same append run again answers it, as its first run did (decision 0413).
+ */
+export function appendedAs(database: StoreConnection, draft: LedgerDraft): LedgerEntry | undefined {
+  const stored = ledgerEntryOf(database, draft.id);
+  return stored !== undefined && holdsLedgerDraft(stored, draft) ? stored : undefined;
 }
 
 /**

@@ -18,6 +18,7 @@ import { countsFillsAndSkips } from "./order-count-checks.js";
 import {
   announcesFillNotices,
   announcesRowsOfOneInstantAsWritten,
+  answersAReplayedLandedFill,
   countsALandedFillOnce,
   linksALateLandingWithItsFill,
   listsTheFillsInFlight,
@@ -210,6 +211,11 @@ function liveFillChecks(create: () => Promise<OrderStoreSubject>): readonly Cont
       "counts a landed fill once, apart from its intent's move",
       create,
       countsALandedFillOnce,
+    ),
+    checkOn(
+      "answers a landed fill run again as it first did and counts nothing more",
+      create,
+      answersAReplayedLandedFill,
     ),
     checkOn(
       "links a late landing with its fill on its order",

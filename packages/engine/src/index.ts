@@ -188,7 +188,7 @@ export type {
 } from "./intents/state-machine.js";
 export type { TransitionProblem } from "./intents/transition-guard.js";
 export { listTransitions, type TransitionRule } from "./intents/transition-table.js";
-export { ledgerDraftSchema, ledgerEntrySchema } from "./ledger/ledger-entry.js";
+export { holdsLedgerDraft, ledgerDraftSchema, ledgerEntrySchema } from "./ledger/ledger-entry.js";
 export type { LedgerDraft, LedgerEntry } from "./ledger/ledger-entry.js";
 export { chainLedgerEntry, genesisLedgerHash, hashLedgerEntry } from "./ledger/ledger-hash.js";
 export { checkLedgerChain, genesisCheckpoint } from "./ledger/check-ledger-chain.js";

@@ -1,6 +1,7 @@
 import { BinferenceError, err, type Id, idSchema, ok, type Result } from "@binference/core";
 import {
   holdingStates,
+  inBlockStates,
   isNonceFree,
   lowestFreeNonce,
   type NonceGrant,
@@ -53,7 +54,11 @@ export const nextNonceTask: StoreTask<NonceRequest, NonceGrant> = defineTask({
   },
 });
 
-/** Stores a signed transaction at its nonce when the nonce is free. */
+/**
+ * Stores a signed transaction at its nonce when the nonce is free. The same save run again, the
+ * same intent, step and bytes at the account's nonce, answers the transaction it stored, as its
+ * first run did (decision 0413).
+ */
 export const saveSignedTask: StoreTask<
   SignedTransaction,
   Result<TransactionRecord, "nonce_taken">
@@ -63,6 +68,10 @@ export const saveSignedTask: StoreTask<
   input: signedTransactionSchema,
   output: resultSchema(transactionRecordSchema, ["nonce_taken"]),
   run(database, transaction) {
+    const replayed = storedSave(database, transaction);
+    if (replayed !== undefined) {
+      return ok(replayed);
+    }
     if (readTransaction(database, transaction.id) !== undefined) {
       throw constraint("A signed transaction takes an id of its own.", transaction.id);
     }
@@ -83,6 +92,27 @@ function constraint(message: string, transaction: Id<"tx">): BinferenceError {
 function readTransaction(database: StoreConnection, id: Id<"tx">): TransactionRecord | undefined {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
   const row = takeFirst(kysely.selectFrom("txs").selectAll().where("id", "=", id));
+  return row === undefined ? undefined : toTransactionRecord(row);
+}
+
+// The step a save stored before at its account's nonce, with its intent, step and bytes, in a
+// state that still holds the nonce or a block's; a dropped or superseded row is no longer it.
+function storedSave(
+  database: StoreConnection,
+  transaction: SignedTransaction,
+): TransactionRecord | undefined {
+  const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
+  const row = takeFirst(
+    kysely
+      .selectFrom("txs")
+      .selectAll()
+      .where("account", "=", transaction.account)
+      .where("nonce", "=", transaction.nonce)
+      .where("intent_id", "=", transaction.intentId)
+      .where("step", "=", transaction.step)
+      .where("raw", "=", transaction.raw)
+      .where("state", "in", [...holdingStates, ...inBlockStates]),
+  );
   return row === undefined ? undefined : toTransactionRecord(row);
 }
 

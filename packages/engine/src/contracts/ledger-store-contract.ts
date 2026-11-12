@@ -71,6 +71,17 @@ async function refusesTakenIds(subject: LedgerStoreSubject): Promise<void> {
   assert.deepEqual(await subject.ledger.list({ after: 0, limit: 10 }, live()), [first]);
 }
 
+// The same append run again, as a caller does after a commit in doubt, answers the entry it
+// stored, after other entries too, and appends nothing more (decision 0413).
+async function answersAReplayedAppend(subject: LedgerStoreSubject): Promise<void> {
+  const { ledger } = subject;
+  const first = await ledger.append(draft(subject, 1), live());
+  assert.deepEqual(await ledger.append(draft(subject, 1), live()), first);
+  const second = await ledger.append(draft(subject, 2), live());
+  assert.deepEqual(await ledger.append(draft(subject, 1), live()), first);
+  assert.deepEqual(await ledger.list({ after: 0, limit: 10 }, live()), [first, second]);
+}
+
 async function refusesAborted(subject: LedgerStoreSubject): Promise<void> {
   const { ledger } = subject;
   await assertRefusesAborted(async (options) => ledger.append(draft(subject, 1), options));
@@ -90,6 +101,11 @@ export function ledgerStoreContract(harness: LedgerStoreHarness): readonly Contr
       "refuses a second entry with an id in use and appends nothing",
       create,
       refusesTakenIds,
+    ),
+    checkOn(
+      "answers an append run again as it first did and appends nothing more",
+      create,
+      answersAReplayedAppend,
     ),
     checkOn("refuses every call on an aborted signal and appends nothing", create, refusesAborted),
   ];

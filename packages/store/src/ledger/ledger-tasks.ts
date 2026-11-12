@@ -10,15 +10,18 @@ import { z } from "zod";
 import type { EngineTables } from "../databases/engine-tables.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { defineTask, type StoreTask, type TaskRunner } from "../tasks/store-task.js";
-import { appendLedgerEntry, toLedgerEntry } from "./ledger-rows.js";
+import { appendedAs, appendLedgerEntry, toLedgerEntry } from "./ledger-rows.js";
 
-/** Appends one entry at the end of the chain. */
+/**
+ * Appends one entry at the end of the chain. The same append run again answers the entry it
+ * stored (decision 0413).
+ */
 export const appendLedgerTask: StoreTask<LedgerDraft, LedgerEntry> = defineTask({
   name: "ledger.append",
   access: "write",
   input: ledgerDraftSchema,
   output: ledgerEntrySchema,
-  run: (database, draft) => appendLedgerEntry(database, draft),
+  run: (database, draft) => appendedAs(database, draft) ?? appendLedgerEntry(database, draft),
 });
 
 /** Lists the entries after a seq, in order. */

@@ -45,3 +45,18 @@ export const ledgerEntrySchema: z.ZodType<LedgerEntry> = z.strictObject({
   prevHash: sha256HexSchema,
   hash: sha256HexSchema,
 });
+
+/**
+ * Whether a stored entry holds exactly `draft`: the same append run again answers it, as its
+ * first run did, rather than refusing its own id (decision 0413).
+ */
+export function holdsLedgerDraft(entry: LedgerEntry, draft: LedgerDraft): boolean {
+  return (
+    entry.id === draft.id &&
+    entry.atMs === draft.atMs &&
+    entry.agentId === draft.agentId &&
+    entry.kind === draft.kind &&
+    entry.subject === draft.subject &&
+    JSON.stringify(entry.data) === JSON.stringify(draft.data)
+  );
+}

@@ -61,6 +61,31 @@ function readVersion(database: StoreConnection, key: PositionKey): number | unde
   return row?.version;
 }
 
+// Whether a position's row holds what `write` set, at the version after the one it read: nothing
+// moved it since that write.
+function holdsPositionWrite(database: StoreConnection, write: PositionWrite): boolean {
+  const { position, readVersion: read } = write;
+  const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
+  const row = takeFirst(
+    kysely
+      .selectFrom("positions")
+      .selectAll()
+      .where("wallet_id", "=", position.walletId)
+      .where("asset", "=", position.asset)
+      .where("paper", "=", position.isPaper ? 1 : 0),
+  );
+  return (
+    row !== undefined &&
+    [
+      row.version === (read === undefined ? 0 : read + 1),
+      row.quantity === decimalText(position.quantityBase),
+      row.cost_usd_micros === decimalText(position.costUsdMicros),
+      row.realized_usd_micros === position.realizedUsdMicros.toString(),
+      row.changed_at === position.changedAtMs,
+    ].every(Boolean)
+  );
+}
+
 function writeOne(database: StoreConnection, { position, readVersion: read }: PositionWrite): void {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
   const columns = {
@@ -155,6 +180,36 @@ function toExecutionRecord(row: Selectable<ExecutionsTable>): ExecutionRecord {
     gasUsdMicros: row.gas_usd_micros,
     realizedUsdMicros: row.realized_usd_micros,
   });
+}
+
+/**
+ * The execution `write` stored, when its intent holds one with exactly the row it would store and
+ * each position it names still holds what it set: the same write run again answers it, as its
+ * first run did (decision 0413). Once another write moved one of those positions, the write is
+ * judged anew, and answers `stale`.
+ */
+export function storedExecutionOf(
+  database: StoreConnection,
+  write: ExecutionWrite,
+): ExecutionRecord | undefined {
+  if (!write.positions.every((change) => holdsPositionWrite(database, change))) {
+    return undefined;
+  }
+  const { kysely, execute } = createSyncKysely<EngineTables>(database);
+  const expected: Readonly<Record<string, string | number | null | undefined>> =
+    executionRow(write);
+  const rows = execute(
+    kysely
+      .selectFrom("executions")
+      .selectAll()
+      .where("intent_id", "=", write.execution.intentId)
+      .orderBy("id"),
+  ).rows;
+  const stored = rows.find((row) => {
+    const columns: Readonly<Record<string, string | number | null>> = row;
+    return Object.keys(expected).every((key) => columns[key] === expected[key]);
+  });
+  return stored === undefined ? undefined : toExecutionRecord(stored);
 }
 
 /** An arrival draft as its row stores it. */

@@ -482,8 +482,10 @@ three times more; then it fails `store.write_conflict`. A write that fails with 
 and fails `store.constraint` when it meets one again ([decision 0413](../DECISIONS.md#d0413)). A
 write task that inserts a key its caller chose reads that key first, so its rerun finds the row and
 gives the store port's own answer. A connection lost while `COMMIT` is in flight fails
-`store.commit_unknown` and is never retried. The worker keeps one writer per database: an
-install's write tasks run one at a time, in arrival order ([decision 0366](../DECISIONS.md#d0366)).
+`store.commit_unknown` and is never retried by the store; the caller replays the same write, and a
+money write (a signed step, a ledger entry, an execution, a landed fill) answers its own replay as
+its first run did. The worker keeps one writer per database: an install's write tasks run one at
+a time, in arrival order ([decision 0366](../DECISIONS.md#d0366)).
 
 <a id="section-6-2"></a>
 

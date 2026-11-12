@@ -99,6 +99,29 @@ async function refusesUsedIds(subject: TransactionStoreSubject): Promise<void> {
   assert.deepEqual(await grant(subject, 5), { nonce: 6, refillsGap: false });
 }
 
+// The same save run again, as a caller does after a commit in doubt, answers what it stored and
+// stores nothing more; other bytes of the intent's step at that nonce stay `nonce_taken`
+// (decision 0413).
+async function answersAReplayedSave(subject: TransactionStoreSubject): Promise<void> {
+  const { store, accounts } = subject;
+  const { nonce } = await grant(subject, 5);
+  const save = signed(subject, 1, nonce);
+  const first = await store.saveSigned(save, live());
+  assert.ok(first.ok);
+  assert.deepEqual(await store.saveSigned(save, live()), first);
+  const resigned = { ...signed(subject, 3, nonce), intentId: save.intentId, step: save.step };
+  assert.deepEqual(await store.saveSigned(resigned, live()), { ok: false, error: "nonce_taken" });
+  const listed = await store.list({ account: accounts[0], fromNonce: 0, limit: 10 }, live());
+  assert.deepEqual(listed, [first.value]);
+  // A dropped step is no longer the save it was: the same bytes stored again are a new row.
+  await subject.setState(save.id, "dropped");
+  const again = { ...save, id: fixtureId("tx", 9) };
+  assert.deepEqual(await store.saveSigned(again, live()), {
+    ok: true,
+    value: { ...again, state: "signed" },
+  });
+}
+
 // Refills take ids below and above the dropped ones', so the rows of one nonce list by id. The
 // limit cuts the last row.
 async function listsByNonce(subject: TransactionStoreSubject): Promise<void> {
@@ -158,6 +181,7 @@ export function transactionStoreContract(
     on("stores a transaction at the nonce of a dropped one", freesDroppedNonces),
     on("keeps each account's nonces apart", keepsAccountsApart),
     on("throws store.constraint for an id in use and stores nothing", refusesUsedIds),
+    on("answers a save run again as it first did and stores nothing more", answersAReplayedSave),
     on("lists one account's transactions by nonce, from a nonce up", listsByNonce),
     on("lists one intent's transactions by step", listsByIntent),
     on("changes nothing on an aborted signal", refusesAborted),

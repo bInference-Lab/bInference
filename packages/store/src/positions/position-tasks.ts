@@ -26,6 +26,7 @@ import {
   listArrivals,
   listExecutions,
   movePositions,
+  storedExecutionOf,
   toPositionRecord,
 } from "./position-rows.js";
 
@@ -49,7 +50,10 @@ export const listPositionsTask: StoreTask<PositionQuery, readonly PositionRecord
   },
 });
 
-/** Stores an execution with its position writes, or nothing when a position moved first. */
+/**
+ * Stores an execution with its position writes, or nothing when a position moved first. The same
+ * write run again answers the execution it stored (decision 0413).
+ */
 export const recordExecutionTask: StoreTask<
   ExecutionWrite,
   Result<ExecutionRecord, "stale">
@@ -59,6 +63,10 @@ export const recordExecutionTask: StoreTask<
   input: executionWriteSchema,
   output: resultSchema(executionRecordSchema, ["stale"]),
   run(database, write) {
+    const replayed = storedExecutionOf(database, write);
+    if (replayed !== undefined) {
+      return ok(replayed);
+    }
     if (!movePositions(database, write.positions)) {
       return err("stale");
     }

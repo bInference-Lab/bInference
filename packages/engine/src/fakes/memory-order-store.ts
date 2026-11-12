@@ -3,7 +3,7 @@ import { err, type Id, ok, type Result } from "@binference/core";
 import type { StoredConfirmation } from "../intents/confirmation-record.js";
 import type { IntentRecord } from "../intents/intent-record.js";
 import { copyLeaderOf, trackingOrderStates } from "../orders/copy-leader.js";
-import { type OrderFillWrite, recordsOwnFill } from "../orders/order-fill.js";
+import { type OrderFillRecord, type OrderFillWrite, recordsOwnFill } from "../orders/order-fill.js";
 import { countsLandedFill } from "../orders/order-machine.js";
 import type {
   OrderDraft,
@@ -213,7 +213,25 @@ function checkFillWrite(
   return checked;
 }
 
-// A landed live fill counted apart from its intent's move: once per intent, all or nothing.
+// Whether the row under `fill`'s id holds exactly `fill`, however its notices were told since: the
+// same write that counted it run again (decision 0413).
+function holdsFill(fills: MemoryOrderFills, fill: OrderFillRecord): boolean {
+  const row = fills.rowsNow().find(({ id }) => id === fill.id);
+  if (row === undefined) {
+    return false;
+  }
+  const { announcedAtMs: _told, ...stored } = row;
+  const { announcedAtMs: _given, ...given } = fill;
+  return JSON.stringify(stored) === JSON.stringify(given);
+}
+
+// The orders a fill's moves name, as they stand.
+function ordersMoved(orders: Orders, write: OrderFillWrite): readonly OrderRecord[] {
+  return structuredClone(write.moves.flatMap(({ id }) => orders.get(id) ?? []));
+}
+
+// A landed live fill counted apart from its intent's move: once per intent, all or nothing; the
+// same write run again answers the orders its moves name, as they stand.
 function landFill(
   store: FillParts,
   write: OrderFillWrite,
@@ -224,7 +242,7 @@ function landFill(
     throw constraintFault(`fill ${fill.id} is no filled row naming its intent`);
   }
   if (fills.isCountedNow(fill.intentId)) {
-    return err("counted");
+    return holdsFill(fills, fill) ? ok(ordersMoved(orders, write)) : err("counted");
   }
   const checked = checkFillWrite(store, write);
   if (!checked.ok) {

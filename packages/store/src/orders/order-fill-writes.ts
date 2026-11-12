@@ -10,7 +10,7 @@ import {
   recordsOwnFill,
   type UnannouncedFillQuery,
 } from "@binference/engine/orders";
-import type { Selectable } from "kysely";
+import type { Insertable, Selectable } from "kysely";
 import type { EngineTables } from "../databases/engine-tables.js";
 import type { OrderFillsTable } from "../databases/order-tables.js";
 import type { StoreConnection } from "../dialect/store-connection.js";
@@ -115,24 +115,45 @@ export function checkOrderFillWrite(
   return ok(undefined);
 }
 
+// A fill row's columns, but its write-order number, which the insert trigger takes.
+function fillColumnsOf(fill: OrderFillRecord): Insertable<OrderFillsTable> {
+  return {
+    id: fill.id,
+    order_id: fill.orderId,
+    intent_id: orNull(fill.intentId),
+    outcome: fill.outcome,
+    reason: orNull(fill.reason),
+    at: fill.atMs,
+    notices: optionalJsonText(fill.notices === undefined ? undefined : [...fill.notices]),
+    announced_at: orNull(fill.announcedAtMs),
+    copy_trade: orNull(fill.copy?.trade),
+    copy_take: orNull(fill.copy?.take),
+  };
+}
+
 /** Writes a fill row `checkOrderFill` passed, and answers it as stored. */
 export function insertOrderFill(database: StoreConnection, fill: OrderFillRecord): OrderFillRecord {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
-  execute(
-    kysely.insertInto("order_fills").values({
-      id: fill.id,
-      order_id: fill.orderId,
-      intent_id: orNull(fill.intentId),
-      outcome: fill.outcome,
-      reason: orNull(fill.reason),
-      at: fill.atMs,
-      notices: optionalJsonText(fill.notices === undefined ? undefined : [...fill.notices]),
-      announced_at: orNull(fill.announcedAtMs),
-      copy_trade: orNull(fill.copy?.trade),
-      copy_take: orNull(fill.copy?.take),
-    }),
-  );
+  execute(kysely.insertInto("order_fills").values(fillColumnsOf(fill)));
   return fill;
+}
+
+/**
+ * Whether the stored row under `fill`'s id holds exactly `fill`, however its notices were told
+ * since: the same write that counted it run again (decision 0413).
+ */
+export function holdsFill(database: StoreConnection, fill: OrderFillRecord): boolean {
+  const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
+  const row = takeFirst(kysely.selectFrom("order_fills").selectAll().where("id", "=", fill.id));
+  const stored: Readonly<Record<string, string | number | null>> | undefined = row;
+  const expected: Readonly<Record<string, string | number | null | undefined>> =
+    fillColumnsOf(fill);
+  return (
+    stored !== undefined &&
+    Object.keys(expected)
+      .filter((column) => column !== "announced_at")
+      .every((column) => stored[column] === expected[column])
+  );
 }
 
 /** One order's fill rows, the newest first, then the last written first (decision 0366). */

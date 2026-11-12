@@ -1,4 +1,4 @@
-import type { LedgerDraft, LedgerEntry } from "../ledger/ledger-entry.js";
+import { holdsLedgerDraft, type LedgerDraft, type LedgerEntry } from "../ledger/ledger-entry.js";
 import { chainLedgerEntry } from "../ledger/ledger-hash.js";
 import type { LedgerStore } from "../ports.js";
 import { constraintFault, memoryCall } from "./memory-call.js";
@@ -20,9 +20,15 @@ export function createMemoryLedgerStore(): MemoryLedgerStore {
     entries.push(entry);
     return structuredClone(entry);
   };
+  // The same append run again answers the entry it stored (decision 0413).
+  const appendedAs = (draft: LedgerDraft): LedgerEntry | undefined => {
+    const stored = entries.find((entry) => holdsLedgerDraft(entry, draft));
+    return stored === undefined ? undefined : structuredClone(stored);
+  };
   return {
     appendNow,
-    append: async (draft, options) => memoryCall(options, () => appendNow(draft)),
+    append: async (draft, options) =>
+      memoryCall(options, () => appendedAs(draft) ?? appendNow(draft)),
     list: async (page, options) =>
       memoryCall(options, () =>
         structuredClone(entries.filter((entry) => entry.seq > page.after).slice(0, page.limit)),

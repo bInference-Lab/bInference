@@ -1,3 +1,4 @@
+import type { Amount } from "@binference/chain";
 import { err, ok, type Result } from "@binference/core";
 import type { PositionStore } from "../ports.js";
 import type { ArrivalRecord, ArrivalWrite, PaperReset } from "../positions/arrival-record.js";
@@ -103,6 +104,71 @@ function departOnce(
 const pageOf = <Row extends Listed>(rows: readonly Row[], query: ExecutionQuery): Row[] =>
   structuredClone(rows.filter((row) => matches(query, row)).slice(0, query.limit));
 
+const isSameAmount = (left: Amount, right: Amount): boolean =>
+  left.asset === right.asset && left.base === right.base;
+
+// Whether a stored execution holds exactly what `write` would store: the same write run again
+// answers it, as its first run did (decision 0413).
+function holdsWrite(stored: ExecutionRecord, write: ExecutionWrite): boolean {
+  const { execution: draft, realizedUsdMicros } = write;
+  return [
+    stored.intentId === draft.intentId,
+    stored.walletId === draft.walletId,
+    stored.isPaper === draft.isPaper,
+    stored.atMs === draft.atMs,
+    isSameAmount(stored.sold, draft.sold),
+    stored.feeBase === draft.feeBase,
+    isSameAmount(stored.bought, draft.bought),
+    isSameAmount(stored.gas, draft.gas),
+    stored.txHash === draft.txHash,
+    stored.valueUsdMicros === draft.valueUsdMicros,
+    stored.feeUsdMicros === draft.feeUsdMicros,
+    stored.gasUsdMicros === draft.gasUsdMicros,
+    stored.realizedUsdMicros === realizedUsdMicros,
+  ].every(Boolean);
+}
+
+// Whether a position holds what `write` set, at the version after the one it read.
+function holdsPositionWrite(positions: Positions, write: PositionWrite): boolean {
+  const { position, readVersion } = write;
+  const row = positions.get(keyOf(position));
+  return (
+    row !== undefined &&
+    [
+      row.version === (readVersion === undefined ? 0 : readVersion + 1),
+      row.quantityBase === position.quantityBase,
+      row.costUsdMicros === position.costUsdMicros,
+      row.realizedUsdMicros === position.realizedUsdMicros,
+      row.changedAtMs === position.changedAtMs,
+    ].every(Boolean)
+  );
+}
+
+// Moves an execution's positions and answers the execution to add, or the one the same write
+// stored while its positions still hold what it set, which adds nothing.
+function recordExecution(
+  rows: { readonly positions: Positions; readonly executions: readonly ExecutionRecord[] },
+  write: ExecutionWrite,
+): {
+  readonly outcome: Result<ExecutionRecord, "stale">;
+  readonly added: readonly ExecutionRecord[];
+} {
+  const { positions, executions } = rows;
+  const isLeftAsWritten = write.positions.every((change) => holdsPositionWrite(positions, change));
+  const replayed = isLeftAsWritten
+    ? executions.find((stored) => holdsWrite(stored, write))
+    : undefined;
+  if (replayed !== undefined) {
+    return { outcome: ok(structuredClone(replayed)), added: [] };
+  }
+  if (!movePositions(positions, write.positions)) {
+    return { outcome: err("stale"), added: [] };
+  }
+  const { execution: draft, realizedUsdMicros } = write;
+  const execution = { ...structuredClone(draft), id: executions.length + 1, realizedUsdMicros };
+  return { outcome: ok(structuredClone(execution)), added: [execution] };
+}
+
 /**
  * Creates an empty in-memory {@link PositionStore} for tests. It keeps every row until it is
  * dropped, and checks a whole write before it changes anything.
@@ -113,13 +179,9 @@ export function createMemoryPositionStore(): PositionStore {
   const arrivals: ArrivalRecord[] = [];
   const departures: DepartureRecord[] = [];
   const record = (write: ExecutionWrite): Result<ExecutionRecord, "stale"> => {
-    if (!movePositions(positions, write.positions)) {
-      return err("stale");
-    }
-    const { execution: draft, realizedUsdMicros } = write;
-    const execution = { ...structuredClone(draft), id: executions.length + 1, realizedUsdMicros };
-    executions.push(execution);
-    return ok(structuredClone(execution));
+    const { outcome, added } = recordExecution({ positions, executions }, write);
+    executions.push(...added);
+    return outcome;
   };
   const recordArrival = (write: ArrivalWrite): Result<ArrivalRecord, "stale"> => {
     if (!movePositions(positions, write.positions)) {

@@ -22,6 +22,7 @@ import {
 } from "@binference/engine/orders";
 import { z } from "zod";
 import type { EngineTables } from "../databases/engine-tables.js";
+import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { resultSchema } from "../tasks/result-schema.js";
 import { defineTask, type StoreTask, type TaskRunner } from "../tasks/store-task.js";
@@ -30,6 +31,7 @@ import { fillCountsTask } from "./fill-count-rows.js";
 import {
   checkOrderFill,
   checkOrderFillWrite,
+  holdsFill,
   insertOrderFill,
   countedFillOf,
   isCounted,
@@ -144,9 +146,16 @@ export const recordOrderFillTask: StoreTask<OrderFillRecord, OrderFillRecord> = 
   },
 });
 
+// The orders a fill's moves name, as they stand: what a write that counted the fill answers when
+// it runs again (decision 0413).
+function ordersMoved(database: StoreConnection, write: OrderFillWrite): readonly OrderRecord[] {
+  return write.moves.flatMap(({ id }) => readOrder(database, id) ?? []);
+}
+
 /**
  * Counts a landed live fill on its order apart from its intent's move: its moves and its `filled`
- * row in one transaction, once per intent (decision 0211).
+ * row in one transaction, once per intent (decision 0211). The same write run again answers the
+ * orders its moves name, as they stand (decision 0413).
  */
 export const recordLandedFillTask: StoreTask<
   OrderFillWrite,
@@ -166,7 +175,7 @@ export const recordLandedFillTask: StoreTask<
       });
     }
     if (isCounted(database, fill.intentId)) {
-      return err("counted");
+      return holdsFill(database, fill) ? ok(ordersMoved(database, write)) : err("counted");
     }
     if (!checkOrderFillWrite(database, write).ok) {
       return err("stale");

@@ -121,6 +121,22 @@ async function movesFromTheVersionRead(subject: PositionStoreSubject): Promise<v
   assert.equal((await store.executions(page, live())).length, 2);
 }
 
+// The same execution write run again, as a caller does after a commit in doubt, answers the
+// execution it stored, number included, and moves nothing more (decision 0413).
+async function answersAReplayedExecution(subject: PositionStoreSubject): Promise<void> {
+  const [walletId] = subject.walletIds;
+  const { store } = subject;
+  const write = written(subject, 1, { positions: [{ position: state(walletId, token, 10n) }] });
+  const first = await store.record(write, live());
+  assert.ok(first.ok);
+  assert.deepEqual(await store.record(write, live()), first);
+  assert.deepEqual(await store.positions({ walletId, isPaper: false }, live()), [
+    { ...state(walletId, token, 10n), version: 0 },
+  ]);
+  const page = { after: 0, limit: 10, isPaper: false };
+  assert.deepEqual(await store.executions(page, live()), [first.value]);
+}
+
 async function refusesTwoWritesToOnePosition(subject: PositionStoreSubject): Promise<void> {
   const [walletId] = subject.walletIds;
   const twice = [
@@ -255,6 +271,11 @@ export function positionStoreContract(harness: PositionStoreHarness): readonly C
       "moves a position only from the version it read, else stores nothing",
       create,
       movesFromTheVersionRead,
+    ),
+    checkOn(
+      "answers an execution write run again as it first did and moves nothing more",
+      create,
+      answersAReplayedExecution,
     ),
     checkOn(
       "refuses two writes to one position and stores nothing",

@@ -156,6 +156,26 @@ export async function countsALandedFillOnce(subject: OrderStoreSubject): Promise
 }
 
 /**
+ * Checks that the same landed fill write run again, as a caller does after a commit in doubt,
+ * answers the orders its moves name and counts nothing more, while another row of the counted
+ * intent is still `counted` (decision 0413).
+ */
+export async function answersAReplayedLandedFill(subject: OrderStoreSubject): Promise<void> {
+  const { store, intents } = subject;
+  await activeOrder(subject, 1);
+  assert.ok((await intents.create(intentDraft(subject, 3), live())).ok);
+  const fill = { ...fillRow(1, 8, "filled"), intentId: fixtureId("int", 3) };
+  const write = { moves: [{ ...orderMove(1, 1, "active"), fills: 1 }], fill };
+  const first = await store.recordLandedFill(write, live());
+  assert.ok(first.ok);
+  assert.deepEqual(await store.recordLandedFill(write, live()), first);
+  const other = { ...write, fill: { ...fill, id: fixtureId("fil", 9) } };
+  assert.deepEqual(await store.recordLandedFill(other, live()), { ok: false, error: "counted" });
+  assert.equal((await store.get(fixtureId("ord", 1), live()))?.fills, 1);
+  assert.deepEqual(await store.fills({ orderId: fixtureId("ord", 1), limit: 5 }, live()), [fill]);
+}
+
+/**
  * Checks that a late landing carries its fill on its order in the same write (decision 0211): an
  * order at another version links nothing and counts nothing, and a second landing of one intent
  * counts nothing more.
