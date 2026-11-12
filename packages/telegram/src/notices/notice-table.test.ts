@@ -85,6 +85,7 @@ const expected: Readonly<Record<string, string>> = {
   "notice.skillHeld": `${warning} Skill "dip-buyer" in the workspace of main is new or changed, so it does not load until you accept it. Check its files, then accept it with /skills, in the console, or with \`binference skill accept dip-buyer\`.`,
   "notice.skillAccepted": `Skill "dip-buyer" of main was accepted from console as its files are now. It loads from the agent's next turn.`,
   "notice.signerRefused": `${warning} The signer refused to sign a step of a trade: its amounts are not the trade's. Nothing was sent for it.`,
+  "notice.daySums": `${warning} Not sent: it would pass your 24-hour cap of 10 FAKE on BNB Smart Chain, of which 9.5 FAKE is used. Room frees at Oct 11, 2026, 09:30:00. To raise the cap, change it on binference.io.`,
   "notice.privyUnreachable": `${red} binference could not reach Privy for five minutes after it started, so it stays locked. Check this machine's network, then run \`binference unlock\`.`,
   "notice.webhookPortTaken": `${warning} binference cannot take alerts for your alert rules: port 7457 is in use. Set \`engine.webhookPort\` in config.json5 to a free port, then restart binference.`,
   "notice.webhookRotated":

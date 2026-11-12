@@ -204,6 +204,12 @@ export const noticeTable: Readonly<Record<string, TableNotice>> = {
   },
   "notice.signerStopped": { key: "notice.signerStopped", values: {} },
   "notice.signerRefused": { key: "notice.signerRefused", values: { rule: "rule_3" } },
+  "notice.daySums": {
+    key: "notice.daySums",
+    values: { chain: "BNB Smart Chain" },
+    amounts: { cap: coinAmount(10_000n), used: coinAmount(9_500n) },
+    times: { room: noticeTableAtMs },
+  },
   "notice.privyUnreachable": { key: "notice.privyUnreachable", values: {} },
   "notice.webhookPortTaken": { key: "notice.webhookPortTaken", values: { port: "7457" } },
   "notice.webhookRotated": {

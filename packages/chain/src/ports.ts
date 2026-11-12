@@ -5,6 +5,7 @@ import type { AssetRef } from "./caip/asset-ref.js";
 import type { ChainRef } from "./caip/chain-ref.js";
 import type { DraftCall } from "./draft-call.js";
 import type { RegisteredChain } from "./registry/registered-chain.js";
+import type { SignOutcome } from "./sign-outcome.js";
 import type { SignRequest } from "./sign-request.js";
 import type { TokenApprovalRequest, TokenTransfer } from "./token-transfer.js";
 import type { SignatureProblem, SignedTx, TxDraft, TxHash, UnsignedTx } from "./transaction.js";
@@ -88,13 +89,15 @@ export interface Signer {
   /**
    * Signs one transaction of an approved intent. `unknown_wallet` when the custodian holds no
    * such wallet; `refused` when it will not sign this one: its sender is not the wallet, it falls
-   * outside the ceiling, or the owner removed this signer from the wallet. Rejects with the
-   * signal's reason once the signal aborts, and signs nothing.
+   * outside the ceiling, or the owner removed this signer from the wallet. A signer service also
+   * answers `over_sums` when the transaction would pass the user's 24-hour sums, and `locked`
+   * while it signs nothing for any request (decision 0425). No refusal changes when asked again.
+   * Rejects with the signal's reason once the signal aborts, and signs nothing.
    */
   signTransaction(
     request: SignRequest,
     options: { readonly signal: AbortSignal },
-  ): Promise<Result<SignedTx, "unknown_wallet" | "refused">>;
+  ): Promise<SignOutcome>;
 }
 
 /** The chains binference may use, filled once by the composition root. */

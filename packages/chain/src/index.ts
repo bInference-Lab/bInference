@@ -58,6 +58,7 @@ export type { PriceFeedDefinition } from "./registry/price-feed-definition.js";
 export type { RatePriceDefinition } from "./registry/rate-price-definition.js";
 export type { CeilingCapsDefinition, CeilingCapToken } from "./registry/ceiling-caps-definition.js";
 export type { RegisteredChain } from "./registry/registered-chain.js";
+export type { DaySumsRefusal, SignerLock, SignOutcome } from "./sign-outcome.js";
 export type { SignRequest } from "./sign-request.js";
 export { authorizationPayload } from "./signing/authorization-payload.js";
 export { authorizeInputSchema } from "./signing/authorize-input.js";

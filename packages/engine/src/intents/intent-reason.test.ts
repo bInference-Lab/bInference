@@ -105,6 +105,8 @@ describe("intent reasons", () => {
       "nonce_taken",
       "step_unsent",
       "stuck_dropped",
+      "day_sums",
+      "signer_locked",
     ]);
     expect(fillReasons).toStrictEqual([
       "order_inactive",
@@ -125,7 +127,7 @@ describe("intent reasons", () => {
       ...fillReasons,
     ];
     expect(new Set(intentReasons)).toStrictEqual(new Set(all));
-    expect(intentReasons).toHaveLength(87);
+    expect(intentReasons).toHaveLength(89);
   });
 
   it("keeps an order's skip reasons apart from the reasons an intent stores", () => {

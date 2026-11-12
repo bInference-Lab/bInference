@@ -2,8 +2,10 @@ import assert from "node:assert/strict";
 import { type Id, idSchema } from "@binference/core";
 import type { ContractCheck } from "@binference/core/testing";
 import type { AccountRef } from "../caip/account-ref.js";
+import { assetRefSchema } from "../caip/asset-ref.js";
 import type { ChainRef } from "../caip/chain-ref.js";
 import type { Signer, SigningScheme } from "../ports.js";
+import type { DaySumsRefusal, SignerLock } from "../sign-outcome.js";
 import type { SignRequest } from "../sign-request.js";
 import type { UnsignedTx } from "../transaction.js";
 
@@ -25,9 +27,21 @@ export interface SignerSubject {
   readonly foreignTx: UnsignedTx;
 }
 
-/** Makes a fresh {@link SignerSubject} for each check. */
+/** The answers of a signer service a test arranges for its subject's wallet. */
+export interface SignerServiceControls {
+  /** Makes later signatures answer `over_sums` with these sums. */
+  fillSums(sums: DaySumsRefusal): void;
+  /** Makes later signatures answer `locked` with this reason. */
+  lock(reason: SignerLock): void;
+}
+
+/**
+ * Makes a fresh {@link SignerSubject} for each check. An adapter of a signer service also makes
+ * one whose service a test controls, and passes the service's own checks too.
+ */
 export interface SignerHarness {
   create(): SignerSubject;
+  readonly service?: () => SignerSubject & { readonly controls: SignerServiceControls };
 }
 
 const live = (): { readonly signal: AbortSignal } => ({ signal: new AbortController().signal });
@@ -108,7 +122,57 @@ const signChecks = (harness: SignerHarness): readonly ContractCheck[] => [
   },
 ];
 
-/** The contract every `Signer` adapter passes. */
+// What a full day looks like to a signer service: the native sum of the subject's chain.
+function fullDay(tx: UnsignedTx): DaySumsRefusal {
+  return {
+    chain: tx.chain,
+    asset: assetRefSchema.parse(`${tx.chain}/slip44:1`),
+    capBase: 10n ** 19n,
+    usedBase: 95n * 10n ** 17n,
+    askedBase: 10n ** 18n,
+    roomAtMs: expiresAtMs,
+  };
+}
+
+const serviceChecks = (
+  service: NonNullable<SignerHarness["service"]>,
+): readonly ContractCheck[] => [
+  {
+    name: "answers over_sums with the sum a transaction would pass, and signs nothing",
+    run: async () => {
+      const { signer, wallet, tx, controls } = service();
+      const sums = fullDay(tx);
+      controls.fillSums(sums);
+      assert.deepEqual(await signer.signTransaction(requestFor(wallet, tx), live()), {
+        ok: false,
+        error: "over_sums",
+        sums,
+      });
+    },
+  },
+  {
+    name: "answers locked with why it signs nothing",
+    run: async () => {
+      const { signer, wallet, tx, controls } = service();
+      controls.lock("breaker");
+      assert.deepEqual(await signer.signTransaction(requestFor(wallet, tx), live()), {
+        ok: false,
+        error: "locked",
+        lock: "breaker",
+      });
+    },
+  },
+];
+
+/**
+ * The contract every `Signer` adapter passes, and the answers of a signer service every adapter
+ * of one passes too.
+ */
 export function signerContract(harness: SignerHarness): readonly ContractCheck[] {
-  return [...accountChecks(harness), ...signChecks(harness)];
+  const { service } = harness;
+  return [
+    ...accountChecks(harness),
+    ...signChecks(harness),
+    ...(service === undefined ? [] : serviceChecks(service)),
+  ];
 }

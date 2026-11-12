@@ -439,6 +439,14 @@ Level: warning. Can be muted: no.
 ⚠️ The signer refused to sign a step of a trade: its amounts are not the trade's. Nothing was sent for it.
 ```
 
+## `daySums`
+
+Level: warning. Can be muted: no.
+
+```text
+⚠️ Not sent: it would pass your 24-hour cap of 10 BNB on BNB Smart Chain, of which 9.5 BNB is used. Room frees at Oct 11, 2026, 09:30:00. To raise the cap, change it on binference.io.
+```
+
 ## `privyUnreachable`
 
 Level: critical. Can be muted: no.

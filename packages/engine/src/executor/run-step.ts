@@ -2,18 +2,19 @@ import type {
   PreparedTx,
   RelayAnswer,
   RelayRefusal,
-  SignedTx,
+  SignOutcome,
   SignRequest,
   StepReplacement,
   TxDraft,
   TxReceipt,
 } from "@binference/chain";
-import { BinferenceError, err, ok, type Result } from "@binference/core";
+import { BinferenceError, type Err, err, ok, type Result } from "@binference/core";
 import type { IntentRecord } from "../intents/intent-record.js";
 import type { SignedTransaction, TransactionRecord } from "../wallet-queue/transaction-record.js";
 import type { WalletSlot } from "../wallet-queue/wallet-slot.js";
 import type { ExecutionRun } from "./executor-run.js";
 import type { SigningTerms } from "./queue-check.js";
+import type { ServiceRefusal } from "./service-refusal.js";
 import { signRequestOf } from "./step-request.js";
 import { recordStepSent } from "./step-sent.js";
 
@@ -80,7 +81,7 @@ export async function prepareStep(
 async function signed(
   run: ExecutionRun,
   request: SignRequest,
-): Promise<Result<SignedTx, "unknown_wallet" | "refused" | "sign_fault">> {
+): Promise<SignOutcome | Err<"sign_fault">> {
   try {
     return await run.parts.custody.signTransaction(request, { signal: run.signal });
   } catch (error) {
@@ -113,7 +114,9 @@ async function storeSigned(
  * Signs a prepared step through custody with what authorized the intent, checks that the signed
  * bytes are the step's own through the chain's signing scheme, and stores them in the slot before
  * anything is sent (ARCHITECTURE.md rule 6). A stuck step's replacement carries what it replaces
- * to the signer, and takes the nonce of the transaction it replaces (spec 6, section 6).
+ * to the signer, and takes the nonce of the transaction it replaces (spec 6, section 6). A signer
+ * service's refusal, over the user's sums or locked, comes back as it came (decision 0427), and
+ * nothing here asks again.
  */
 export async function signAndStore(
   run: ExecutionRun,
@@ -124,7 +127,7 @@ export async function signAndStore(
     readonly ready: PreparedStep;
     readonly replacing?: StepReplacing;
   },
-): Promise<Result<TransactionRecord, SignStop>> {
+): Promise<Result<TransactionRecord, SignStop> | ServiceRefusal> {
   const { parts, plan, signal } = run;
   const { record, terms, ready, replacing } = step;
   const { index, draft, nonce, prepared } = ready;

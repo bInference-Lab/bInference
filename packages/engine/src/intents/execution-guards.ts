@@ -171,17 +171,23 @@ export function reconcileFills({
 
 /**
  * `executing` to `cancelled` once a step the executor took was never signed, and no step was
- * before it (decision 0109): nothing reached the chain.
+ * before it (decision 0109): nothing reached the chain. A signer service's refusal is stored as
+ * the reason (decision 0427).
  */
 export function cancelUnsent({
   trigger,
 }: GuardInput<"step_unsent">): Result<IntentChange, TransitionProblem> {
-  return trigger.hasSignedStep ? err("already_signed") : ok({ cancelCause: "step_unsent" });
+  if (trigger.hasSignedStep) {
+    return err("already_signed");
+  }
+  const { refusal } = trigger;
+  return ok({ cancelCause: "step_unsent", ...(refusal === undefined ? {} : { reason: refusal }) });
 }
 
 /**
  * `executing` to `failed_onchain` with `step_unsent` once a step was never signed after an
- * earlier one landed (decision 0109). A rescue retries a failed step instead (spec 6, section 5).
+ * earlier one landed (decision 0109), or with the signer service's refusal in its place (decision
+ * 0427). A rescue retries a failed step instead (spec 6, section 5).
  */
 export function failUnsent({
   status,
@@ -190,7 +196,8 @@ export function failUnsent({
   if (!trigger.hasSignedStep) {
     return err("nothing_signed");
   }
-  return status.kind === "rescue" ? err("rescue_retries") : ok({ reason: "step_unsent" });
+  const reason = trigger.refusal ?? "step_unsent";
+  return status.kind === "rescue" ? err("rescue_retries") : ok({ reason });
 }
 
 /**

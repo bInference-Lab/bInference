@@ -66,6 +66,8 @@
   "nonce_taken": "another transaction used this wallet's nonce, so this one did not land",
   "step_unsent": "an earlier step landed, but a later one was never signed",
   "stuck_dropped": "the transaction was stuck and could not be sent any more, so it did not go through",
+  "day_sums": "it would pass your 24-hour cap on bInference Cloud, so the step was never signed",
+  "signer_locked": "bInference Cloud's signer service was locked, so the step was never signed",
   "order_inactive": "the order ended, was paused or used its last fill before the trade could run",
   "fill_bounds": "the trade would go past the order's size or slippage",
   "worst_price": "the price is worse than the order's worst price",

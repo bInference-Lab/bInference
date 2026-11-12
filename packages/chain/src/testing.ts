@@ -11,7 +11,11 @@ export type {
   ChainRegistrySubject,
 } from "./contracts/chain-registry-contract.js";
 export { signerContract } from "./contracts/signer-contract.js";
-export type { SignerHarness, SignerSubject } from "./contracts/signer-contract.js";
+export type {
+  SignerHarness,
+  SignerServiceControls,
+  SignerSubject,
+} from "./contracts/signer-contract.js";
 export { signerProcessContract } from "./contracts/signer-process-contract.js";
 export type {
   SignerProcessHarness,

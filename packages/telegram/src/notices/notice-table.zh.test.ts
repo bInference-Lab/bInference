@@ -83,6 +83,7 @@ const expected: Readonly<Record<string, string>> = {
   "notice.skillHeld": `${warning} main 工作区中的技能“dip-buyer”为新增或已更改，在你接受之前不会加载。请检查其文件，然后通过 /skills、控制台或 \`binference skill accept dip-buyer\` 接受。`,
   "notice.skillAccepted": `main 的技能“dip-buyer”已从 console 按其当前文件接受，从 Agent 的下一轮起加载。`,
   "notice.signerRefused": `${warning} 签名进程拒绝为一笔交易的一个步骤签名：金额与这笔交易不符。该步骤未发送任何内容。`,
+  "notice.daySums": `${warning} 未发送：这会超出你在 BNB Smart Chain 上的 24 小时上限 10 FAKE，其中已用 9.5 FAKE。2026年10月11日 09:30:00 起会释放额度。要提高上限，请在 binference.io 上修改。`,
   "notice.privyUnreachable": `${red} binference 启动后五分钟内都无法连接 Privy，因此仍处于锁定状态。请检查本机网络，然后运行 \`binference unlock\`。`,
   "notice.webhookPortTaken": `${warning} binference 无法为提醒规则接收提醒：端口 7457 已被占用。请在 config.json5 中把 \`engine.webhookPort\` 设为空闲端口，然后重启 binference。`,
   "notice.webhookRotated":

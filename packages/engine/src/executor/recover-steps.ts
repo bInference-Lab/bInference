@@ -153,14 +153,14 @@ async function endUnsentAfterReset(
   const { snapshot, index } = walk;
   const reset = walk.steps.get(run.plan.steps.length);
   if (reset === undefined || inBlockStates.includes(reset.state)) {
-    return endUnsent(run, snapshot, index);
+    return endUnsent(run, snapshot, { index });
   }
   const rivals = rivalsOf(walk.stored, reset);
   const settled = await settleStep(run, { snapshot, transaction: reset, rivals });
   if (settled === undefined || "dropped" in settled) {
     return settled;
   }
-  return endUnsent(run, settled.snapshot, index);
+  return endUnsent(run, settled.snapshot, { index });
 }
 
 // Whether recovery goes on with a live fill's later step a stop left unsigned: an earlier step
@@ -182,7 +182,7 @@ async function goOnWithFill(
   const context = { parts: run.parts, chain: run.plan.chain };
   const terms = await recoveredFillTerms(snapshot, context, run.signal);
   return terms === undefined
-    ? endUnsent(run, snapshot, index)
+    ? endUnsent(run, snapshot, { index })
     : finishFill(run, slot, { snapshot, terms, index, done });
 }
 

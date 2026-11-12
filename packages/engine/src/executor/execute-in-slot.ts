@@ -1,5 +1,5 @@
 import type { TxDraft } from "@binference/chain";
-import { err, type Id, ok, type Result } from "@binference/core";
+import { type Err, err, type Id, ok, type Result } from "@binference/core";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import type { LaunchReadFailure } from "../intents/intent-reason.js";
 import { noticePush } from "../pushes/notice-push.js";
@@ -16,6 +16,7 @@ import { checkForQueue, type QueueCheck, type SigningTerms } from "./queue-check
 import { resetApproval } from "./reset-approval.js";
 import { type PreparedStep, prepareStep, type SignStop, signAndStore } from "./run-step.js";
 import { sendAndWatch, type Watched } from "./send-and-watch.js";
+import type { ServiceRefusal } from "./service-refusal.js";
 import { takeStake } from "./stake-queue-check.js";
 import { stuckRulesOf } from "./stuck-rules.js";
 import { launchTermsNow, termsNow } from "./terms-now.js";
@@ -192,15 +193,26 @@ async function endLanded(
 }
 
 // A step that cannot be signed, or whose signature cannot be stored, sends nothing and never
-// will: the intent ends (decision 0109).
+// will: the intent ends (decision 0109), with a signer service's refusal as its reason (decision
+// 0427).
 async function endStep(
   run: ExecutionRun,
   taken: Taken,
-  step: { readonly index: number; readonly problem: string },
+  step: { readonly index: number; readonly problem: string; readonly refusal?: ServiceRefusal },
 ): Promise<undefined> {
   const intentId = taken.snapshot.record.id;
   run.parts.log.warn("executor.step_stopped", { intentId, errorCode: step.problem });
-  return endUnsent(run, taken.snapshot, step.index);
+  const unsent = step.refusal === undefined ? {} : { refusal: step.refusal };
+  return endUnsent(run, taken.snapshot, { index: step.index, ...unsent });
+}
+
+// A step that stopped before it was stored, with the signer service's refusal when that is why.
+function unsentOf(
+  index: number,
+  stopped: Err<SignStop | LaunchReadFailure | "authorization_lapsed"> | ServiceRefusal,
+): { readonly index: number; readonly problem: string; readonly refusal?: ServiceRefusal } {
+  const isRefusal = stopped.error === "over_sums" || stopped.error === "locked";
+  return { index, problem: stopped.error, ...(isRefusal ? { refusal: stopped } : {}) };
 }
 
 // Once the engine begins to stop, no step is signed: the intent ends as one never signed.
@@ -223,7 +235,9 @@ async function signStep(
   run: ExecutionRun,
   slot: WalletSlot,
   step: { readonly taken: Taken; readonly index: number; readonly ready: PreparedStep },
-): Promise<Result<TransactionRecord, SignStop | LaunchReadFailure | "authorization_lapsed">> {
+): Promise<
+  Result<TransactionRecord, SignStop | LaunchReadFailure | "authorization_lapsed"> | ServiceRefusal
+> {
   const { taken, index, ready } = step;
   const { record } = taken.snapshot;
   const terms = await termsNow(run, taken.terms, { record, kind: "step", index });
@@ -260,7 +274,7 @@ async function runFrom(
   }
   const stored = await signStep(run, slot, { taken, index, ready: ready.value });
   if (!stored.ok) {
-    return endStep(run, taken, { index, problem: stored.error });
+    return endStep(run, taken, unsentOf(index, stored));
   }
   const rules = stuckRulesOf(run, { slot, terms: taken.terms });
   const intent = snapshot.record;

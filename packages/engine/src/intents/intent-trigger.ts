@@ -10,6 +10,7 @@ import type {
   PolicyRejection,
   QuoteFailure,
   RiskReason,
+  ServiceRefusalReason,
   SimulationFailure,
 } from "./intent-reason.js";
 import type { QuoteTerms } from "./intent-status.js";
@@ -221,9 +222,13 @@ export interface TriggerFacts {
   readonly nonce_taken: NoFacts;
   /**
    * A step the executor took was never signed, and nothing will sign it (decision 0109).
-   * `hasSignedStep`: an earlier step was signed, and a block holds it.
+   * `hasSignedStep`: an earlier step was signed, and a block holds it. `refusal`: a signer
+   * service refused the step for this reason, which the intent stores (decision 0427).
    */
-  readonly step_unsent: { readonly hasSignedStep: boolean };
+  readonly step_unsent: {
+    readonly hasSignedStep: boolean;
+    readonly refusal?: ServiceRefusalReason;
+  };
   /**
    * Fills decoded and compared with the simulation. A bridge's comes only once a read found its
    * delivery or its refund (decision 0297).

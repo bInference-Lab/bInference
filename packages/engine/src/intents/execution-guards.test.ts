@@ -13,6 +13,7 @@ import {
   takeIntoQueue,
 } from "./execution-guards.js";
 import type { IntentKind } from "./intent-kind.js";
+import type { ServiceRefusalReason } from "./intent-reason.js";
 import type { IntentStatus } from "./intent-status.js";
 import type { CancelCause, QueueFacts } from "./intent-trigger.js";
 import type { GuardInput } from "./transition-guard.js";
@@ -269,6 +270,15 @@ function unsent(
   };
 }
 
+// A step a signer service refused for this reason (decision 0427).
+function refusedBy(
+  step: { readonly hasSignedStep: boolean },
+  refusal: ServiceRefusalReason,
+): GuardInput<"step_unsent"> {
+  const input = unsent(step);
+  return { ...input, trigger: { ...input.trigger, refusal } };
+}
+
 describe("a step that was never signed", () => {
   it("cancels the intent when no step before it was signed", () => {
     expect(cancelUnsent(unsent(firstStep))).toStrictEqual({
@@ -284,6 +294,17 @@ describe("a step that was never signed", () => {
       value: { reason: "step_unsent" },
     });
     expect(failUnsent(unsent(firstStep))).toStrictEqual({ ok: false, error: "nothing_signed" });
+  });
+
+  it("stores a signer service's refusal as the reason, on either move", () => {
+    expect(cancelUnsent(refusedBy(firstStep, "day_sums"))).toStrictEqual({
+      ok: true,
+      value: { cancelCause: "step_unsent", reason: "day_sums" },
+    });
+    expect(failUnsent(refusedBy(laterStep, "signer_locked"))).toStrictEqual({
+      ok: true,
+      value: { reason: "signer_locked" },
+    });
   });
 
   it("keeps a rescue executing so the queue retries the step", () => {

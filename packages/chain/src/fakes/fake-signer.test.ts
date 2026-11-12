@@ -1,11 +1,12 @@
 import type { Id } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { accountRefSchema } from "../caip/account-ref.js";
+import { assetRefSchema } from "../caip/asset-ref.js";
 import { chainRefSchema } from "../caip/chain-ref.js";
-import { signerContract } from "../contracts/signer-contract.js";
+import { signerContract, type SignerSubject } from "../contracts/signer-contract.js";
 import type { SignRequest } from "../sign-request.js";
 import type { UnsignedTx } from "../transaction.js";
-import { createFakeSigner } from "./fake-signer.js";
+import { createFakeSigner, type FakeSigner } from "./fake-signer.js";
 import { createFakeSigningScheme } from "./fake-signing-scheme.js";
 
 const wallet = "wal_0190f1c2-3b4c-7d5e-8f60-718293a4b5c6" as Id<"wal">;
@@ -42,19 +43,29 @@ const request: SignRequest = {
 };
 const live = { signal: new AbortController().signal };
 
+function subjectOf(signer: FakeSigner): SignerSubject {
+  return {
+    signer,
+    scheme: createFakeSigningScheme(),
+    wallet,
+    account,
+    otherChain: chainRefSchema.parse("fake:2"),
+    unknownWallet,
+    tx,
+    foreignTx: { ...tx, from: accountRefSchema.parse("fake:1:0x0000000b") },
+  };
+}
+
+const fakeOf = (): FakeSigner => createFakeSigner(new Map([[wallet, account]]));
+
 describe("fake signer", () => {
   it.each(
     signerContract({
-      create: () => ({
-        signer: createFakeSigner(new Map([[wallet, account]])),
-        scheme: createFakeSigningScheme(),
-        wallet,
-        account,
-        otherChain: chainRefSchema.parse("fake:2"),
-        unknownWallet,
-        tx,
-        foreignTx: { ...tx, from: accountRefSchema.parse("fake:1:0x0000000b") },
-      }),
+      create: () => subjectOf(fakeOf()),
+      service: () => {
+        const signer = fakeOf();
+        return { ...subjectOf(signer), controls: signer };
+      },
     }),
   )("follows the contract: $name", async ({ run }) => {
     await expect(run()).resolves.toBeUndefined();
@@ -76,5 +87,27 @@ describe("fake signer", () => {
     await expect(
       signer.signTransaction({ ...request, wallet: other }, live),
     ).resolves.toMatchObject({ ok: true });
+  });
+
+  it("signs again once its sums and its lock are cleared", async () => {
+    const signer = fakeOf();
+    signer.lock("key_check");
+    signer.fillSums({
+      chain: tx.chain,
+      asset: assetRefSchema.parse("fake:1/slip44:1"),
+      capBase: 1n,
+      usedBase: 1n,
+      askedBase: 1n,
+      roomAtMs: 0,
+    });
+    await expect(signer.signTransaction(request, live)).resolves.toMatchObject({
+      error: "locked",
+    });
+    signer.lock(undefined);
+    await expect(signer.signTransaction(request, live)).resolves.toMatchObject({
+      error: "over_sums",
+    });
+    signer.fillSums(undefined);
+    await expect(signer.signTransaction(request, live)).resolves.toMatchObject({ ok: true });
   });
 });

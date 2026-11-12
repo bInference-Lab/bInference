@@ -189,7 +189,10 @@ export type SimulationFailure = Extract<CheckReason, "simulation_reverted" | "ef
  * receipt with status 0, `stuck_cancelled` a stuck step replaced by a cancel (spec 6, section 6),
  * `nonce_taken` a nonce another transaction used after a crash (section 7), `step_unsent` a
  * step never signed after an earlier one landed (decision 0109), and `stuck_dropped` a stuck step
- * every relay refused, its nonce free again (decision 0115).
+ * every relay refused, its nonce free again (decision 0115). A signer service's refusal of a step
+ * stores its own reason in the place of `step_unsent`, on `cancelled` too (decision 0427):
+ * `day_sums` when it would pass the user's 24-hour sums, `signer_locked` while the service is
+ * locked.
  */
 export const failureReasons = [
   "reverted",
@@ -197,10 +200,15 @@ export const failureReasons = [
   "nonce_taken",
   "step_unsent",
   "stuck_dropped",
+  "day_sums",
+  "signer_locked",
 ] as const;
 
 /** A reason a sent intent failed on chain. */
 export type FailureReason = (typeof failureReasons)[number];
+
+/** Why a signer service refused a step, stored in the place of `step_unsent` (decision 0427). */
+export type ServiceRefusalReason = Extract<FailureReason, "day_sums" | "signer_locked">;
 
 /**
  * Why an auto order's fill ended `failed_check` at its authorization, once its quote, risk and
