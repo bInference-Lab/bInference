@@ -60,19 +60,22 @@ export const writeNoteTask: StoreTask<
     if (!holdsFence(database, draft.fence)) {
       return err("fenced");
     }
-    const { kysely, execute } = createSyncKysely<AgentTables>(database);
-    const inserted = execute(
-      kysely.insertInto("notes").values({
-        agent_id: draft.agentId,
-        text: draft.text,
-        origin: draft.origin,
-        created_at: draft.atMs,
-        changed_at: draft.atMs,
-        deleted_at: null,
-      }),
+    const { kysely, takeOne } = createSyncKysely<AgentTables>(database);
+    const inserted = takeOne(
+      kysely
+        .insertInto("notes")
+        .values({
+          agent_id: draft.agentId,
+          text: draft.text,
+          origin: draft.origin,
+          created_at: draft.atMs,
+          changed_at: draft.atMs,
+          deleted_at: null,
+        })
+        .returning("id"),
     );
     return ok({
-      id: Number(inserted.insertId),
+      id: inserted.id,
       agentId: draft.agentId,
       text: draft.text,
       origin: draft.origin,
