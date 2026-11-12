@@ -23,7 +23,8 @@ import { connectEngine } from "./engine-link.js";
 import { networkRouteOf } from "./network-route.js";
 import { createNodeStreamingHttp } from "./node-streaming-http.js";
 import { processPorts } from "./process-ports.js";
-import { type RuntimeHost, runRuntime } from "./run-runtime.js";
+import { runRuntime } from "./run-runtime.js";
+import type { RuntimeHost } from "./runtime-host.js";
 import { openSqliteAgentDatabase } from "./sqlite-agent-database.js";
 import { chatModelOf, turnModelsOf } from "./turn-models.js";
 

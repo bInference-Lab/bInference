@@ -6,7 +6,7 @@ import type { StartLine } from "../control/control-line.schema.js";
 import { createProtocolContextSource } from "../engine-chat/protocol-context-source.js";
 import { createProtocolEngineChat } from "../engine-chat/protocol-engine-chat.js";
 import { createProtocolImageReader } from "../engine-chat/protocol-image-reader.js";
-import type { EngineLink } from "./run-runtime.js";
+import type { EngineLink } from "./runtime-host.js";
 
 type ClientPorts = Pick<ProtocolClientOptions, "clock" | "random" | "logger">;
 

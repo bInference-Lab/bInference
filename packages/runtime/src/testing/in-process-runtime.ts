@@ -22,7 +22,8 @@ import { createProtocolImageReader } from "../engine-chat/protocol-image-reader.
 import { type TestTool, testToolBox } from "../loop/test-turns.js";
 import { turnLimits } from "../loop/turn-run.js";
 import type { AgentDatabase } from "../process/agent-database.js";
-import { type EngineLink, type RuntimeHost, runRuntime } from "../process/run-runtime.js";
+import { runRuntime } from "../process/run-runtime.js";
+import type { EngineLink, RuntimeHost } from "../process/runtime-host.js";
 import { agentToolBox, helperToolBox } from "../tools/agent-tools.js";
 import type { ToolClient } from "../tools/tool-client.js";
 import { createByteChannel } from "./byte-channel.js";
