@@ -2,11 +2,11 @@ import {
   BinferenceError,
   err,
   type JsonValue,
+  jsonShapeProblem,
   jsonValueSchema,
   ok,
   type Result,
 } from "@binference/core";
-import { jsonShapeProblem } from "./json-shape.schema.js";
 
 /** The longest arguments text a call may have: far above what 4,096 output tokens can write. */
 export const maxArgumentsChars = 65_536;

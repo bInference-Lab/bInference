@@ -28,6 +28,8 @@ export type { IdSource, IdSourceOptions } from "./ids/id-source.js";
 export { idSchema, isId, isIdPrefix } from "./ids/id.js";
 export type { Id } from "./ids/id.js";
 export { refuseNulText } from "./json/held-nul.schema.js";
+export { jsonShapeProblem } from "./json/json-shape.schema.js";
+export type { JsonShapeProblem } from "./json/json-shape.schema.js";
 export { jsonValueSchema } from "./json/json-value.schema.js";
 export type { JsonValue } from "./json/json-value.schema.js";
 export { replaceNul, replaceNulDeep, replaceNulInJsonText } from "./json/nul-text.js";
