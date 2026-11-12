@@ -6,7 +6,6 @@ import { readSource } from "./source-scan.mjs";
  * refuses a listed suite that already runs there, so the list only shrinks.
  */
 export const agentSuitesAwaitingPostgres: ReadonlySet<string> = new Set([
-  "chatQueueStoreContract",
   "chatRetentionContract",
   "transcriptStoreContract",
 ]);
