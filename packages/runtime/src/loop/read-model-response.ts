@@ -1,3 +1,4 @@
+import { replaceNul, replaceNulInJsonText } from "@binference/core";
 import type {
   ModelEvent,
   ModelFailure,
@@ -96,7 +97,7 @@ function toolCallsOf(draft: ResponseDraft): readonly ToolCall[] {
     .map(([, call]) => ({
       id: call.id,
       name: call.name,
-      argumentsText: call.argumentParts.join(""),
+      argumentsText: replaceNulInJsonText(call.argumentParts.join("")),
     }));
 }
 
@@ -162,6 +163,19 @@ function apply(draft: ResponseDraft, event: ModelEvent): Step {
   });
 }
 
+// Decision 0416: what the model wrote comes in with U+FFFD in place of each U+0000, before the
+// turn shows, stores or runs it; an argument's escape of it is read in `toolCallsOf`. A replay
+// stays as its transport kept it.
+function withoutNul(event: ModelEvent): ModelEvent {
+  if (event.type === "text" || event.type === "reasoning" || event.type === "toolCallDelta") {
+    return { ...event, delta: replaceNul(event.delta) };
+  }
+  if (event.type === "toolCallStart") {
+    return { ...event, id: replaceNul(event.id), name: replaceNul(event.name) };
+  }
+  return event.type === "error" ? { ...event, message: replaceNul(event.message) } : event;
+}
+
 // A stream that will not stop is closed without waiting: its next event goes nowhere.
 function close(iterator: AsyncIterator<ModelEvent>): void {
   iterator.return?.().catch(() => undefined);
@@ -193,7 +207,7 @@ async function readEvents(
         ? "the stream failed"
         : "the stream ended without its last event";
     }
-    const event = next.value.value;
+    const event = withoutNul(next.value.value);
     const step = apply(draft, event);
     const heard = soFar.take(event);
     if (heard.text !== undefined) {
@@ -210,10 +224,10 @@ async function readEvents(
 }
 
 /**
- * Reads a streamed model response into its text, reasoning and tool calls. A stream that breaks
- * its own order (a call that never started, a missing last event) is a `transient` failure, and a
- * stream that stops for the signal, or is cut by it, is `aborted`, so the loop never sees half a
- * response as whole.
+ * Reads a streamed model response into its text, reasoning and tool calls, each U+0000 in them
+ * read as U+FFFD (decision 0416). A stream that breaks its own order (a call that never started, a
+ * missing last event) is a `transient` failure, and a stream that stops for the signal, or is cut
+ * by it, is `aborted`, so the loop never sees half a response as whole.
  */
 export async function readModelResponse(
   events: AsyncIterable<ModelEvent>,

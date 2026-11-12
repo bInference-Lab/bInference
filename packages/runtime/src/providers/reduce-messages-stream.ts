@@ -1,4 +1,4 @@
-import type { JsonValue } from "@binference/core";
+import { type JsonValue, replaceNul, replaceNulInJsonText } from "@binference/core";
 import type { ModelEvent, ModelStop, ResponseReplay } from "../loop/model-event.js";
 import {
   laterUsage,
@@ -128,9 +128,11 @@ function stopEvents(draft: BlockDraft, index: number): Step {
   ];
 }
 
+// A kept block reads U+0000 as U+FFFD as the turn's own text and calls do (decision 0416), all but
+// the thinking, which goes back as it came for its signature.
 function replayBlock(draft: BlockDraft): JsonValue | undefined {
   if (draft.kind === "text") {
-    const text = draft.parts.join("");
+    const text = replaceNul(draft.parts.join(""));
     return text === "" ? undefined : { type: "text", text };
   }
   if (draft.kind === "thinking") {
@@ -143,9 +145,9 @@ function replayBlock(draft: BlockDraft): JsonValue | undefined {
   return draft.kind === "tool"
     ? {
         type: "tool_use",
-        id: draft.id,
-        name: draft.name,
-        input: inputObjectOf(draft.parts.join("")),
+        id: replaceNul(draft.id),
+        name: replaceNul(draft.name),
+        input: inputObjectOf(replaceNulInJsonText(draft.parts.join(""))),
       }
     : undefined;
 }

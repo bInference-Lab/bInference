@@ -68,6 +68,16 @@ function priceAlert(agent: Id<"agt">, at: number) {
   return { alert, fired };
 }
 
+// A read whose result is outside content, `text`, as a command's or a file's output is.
+function outputTool(name: string, text: string): TestTool {
+  return {
+    name,
+    kind: "read",
+    outside: true,
+    run: async () => Promise.resolve({ text, isError: false }),
+  };
+}
+
 function turnsStarted(rig: ChatRig): readonly Id<"trn">[] {
   return rig.engine.pushes
     .filter((push) => push.kind === "chat/turnStarted")
@@ -111,6 +121,40 @@ describe("createChatRunner", () => {
     expect(events.map(({ role, kind }) => `${role} ${kind}`)).toStrictEqual([
       "owner text",
       "agent text",
+    ]);
+  });
+
+  it("writes what the model and its tools said with U+FFFD in place of U+0000", async () => {
+    const nul = "\u0000";
+    const fffd = String.fromCodePoint(0xfffd);
+    const rig = await startChatRig({
+      replies: [
+        callsReply(
+          [
+            { id: "c1", name: "shell", args: { command: `printf 'a${nul}b'` } },
+            { id: "c2", name: "file_read", args: { path: "notes.txt" } },
+          ],
+          `Looking${nul}.`,
+        ),
+        textReply(`Done${nul}.`),
+      ],
+      tools: [outputTool("shell", `a${nul}b`), outputTool("file_read", `x${nul}y`)],
+    });
+    const posted = await rig.post("run it");
+    await rig.runner.rested();
+    expect(details(rig, "chat/turnEnded")).toStrictEqual(["ok"]);
+    const events = await rig.stores.transcript.events(
+      { sessionId: posted.session, limit: 10 },
+      live(),
+    );
+    expect(events.map(({ kind, content }) => ({ kind, content }))).toMatchObject([
+      { kind: "text", content: { text: "run it" } },
+      { kind: "text", content: { text: `Looking${fffd}.` } },
+      { kind: "tool_call", content: { arguments: `{"command":"printf 'a${fffd}b'"}` } },
+      { kind: "tool_result", content: { text: `a${fffd}b` } },
+      { kind: "tool_call", content: { arguments: '{"path":"notes.txt"}' } },
+      { kind: "tool_result", content: { text: `x${fffd}y` } },
+      { kind: "text", content: { text: `Done${fffd}.` } },
     ]);
   });
 

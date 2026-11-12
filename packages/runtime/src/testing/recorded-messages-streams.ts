@@ -141,6 +141,47 @@ export const messagesThinkingStream: RecordedAnswer = {
   ]),
 };
 
+/** A model that thinks, signed with its start, then writes and calls a tool, each with U+0000. */
+export const messagesNulStream: RecordedAnswer = {
+  status: 200,
+  headers: sse,
+  chunks: events([
+    start("msg_04V", '{"input_tokens":300,"output_tokens":1}'),
+    [
+      "content_block_start",
+      '{"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":"","signature":"EqQBCgIYAhIM1gbcDa9GJwZA"}}',
+    ],
+    [
+      "content_block_delta",
+      '{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"t\\u0000k"}}',
+    ],
+    ["content_block_stop", '{"type":"content_block_stop","index":0}'],
+    [
+      "content_block_start",
+      '{"type":"content_block_start","index":1,"content_block":{"type":"text","text":""}}',
+    ],
+    [
+      "content_block_delta",
+      '{"type":"content_block_delta","index":1,"delta":{"type":"text_delta","text":"a\\u0000b"}}',
+    ],
+    ["content_block_stop", '{"type":"content_block_stop","index":1}'],
+    [
+      "content_block_start",
+      '{"type":"content_block_start","index":2,"content_block":{"type":"tool_use","id":"toolu_04A","name":"quote","input":{}}}',
+    ],
+    [
+      "content_block_delta",
+      '{"type":"content_block_delta","index":2,"delta":{"type":"input_json_delta","partial_json":"{\\"note\\":\\"x\\\\u0000y\\"}"}}',
+    ],
+    ["content_block_stop", '{"type":"content_block_stop","index":2}'],
+    [
+      "message_delta",
+      '{"type":"message_delta","delta":{"stop_reason":"tool_use","stop_sequence":null},"usage":{"output_tokens":120}}',
+    ],
+    stop,
+  ]),
+};
+
 /** A compatible server's tool call whose whole input comes with its start, in no piece after. */
 export const messagesWholeInputStream: RecordedAnswer = {
   status: 200,

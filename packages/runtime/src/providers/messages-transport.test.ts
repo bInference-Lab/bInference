@@ -7,6 +7,7 @@ import { createRecordedHttp, type RecordedAnswer } from "../testing/recorded-htt
 import {
   messagesCutStream,
   messagesMaxTokensStream,
+  messagesNulStream,
   messagesOverloadedMidStream,
   messagesRefusalStream,
   messagesTextStream,
@@ -119,6 +120,21 @@ describe("createMessagesTransport", () => {
         },
       },
     ]);
+  });
+
+  it("keeps U+0000 in its replay as U+FFFD, all but the signed thinking, which stays as it came", async () => {
+    const events = await eventsOf([messagesNulStream]);
+    const nul = "\u0000";
+    const fffd = String.fromCodePoint(0xfffd);
+    expect(events.at(-1)).toMatchObject({
+      replay: {
+        content: [
+          { type: "thinking", thinking: `t${nul}k`, signature: "EqQBCgIYAhIM1gbcDa9GJwZA" },
+          { type: "text", text: `a${fffd}b` },
+          { type: "tool_use", id: "toolu_04A", input: { note: `x${fffd}y` } },
+        ],
+      },
+    });
   });
 
   it("takes a call's whole input from its start when no piece follows", async () => {

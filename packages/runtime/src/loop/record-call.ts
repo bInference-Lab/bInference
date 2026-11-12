@@ -1,3 +1,4 @@
+import { replaceNul } from "@binference/core";
 import type { ToolCall } from "./model-message.js";
 import type { NotRunReason } from "./not-run.js";
 import { notRunText } from "./not-run.js";
@@ -26,25 +27,30 @@ export async function markTurn(run: TurnRun): Promise<void> {
 
 /**
  * Writes a call's result, adds it to the conversation, marks the turn when it is outside content,
- * and shows the loop guard each call that ran.
+ * and shows the loop guard each call that ran. Each U+0000 in the result, such as a command's or a
+ * file's, is written and read back to the model as U+FFFD (decision 0416).
  */
 export async function recordResult(
   run: TurnRun,
   call: ToolCall,
   result: CallResult,
 ): Promise<void> {
-  await run.parts.journal.toolResult({ callId: call.id, name: call.name, ...result }, run.writes);
+  const text = replaceNul(result.text);
+  await run.parts.journal.toolResult(
+    { callId: call.id, name: call.name, ...result, text },
+    run.writes,
+  );
   run.messages.push({
     role: "tool",
     callId: call.id,
     name: call.name,
-    text: result.text,
+    text,
     isError: result.isError,
   });
   if (result.ran) {
     run.tally.noteResult({ tool: call.name, isError: result.isError });
   }
-  if (result.ran && run.loopGuard.see(call, result.text)) {
+  if (result.ran && run.loopGuard.see(call, text)) {
     run.tally.markLooped();
   }
   if (result.outside) {
