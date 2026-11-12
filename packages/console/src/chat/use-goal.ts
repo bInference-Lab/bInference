@@ -1,4 +1,10 @@
-import { type GoalAction, goalPushOf, type GoalRead, type ProtocolId } from "@binference/protocol";
+import {
+  chatDeletedPushOf,
+  type GoalAction,
+  goalPushOf,
+  type GoalRead,
+  type ProtocolId,
+} from "@binference/protocol";
 import {
   useMutation,
   type UseMutationResult,
@@ -20,8 +26,8 @@ function goalKey(agent: ProtocolId<"agent">): readonly string[] {
 
 /**
  * The open chat's goal and progress note (decision 0407): read with `goal/get` when the chat
- * opens, again at each `chat/goal` push and after a gap in the agent's chat topic, and the owner's
- * pause, resume or clear through `goal/change`.
+ * opens, again at each `chat/goal` and `chat/deleted` push and after a gap in the agent's chat
+ * topic, and the owner's pause, resume or clear through `goal/change`.
  */
 export function useGoal(agent: ProtocolId<"agent">): ChatGoal {
   const { client } = useEngine();
@@ -35,7 +41,7 @@ export function useGoal(agent: ProtocolId<"agent">): ChatGoal {
   const reload = async (): Promise<void> => queries.invalidateQueries({ queryKey: key });
   useTopic(`chat:${agent}`, {
     onPush: (frame) => {
-      if (goalPushOf(frame) !== undefined) {
+      if (goalPushOf(frame) !== undefined || chatDeletedPushOf(frame) !== undefined) {
         void reload();
       }
     },

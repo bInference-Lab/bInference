@@ -104,8 +104,14 @@ Agent 根据你的回答写入 `STRATEGY.md` 和 `PERSONA.md`，然后删除 `FI
 
 你可以让 Agent 在固定时间做某件事，例如“每天早上 9 点检查我的投资组合”。它会设置一个定时任务，你会收到 [`scheduleSet`](/zh-cn/reference/notices/#scheduleset) 通知。定时任务只会在设定时间开始 Agent 的一次回答：它不动用资金，它提议的任何操作与对话中的提议一样，要经过同样的卡片和上限。每个 Agent 最多有 50 个定时任务。`/schedules` 会列出它们；要取消某个定时任务，告诉 Agent 即可。
 
+## 删除对话
+
+binference 会把每个对话保留 `chats.keepDays` 天（默认 90 天），之后将其删除。要立即删除对话，请在终端中运行 `binference chat delete`：加 `--agent <id>` 只删除一个 Agent 的对话，不加则删除每个 Agent 的对话；它询问时输入 `删除对话` 即可。脚本中可加 `--yes` 跳过这个问题。在控制台中，“删除对话”位于 Agent 对话中的“新对话”旁边。
+
+正在进行的回答会先停止。然后该 Agent 对话中的每条消息、每一轮、目标、进度说明和助手会一并立即删除，等待 Agent 处理的消息和尚未回答的问题也会删除；控制台和终端对话会清空所显示的内容，Agent 收到下一条消息时会开始一个新的对话。笔记、工作区文件、设置、自动订单、交易、持仓、通知和模型花费都会保留，Telegram 对话中已有的消息也会保留。此前生成的备份在被清理前仍保留这些对话。binference 必须正在运行：Agent 离线时，命令会提示你运行 `binference start` 后再试。
+
 ## 另请参阅
 
-- [命令](/zh-cn/reference/commands/)：`chat`、`console`、`confirm`、`deny` 和 `telegram pair`。
+- [命令](/zh-cn/reference/commands/)：`chat`、`chat delete`、`console`、`confirm`、`deny` 和 `telegram pair`。
 - [配置项](/zh-cn/reference/config/)：`telegram.*`、`models.*` 和 `chats.*`。
 - [Agent 工具和 MCP 工具](/zh-cn/reference/agent-and-mcp-tools/)：Agent 可以读取和提议什么。

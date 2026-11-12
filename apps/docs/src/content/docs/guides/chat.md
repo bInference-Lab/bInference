@@ -153,8 +153,24 @@ only starts an answer of the agent at its time: it moves no money, and anything 
 through the same cards and caps as a proposal in chat. An agent keeps at most 50 schedules.
 `/schedules` lists them; ask the agent to cancel one.
 
+## Deleting chats
+
+binference keeps each chat for `chats.keepDays`, 90 days by default, then removes it. To delete
+chats now, run `binference chat delete` in a terminal, with `--agent <id>` for one agent or without
+it for every agent, and type `delete chats` when it asks; `--yes` skips the question for a script.
+In the console, Delete chats sits beside New chat in the agent's chat.
+
+A running answer stops first. Then every message, turn, goal, progress note and helper of the
+agent's chats goes at once, with the messages waiting for the agent and its open question; the
+console and the terminal chat clear what they show, and the agent's next message starts a new chat.
+Notes, workspace files, settings, auto orders, trades, positions, notices and model spend stay, and
+so do the messages already in your Telegram chat. Backups made before still hold the chats until
+they are pruned. binference must be running: with the agent offline, the command says to run
+`binference start` and try again.
+
 ## See also
 
-- [Commands](/reference/commands/) for `chat`, `console`, `confirm`, `deny` and `telegram pair`.
+- [Commands](/reference/commands/) for `chat`, `chat delete`, `console`, `confirm`, `deny` and
+  `telegram pair`.
 - [Config keys](/reference/config/) for `telegram.*`, `models.*` and `chats.*`.
 - [Agent and MCP tools](/reference/agent-and-mcp-tools/) for what the agent can read and propose.

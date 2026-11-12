@@ -14,6 +14,7 @@ import { chatEntries } from "./chat-entries";
 import { ChatThread, WorkingLine } from "./chat-thread";
 import type { PickedImage } from "./composer-images";
 import { CredentialRequestCard } from "./credential-request-card";
+import { DeleteChatsButton } from "./delete-chats-button";
 import { GoalPanel } from "./goal-panel";
 import { LaunchDraftCard } from "./launch-draft-card";
 import { NewChatButton } from "./new-chat-button";
@@ -94,9 +95,16 @@ function StoppedLine(props: { readonly press: StopPress | undefined }): React.JS
   );
 }
 
+/** Which agent's chat the controls act on. */
+interface ChatOf {
+  readonly agent: ProtocolId<"agent">;
+  readonly agentName: string;
+}
+
 // Stop the agent, reachable while it answers or not, so its helpers and commands end and its goal
-// pauses (decisions 0403, 0407 and 0409); and New chat.
+// pauses (decisions 0403, 0407 and 0409); New chat; and Delete chats (decision 0415).
 function ChatControls(props: {
+  readonly chat: ChatOf;
   readonly actions: ChatActions;
   readonly canChat: boolean;
   readonly isRunning: boolean;
@@ -115,6 +123,7 @@ function ChatControls(props: {
         {text("console.chat.stopAgent")}
       </Button>
       <NewChatButton canStart={props.canChat && !clear.isPending} start={() => clear.mutate()} />
+      <DeleteChatsButton agent={props.chat.agent} agentName={props.chat.agentName} />
     </div>
   );
 }
@@ -122,6 +131,7 @@ function ChatControls(props: {
 // The chat's controls, and what the chat says above the thread: what a stop stopped, that a new
 // chat started, or that the chat so far could not load.
 function ChatTop(props: {
+  readonly chat: ChatOf;
   readonly actions: ChatActions;
   readonly canChat: boolean;
   readonly isRunning: boolean;
@@ -131,7 +141,12 @@ function ChatTop(props: {
   const { stop, clear } = props.actions;
   return (
     <>
-      <ChatControls actions={props.actions} canChat={props.canChat} isRunning={props.isRunning} />
+      <ChatControls
+        chat={props.chat}
+        actions={props.actions}
+        canChat={props.canChat}
+        isRunning={props.isRunning}
+      />
       {props.historyError === null ? null : (
         <Alert>
           <AlertDescription>
@@ -189,7 +204,7 @@ function ChatBottom(props: {
  * turn, the agent's question with its answer buttons, the agent's cards inline with Confirm and
  * Cancel, and the composer. Stop the agent stops it whether it answers or not, as Telegram's and
  * the terminal's `/stop` do. New chat asks once more, then starts a new session; the agent keeps
- * its notes and files.
+ * its notes and files. Delete chats, for `admin`, asks once more, then deletes the agent's chats.
  */
 export function AgentChat(props: {
   readonly agent: ProtocolId<"agent">;
@@ -205,6 +220,7 @@ export function AgentChat(props: {
   return (
     <div className="flex flex-col gap-4">
       <ChatTop
+        chat={{ agent, agentName }}
         actions={actions}
         canChat={canChat}
         isRunning={running !== undefined}

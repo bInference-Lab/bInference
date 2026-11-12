@@ -1,4 +1,9 @@
-import { type ChatPush, chatPushOf, type ProtocolId } from "@binference/protocol";
+import {
+  type ChatPush,
+  chatDeletedPushOf,
+  chatPushOf,
+  type ProtocolId,
+} from "@binference/protocol";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useState } from "react";
 import { useTopic } from "../connection/use-topic";
@@ -108,7 +113,7 @@ function stepOf(push: ChatPush, id: string): PushStep {
 /**
  * Follows the agent's chat topic while the chat is open: the running turn and the draft of its
  * answer, each final answer and status line in the order they came. A turn that starts or ends,
- * and a gap in the topic, load the transcript again.
+ * and a gap in the topic, load the transcript again; `chat/deleted` forgets every line first.
  */
 export function useChatLive(agent: ProtocolId<"agent">): ChatLive {
   const queries = useQueryClient();
@@ -118,8 +123,18 @@ export function useChatLive(agent: ProtocolId<"agent">): ChatLive {
     async (): Promise<void> => queries.invalidateQueries({ queryKey: transcriptKey(agent) }),
     [queries, agent],
   );
+  const reset = useCallback(() => {
+    setLines([]);
+    setRunning(undefined);
+  }, []);
   useTopic(`chat:${agent}`, {
     onPush: (frame) => {
+      // The agent's chats were deleted (decision 0415): the page forgets what it showed.
+      if (chatDeletedPushOf(frame) !== undefined) {
+        reset();
+        void stale();
+        return;
+      }
       const push = chatPushOf(frame);
       if (push === undefined) {
         return;
@@ -140,10 +155,6 @@ export function useChatLive(agent: ProtocolId<"agent">): ChatLive {
   });
   const sent = useCallback((line: Extract<LiveLine, { readonly kind: "owner" }>) => {
     setLines((shown) => [...shown, line].slice(-mostLines));
-  }, []);
-  const reset = useCallback(() => {
-    setLines([]);
-    setRunning(undefined);
   }, []);
   return { lines, ...(running === undefined ? {} : { running }), sent, reset };
 }

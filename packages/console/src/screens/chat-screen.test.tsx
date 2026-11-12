@@ -127,6 +127,25 @@ describe("the chat screen", () => {
     expect(log.textContent).not.toContain("Reading the portfolio");
   });
 
+  it("forgets what it showed when the agent's chats are deleted, and reads the chat again", async () => {
+    const engine = fakeClient(chatAnswers());
+    renderSignedIn(<ChatScreen />, { client: engine.client });
+    await settle();
+    const topic = `chat:${agent}` as const;
+    const answer = { agent, session, turn, text: "Kept so far", final: true };
+    act(() => engine.push(topic, "chat/turnStarted", { agent, session, turn }));
+    act(() => engine.push(topic, "chat/message", answer));
+    await settle();
+    expect(screen.getByText("Kept so far")).toBeDefined();
+    const reads = engine.calls.filter((call) => call.op === "chat/messages").length;
+    act(() => engine.push(topic, "chat/deleted", { agent }));
+    await settle();
+    expect(screen.queryByText("Kept so far")).toBeNull();
+    expect(screen.queryByText(/^Working on it/u)).toBeNull();
+    const after = engine.calls.filter((call) => call.op === "chat/messages").length;
+    expect(after).toBeGreaterThan(reads);
+  });
+
   it("sends the owner's message and shows it until the transcript holds it", async () => {
     const engine = fakeClient(chatAnswers());
     renderSignedIn(<ChatScreen />, { client: engine.client });
@@ -192,6 +211,18 @@ describe("the chat screen", () => {
     renderSignedIn(<ChatScreen />, { client: engine.client, scopes: ["read"] });
     await settle();
     expect(screen.getByRole("button", { name: "Stop the agent" })).toHaveProperty("disabled", true);
+  });
+
+  it("offers Delete chats beside New chat only to a connection with the admin scope", async () => {
+    const engine = fakeClient(chatAnswers());
+    const view = renderSignedIn(<ChatScreen />, { client: engine.client });
+    await settle();
+    expect(screen.getByRole("button", { name: "Delete chats" })).toBeDefined();
+    view.unmount();
+    renderSignedIn(<ChatScreen />, { client: engine.client, scopes: ["read", "chat", "confirm"] });
+    await settle();
+    expect(screen.getByRole("button", { name: "New chat" })).toBeDefined();
+    expect(screen.queryByRole("button", { name: "Delete chats" })).toBeNull();
   });
 
   it("asks before a new chat, and keeps this one when the owner says so", async () => {
