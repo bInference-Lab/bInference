@@ -11,6 +11,10 @@ import {
   type RetryPorts,
 } from "./postgres-transaction.js";
 
+function ignore(): void {
+  // Each client's own listener logs the error.
+}
+
 /** The oldest server the store runs on: Postgres 17 (decision 0365). */
 const oldestServerVersion = 170_000;
 
@@ -57,21 +61,28 @@ async function assertServer<Schema>(kysely: Kysely<Schema>, signal: AbortSignal)
 /**
  * Opens a pool on the database `settings` name (decision 0365): TLS with the server's CA checked,
  * the store's session settings and limits, and its row parsers. It checks the server before it
- * returns and refuses one older than Postgres 17 with `store.postgres_too_old`. A pool `error`
- * event goes to the log as a fault. Every call takes a signal; a write retries a conflict through
- * the given clock and random source.
+ * returns and refuses one older than Postgres 17 with `store.postgres_too_old`. A session the
+ * server ends goes to the log as a fault, whether the pool or a call held it, and never ends the
+ * process. Every call takes a signal; a write retries a conflict through the given clock and
+ * random source.
  */
 export async function openPostgres<Schema>(
   settings: PostgresSettings,
   options: RetryPorts & { readonly signal: AbortSignal },
 ): Promise<PostgresDatabase<Schema>> {
   const pool = new Pool(poolConfigOf(settings));
-  // An idle connection the server drops emits here; without a listener it would end the process.
-  pool.on("error", (error) => {
-    options.logger.error("store.postgres_pool_error", {
-      errorCode: error instanceof DatabaseError ? (error.code ?? "") : "",
+  // A session the server ends emits `error` on its client: an idle one through the pool, one a
+  // call holds (a transaction idle past `idle_in_transaction_session_timeout`) on the client alone.
+  // Unheard, either would end the process. Each client's own listener logs it; the call's next
+  // statement fails, and the pool drops the client.
+  pool.on("connect", (client) => {
+    client.on("error", (error) => {
+      options.logger.error("store.postgres_pool_error", {
+        errorCode: error instanceof DatabaseError ? (error.code ?? "") : "",
+      });
     });
   });
+  pool.on("error", ignore);
   const kysely = new Kysely<Schema>({ dialect: new PostgresDialect({ pool }) });
   try {
     await assertServer(kysely, options.signal);

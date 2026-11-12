@@ -228,6 +228,20 @@ describe.runIf(url !== "")("a Postgres store connection", () => {
     });
   });
 
+  it("outlives a session the server ends while a write holds it, and fails the write", async () => {
+    const writing = database.write(async ({ kysely, execute }) => {
+      await execute(sql`set local idle_in_transaction_session_timeout = 100`.compile(kysely));
+      // The write's transaction sits idle while another connection waits on the server.
+      await database.read(async (other) => {
+        await other.execute(sql`select pg_sleep(0.5)`.compile(other.kysely));
+      }, never);
+      await execute(sql`select 1`.compile(kysely));
+      return "committed";
+    }, never);
+    await expect(writing).rejects.toMatchObject({ code: "store.postgres_unreachable" });
+    await expect(database.read(async () => "read", never)).resolves.toBe("read");
+  });
+
   it("reads integers as numbers and numeric as its decimal text", async () => {
     const row = await database.read(
       async ({ kysely, takeFirst }) =>
