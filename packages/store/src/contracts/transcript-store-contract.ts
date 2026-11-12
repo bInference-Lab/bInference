@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import type { ContractCheck } from "@binference/core/testing";
-import type { EventDraft } from "../chats/transcript-event.js";
+import type { EventDraft, TranscriptEvent } from "../chats/transcript-event.js";
 import type { SessionStore, TranscriptStore, WriterFence } from "../ports.js";
 import { fencedCheck, go, nthId, nthSession, okValue, rejectsAborted } from "./agent-fixtures.js";
 
@@ -61,6 +61,38 @@ async function appendsInOrder(subject: TranscriptStoreSubject, fence: number): P
     other.map(({ seq, sessionId: session }) => [seq, session]),
     [[1, nthId("ses", 2)]],
   );
+}
+
+// Events said in one millisecond read in the order they were appended, by `seq`, whatever the
+// other session's appends between them (decision 0366).
+async function readsOneInstantInOrder(
+  subject: TranscriptStoreSubject,
+  fence: number,
+): Promise<void> {
+  await plant(subject, fence);
+  const { store } = subject;
+  const [one, two] = [nthId("ses", 1), nthId("ses", 2)];
+  const texts = ["first", "second", "third", "fourth"];
+  const appended = await texts.reduce<Promise<readonly TranscriptEvent[]>>(
+    async (earlier, text) => {
+      const done = await earlier;
+      await store.append({ sessionId: two, events: [said(`other ${text}`, 5)], fence }, go());
+      const written = okValue(
+        await store.append({ sessionId: one, events: [said(text, 5)], fence }, go()),
+      );
+      return [...done, ...written];
+    },
+    Promise.resolve([]),
+  );
+  const read = await store.events({ sessionId: one, limit: 10 }, go());
+  assert.deepEqual(read, appended);
+  assert.deepEqual(
+    read.map(({ seq, content }) => [seq, content]),
+    texts.map((text, index) => [index + 1, { text }]),
+  );
+  assert.deepEqual(await store.events({ sessionId: one, afterSeq: 2, limit: 1 }, go()), [
+    appended[2],
+  ]);
 }
 
 async function commitsWithItsEvents(subject: TranscriptStoreSubject, fence: number): Promise<void> {
@@ -147,6 +179,11 @@ export function transcriptStoreContract(harness: TranscriptStoreHarness): readon
       "numbers each session's events in order and reads them back",
       create,
       appendsInOrder,
+    ),
+    fencedCheck(
+      "reads a session's events of one instant in the order they were appended",
+      create,
+      readsOneInstantInOrder,
     ),
     fencedCheck(
       "writes a turn's events with its committed mark, or neither",
