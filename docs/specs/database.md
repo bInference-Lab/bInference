@@ -642,6 +642,11 @@ In the agent schema:
 | `transcript_events` | `id`               | `content` | Refuse-change triggers (section 6.3)                   |
 | `turns`             |                    |           |                                                        |
 
+Agent 0009 adds the function `trigram_similarity(content, query)`: `pg_trgm`'s `similarity`, bound
+to the shared schema once when the migration runs, so a note search ranks by it under a session's
+empty search path. On SQLite, which ranks a search by `notes_fts`, the same version changes
+nothing.
+
 <a id="section-6-5"></a>
 
 ### 6.5 Agent leases

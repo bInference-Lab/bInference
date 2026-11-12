@@ -5,6 +5,7 @@ import {
   type Kysely,
   type QueryResult,
   type RawBuilder,
+  type SqlBool,
   sql,
 } from "kysely";
 import {
@@ -15,6 +16,12 @@ import {
   getPostgresKysely,
 } from "./kysely-sync.js";
 import type { StoreConnection } from "./store-connection.js";
+import {
+  type FullTextIndex,
+  postgresFullText,
+  postgresHoldsText,
+  sqliteHoldsText,
+} from "./text-search-forms.js";
 
 /** Kysely bound to one connection, with synchronous execution. */
 export interface SyncKysely<Schema> {
@@ -49,6 +56,14 @@ export interface SyncKysely<Schema> {
    * since it reads back as a number on SQLite and as decimal text on Postgres.
    */
   readonly decimalNumber: (value: Expression<string>) => RawBuilder<number | string>;
+  /**
+   * Whether the text column `reference` names holds `text`, in any case of its ASCII letters and
+   * with every other character as itself, `%`, `_` and `\` among them: both databases fold ASCII
+   * letters only.
+   */
+  readonly holdsText: (reference: string, text: string) => RawBuilder<SqlBool>;
+  /** The full-text index a text column has here, which a search matches and ranks by. */
+  readonly fullText: FullTextIndex;
 }
 
 // A key of letters and digits with a letter in it: never quoted inside either form's path, and
@@ -133,6 +148,8 @@ export function createSyncKysely<Schema>(connection: StoreConnection): SyncKysel
       jsonField: postgresJsonField,
       jsonArrayLength: postgresJsonArrayLength,
       decimalNumber: postgresDecimalNumber,
+      holdsText: postgresHoldsText,
+      fullText: postgresFullText(connection.schema),
     };
   }
   const takeFirst = <Row>(query: Compilable<Row>): Row | undefined =>
@@ -145,5 +162,7 @@ export function createSyncKysely<Schema>(connection: StoreConnection): SyncKysel
     jsonField: sqliteJsonField,
     jsonArrayLength: sqliteJsonArrayLength,
     decimalNumber: sqliteDecimalNumber,
+    holdsText: sqliteHoldsText,
+    fullText: { kind: "fts5" },
   };
 }

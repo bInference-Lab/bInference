@@ -1,7 +1,8 @@
-import type { CompiledQuery, QueryResult } from "kysely";
+import type { CompiledQuery, QueryResult, RawBuilder } from "kysely";
 import { describe, expect, it } from "vitest";
 import type { PostgresTaskConnection } from "./store-connection.js";
 import { createSyncKysely } from "./sync-kysely.js";
+import type { FullTextIndex } from "./text-search-forms.js";
 
 interface Tables {
   orders: { id: string; agent_id: string; state: string };
@@ -25,6 +26,16 @@ function recording(answer: QueryResult<never>): Recorded {
     },
   };
   return { connection, sent };
+}
+
+// The rank of Postgres's trigram index; SQLite's FTS5 index ranks inside its own table.
+function similarityOf(
+  index: FullTextIndex,
+): (reference: string, text: string) => RawBuilder<number> {
+  if (index.kind !== "trigram") {
+    throw new Error("Only Postgres ranks a search by trigram similarity.");
+  }
+  return index.similarity;
 }
 
 // An insert of event 7 that reads its key back.
@@ -167,6 +178,32 @@ describe("createSyncKysely on a Postgres task connection", () => {
           'and cast("fill"."amount" as numeric) < cast($2 as numeric) ' +
           'order by cast("fill"."amount" as numeric) desc',
         parameters: [2, "10"],
+      },
+    ]);
+  });
+
+  it("matches text with every LIKE wildcard escaped and ranks it by the schema's similarity", () => {
+    const { connection, sent } = recording({ rows: [] });
+    const { kysely, execute, holdsText, fullText } = createSyncKysely<Tables>(connection);
+    const similarity = similarityOf(fullText);
+
+    execute(
+      kysely
+        .selectFrom("orders")
+        .select("id")
+        .where(holdsText("orders.state", "50%_a\\b"))
+        .orderBy(similarity("orders.state", "50%_a\\b"), "desc"),
+    );
+
+    expect(fullText.kind).toBe("trigram");
+    expect(sent).toStrictEqual([
+      {
+        sql:
+          'select "id" from "engine_0190f1c23a4b7c5d8e6f000000000001"."orders" ' +
+          'where "engine_0190f1c23a4b7c5d8e6f000000000001"."orders"."state" COLLATE "C" ILIKE $1 ' +
+          'order by "engine_0190f1c23a4b7c5d8e6f000000000001"."trigram_similarity"(' +
+          '"engine_0190f1c23a4b7c5d8e6f000000000001"."orders"."state", $2) desc',
+        parameters: ["%50\\%\\_a\\\\b%", "50%_a\\b"],
       },
     ]);
   });

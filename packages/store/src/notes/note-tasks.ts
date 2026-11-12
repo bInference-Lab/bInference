@@ -1,4 +1,5 @@
 import { err, ok, type Result } from "@binference/core";
+import type { RawBuilder } from "kysely";
 import { z } from "zod";
 import { holdsFence } from "../chats/fence-tasks.js";
 import type { Fenced, FenceRefusal } from "../chats/fenced.js";
@@ -130,22 +131,52 @@ export const listNotesTask: StoreTask<NoteList, readonly NoteRecord[]> = defineT
   },
 });
 
-// A query under three characters, which the trigram index cannot match: the notes whose text holds
-// it, in any ASCII letter case, oldest first. `instr` reads no wildcard, so `%` and `_` match
-// themselves.
-function searchShort(database: StoreConnection, query: NoteSearch): readonly NoteRecord[] {
-  const { kysely, execute } = createSyncKysely<AgentTables>(database);
-  const found = kysely
+// The agent's notes that are not removed and whose text holds the query, in any ASCII letter case,
+// with `%` and `_` as themselves.
+function notesHolding(database: StoreConnection, query: NoteSearch) {
+  const { kysely, holdsText } = createSyncKysely<AgentTables>(database);
+  return kysely
     .selectFrom("notes")
     .selectAll()
     .where("agent_id", "=", query.agentId)
     .where("deleted_at", "is", null)
-    .where(
-      (eb) =>
-        eb.fn<number>("instr", [eb.fn("lower", ["text"]), eb.fn("lower", [eb.val(query.query)])]),
-      ">",
-      0,
-    )
+    .where(holdsText("notes.text", query.query));
+}
+
+// A query under three characters, which the trigram index cannot match: the notes that hold it,
+// oldest first.
+function searchShort(database: StoreConnection, query: NoteSearch): readonly NoteRecord[] {
+  const { execute } = createSyncKysely<AgentTables>(database);
+  const found = notesHolding(database, query).orderBy("id").limit(query.limit);
+  return execute(found).rows.map(toNote);
+}
+
+// SQLite's search: the FTS5 trigram index matches the query as one phrase and ranks the notes.
+function searchFts5(database: StoreConnection, query: NoteSearch): readonly NoteRecord[] {
+  const { kysely, execute } = createSyncKysely<AgentTables>(database);
+  const found = kysely
+    .selectFrom("notes_fts")
+    .innerJoin("notes", "notes.id", "notes_fts.rowid")
+    .selectAll("notes")
+    .where("notes_fts.notes_fts", "match", phraseOf(query.query))
+    .where("notes.agent_id", "=", query.agentId)
+    .where("notes.deleted_at", "is", null)
+    .orderBy("notes_fts.rank")
+    .orderBy("notes.id")
+    .limit(query.limit);
+  return execute(found).rows.map(toNote);
+}
+
+// Postgres's search: the notes whose text holds the query, which the trigram index serves, the
+// most similar first.
+function searchTrigrams(
+  database: StoreConnection,
+  query: NoteSearch,
+  similarity: (reference: string, text: string) => RawBuilder<number>,
+): readonly NoteRecord[] {
+  const { execute } = createSyncKysely<AgentTables>(database);
+  const found = notesHolding(database, query)
+    .orderBy(similarity("notes.text", query.query), "desc")
     .orderBy("id")
     .limit(query.limit);
   return execute(found).rows.map(toNote);
@@ -164,17 +195,9 @@ export const searchNotesTask: StoreTask<NoteSearch, readonly NoteRecord[]> = def
     if ((query.query.match(/./gsu)?.length ?? 0) < shortestQuery) {
       return searchShort(database, query);
     }
-    const { kysely, execute } = createSyncKysely<AgentTables>(database);
-    const found = kysely
-      .selectFrom("notes_fts")
-      .innerJoin("notes", "notes.id", "notes_fts.rowid")
-      .selectAll("notes")
-      .where("notes_fts.notes_fts", "match", phraseOf(query.query))
-      .where("notes.agent_id", "=", query.agentId)
-      .where("notes.deleted_at", "is", null)
-      .orderBy("notes_fts.rank")
-      .orderBy("notes.id")
-      .limit(query.limit);
-    return execute(found).rows.map(toNote);
+    const { fullText } = createSyncKysely<AgentTables>(database);
+    return fullText.kind === "fts5"
+      ? searchFts5(database, query)
+      : searchTrigrams(database, query, fullText.similarity);
   },
 });
