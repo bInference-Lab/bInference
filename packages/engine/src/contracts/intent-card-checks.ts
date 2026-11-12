@@ -69,7 +69,8 @@ export async function findsCardsByRef(subject: IntentStoreSubject): Promise<void
 
 /**
  * An intent a launch draft's Start proposed is found by the draft's reference, through its moves;
- * a second intent with the same reference is refused, and an unknown reference finds none.
+ * a second intent with the same reference is `exists` and writes nothing, and an unknown
+ * reference finds none.
  */
 export async function findsIntentsByDraftRef(subject: IntentStoreSubject): Promise<void> {
   const { store } = subject;
@@ -79,9 +80,9 @@ export async function findsIntentsByDraftRef(subject: IntentStoreSubject): Promi
   assert.ok((await store.transition(intentMove(1, 0, "checked"), live())).ok);
   const found = await store.byDraftRef(draftRef, live());
   assert.deepEqual([found?.id, found?.state, found?.draftRef], [intentId, "checked", draftRef]);
-  await assert.rejects(store.create({ ...intentDraft(subject, 3), draftRef }, live()), {
-    code: "store.constraint",
-  });
+  const again = await store.create({ ...intentDraft(subject, 3), draftRef }, live());
+  assert.deepEqual(again, { ok: false, error: "exists" });
+  assert.equal(await store.get(fixtureId("int", 3), live()), undefined);
   assert.equal(await store.byDraftRef("ZZZZZZZZZZZZZZZZ", live()), undefined);
   assert.equal((await store.get(fixtureId("int", 2), live()))?.draftRef, undefined);
 }

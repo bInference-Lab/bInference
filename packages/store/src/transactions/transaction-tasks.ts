@@ -63,6 +63,9 @@ export const saveSignedTask: StoreTask<
   input: signedTransactionSchema,
   output: resultSchema(transactionRecordSchema, ["nonce_taken"]),
   run(database, transaction) {
+    if (readTransaction(database, transaction.id) !== undefined) {
+      throw constraint("A signed transaction takes an id of its own.", transaction.id);
+    }
     if (!isNonceFree(transaction.nonce, readAccountNonces(database, transaction.account))) {
       return err("nonce_taken");
     }
@@ -76,22 +79,25 @@ function constraint(message: string, transaction: Id<"tx">): BinferenceError {
   return new BinferenceError({ code: "store.constraint", message, details: { transaction } });
 }
 
+// The transaction stored under an id, read in the task's transaction (decision 0413).
+function readTransaction(database: StoreConnection, id: Id<"tx">): TransactionRecord | undefined {
+  const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
+  const row = takeFirst(kysely.selectFrom("txs").selectAll().where("id", "=", id));
+  return row === undefined ? undefined : toTransactionRecord(row);
+}
+
 // The stored transaction a replacement takes the nonce of: one of its own step, at its nonce.
 function readReplaced(
   database: StoreConnection,
   replacement: SignedReplacement,
 ): TransactionRecord {
-  const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
-  const byId = (id: Id<"tx">) =>
-    takeFirst(kysely.selectFrom("txs").selectAll().where("id", "=", id));
-  const replaced = byId(replacement.replaces.id);
-  if (replaced === undefined || byId(replacement.id) !== undefined) {
+  const record = readTransaction(database, replacement.replaces.id);
+  if (record === undefined || readTransaction(database, replacement.id) !== undefined) {
     throw constraint(
       "A replacement names a stored transaction and an id of its own.",
       replacement.id,
     );
   }
-  const record = toTransactionRecord(replaced);
   const { account, intentId, step, nonce } = replacement;
   const isSameStep =
     record.account === account &&

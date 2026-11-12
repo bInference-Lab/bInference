@@ -1,4 +1,4 @@
-import { err, type Id, idSchema, ok, type Result } from "@binference/core";
+import { BinferenceError, err, type Id, idSchema, ok, type Result } from "@binference/core";
 import {
   type UnbondingClaim,
   unbondingClaimSchema,
@@ -87,6 +87,21 @@ export const openUnbondingTask: StoreTask<UnbondingDraft, UnbondingRecord> = def
     const [held] = rowsOf(database, (select) => select.where("intent_id", "=", draft.intentId));
     if (held !== undefined) {
       return held;
+    }
+    // The venue's request is a key its caller chose: read before the insert (decision 0413).
+    const [taken] = rowsOf(database, (select) =>
+      select
+        .where("venue", "=", draft.venue)
+        .where("wallet_id", "=", draft.walletId)
+        .where("paper", "=", draft.isPaper ? 1 : 0)
+        .where("request_ref", "=", draft.requestRef),
+    );
+    if (taken !== undefined) {
+      throw new BinferenceError({
+        code: "store.constraint",
+        message: "An unbonding's request is held under another unstake.",
+        details: { intent: draft.intentId },
+      });
     }
     const { kysely, takeOne } = createSyncKysely<EngineTables>(database);
     const { id } = takeOne(

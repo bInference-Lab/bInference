@@ -35,7 +35,8 @@ function givingUp(writer: MoneyWriter): MoneyWriter {
 // Eight writers over one set of memory stores: the fakes check each write as one step, as a
 // database's transaction does. The last gives up on every write.
 async function racers(): Promise<MoneyRaceSubject> {
-  const { intents, ledger, orders, transactions, agents, install } = createMemoryEngineStores();
+  const { intents, ledger, orders, transactions, agents, install, identities } =
+    createMemoryEngineStores();
   const plant = async (n: number): Promise<PlantedPair> => {
     const pair = { agentId: fixtureId("agt", n), walletId: fixtureId("wal", n) };
     install.addWallet(
@@ -53,7 +54,7 @@ async function racers(): Promise<MoneyRaceSubject> {
     accountRefSchema.parse("fake:1:0x0000000b"),
   ] as const;
   const writers = [...Array.from({ length: 7 }, () => writer), givingUp(writer)];
-  return { writers, agents, ...mine, other, accounts };
+  return { writers, agents, identities, ...mine, other, accounts };
 }
 
 describe("memory money stores under racing writers", () => {

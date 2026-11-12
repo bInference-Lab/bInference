@@ -40,6 +40,16 @@ function readIntent(database: StoreConnection, id: Id<"int">): IntentRecord | un
   return row === undefined ? undefined : toIntentRecord(row);
 }
 
+/** The intent a launch draft's reference started, read in the caller's transaction. */
+export function intentByDraftRef(
+  database: StoreConnection,
+  draftRef: string,
+): IntentRecord | undefined {
+  const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
+  const row = takeFirst(kysely.selectFrom("intents").selectAll().where("draft_ref", "=", draftRef));
+  return row === undefined ? undefined : toIntentRecord(row);
+}
+
 function addEvent(database: StoreConnection, event: EventDraft): IntentEventRecord {
   const { kysely, takeOne } = createSyncKysely<EngineTables>(database);
   const row = {
@@ -104,12 +114,19 @@ function movedColumns(intent: IntentRecord): {
   };
 }
 
-/** Writes a new intent with its first event and ledger entry; an id in use is `exists`. */
+/**
+ * Writes a new intent with its first event and ledger entry; an id or a launch draft reference in
+ * use is `exists`, both read before the insert (decision 0413).
+ */
 export function createIntent(
   database: StoreConnection,
   draft: IntentDraft,
 ): Result<IntentCommit, "exists"> {
-  if (readIntent(database, draft.id) !== undefined) {
+  const { draftRef } = draft;
+  const isTaken =
+    readIntent(database, draft.id) !== undefined ||
+    (draftRef !== undefined && intentByDraftRef(database, draftRef) !== undefined);
+  if (isTaken) {
     return err("exists");
   }
   const { atMs, cause, ledger, ...fields } = draft;

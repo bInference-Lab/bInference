@@ -17,7 +17,7 @@ import type { OrderRecord } from "../orders/order-record.js";
 import type { IntentStore } from "../ports.js";
 import type { MemoryAgentInboxStore } from "./memory-agent-inbox-store.js";
 import type { MemoryAgentStore } from "./memory-agent-store.js";
-import { constraintFault, memoryCall } from "./memory-call.js";
+import { memoryCall } from "./memory-call.js";
 import { fillsInFlightOf, recordLandedLate } from "./memory-fill-landings.js";
 import { checkFillWrites, ordersOf, saveFillWrites } from "./memory-fill-writes.js";
 import type { MemoryInstallStore } from "./memory-install-store.js";
@@ -95,17 +95,13 @@ function create(
   draft: IntentDraft,
 ): Result<IntentCommit, "exists"> {
   const { ledger } = options;
-  if (tables.intent(draft.id) !== undefined) {
+  // A draft's reference starts one intent, as the store's unique index holds.
+  const isDraftTaken =
+    draft.draftRef !== undefined && tables.intents().some((it) => it.draftRef === draft.draftRef);
+  if (tables.intent(draft.id) !== undefined || isDraftTaken) {
     return err("exists");
   }
   const { atMs, cause, ledger: ledgerDraft, ...fields } = draft;
-  // A draft's reference starts one intent, as the store's unique index holds.
-  if (
-    draft.draftRef !== undefined &&
-    tables.intents().some((it) => it.draftRef === draft.draftRef)
-  ) {
-    throw constraintFault(`draft reference ${draft.draftRef} is taken`);
-  }
   const ledgerEntry = appendTo(ledger, ledgerDraft);
   const intent: IntentRecord = { ...fields, createdAtMs: atMs, changedAtMs: atMs, version: 0 };
   tables.saveIntent(intent);

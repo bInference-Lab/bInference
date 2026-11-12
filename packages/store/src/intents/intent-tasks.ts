@@ -33,7 +33,7 @@ import { confirmedSinceTask, recordLandedLateTask } from "./confirmed-tasks.js";
 import { fillsInFlightTask } from "./fills-in-flight-task.js";
 import { writeFreeze } from "./freeze-writes.js";
 import { toCardRecord, toConfirmation, toIntentEvent, toIntentRecord } from "./intent-rows.js";
-import { createIntent, moveIntent } from "./intent-writes.js";
+import { createIntent, intentByDraftRef, moveIntent } from "./intent-writes.js";
 
 const intentId = idSchema("int");
 
@@ -191,13 +191,7 @@ export const intentByDraftRefTask: StoreTask<string, IntentRecord | undefined> =
   access: "read",
   input: z.string().min(1).max(64),
   output: intentRecordSchema.optional(),
-  run(database, draftRef) {
-    const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
-    const row = takeFirst(
-      kysely.selectFrom("intents").selectAll().where("draft_ref", "=", draftRef),
-    );
-    return row === undefined ? undefined : toIntentRecord(row);
-  },
+  run: (database, draftRef) => intentByDraftRef(database, draftRef),
 });
 
 /** Reads an intent's confirmation. */

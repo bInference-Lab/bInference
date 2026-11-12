@@ -8,6 +8,7 @@ import type { LedgerStore } from "../ports.js";
 import type { ExecutionWrite, PositionState } from "../positions/position-record.js";
 import { countsOneLandedFill } from "./fill-write-races.js";
 import { cardOf, confirmationOf, intentDraft, intentMove } from "./intent-fixtures.js";
+import { keyRaces } from "./key-races.js";
 import {
   conflict,
   firstOf,
@@ -218,8 +219,9 @@ async function grantsEachNonceOnce(subject: MoneyRaceSubject): Promise<void> {
 /**
  * The money statements under writers that race on one engine database (decision 0366): whatever
  * the interleaving, each write lands whole or not at all, a write that gave up on conflicts
- * leaves nothing, and no entry, event, confirmation, fill, position move or nonce lands twice. On
- * a database that retries, each race meets a conflict.
+ * leaves nothing, and no entry, event, confirmation, fill, position move or nonce lands twice; a
+ * key a caller chose lands once and every other writer gets the port's answer for it. On a
+ * database that retries, each race meets a conflict.
  */
 export function moneyWriteRaces(harness: MoneyRaceHarness): readonly ContractCheck[] {
   const create = async (): Promise<MoneyRaceSubject> => harness.create();
@@ -234,6 +236,7 @@ export function moneyWriteRaces(harness: MoneyRaceHarness): readonly ContractChe
       movesOnePositionOnce,
     ),
     checkOn("gives each nonce the writers take once", create, grantsEachNonceOnce),
+    ...keyRaces(create),
     noDoubleBookingProperty(harness, harness.propertyRuns ?? 10),
   ];
 }

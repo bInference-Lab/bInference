@@ -193,7 +193,10 @@ interface StoreCall {
  * move all or nothing, together with its ledger entry.
  */
 export interface IntentStore extends LandedLate, StoredAssetsRead {
-  /** Writes a new intent with its first event and ledger entry; an id in use is `exists`. */
+  /**
+   * Writes a new intent with its first event and ledger entry. An id in use, or a launch draft
+   * reference another intent holds, is `exists` and writes nothing (decision 0413).
+   */
   create(draft: IntentDraft, options: StoreCall): Promise<Result<IntentCommit, "exists">>;
   /** One intent, or `undefined` when the store has none with that id. */
   get(id: Id<"int">, options: StoreCall): Promise<IntentRecord | undefined>;

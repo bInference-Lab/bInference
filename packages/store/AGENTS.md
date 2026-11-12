@@ -52,6 +52,10 @@ Rules for this package:
   reads `meta.writer_fence` in its own transaction before it changes anything.
 - A task reads every row it decides on inside its own transaction and returns an expected outcome
   before it writes anything; a broken rule throws, which rolls the whole task back.
+- A task that inserts a key its caller chose (an id, a reference, one row per agent or intent)
+  reads that key in the same task first, or the row whose version owns it, and answers the port's
+  own answer when it is taken. On Postgres a write that meets a unique violation runs again once
+  from its first read, and only that read turns the rerun into the port's answer (decision 0413).
 - `pnpm check:store` enforces these rules.
 - Tests that start workers pass `execArgv` with `--conditions=@binference/source` and
   `--import tsx`, so the workers run the TypeScript source. They close every handle before they

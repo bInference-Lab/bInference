@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import type { AccountRef } from "@binference/chain";
 import { BinferenceError, type Result } from "@binference/core";
+import type { IdentityStore } from "../identity/ports.js";
 import type { OrderStore } from "../orders/ports.js";
 import type {
   AgentStore,
@@ -22,11 +23,13 @@ export interface MoneyWriter {
 
 /**
  * Writers of one engine database that race, with an agent and its wallet, another agent, the
- * agent store and two accounts. Each writer runs its own writes in order; the writers run at once.
+ * agent and identity stores and two accounts. Each writer runs its own writes in order; the
+ * writers run at once.
  */
 export interface MoneyRaceSubject extends PlantedPair {
   readonly writers: readonly MoneyWriter[];
   readonly agents: AgentStore;
+  readonly identities: IdentityStore;
   readonly other: PlantedPair;
   readonly accounts: readonly [AccountRef, AccountRef];
   /**

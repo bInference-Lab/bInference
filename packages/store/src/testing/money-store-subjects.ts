@@ -138,6 +138,7 @@ export async function moneyRaceSubject(hosts: readonly StoreHost[]): Promise<Mon
   return {
     writers: hosts.map((host) => moneyWriter(host)),
     agents: createSqliteAgentStore(first),
+    identities: createSqliteIdentityStore(first),
     ...mine,
     other,
     accounts: [

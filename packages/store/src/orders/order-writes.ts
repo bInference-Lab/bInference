@@ -70,11 +70,23 @@ function orderRowOf(draft: OrderDraft): Insertable<OrdersTable> {
   };
 }
 
+// An order's card intent holds one order: the key is read before the insert (decision 0413), and
+// one in use throws, as the unique index would.
+function checkCardIntentFree(database: StoreConnection, draft: OrderDraft): void {
+  const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
+  const held = takeFirst(
+    kysely.selectFrom("orders").select("id").where("intent_id", "=", draft.intentId),
+  );
+  if (held !== undefined) {
+    throw refused("An order's card intent holds no other order.", { order: draft.id });
+  }
+}
+
 /**
  * Stores a new order `awaiting_confirmation`. An id in use is `exists`, a frozen agent `frozen`,
  * a copy order whose leader would be the 51st tracked wallet `track_limit` (decision 0251); a copy
- * order's leader is tracked in the same write. An unknown agent or a wallet that is not the
- * agent's throws.
+ * order's leader is tracked in the same write. An unknown agent, a wallet that is not the agent's,
+ * or a card intent another order holds throws.
  */
 export function createOrder(
   database: StoreConnection,
@@ -93,6 +105,7 @@ export function createOrder(
   if (orderRow(database, draft.id) !== undefined) {
     return err("exists");
   }
+  checkCardIntentFree(database, draft);
   if (isFrozen) {
     return err("frozen");
   }

@@ -1,3 +1,4 @@
+import { BinferenceError } from "@binference/core";
 import {
   chainLedgerEntry,
   type LedgerDraft,
@@ -26,12 +27,27 @@ export function toLedgerEntry(row: Selectable<LedgerTable>): LedgerEntry {
   });
 }
 
+// The entry stored under an id, read in the caller's transaction, or `undefined`.
+function ledgerEntryOf(database: StoreConnection, id: string): LedgerEntry | undefined {
+  const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
+  const row = takeFirst(kysely.selectFrom("ledger").selectAll().where("id", "=", id));
+  return row === undefined ? undefined : toLedgerEntry(row);
+}
+
 /**
  * Appends a draft at the end of the chain, inside the caller's write transaction: it reads the
- * last entry, gives the draft the next `seq` and both hashes, and inserts it. The ledger's
- * triggers refuse an entry that does not follow the last one.
+ * draft's id, which an entry in use throws `store.constraint` on (decision 0413), then the last
+ * entry, gives the draft the next `seq` and both hashes, and inserts it. The ledger's triggers
+ * refuse an entry that does not follow the last one.
  */
 export function appendLedgerEntry(database: StoreConnection, draft: LedgerDraft): LedgerEntry {
+  if (ledgerEntryOf(database, draft.id) !== undefined) {
+    throw new BinferenceError({
+      code: "store.constraint",
+      message: "A ledger entry takes an id of its own.",
+      details: { entry: draft.id },
+    });
+  }
   const { kysely, execute, takeFirst } = createSyncKysely<EngineTables>(database);
   const last = takeFirst(
     kysely.selectFrom("ledger").select(["seq", "hash"]).orderBy("seq", "desc").limit(1),

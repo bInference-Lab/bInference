@@ -18,7 +18,11 @@ export interface IdentityStoreHarness {
 
 const txHash = "0x0000000000000000000000000000000000000000000000000000000000000abc";
 
-function identityOf(subject: IdentityStoreSubject, onchainId: string): IdentityRecord {
+/** The subject's agent's identity with the registry's id `onchainId`, registered at 5000. */
+export function identityOf(
+  subject: Pick<IdentityStoreSubject, "agentId">,
+  onchainId: string,
+): IdentityRecord {
   if (!isTxHash(txHash)) {
     throw new Error("The fixture hash is malformed.");
   }
