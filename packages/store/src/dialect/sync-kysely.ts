@@ -1,5 +1,12 @@
 import { BinferenceError } from "@binference/core";
-import { type Compilable, type Kysely, type QueryResult, type RawBuilder, sql } from "kysely";
+import {
+  type Compilable,
+  type Expression,
+  type Kysely,
+  type QueryResult,
+  type RawBuilder,
+  sql,
+} from "kysely";
 import {
   executePostgresQuerySync,
   executeSqliteQuerySync,
@@ -33,6 +40,15 @@ export interface SyncKysely<Schema> {
     reference: string,
     path: readonly string[],
   ) => RawBuilder<string | number | null>;
+  /** The number of items in the JSON array text of the column `reference` names. */
+  readonly jsonArrayLength: (reference: string) => RawBuilder<number>;
+  /**
+   * A decimal text, a column's or a bound value's, as a number both databases compare and sort
+   * alike: SQLite casts the text to its 64-bit integer, Postgres to `numeric`, which a
+   * `numeric(78,0)` column already is. A query compares and sorts by it and never selects it,
+   * since it reads back as a number on SQLite and as decimal text on Postgres.
+   */
+  readonly decimalNumber: (value: Expression<string>) => RawBuilder<number | string>;
 }
 
 // A key of letters and digits with a letter in it: never quoted inside either form's path, and
@@ -64,6 +80,22 @@ function postgresJsonField(
 ): RawBuilder<string | number | null> {
   const at = `{${checkedPath(path).join(",")}}`;
   return sql<string | null>`(${sql.ref(reference)}::jsonb #>> ${at})`;
+}
+
+function sqliteJsonArrayLength(reference: string): RawBuilder<number> {
+  return sql<number>`json_array_length(${sql.ref(reference)})`;
+}
+
+function postgresJsonArrayLength(reference: string): RawBuilder<number> {
+  return sql<number>`jsonb_array_length(${sql.ref(reference)}::jsonb)`;
+}
+
+function sqliteDecimalNumber(value: Expression<string>): RawBuilder<number | string> {
+  return sql<number | string>`cast(${value} as integer)`;
+}
+
+function postgresDecimalNumber(value: Expression<string>): RawBuilder<number | string> {
+  return sql<number | string>`cast(${value} as numeric)`;
 }
 
 function takeOneOf(
@@ -99,6 +131,8 @@ export function createSyncKysely<Schema>(connection: StoreConnection): SyncKysel
       takeFirst,
       takeOne: takeOneOf(takeFirst),
       jsonField: postgresJsonField,
+      jsonArrayLength: postgresJsonArrayLength,
+      decimalNumber: postgresDecimalNumber,
     };
   }
   const takeFirst = <Row>(query: Compilable<Row>): Row | undefined =>
@@ -109,5 +143,7 @@ export function createSyncKysely<Schema>(connection: StoreConnection): SyncKysel
     takeFirst,
     takeOne: takeOneOf(takeFirst),
     jsonField: sqliteJsonField,
+    jsonArrayLength: sqliteJsonArrayLength,
+    decimalNumber: sqliteDecimalNumber,
   };
 }

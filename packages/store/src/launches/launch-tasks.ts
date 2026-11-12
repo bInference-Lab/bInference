@@ -14,7 +14,7 @@ import type { Expression, ExpressionBuilder, Kysely, SqlBool } from "kysely";
 import { z } from "zod";
 import type { EngineTables } from "../databases/engine-tables.js";
 import type { StoreConnection } from "../dialect/store-connection.js";
-import { createSyncKysely } from "../dialect/sync-kysely.js";
+import { createSyncKysely, type SyncKysely } from "../dialect/sync-kysely.js";
 import { decimalText } from "../rows/column-values.js";
 import { defineTask, type StoreTask } from "../tasks/store-task.js";
 import { watchCursorTaskOf, writeWatchCursor } from "../watching/watch-cursor-rows.js";
@@ -25,20 +25,21 @@ const watcher = "launches";
 
 type LaunchesBuilder = ExpressionBuilder<EngineTables, "launches">;
 
-const blockOf = (eb: LaunchesBuilder, block: bigint) =>
-  eb.cast<number>(eb.val(decimalText(block)), "integer");
+// The forms a launch query takes from its connection's dialect: blocks are decimal text on SQLite
+// and numeric on Postgres, and insiders a JSON array's text.
+type LaunchForms = Pick<SyncKysely<EngineTables>, "decimalNumber" | "jsonArrayLength">;
 
 // How many launches the row's creator made in the 30 days before it: earlier by time, or at the
 // same time earlier in the chain.
-function priorLaunches(eb: LaunchesBuilder) {
+function priorLaunches(eb: LaunchesBuilder, { decimalNumber }: LaunchForms) {
   return eb
     .selectFrom("launches as prior")
     .select((prior) => prior.fn.countAll<number>().as("count"))
     .whereRef("prior.creator", "=", "launches.creator")
     .where((prior) => {
       const at = prior.ref("launches.launched_at");
-      const priorBlock = prior.cast<number>("prior.block", "integer");
-      const ownBlock = prior.cast<number>("launches.block", "integer");
+      const priorBlock = decimalNumber(prior.ref("prior.block"));
+      const ownBlock = decimalNumber(prior.ref("launches.block"));
       return prior.and([
         prior("prior.launched_at", ">=", prior(at, "-", creatorWindowMs)),
         prior.or([
@@ -58,22 +59,27 @@ function priorLaunches(eb: LaunchesBuilder) {
     });
 }
 
-function withCounts(kysely: Kysely<EngineTables>) {
+function withCounts(kysely: Kysely<EngineTables>, forms: LaunchForms) {
   return kysely
     .selectFrom("launches")
     .selectAll("launches")
-    .select((eb) => priorLaunches(eb).as("creator_launches"));
+    .select((eb) => priorLaunches(eb, forms).as("creator_launches"));
 }
 
 // Where the page is: launched at or after `fromMs`, and before `before`.
-function pageConditions(eb: LaunchesBuilder, query: LaunchQuery): Expression<SqlBool>[] {
+function pageConditions(
+  eb: LaunchesBuilder,
+  query: LaunchQuery,
+  { decimalNumber }: LaunchForms,
+): Expression<SqlBool>[] {
   const { fromMs, before } = query;
   const conditions = [eb("launches.chain", "=", query.chain)];
   if (fromMs !== undefined) {
     conditions.push(eb("launches.launched_at", ">=", fromMs));
   }
   if (before !== undefined) {
-    const block = eb.cast<number>("launches.block", "integer");
+    const block = decimalNumber(eb.ref("launches.block"));
+    const beforeBlock = decimalNumber(eb.val(decimalText(before.block)));
     const at = before.launchedAtMs;
     conditions.push(
       eb.or([
@@ -81,11 +87,8 @@ function pageConditions(eb: LaunchesBuilder, query: LaunchQuery): Expression<Sql
         eb.and([
           eb("launches.launched_at", "=", at),
           eb.or([
-            eb(block, "<", blockOf(eb, before.block)),
-            eb.and([
-              eb(block, "=", blockOf(eb, before.block)),
-              eb("launches.log_index", "<", before.logIndex),
-            ]),
+            eb(block, "<", beforeBlock),
+            eb.and([eb(block, "=", beforeBlock), eb("launches.log_index", "<", before.logIndex)]),
           ]),
         ]),
       ]),
@@ -110,16 +113,20 @@ function placeConditions(eb: LaunchesBuilder, query: LaunchQuery): Expression<Sq
 }
 
 // The bounds on its taxes, insiders and creator's launches: an unread value meets none.
-function boundConditions(eb: LaunchesBuilder, query: LaunchQuery): Expression<SqlBool>[] {
+function boundConditions(
+  eb: LaunchesBuilder,
+  query: LaunchQuery,
+  forms: LaunchForms,
+): Expression<SqlBool>[] {
   const { maxTaxBps, maxSnipeTaxBps, maxInsiders, maxCreatorLaunches30d } = query.filters ?? {};
-  const insiders = eb.fn<number>("json_array_length", ["launches.insiders"]);
+  const insiders = forms.jsonArrayLength("launches.insiders");
   return [
     ...(maxTaxBps === undefined ? [] : [eb("launches.tax_bps", "<=", maxTaxBps)]),
     ...(maxSnipeTaxBps === undefined ? [] : [eb("launches.snipe_tax_bps", "<=", maxSnipeTaxBps)]),
     ...(maxInsiders === undefined ? [] : [eb(insiders, "<=", maxInsiders)]),
     ...(maxCreatorLaunches30d === undefined
       ? []
-      : [eb(priorLaunches(eb), "<=", maxCreatorLaunches30d)]),
+      : [eb(priorLaunches(eb, forms), "<=", maxCreatorLaunches30d)]),
   ];
 }
 
@@ -206,7 +213,7 @@ export const recordLaunchReadTask: StoreTask<LaunchReadRecord, readonly StoredLa
     input: launchReadRecordSchema,
     output: z.array(storedLaunchSchema),
     run(database, read) {
-      const { kysely, execute } = createSyncKysely<EngineTables>(database);
+      const { kysely, execute, ...forms } = createSyncKysely<EngineTables>(database);
       forget(database, read);
       const added = store(database, read);
       change(database, read);
@@ -215,7 +222,7 @@ export const recordLaunchReadTask: StoreTask<LaunchReadRecord, readonly StoredLa
         return [];
       }
       const rows = execute(
-        withCounts(kysely)
+        withCounts(kysely, forms)
           .where("launches.chain", "=", read.chain)
           .where("launches.token", "in", added),
       ).rows.map((row) => toStoredLaunch({ ...row, creator_launches: row.creator_launches ?? 0 }));
@@ -230,17 +237,17 @@ export const listLaunchesTask: StoreTask<LaunchQuery, readonly StoredLaunch[]> =
   input: launchQuerySchema,
   output: z.array(storedLaunchSchema),
   run(database, query) {
-    const { kysely, execute } = createSyncKysely<EngineTables>(database);
-    const listed = withCounts(kysely)
+    const { kysely, execute, ...forms } = createSyncKysely<EngineTables>(database);
+    const listed = withCounts(kysely, forms)
       .where((eb) =>
         eb.and([
-          ...pageConditions(eb, query),
+          ...pageConditions(eb, query, forms),
           ...placeConditions(eb, query),
-          ...boundConditions(eb, query),
+          ...boundConditions(eb, query, forms),
         ]),
       )
       .orderBy("launches.launched_at", "desc")
-      .orderBy((eb) => eb.cast("launches.block", "integer"), "desc")
+      .orderBy((eb) => forms.decimalNumber(eb.ref("launches.block")), "desc")
       .orderBy("launches.log_index", "desc")
       .limit(query.limit);
     return execute(listed).rows.map((row) =>

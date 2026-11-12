@@ -145,6 +145,32 @@ describe("createSyncKysely on a Postgres task connection", () => {
     expect(jsonField("order.state", ["leg2"])).toBeDefined();
   });
 
+  it("counts a JSON array through jsonb and compares decimal text as numeric", () => {
+    const { connection, sent } = recording({ rows: [] });
+    const { kysely, execute, jsonArrayLength, decimalNumber } =
+      createSyncKysely<Tables>(connection);
+
+    execute(
+      kysely
+        .selectFrom("fills as fill")
+        .select("fill.id")
+        .where(jsonArrayLength("fill.order_id"), "<=", 2)
+        .where((eb) => eb(decimalNumber(eb.ref("fill.amount")), "<", decimalNumber(eb.val("10"))))
+        .orderBy((eb) => decimalNumber(eb.ref("fill.amount")), "desc"),
+    );
+
+    expect(sent).toStrictEqual([
+      {
+        sql:
+          'select "fill"."id" from "engine_0190f1c23a4b7c5d8e6f000000000001"."fills" as "fill" ' +
+          'where jsonb_array_length("fill"."order_id"::jsonb) <= $1 ' +
+          'and cast("fill"."amount" as numeric) < cast($2 as numeric) ' +
+          'order by cast("fill"."amount" as numeric) desc',
+        parameters: [2, "10"],
+      },
+    ]);
+  });
+
   it("refuses a value SQLite cannot bind before it sends anything", () => {
     const { connection, sent } = recording({ rows: [] });
     const { kysely, execute } = createSyncKysely<Tables>(connection);
