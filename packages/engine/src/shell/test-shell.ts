@@ -10,6 +10,7 @@ import {
   type ResultOf,
   type ShellAnswer,
 } from "@binference/protocol";
+import { createInboxHold } from "../chat/inbox-hold.js";
 import {
   createFakeCommandRunner,
   type FakeCommand,
@@ -106,7 +107,8 @@ function wakePartsOf(parts: {
   const publish = (push: EnginePush): void => {
     pushes.push(push);
   };
-  return { wakeParts: { agents, agentInbox, ids, clock, publish, intentView }, pushes };
+  const inboxHold = createInboxHold();
+  return { wakeParts: { agents, agentInbox, inboxHold, ids, clock, publish, intentView }, pushes };
 }
 
 // What a test reads of the pushes: the agent's wake-ups and the request pushes.

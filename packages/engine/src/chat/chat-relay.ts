@@ -16,6 +16,7 @@ import {
 import type { EngineHandler } from "../operations/engine-call.js";
 import { createScreenHandlers, type ScreenHandlers } from "../screen/screen-handlers.js";
 import type { AgentInboxMessage } from "./agent-inbox-record.js";
+import { createChatDeleteHandler } from "./chat-delete.js";
 import { type ChatRelayOptions, pushInbox } from "./chat-relay-parts.js";
 import { createGoalTurnHandlers, type GoalTurnHandlers } from "./goal-turns.js";
 import { createHelperEndHandlers, type HelperEndHandlers } from "./helper-ends.js";
@@ -28,10 +29,16 @@ import { createRuntimeChatHandlers, type RuntimeChatHandlers } from "./runtime-c
 import { createSentFileHandlers, type SentFileHandlers } from "./sent-files.js";
 import { createViewImageHandlers, type ViewImageHandlers } from "./view-image-handlers.js";
 
+/** The owner's deletion of chats, which the engine answers around its route to the runtime. */
+interface ChatDeleteHandlers {
+  readonly "chat/delete": EngineHandler<"chat/delete">;
+}
+
 /** The chat operations the engine answers itself; the routed ones reach the runtime. */
 export interface ChatHandlers
   extends
     OwnerChatHandlers,
+    ChatDeleteHandlers,
     RuntimeChatHandlers,
     ImageHandlers,
     ViewImageHandlers,
@@ -200,6 +207,7 @@ export function createChatRelay(options: ChatRelayOptions): ChatRelay {
   return {
     handlers: {
       ...ownerChatOf(options),
+      "chat/delete": createChatDeleteHandler(options),
       ...createRuntimeChatHandlers(options),
       ...imageHandlersOf(options),
       ...createViewImageHandlers({

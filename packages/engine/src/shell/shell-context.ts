@@ -10,7 +10,7 @@ import type { OpenShellRequest, ShellRequests } from "./shell-requests.js";
 /** What the shell wakes an agent through: the chat's inbox, its agents and its pushes. */
 export type ShellWakeParts = Pick<
   ChatRelayOptions,
-  "agents" | "agentInbox" | "ids" | "clock" | "publish" | "intentView"
+  "agents" | "agentInbox" | "inboxHold" | "ids" | "clock" | "publish" | "intentView"
 >;
 
 /** A message that starts the agent's next turn: binference's words and the turn's surface. */

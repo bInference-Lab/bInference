@@ -10,6 +10,7 @@ import {
 import type { AgentSettings } from "../agents/agent-record.js";
 import type { ModelBudget } from "../billing/model-budget.js";
 import type { AgentInboxMessage } from "../chat/agent-inbox-record.js";
+import type { InboxHold } from "../chat/inbox-hold.js";
 import { alertFiredPayloadSchema } from "../chat/inbox-payload.schema.js";
 import { wakeSkipOf } from "../chat/wake-skip.js";
 import { knownAssetInfos } from "../money-path/asset-infos.js";
@@ -81,6 +82,8 @@ export interface AlertFiringParts {
   readonly intents: Pick<IntentStore, "storedAssets">;
   /** Pushes a wake-up a fire stored on the `inbox` topic. */
   readonly woke: (message: AgentInboxMessage) => void;
+  /** A fire of an agent whose chats are being deleted waits until they are (decision 0415). */
+  readonly inboxHold: Pick<InboxHold, "passed">;
   readonly ids: IdSource;
   readonly clock: Clock;
   readonly publish: PublishPush;
@@ -132,6 +135,7 @@ async function fireOne(
     await parts.alerts.end({ id: alert.id, atMs }, { signal });
     return undefined;
   }
+  await parts.inboxHold.passed(alert.agentId, signal);
   const wake = await wakeOf(parts, { alert, fired, atMs }, { settings, signal });
   const draft = { id: alert.id, expectedFires: alert.fires, atMs, ...wake };
   const written = await parts.alerts.fire(draft, { signal });

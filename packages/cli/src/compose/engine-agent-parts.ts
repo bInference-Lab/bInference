@@ -8,19 +8,23 @@ export interface EngineAgentParts {
   readonly viewImages?: EngineOptions["viewImages"];
   /** The config file a confirmed config change writes (decision 0393). */
   readonly configChanges?: EngineOptions["configChanges"];
+  /** The runtime's side of a chat deletion (decision 0415); no chat is deleted without it. */
+  readonly runtimeChats?: EngineOptions["runtimeChats"];
 }
 
 /**
  * The engine's options of the parts the agent's work reaches beyond the engine: its shell, the
- * images it views and the config file a confirmed change writes, none when absent.
+ * images it views, the config file a confirmed change writes and the runtime's side of a chat
+ * deletion, none when absent.
  */
 export function agentPartsOf(
   parts: EngineAgentParts,
-): Pick<EngineOptions, "shell" | "viewImages" | "configChanges"> {
-  const { shell, viewImages, configChanges } = parts;
+): Pick<EngineOptions, "shell" | "viewImages" | "configChanges" | "runtimeChats"> {
+  const { shell, viewImages, configChanges, runtimeChats } = parts;
   return {
     ...(shell === undefined ? {} : { shell }),
     ...(viewImages === undefined ? {} : { viewImages }),
     ...(configChanges === undefined ? {} : { configChanges }),
+    ...(runtimeChats === undefined ? {} : { runtimeChats }),
   };
 }

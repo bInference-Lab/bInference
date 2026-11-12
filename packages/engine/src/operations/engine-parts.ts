@@ -4,8 +4,9 @@ import { createDailyModelBudget } from "../billing/daily-model-budget.js";
 import { createModelBudget, type ModelBudget } from "../billing/model-budget.js";
 import { createUsageHandlers, type UsageHandlers } from "../billing/usage-handlers.js";
 import type { AgentInboxMessage } from "../chat/agent-inbox-record.js";
-import type { ChatRelayOptions } from "../chat/chat-relay-parts.js";
+import type { ChatRelayOptions, ChatWakes } from "../chat/chat-relay-parts.js";
 import { type ChatHandlers, type ChatRelay, createChatRelay } from "../chat/chat-relay.js";
+import { heldInboxOf } from "../chat/inbox-hold.js";
 import { createRunningTurns } from "../chat/running-turns.js";
 import type { StoredIntents } from "../intents/create-stored-intents.js";
 import { createLaunchHandlers, type LaunchHandlers } from "../launches/launch-handlers.js";
@@ -131,17 +132,16 @@ function shellSideOf(shell: EngineOptions["shell"]): Pick<ChatRelayOptions, Shel
   };
 }
 
-// What the agent's chat reaches on this machine, when the composition root gives it: the images it
-// views, its shell's parts, and whether a community plugin speaks in its turns.
+// What the agent's chat reaches beyond the engine, when the composition root gives it: the images
+// it views, its shell's parts, whether a community plugin speaks in its turns, and the runtime's
+// side of a chat deletion.
 function agentSideOf(
   options: EngineOptions,
-): Pick<
-  ChatRelayOptions,
-  "viewImages" | "madeImageFiles" | "sentFiles" | "communityPluginsOn" | ShellSide
-> {
-  const { viewImages, shell, communityPluginsOn } = options;
+): Pick<ChatRelayOptions, "viewImages" | "communityPluginsOn" | "runtimeChats" | ShellSide> {
+  const { viewImages, shell, communityPluginsOn, runtimeChats } = options;
   return {
     ...(viewImages === undefined ? {} : { viewImages }),
+    ...(runtimeChats === undefined ? {} : { runtimeChats }),
     ...shellSideOf(shell),
     ...(communityPluginsOn === undefined ? {} : { communityPluginsOn }),
   };
@@ -160,7 +160,7 @@ function relayOptionsOf(
   const { stores, chains } = options;
   const { budget, images, late } = parts;
   return {
-    agentInbox: stores.agentInbox,
+    ...heldInboxOf(stores.agentInbox),
     questions: stores.questions,
     agents: stores.agents,
     turns: options.turns ?? createRunningTurns(),
@@ -203,8 +203,9 @@ export function engineChatOf(options: EngineOptions): EngineChat {
   const settled = (message: AgentInboxMessage): void => {
     relay.settled(message);
   };
-  const schedules = schedulesOf(options, { budget, settled });
-  const alerts = alertFiringOf(options, { budget, settled });
+  const wakes = { budget, settled, inboxHold: relayOptions.inboxHold };
+  const schedules = schedulesOf(options, wakes);
+  const alerts = alertFiringOf(options, wakes);
   return {
     relay,
     schedules: schedules.queue,
@@ -284,7 +285,7 @@ export function safetyHandlersOf(
 // queue, whose wake-ups ask the chat's model budget and reach the runtime as the chat's pushes do.
 function schedulesOf(
   options: EngineOptions,
-  chat: { readonly budget: ModelBudget; readonly settled: (message: AgentInboxMessage) => void },
+  chat: ChatWakes,
 ): { readonly handlers: ScheduleHandlers; readonly queue: ScheduleQueue } {
   const { stores, ids, clock, publish, ownerTimeZone } = options;
   const { schedules, agents } = stores;
@@ -304,6 +305,7 @@ function schedulesOf(
       budget: chat.budget,
       ownerTimeZone,
       woke: chat.settled,
+      inboxHold: chat.inboxHold,
       ids,
       clock,
     }),
@@ -324,12 +326,9 @@ function alertHandlersOf(options: EngineOptions): AlertHandlers {
   });
 }
 
-// The alert firing, whose wake-ups ask the chat's model budget and reach the runtime as the
-// chat's pushes do.
-function alertFiringOf(
-  options: EngineOptions,
-  chat: { readonly budget: ModelBudget; readonly settled: (message: AgentInboxMessage) => void },
-): AlertFiring {
+// The alert firing, whose wake-ups ask the chat's model budget, wait out a chat deletion and
+// reach the runtime as the chat's pushes do.
+function alertFiringOf(options: EngineOptions, chat: ChatWakes): AlertFiring {
   const { stores, chains, ids, clock, publish } = options;
   return createAlertFiring({
     alerts: stores.alerts,
@@ -338,6 +337,7 @@ function alertFiringOf(
     chains,
     intents: stores.intents,
     woke: chat.settled,
+    inboxHold: chat.inboxHold,
     ids,
     clock,
     publish,

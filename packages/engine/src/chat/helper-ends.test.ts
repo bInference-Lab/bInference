@@ -8,6 +8,7 @@ import { testAgent, testAgentDraft } from "../intents/test-intents.js";
 import { testCall, testCallers } from "../operations/test-engine.js";
 import type { EnginePush } from "../pushes/engine-push.js";
 import { createHelperEndHandlers } from "./helper-ends.js";
+import { createInboxHold } from "./inbox-hold.js";
 import { createRunningTurns } from "./running-turns.js";
 
 const helper = idSchema("ses").parse("ses_0190f1c2-3a4b-7c5d-8e6f-000000000009");
@@ -23,6 +24,7 @@ async function setUp() {
   const handlers = createHelperEndHandlers({
     agents,
     agentInbox: createMemoryAgentInboxStore({ agents }),
+    inboxHold: createInboxHold(),
     turns,
     ids: createIdSource({ clock, random: createSeededRandom(1) }),
     clock,

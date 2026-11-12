@@ -72,6 +72,9 @@ async function answerTyped(
 function postHandler(options: ChatRelayOptions): EngineHandler<"chat/post"> {
   return async (call) => {
     const { text, images } = call.args;
+    // A message that may answer the open question waits out a deletion of the agent's chats
+    // first, so it lands in the new chat (decision 0415).
+    await options.inboxHold.passed(call.args.agent, call.signal);
     const active = await activeAgent(options.agents, call.args.agent, call);
     if (!active.ok) {
       return active;
@@ -99,6 +102,7 @@ function postHandler(options: ChatRelayOptions): EngineHandler<"chat/post"> {
 function answerHandler(options: ChatRelayOptions): EngineHandler<"chat/answer"> {
   return async (call) => {
     const { agent, question, choice } = call.args;
+    await options.inboxHold.passed(agent, call.signal);
     const active = await activeAgent(options.agents, agent, call);
     if (!active.ok) {
       return active;

@@ -8,6 +8,7 @@ import type { MachineFiles } from "../files/ports.js";
 import { expectOk, testAgent, testAgentDraft } from "../intents/test-intents.js";
 import { testCall, testCallers } from "../operations/test-engine.js";
 import type { EnginePush } from "../pushes/engine-push.js";
+import { createInboxHold } from "./inbox-hold.js";
 import { createMadeImageHandlers } from "./made-images.js";
 import { createRunningTurns } from "./running-turns.js";
 import { testPng } from "./test-images.js";
@@ -27,6 +28,7 @@ async function setUp(given: { readonly files?: "none" | MachineFiles } = {}) {
   const files = typeof given.files === "object" ? given.files : createMemoryFiles();
   const handlers = createMadeImageHandlers({
     agentInbox: createMemoryAgentInboxStore({ agents }),
+    inboxHold: createInboxHold(),
     turns,
     ids: createIdSource({ clock, random: createSeededRandom(1) }),
     clock,

@@ -1,6 +1,7 @@
 import { createIdSource, idSchema } from "@binference/core";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
+import { createInboxHold } from "../chat/inbox-hold.js";
 import { createRunningTurns } from "../chat/running-turns.js";
 import { createMemoryAgentInboxStore } from "../fakes/memory-agent-inbox-store.js";
 import { createMemoryAgentStore } from "../fakes/memory-agent-store.js";
@@ -26,6 +27,7 @@ async function setUp(given: { readonly store?: "none" } = {}) {
   const pushes: EnginePush[] = [];
   const options = {
     agentInbox,
+    inboxHold: createInboxHold(),
     turns,
     ids: createIdSource({ clock, random: createSeededRandom(1) }),
     clock,

@@ -19,7 +19,7 @@ export interface CredentialRequestHandlers {
 /** What the credential requests read, write and push through. */
 export type CredentialRequestOptions = Pick<
   ChatRelayOptions,
-  "agentInbox" | "turns" | "ids" | "clock" | "publish" | "intentView"
+  "agentInbox" | "inboxHold" | "turns" | "ids" | "clock" | "publish" | "intentView"
 > & {
   /** Where credentials are stored; without it every request is `credential.unavailable`. */
   readonly credentials?: CredentialStore;

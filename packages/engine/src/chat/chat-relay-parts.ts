@@ -12,13 +12,21 @@ import type { PublishPush } from "../pushes/engine-push.js";
 import type { ScreenCapture } from "../screen/ports.js";
 import type { LocalVoice } from "../speech/ports.js";
 import type { AgentInboxMessage } from "./agent-inbox-record.js";
+import type { RuntimeChats } from "./chat-delete.js";
+import type { InboxHold } from "./inbox-hold.js";
 import { inboxPushData, inboxViewOf, type IntentViewOf } from "./inbox-views.js";
 import type { AgentInboxStore, OwnerImageSource, ViewImageSource, QuestionStore } from "./ports.js";
 import type { RunningTurns } from "./running-turns.js";
 
 /** What the chat relay reads, writes and pushes through. */
 export interface ChatRelayOptions {
+  /** The agent inbox, whose new messages wait while a deletion holds their agent. */
   readonly agentInbox: AgentInboxStore;
+  /**
+   * The hold of a chat deletion (decision 0415): what an agent's chats being deleted holds, and
+   * which wake-ups the agent runtime asks for it drops.
+   */
+  readonly inboxHold: InboxHold;
   /** The agent's questions to the owner, answered with their message in one write. */
   readonly questions: QuestionStore;
   readonly agents: AgentStore;
@@ -62,7 +70,17 @@ export interface ChatRelayOptions {
    * every agent, once it landed: the agent's shell stops its commands then (decision 0409).
    */
   readonly onStop?: (agent: Id<"agt"> | undefined, by: "owner" | "freeze") => void;
+  /** The agent runtime's side of a chat deletion (decision 0415); without it none runs. */
+  readonly runtimeChats?: RuntimeChats;
 }
+
+/**
+ * What the schedules' and alerts' wake-ups reach the chat through: the model budget, the push of
+ * a stored wake-up, and the hold of a chat deletion, which a wake-up waits out (decision 0415).
+ */
+export type ChatWakes = Pick<ChatRelayOptions, "budget" | "inboxHold"> & {
+  readonly settled: (message: AgentInboxMessage) => void;
+};
 
 /** The topic of one agent's chat. */
 export function chatTopic(agent: ProtocolId<"agent">): PushTopic {

@@ -4,7 +4,7 @@ import { z } from "zod";
 import { activeAgent } from "../operations/active-agent.js";
 import type { EngineHandler } from "../operations/engine-call.js";
 import { chatTopic, type ChatRelayOptions } from "./chat-relay-parts.js";
-import { wakeWithMessage } from "./engine-message.js";
+import { wakeForRuntime } from "./engine-message.js";
 
 /** The operations the agent runtime runs a chat's goal with (decision 0407). */
 export interface GoalTurnHandlers {
@@ -15,7 +15,7 @@ export interface GoalTurnHandlers {
 /** What a goal turn is stored and pushed through. */
 export type GoalTurnOptions = Pick<
   ChatRelayOptions,
-  "agents" | "agentInbox" | "turns" | "ids" | "clock" | "publish" | "intentView"
+  "agents" | "agentInbox" | "inboxHold" | "turns" | "ids" | "clock" | "publish" | "intentView"
 >;
 
 // `goal/continue`: the next goal turn of the chat the agent has open. A chat the owner cleared
@@ -39,8 +39,7 @@ function continueOf(options: GoalTurnOptions): EngineHandler<"goal/continue"> {
       return ok({});
     }
     const message = { agent, text, surface, outsideContent, goalTurn: true };
-    const woken = await wakeWithMessage(options, message, call.signal);
-    return woken.ok || woken.error === "protocol.busy" ? ok({}) : woken;
+    return wakeForRuntime(options, message, call.signal);
   };
 }
 

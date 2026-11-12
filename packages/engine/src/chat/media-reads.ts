@@ -9,7 +9,7 @@ import { keepBounded } from "./keep-bounded.js";
 /** What the made media are saved, read and told through. */
 export type MediaOptions = Pick<
   ChatRelayOptions,
-  "agentInbox" | "turns" | "ids" | "clock" | "publish" | "intentView" | "random"
+  "agentInbox" | "inboxHold" | "turns" | "ids" | "clock" | "publish" | "intentView" | "random"
 > & {
   /** The agent's files, where made media are saved; without them every store is refused. */
   readonly madeImageFiles?: Pick<MachineFiles, "read" | "write">;

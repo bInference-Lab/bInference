@@ -11,6 +11,7 @@ import { expectOk, testAgent, testAgentDraft } from "../intents/test-intents.js"
 import { testCall, testCallers } from "../operations/test-engine.js";
 import type { EnginePush } from "../pushes/engine-push.js";
 import type { LocalVoice } from "../speech/ports.js";
+import { createInboxHold } from "./inbox-hold.js";
 import { createMadeMediaHandlers } from "./made-media.js";
 import { createRunningTurns } from "./running-turns.js";
 
@@ -43,6 +44,7 @@ async function setUp(given: SetUp = {}) {
   const files = typeof given.files === "object" ? given.files : createMemoryFiles();
   const handlers = createMadeMediaHandlers({
     agentInbox: createMemoryAgentInboxStore({ agents }),
+    inboxHold: createInboxHold(),
     turns,
     ids: createIdSource({ clock, random: createSeededRandom(1) }),
     clock,

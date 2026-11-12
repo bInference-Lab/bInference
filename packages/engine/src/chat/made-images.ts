@@ -10,7 +10,7 @@ import type { MachineFiles } from "../files/ports.js";
 import type { EngineCall, EngineHandler } from "../operations/engine-call.js";
 import { addPart, type Arriving } from "./arriving-parts.js";
 import { type ChatRelayOptions, chatTopic } from "./chat-relay-parts.js";
-import { wakeWithMessage } from "./engine-message.js";
+import { wakeForRuntime } from "./engine-message.js";
 import { imagePartOf } from "./image-part.js";
 import { keepBounded } from "./keep-bounded.js";
 import { showHandler } from "./shown-images.js";
@@ -29,7 +29,15 @@ export interface MadeImageHandlers {
 /** What the made images are kept and told through. */
 export type MadeImageOptions = Pick<
   ChatRelayOptions,
-  "agentInbox" | "turns" | "ids" | "clock" | "publish" | "intentView" | "random" | "viewImages"
+  | "agentInbox"
+  | "inboxHold"
+  | "turns"
+  | "ids"
+  | "clock"
+  | "publish"
+  | "intentView"
+  | "random"
+  | "viewImages"
 > & {
   /** The agent's files, where made images are saved; without them every store is refused. */
   readonly madeImageFiles?: Pick<MachineFiles, "read" | "write">;
@@ -145,8 +153,7 @@ function madeHandler(options: MadeImageOptions, state: MadeState): EngineHandler
       shown,
       shown.length === 0 ? (failed ?? "no image came back") : undefined,
     );
-    const woken = await wakeWithMessage(options, { agent, text, surface }, call.signal);
-    return woken.ok || woken.error === "protocol.busy" ? ok({}) : woken;
+    return wakeForRuntime(options, { agent, text, surface }, call.signal);
   };
 }
 

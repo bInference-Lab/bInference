@@ -1,11 +1,13 @@
 import type { EngineOptions } from "./create-engine.js";
 import type { TestEngineOptions } from "./test-engine.js";
 
-// The config file a confirmed change writes, and the agent's shell, as a test engine's options ask.
+// The config file a confirmed change writes, the agent's shell and the runtime's side of a chat
+// deletion, as a test engine's options ask.
 function machineSwitchesOf(options: TestEngineOptions): Partial<EngineOptions> {
   return {
     ...(options.configChanges === undefined ? {} : { configChanges: options.configChanges }),
     ...(options.shell === undefined ? {} : { shell: options.shell }),
+    ...(options.runtimeChats === undefined ? {} : { runtimeChats: options.runtimeChats }),
   };
 }
 

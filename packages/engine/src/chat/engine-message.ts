@@ -1,5 +1,5 @@
 import { err, type Id, ok, type Result } from "@binference/core";
-import type { ChatSurface, ProtocolErrorCode } from "@binference/protocol";
+import type { ChatSurface, Empty, ProtocolErrorCode } from "@binference/protocol";
 import { type ChatRelayOptions, pushInbox } from "./chat-relay-parts.js";
 
 /** A message the engine writes to the agent in the owner's place: its words and their surface. */
@@ -13,19 +13,31 @@ export interface EngineMessage {
   readonly outsideContent?: boolean;
   /** The words start the chat's next goal turn (decision 0407). */
   readonly goalTurn?: boolean;
+  /**
+   * The agent runtime asked for the words, such as a helper's report: dropped while a deletion
+   * holds the agent's chats, since the runtime may wait on them as it ends the chat (decision 0415).
+   */
+  readonly fromRuntime?: boolean;
 }
 
 /**
  * Starts the agent's next turn with a message from the engine, as an answer to its credential
  * request or the end of an image job does: stored in the agent inbox and pushed on `inbox`.
- * Answers the session and turn it opens, or `protocol.busy` while the inbox is full and
- * `agent.not_found` for an agent the inbox does not hold.
+ * Answers the session and turn it opens, or `protocol.busy` while the inbox is full or a deletion
+ * holds the agent's chats for words the runtime asked for, and `agent.not_found` for an agent the
+ * inbox does not hold. Other words wait while a deletion holds the agent.
  */
 export async function wakeWithMessage(
-  options: Pick<ChatRelayOptions, "agentInbox" | "ids" | "clock" | "publish" | "intentView">,
+  options: Pick<
+    ChatRelayOptions,
+    "agentInbox" | "inboxHold" | "ids" | "clock" | "publish" | "intentView"
+  >,
   message: EngineMessage,
   signal: AbortSignal,
 ): Promise<Result<{ readonly session: Id<"ses">; readonly turn: Id<"trn"> }, ProtocolErrorCode>> {
+  if (message.fromRuntime === true && options.inboxHold.isHeld(message.agent)) {
+    return err("protocol.busy");
+  }
   const { ids, clock } = options;
   const turn = ids.next("trn");
   const stored = await options.agentInbox.add(
@@ -50,4 +62,18 @@ export async function wakeWithMessage(
   }
   await pushInbox(options, stored.value, signal);
   return ok({ session: stored.value.sessionId, turn });
+}
+
+/**
+ * Wakes the agent with words the agent runtime asked for, such as a helper's report (decisions
+ * 0403 and 0415): answers `{}` once they are stored, or once a full inbox or a deletion of the
+ * agent's chats dropped them, else the refusal. The engine keeps nothing to send them again.
+ */
+export async function wakeForRuntime(
+  options: Parameters<typeof wakeWithMessage>[0],
+  message: Omit<EngineMessage, "fromRuntime">,
+  signal: AbortSignal,
+): Promise<Result<Empty, ProtocolErrorCode>> {
+  const woken = await wakeWithMessage(options, { ...message, fromRuntime: true }, signal);
+  return woken.ok || woken.error === "protocol.busy" ? ok({}) : woken;
 }

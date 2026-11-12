@@ -67,6 +67,8 @@ export interface RuntimeWithPlugins {
     readonly shell: EngineShell;
     /** The images the agent views on this machine (decision 0385). */
     readonly viewImages: ViewImageSource;
+    /** The runtime's side of a chat deletion (decision 0415). */
+    readonly runtimeChats: ComposedRuntime["chats"];
   };
 }
 
@@ -306,6 +308,7 @@ export function composeRuntimeWithPlugins(
     communityPluginsOn,
     shell: shellOf(opening, opened),
     viewImages,
+    runtimeChats: runtime.chats,
   };
   return { runtime: { ...runtime, begin }, plugins: composed, agentSide };
 }

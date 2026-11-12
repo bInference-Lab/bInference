@@ -8,6 +8,7 @@ import { testAgent, testAgentDraft } from "../intents/test-intents.js";
 import { testCall, testCallers } from "../operations/test-engine.js";
 import type { EnginePush } from "../pushes/engine-push.js";
 import { createGoalTurnHandlers } from "./goal-turns.js";
+import { createInboxHold } from "./inbox-hold.js";
 import { createRunningTurns } from "./running-turns.js";
 
 const runtime = testCallers.runtime;
@@ -25,6 +26,7 @@ async function setUp() {
   const handlers = createGoalTurnHandlers({
     agents,
     agentInbox,
+    inboxHold: createInboxHold(),
     turns,
     ids,
     clock,

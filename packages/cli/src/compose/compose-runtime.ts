@@ -1,5 +1,5 @@
 import { BinferenceError, type Id, idSchema } from "@binference/core";
-import { createRunningTurns, type RunningTurns } from "@binference/engine/chat";
+import { createRunningTurns, type RunningTurns, type RuntimeChats } from "@binference/engine/chat";
 import type { EngineHandlerTable } from "@binference/engine/surfaces";
 import type {
   AgentModelPicks,
@@ -9,6 +9,7 @@ import type {
 } from "@binference/runtime";
 import type { ProtocolServer } from "@binference/server";
 import { createRoutedHandlers } from "../agent-runtime/routed-handlers.js";
+import { createRuntimeChats } from "../agent-runtime/runtime-chats.js";
 import { runtimeKeys, runtimeSettingsOf } from "../agent-runtime/runtime-settings-of.js";
 import {
   createRuntimeSupervisor,
@@ -51,6 +52,8 @@ export interface ComposedRuntime {
   readonly handlers: EngineHandlerTable;
   /** The `runtime` health signal. */
   readonly health: () => RuntimeHealth;
+  /** The runtime's side of a chat deletion (decision 0415). */
+  readonly chats: RuntimeChats;
   /**
    * Puts an agent's picked models in force: the runtime gets them as new settings, applied from the
    * agent's next turn, and every later start begins with them (decision 0204).
@@ -186,6 +189,10 @@ export function composeRuntime(opening: Opening, opened: Opened): ComposedRuntim
         opened.stores.agentInbox.openSession(idSchema("agt").parse(agent), { signal }),
     ),
     health: () => supervisor.health(),
+    chats: createRuntimeChats({
+      route: async (request, signal) => supervisor.route(request, signal),
+      isUp: () => supervisor.health().state === "ok",
+    }),
     pick: held.pick,
     models: held.models,
     offerPlugins: held.offerPlugins,

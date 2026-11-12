@@ -1,6 +1,7 @@
 import type { Clock, IdSource } from "@binference/core";
 import type { ModelBudget } from "../billing/model-budget.js";
 import type { AgentInboxMessage } from "../chat/agent-inbox-record.js";
+import type { InboxHold } from "../chat/inbox-hold.js";
 import { wakeSkipOf } from "../chat/wake-skip.js";
 import type { AgentStore } from "../ports.js";
 import type { ScheduleStore } from "./ports.js";
@@ -17,6 +18,8 @@ export interface ScheduleQueueOptions {
   readonly ownerTimeZone: () => string;
   /** Pushes a wake-up a run stored on the `inbox` topic. */
   readonly woke: (message: AgentInboxMessage) => void;
+  /** A run of an agent whose chats are being deleted waits until they are (decision 0415). */
+  readonly inboxHold: Pick<InboxHold, "passed">;
   readonly ids: IdSource;
   readonly clock: Clock;
 }
@@ -39,6 +42,7 @@ async function runOne(
   if (nextAtMs === undefined) {
     return;
   }
+  await options.inboxHold.passed(agentId, signal);
   const settings = await options.agents.get(agentId, { signal });
   const skip = await wakeSkipOf(options.budget, settings, signal);
   const atMs = clock.now();

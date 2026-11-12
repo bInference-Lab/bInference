@@ -24,6 +24,7 @@ export type {
   ViewImageSource,
   QuestionStore,
 } from "./chat/ports.js";
+export type { RuntimeChats, RuntimeChatsDeleted } from "./chat/chat-delete.js";
 export { createUploadShelf } from "./uploads/upload-shelf.js";
 export type {
   UploadHolder,

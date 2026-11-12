@@ -12,7 +12,7 @@ import {
 import type { EngineCall, EngineHandler } from "../operations/engine-call.js";
 import { addPart, type Arriving } from "./arriving-parts.js";
 import { chatTopic } from "./chat-relay-parts.js";
-import { wakeWithMessage } from "./engine-message.js";
+import { wakeForRuntime } from "./engine-message.js";
 import { keepBounded } from "./keep-bounded.js";
 import { createMediaReads, type MediaOptions, type MediaState } from "./media-reads.js";
 
@@ -167,8 +167,7 @@ function madeHandler(options: MediaOptions, state: MediaState): EngineHandler<"m
       pushMedia(options, { agent, turn }, video.value);
     }
     const text = madeText(prompt, video.value, failed ?? "no video came back");
-    const woken = await wakeWithMessage(options, { agent, text, surface }, call.signal);
-    return woken.ok || woken.error === "protocol.busy" ? ok({}) : woken;
+    return wakeForRuntime(options, { agent, text, surface }, call.signal);
   };
 }
 

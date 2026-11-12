@@ -1,6 +1,7 @@
 import { createIdSource } from "@binference/core";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
+import { createInboxHold } from "../chat/inbox-hold.js";
 import { live } from "../contracts/store-fixtures.js";
 import { createMemoryEngineStores } from "../fakes/memory-engine-stores.js";
 import { testAgent, testAgentDraft, testNowMs } from "../intents/test-intents.js";
@@ -41,6 +42,7 @@ describe("the schedule queue's zones", () => {
       budget: { open: async () => Promise.resolve(1n) },
       ownerTimeZone: () => zone.now,
       woke: () => undefined,
+      inboxHold: createInboxHold(),
       ids: createIdSource({ clock, random: createSeededRandom(1) }),
       clock,
     });

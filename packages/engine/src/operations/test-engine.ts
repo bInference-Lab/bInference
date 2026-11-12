@@ -186,6 +186,8 @@ export interface TestEngineOptions {
   readonly configChanges?: EngineOptions["configChanges"];
   /** The agent's shell on this machine; off when absent. */
   readonly shell?: EngineOptions["shell"];
+  /** The runtime's side of a chat deletion; none, so `chat/delete` waits for it, when absent. */
+  readonly runtimeChats?: EngineOptions["runtimeChats"];
 }
 
 /** An engine on memory stores and the fake chain, with what a test reads and drives. */

@@ -1,8 +1,8 @@
-import { err, ok } from "@binference/core";
+import { err } from "@binference/core";
 import { activeAgent } from "../operations/active-agent.js";
 import type { EngineHandler } from "../operations/engine-call.js";
 import type { ChatRelayOptions } from "./chat-relay-parts.js";
-import { wakeWithMessage } from "./engine-message.js";
+import { wakeForRuntime } from "./engine-message.js";
 
 /** The operation the agent runtime tells the agent a helper's end with (decision 0403). */
 export interface HelperEndHandlers {
@@ -12,7 +12,7 @@ export interface HelperEndHandlers {
 /** What a helper's end is stored and pushed through. */
 export type HelperEndOptions = Pick<
   ChatRelayOptions,
-  "agents" | "agentInbox" | "turns" | "ids" | "clock" | "publish" | "intentView"
+  "agents" | "agentInbox" | "inboxHold" | "turns" | "ids" | "clock" | "publish" | "intentView"
 >;
 
 /**
@@ -32,9 +32,7 @@ export function createHelperEndHandlers(options: HelperEndOptions): HelperEndHan
       if (!active.ok) {
         return active;
       }
-      const message = { agent, text, surface, outsideContent };
-      const woken = await wakeWithMessage(options, message, call.signal);
-      return woken.ok || woken.error === "protocol.busy" ? ok({}) : woken;
+      return wakeForRuntime(options, { agent, text, surface, outsideContent }, call.signal);
     },
   };
 }
