@@ -171,6 +171,27 @@ describe("createCallDispatch", () => {
       code: "auth.scope",
     },
     {
+      name: "a deletion of chats from the agent runtime",
+      frame: call("chat/delete", { agent }, "k"),
+      scopes: ["read", "propose", "agent"],
+      transport: "ipc",
+      code: "auth.scope",
+    },
+    {
+      name: "a deletion of chats from an MCP client",
+      frame: call("chat/delete", {}, "k"),
+      scopes: ["read", "propose"],
+      transport: "ws",
+      code: "auth.scope",
+    },
+    {
+      name: "a deletion of chats from a client that chats and confirms",
+      frame: call("chat/delete", { agent }, "k"),
+      scopes: ["read", "propose", "chat", "confirm", "loosen"],
+      transport: "ws",
+      code: "auth.scope",
+    },
+    {
       name: "a local operation over WS",
       frame: call("engine/stop", {}, "k"),
       scopes: cli,

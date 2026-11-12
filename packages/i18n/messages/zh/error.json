@@ -21,6 +21,7 @@
   "engine.locked": "binference 已锁定。请在本机运行 `binference unlock`。",
   "engine.timeout": "binference 未能及时完成。请重试。",
   "runtime.unavailable": "你的 Agent 当前离线。请运行 `binference check` 查看原因。",
+  "chat.needs_runtime": "你的 Agent 当前离线，现在无法删除对话。请运行 `binference start` 启动 binference，然后再试。",
   "agent.not_found": "此 Agent 不存在。请在控制台查看 Agent 列表。",
   "agent.archived": "此 Agent 已归档。请新建一个 Agent，或选择其他 Agent。",
   "agent.frozen": "此 Agent 已冻结。请在终端运行 `binference unfreeze`，然后确认它打开的卡片。",

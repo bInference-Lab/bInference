@@ -16,6 +16,7 @@ const retryableCodes: ReadonlySet<ProtocolErrorCode> = new Set([
   "engine.locked",
   "engine.timeout",
   "runtime.unavailable",
+  "chat.needs_runtime",
   "wallet.custody_down",
   "name.resolver_down",
   "quote.venue_down",

@@ -7,6 +7,10 @@ import {
 import { type BridgeOperationShapes, bridgeOperations } from "./bridge-operations.schema.js";
 import { type BrowserOperationShapes, browserOperations } from "./browser-operations.schema.js";
 import { type ChartOperationShapes, chartOperations } from "./chart-operations.schema.js";
+import {
+  type ChatDeleteOperationShapes,
+  chatDeleteOperations,
+} from "./chat-delete-operations.schema.js";
 import { type ChatOperationShapes, chatOperations } from "./chat-operations.schema.js";
 import {
   type ConfigProposalOperationShapes,
@@ -76,6 +80,7 @@ export interface OperationShapes
     OrderOperationShapes,
     LimitOperationShapes,
     ChatOperationShapes,
+    ChatDeleteOperationShapes,
     ImageOperationShapes,
     ConfigProposalOperationShapes,
     ReasoningOperationShapes,
@@ -125,6 +130,7 @@ export const operations: OperationTable<OperationShapes> = {
   ...orderOperations,
   ...limitOperations,
   ...chatOperations,
+  ...chatDeleteOperations,
   ...imageOperations,
   ...configProposalOperations,
   ...reasoningOperations,

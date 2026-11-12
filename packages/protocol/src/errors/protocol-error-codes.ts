@@ -25,6 +25,7 @@ export const protocolErrorCodes = [
   "engine.locked",
   "engine.timeout",
   "runtime.unavailable",
+  "chat.needs_runtime",
   "agent.not_found",
   "agent.archived",
   "agent.frozen",

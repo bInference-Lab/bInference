@@ -16,6 +16,7 @@ describe("protocolErrorCodes", () => {
       "auth",
       "engine",
       "runtime",
+      "chat",
       "agent",
       "question",
       "image",

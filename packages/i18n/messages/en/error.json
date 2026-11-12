@@ -21,6 +21,7 @@
   "engine.locked": "binference is locked. Run `binference unlock` on the machine.",
   "engine.timeout": "binference did not finish in time. Try again.",
   "runtime.unavailable": "Your agent is offline right now. Run `binference check` to see why.",
+  "chat.needs_runtime": "Your agent is offline, so its chats cannot be deleted now. Start binference with `binference start`, then try again.",
   "agent.not_found": "This agent does not exist. Check the list of agents in the console.",
   "agent.archived": "This agent is archived. Create a new agent, or pick another one.",
   "agent.frozen": "This agent is frozen. Run `binference unfreeze` in the terminal, then confirm the card it opens.",

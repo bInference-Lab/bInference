@@ -155,6 +155,7 @@ export * from "./views/community-plugin-limits.js";
 export { pluginReviewSchema, type PluginReview } from "./views/plugin-review.schema.js";
 export * from "./views/job-push.schema.js";
 export * from "./views/chat-push.schema.js";
+export * from "./views/chat-deleted-push.schema.js";
 export * from "./views/notice-view.schema.js";
 export * from "./views/limits-view.schema.js";
 export * from "./views/order-view.schema.js";

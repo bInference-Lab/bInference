@@ -1,6 +1,7 @@
 import type { OperationName } from "../operations/operations.js";
 import { browserExamples } from "./browser-examples.js";
 import { chartExamples } from "./chart-examples.js";
+import { chatDeleteExamples } from "./chat-delete-examples.js";
 import {
   chatExamples,
   limitExamples,
@@ -54,6 +55,7 @@ export const operationExamples: { readonly [N in OperationName]: WireExample } =
   ...orderExamples,
   ...limitExamples,
   ...chatExamples,
+  ...chatDeleteExamples,
   ...imageExamples,
   ...configProposalExamples,
   ...reasoningExamples,

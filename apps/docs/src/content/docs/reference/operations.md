@@ -249,6 +249,7 @@ Every operation of the engine protocol, version 1, by domain. A client calls an 
 | `chat/messages` | `read` | read | any connection | agent runtime |
 | `chat/stop` | `chat` | write | any connection | engine |
 | `chat/clear` | `chat` | write | any connection | engine |
+| `chat/delete` | `admin` | write | any connection | engine |
 | `chat/openCredentialRequest` | `read` | read | any connection | engine |
 | `chat/answer` | `chat` | write | any connection | engine |
 | `chat/openQuestion` | `read` | read | any connection | engine |

@@ -249,6 +249,7 @@ description: "引擎协议的每个操作：调用所需的权限范围、操作
 | `chat/messages` | `read` | 读取 | 任何连接 | Agent 运行时 |
 | `chat/stop` | `chat` | 写入 | 任何连接 | 引擎 |
 | `chat/clear` | `chat` | 写入 | 任何连接 | 引擎 |
+| `chat/delete` | `admin` | 写入 | 任何连接 | 引擎 |
 | `chat/openCredentialRequest` | `read` | 读取 | 任何连接 | 引擎 |
 | `chat/answer` | `chat` | 写入 | 任何连接 | 引擎 |
 | `chat/openQuestion` | `read` | 读取 | 任何连接 | 引擎 |
