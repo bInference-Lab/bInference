@@ -45,6 +45,17 @@ describe("intent/list", () => {
     expect(expectOk(await list(testCall({ agent: other }))).items).toStrictEqual([]);
   });
 
+  it("keeps only the intents changed at or after a time, so a lost answer's intent is found", async () => {
+    const { list, intents } = await engineWithIntents(3);
+    const since = intents.slice(1, 2).reduce((_, item) => item.changedAt, 0);
+    const page = expectOk(await list(testCall({ changedSince: since })));
+    expect(page.items.map((item) => item.intent)).toStrictEqual(
+      intents.slice(1).map((item) => item.intent),
+    );
+    const later = expectOk(await list(testCall({ changedSince: since + 1_000_000 })));
+    expect(later.items).toStrictEqual([]);
+  });
+
   it("refuses a cursor it did not give", async () => {
     const { list } = await engineWithIntents(0);
     await expect(list(testCall({ cursor: "not-a-cursor" }))).resolves.toStrictEqual(

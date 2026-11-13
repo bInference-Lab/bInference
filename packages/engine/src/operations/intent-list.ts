@@ -54,13 +54,15 @@ function queryOf(
     limit: args.limit ?? defaultPageSize,
     ...(args.agent === undefined ? {} : { agentId: args.agent }),
     ...(after === undefined ? {} : { after: after.data }),
+    ...(args.changedSince === undefined ? {} : { changedSinceMs: args.changedSince }),
   });
 }
 
 /**
  * Answers `intent/list` (protocol spec, section 7.4): a page of intents, the least recently
- * changed first, in one state or all, of one agent or all. The kind filter applies within each
- * page, and `next` is present while a full page came back.
+ * changed first, in one state or all, of one agent or all, and with `changedSince` only those
+ * changed at or after it. The kind filter applies within each page, and `next` is present while a
+ * full page came back.
  */
 export async function listIntents(
   options: IntentListOptions,

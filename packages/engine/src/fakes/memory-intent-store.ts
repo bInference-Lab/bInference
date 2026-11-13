@@ -246,17 +246,23 @@ function byChange(left: IntentRecord, right: IntentRecord): number {
   return left.id < right.id ? -1 : 1;
 }
 
-function matches(intent: IntentRecord, query: IntentQuery): boolean {
-  const { after, agentId, isPaper } = query;
+// Whether the intent changed inside the query's window: from its time, after its page.
+function isInWindow(intent: IntentRecord, query: IntentQuery): boolean {
+  const { after, changedSinceMs } = query;
   const isAfter =
     after === undefined ||
     intent.changedAtMs > after.changedAtMs ||
     (intent.changedAtMs === after.changedAtMs && intent.id > after.id);
+  return isAfter && (changedSinceMs === undefined || intent.changedAtMs >= changedSinceMs);
+}
+
+function matches(intent: IntentRecord, query: IntentQuery): boolean {
+  const { agentId, isPaper } = query;
   return (
     query.states.includes(intent.state) &&
     (agentId === undefined || intent.agentId === agentId) &&
     (isPaper === undefined || intent.isPaper === isPaper) &&
-    isAfter
+    isInWindow(intent, query)
   );
 }
 

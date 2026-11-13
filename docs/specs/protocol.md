@@ -547,11 +547,15 @@ Workspace files: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`
 | `intent/propose` | `propose`                                                               | ✓     | `IntentRequest` (section 8.1) → `IntentView`                                              |
 | `intent/get`     | `read`                                                                  |       | `{ intent }` → `IntentView`                                                               |
 | `intent/card`    | `read`                                                                  |       | `{ intent }` → `CardLinesView`: the open card's lines and version, as Telegram draws them |
-| `intent/list`    | `read`                                                                  |       | paging, `{ agent?, state?, kind? }` → intents                                             |
+| `intent/list`    | `read`                                                                  |       | paging, `{ agent?, state?, kind?, changedSince? }` → intents                              |
 | `intent/confirm` | `confirm`                                                               | ✓     | `{ intent, card, cardVersion }` → `IntentView`                                            |
 | `intent/deny`    | `confirm`                                                               | ✓     | `{ intent, card }` → `IntentView`                                                         |
 | `intent/cancel`  | `confirm`, or `propose` for the client's own intent before confirmation | ✓     | `{ intent }` → `IntentView`                                                               |
 
+- `intent/list` gives the intents the least recently changed first. With `changedSince`, an epoch
+  ms time, it keeps only those changed at or after it: a client whose proposal ended in
+  `protocol.outcome_unknown` (section 10) lists what changed since it sent the call before it
+  proposes anything again.
 - `intent/propose` always answers with an intent when the args are valid. A refusal by policy or
   risk is an intent in a terminal state (`rejected_policy`, `risk_blocked`) with its reason, not a
   `fail`. This follows [ENGINEERING.md section 7](../ENGINEERING.md#section-7): expected outcomes

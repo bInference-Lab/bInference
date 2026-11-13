@@ -144,6 +144,8 @@ export interface IntentQuery {
   readonly isPaper?: boolean;
   /** The last intent of the page before. */
   readonly after?: { readonly changedAtMs: number; readonly id: Id<"int"> };
+  /** Only intents changed at or after this time. */
+  readonly changedSinceMs?: number;
   readonly limit: number;
 }
 
@@ -153,5 +155,6 @@ export const intentQuerySchema: z.ZodType<IntentQuery> = z.strictObject({
   agentId: idSchema("agt").exactOptional(),
   isPaper: z.boolean().exactOptional(),
   after: z.strictObject({ changedAtMs: epochMsSchema, id: idSchema("int") }).exactOptional(),
+  changedSinceMs: epochMsSchema.exactOptional(),
   limit: pageLimitSchema,
 });

@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { assetRefSchema } from "@binference/chain";
 import type { ContractCheck } from "@binference/core/testing";
-import type { IntentQuery } from "../intents/intent-change.js";
 import { genesisLedgerHash } from "../ledger/ledger-hash.js";
 import {
   closesWithMoves,
@@ -30,8 +29,9 @@ import {
   refusesStaleFreeze,
   unfreezesInOneWrite,
 } from "./intent-freeze-checks.js";
+import { intentListChecks } from "./intent-list-checks.js";
 import { intentOrderChecks } from "./intent-order-checks.js";
-import { assertRefusesAborted, checkOn, fixtureId, inOrder, live } from "./store-fixtures.js";
+import { assertRefusesAborted, checkOn, fixtureId, live } from "./store-fixtures.js";
 
 /** Makes a fresh, empty intent store for each check. */
 export interface IntentStoreHarness {
@@ -182,42 +182,6 @@ async function letsOneRacerWin(subject: IntentStoreSubject): Promise<void> {
   assert.equal((await store.events(fixtureId("int", 1), live())).length, 2);
 }
 
-async function listsByState(subject: IntentStoreSubject): Promise<void> {
-  const { store } = subject;
-  const tied = { ...intentDraft(subject, 4), atMs: intentDraft(subject, 2).atMs };
-  const drafts = [intentDraft(subject, 3), intentDraft(subject, 1), tied, intentDraft(subject, 2)];
-  await inOrder(drafts, async (draft) => store.create(draft, live()));
-  await store.transition(intentMove(1, 0, "checked"), live());
-  const query = { states: ["proposed", "checked"] as const, limit: 2 };
-  const firstPage = await store.list(query, live());
-  assert.deepEqual(
-    firstPage.map((intent) => intent.id),
-    [fixtureId("int", 1), fixtureId("int", 2)],
-  );
-  const last = firstPage.at(-1);
-  assert.ok(last !== undefined);
-  const after = { changedAtMs: last.changedAtMs, id: last.id };
-  const secondPage = await store.list({ ...query, after }, live());
-  assert.deepEqual(
-    secondPage.map((intent) => intent.id),
-    [fixtureId("int", 4), fixtureId("int", 3)],
-  );
-  const proposed = await store.list({ states: ["proposed"], limit: 10 }, live());
-  assert.equal(proposed.length, 3);
-  const otherAgent = { ...query, agentId: fixtureId("agt", 99) };
-  assert.deepEqual(await store.list(otherAgent, live()), []);
-  await store.create({ ...intentDraft(subject, 5), isPaper: false }, live());
-  const listed = async (byState: IntentQuery): Promise<readonly string[]> =>
-    (await store.list(byState, live())).map((row) => row.id);
-  const byMode = { states: ["proposed"], limit: 10 } as const;
-  assert.deepEqual(await listed({ ...byMode, isPaper: false }), [fixtureId("int", 5)]);
-  assert.deepEqual(await listed({ ...byMode, isPaper: true }), [
-    fixtureId("int", 2),
-    fixtureId("int", 4),
-    fixtureId("int", 3),
-  ]);
-}
-
 async function refusesAborted(subject: IntentStoreSubject): Promise<void> {
   const { store, ledger } = subject;
   const id = fixtureId("int", 1);
@@ -293,11 +257,7 @@ export function intentStoreContract(harness: IntentStoreHarness): readonly Contr
     checkOn("finds the newest facts intents stored of each token", create, findsStoredAssets),
     checkOn("refuses a stale or unknown move and writes nothing", create, refusesStale),
     checkOn("lets exactly one of two racing moves from one version win", create, letsOneRacerWin),
-    checkOn(
-      "lists intents by state and mode, least recently changed first, page by page",
-      create,
-      listsByState,
-    ),
+    ...intentListChecks(create),
     checkOn("lists an agent's confirmed intents since a time", create, listsConfirmedSince),
     checkOn("lists an agent's intents stored since a time", create, listsCreatedSince),
     checkOn("links one late landing to an intent it leaves as it is", create, recordsLateLandings),

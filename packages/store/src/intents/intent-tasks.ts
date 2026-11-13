@@ -84,7 +84,7 @@ export const getIntentTask: StoreTask<Id<"int">, IntentRecord | undefined> = def
   },
 });
 
-/** Lists intents by state, the least recently changed first. */
+/** Lists intents by state, the least recently changed first, from a change time when given. */
 export const listIntentsTask: StoreTask<IntentQuery, readonly IntentRecord[]> = defineTask({
   name: "intents.list",
   access: "read",
@@ -92,7 +92,7 @@ export const listIntentsTask: StoreTask<IntentQuery, readonly IntentRecord[]> = 
   output: z.array(intentRecordSchema),
   run(database, query) {
     const { kysely, execute } = createSyncKysely<EngineTables>(database);
-    const { agentId, isPaper, after } = query;
+    const { agentId, isPaper, after, changedSinceMs } = query;
     let select = kysely
       .selectFrom("intents")
       .selectAll()
@@ -102,6 +102,9 @@ export const listIntentsTask: StoreTask<IntentQuery, readonly IntentRecord[]> = 
     }
     if (isPaper !== undefined) {
       select = select.where("paper", "=", isPaper ? 1 : 0);
+    }
+    if (changedSinceMs !== undefined) {
+      select = select.where("changed_at", ">=", changedSinceMs);
     }
     if (after !== undefined) {
       select = select.where((row) =>

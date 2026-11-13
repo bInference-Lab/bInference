@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { type ProtocolId, protocolIdSchema } from "../ids/id-prefixes.js";
 import { type IntentRequest, intentRequestSchema } from "../requests/intent-request.schema.js";
+import { epochMsSchema } from "../values/epoch-ms.schema.js";
 import { type Page, type PageArgs, pageArgsShape, pageSchema } from "../values/page.schema.js";
 import { type CardLinesView, cardLinesViewSchema } from "../views/card-lines.schema.js";
 import { type IntentKind, intentKindSchema } from "../views/intent-kind.schema.js";
@@ -13,11 +14,13 @@ interface IntentArgs {
   readonly intent: ProtocolId<"intent">;
 }
 
-/** The args of `intent/list`: a page of intents, filtered by agent, state and kind. */
+/** The args of `intent/list`: a page of intents, filtered by agent, state, kind and change time. */
 interface ListIntentsArgs extends PageArgs {
   readonly agent?: ProtocolId<"agent">;
   readonly state?: IntentState;
   readonly kind?: IntentKind;
+  /** Only intents changed at or after this time, epoch ms, as a client that lost an answer asks. */
+  readonly changedSince?: number;
 }
 
 /** The args of `intent/deny`: the card the owner answered. */
@@ -78,6 +81,7 @@ export const intentOperations: OperationTable<IntentOperationShapes> = {
       agent: protocolIdSchema("agent").exactOptional(),
       state: intentStateSchema.exactOptional(),
       kind: intentKindSchema.exactOptional(),
+      changedSince: epochMsSchema.exactOptional(),
     }),
     result: pageSchema(intentViewSchema),
   },

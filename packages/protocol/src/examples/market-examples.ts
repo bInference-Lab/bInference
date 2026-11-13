@@ -212,7 +212,14 @@ export const intentExamples: { readonly [N in keyof IntentOperationShapes]: Wire
     },
   },
   "intent/list": {
-    args: { cursor: "cursor-1", limit: 10, agent: ids.agent, state: "reconciled", kind: "swap" },
+    args: {
+      cursor: "cursor-1",
+      limit: 10,
+      agent: ids.agent,
+      state: "reconciled",
+      kind: "swap",
+      changedSince: at,
+    },
     result: pageOf(intentView),
   },
   "intent/confirm": {
