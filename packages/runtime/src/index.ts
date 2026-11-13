@@ -35,6 +35,23 @@ export type {
 } from "./control/runtime-settings.schema.js";
 export { checkModel, checkModelImages } from "./providers/model-check.js";
 export { pluginToolName } from "./tools/plugin-tools.js";
+export {
+  jsonBytesOf,
+  listedMcpServerSchema,
+  listedMcpServersSchema,
+  listedToolName,
+  listingLimits,
+  listingRefusal,
+  mcpListingSchema,
+} from "./listed-mcp/listing.schema.js";
+export type {
+  ListedMcpServer,
+  ListedMcpTool,
+  ListingRefusal,
+  McpListing,
+  McpRevision,
+} from "./listed-mcp/listing.schema.js";
+export type { ListedMcpSource } from "./listed-mcp/ports.js";
 export { describeAgentTools } from "./tools/tool-reference.js";
 export type { ToolReference } from "./tools/tool-reference.js";
 export { endpointModelChain } from "./providers/endpoint-model-chain.js";

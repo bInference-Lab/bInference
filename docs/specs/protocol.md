@@ -67,6 +67,7 @@ below.
 | `shj_` | shell job          | `shq_` | shell request    |
 | `crq_` | credential request | `sac_` | allowed command  |
 | `msg_` | inbox message      | `qst_` | agent question   |
+| `mls_` | MCP listing        |        |                  |
 
 <a id="section-2"></a>
 

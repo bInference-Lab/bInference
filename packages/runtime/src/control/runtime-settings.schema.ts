@@ -1,6 +1,11 @@
 import { decimalStringSchema, type JsonValue, jsonValueSchema } from "@binference/core";
 import { type Locale, localeSchema } from "@binference/protocol";
 import { z } from "zod";
+import {
+  type ListedMcpServer,
+  type ListedMcpServerWire,
+  listedMcpServersSchema,
+} from "../listed-mcp/listing.schema.js";
 
 /** One model provider as the runtime calls it, its key already read from its secret source. */
 export interface RuntimeProvider {
@@ -105,6 +110,11 @@ export interface RuntimeSettings {
   readonly network: RuntimeNetwork;
   /** The enabled community plugins and their tools; none when absent (decision 0349). */
   readonly plugins?: readonly RuntimePlugin[];
+  /**
+   * The MCP listings in force, each with the agents that have it on (decision 0428); none when
+   * absent, as for a composition root that offers no listed server.
+   */
+  readonly listedMcp?: readonly ListedMcpServer[];
   /** How the agent speaks (decision 0405): the voice it speaks with, its model's own when absent. */
   readonly speech?: { readonly voice?: string };
 }
@@ -124,12 +134,16 @@ interface RuntimePluginWire extends Omit<RuntimePlugin, "tools"> {
 }
 
 /** {@link RuntimeSettings} as JSON carries them. */
-export interface RuntimeSettingsWire extends Omit<RuntimeSettings, "models" | "owner" | "plugins"> {
+export interface RuntimeSettingsWire extends Omit<
+  RuntimeSettings,
+  "models" | "owner" | "plugins" | "listedMcp"
+> {
   readonly models: Omit<RuntimeModels, "prices"> & {
     readonly prices: Readonly<Record<string, RuntimeModelPriceWire>>;
   };
   readonly owner: { readonly locale: string; readonly timezone: string };
   readonly plugins?: readonly RuntimePluginWire[];
+  readonly listedMcp?: readonly ListedMcpServerWire[];
 }
 
 const nameSchema = z.string().min(1).max(200);
@@ -212,5 +226,6 @@ export const runtimeSettingsSchema: z.ZodType<RuntimeSettings, RuntimeSettingsWi
       noProxy: z.array(z.string().min(1).max(300)).max(256),
     }),
     plugins: z.array(pluginSchema).max(64).exactOptional(),
+    listedMcp: listedMcpServersSchema.exactOptional(),
     speech: z.strictObject({ voice: z.string().min(1).max(64).exactOptional() }).exactOptional(),
   });

@@ -36,6 +36,7 @@ export const idPrefixes = {
   skillProposal: "skp",
   shellRequest: "shq",
   allowedCommand: "sac",
+  mcpListing: "mls",
 } as const;
 
 /** A thing that carries a protocol id, such as `intent` or `connection`. */

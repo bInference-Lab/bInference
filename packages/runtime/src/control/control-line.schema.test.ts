@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { listedMcpServerSchema } from "../listed-mcp/listing.schema.js";
+import { listedServerFixture } from "../testing/listing-fixture.js";
+import { nthTestId } from "../testing/memory-agent-stores.js";
 import { fixtureStartLine } from "../testing/start-line-fixture.js";
 import { engineLineSchema, isRoutedOperation, runtimeLineSchema } from "./control-line.schema.js";
+import { runtimeSettingsSchema } from "./runtime-settings.schema.js";
 
 function roundTrip(line: unknown): unknown {
   const text = JSON.stringify(engineLineSchema.encode(engineLineSchema.parse(line)));
@@ -23,6 +27,32 @@ describe("the control pipe's lines", () => {
     const wire = JSON.stringify(engineLineSchema.encode(line));
 
     expect(engineLineSchema.parse(JSON.parse(wire))).toEqual(line);
+  });
+
+  it("carries the MCP listings in force in a settings line", () => {
+    const listedMcp = [listedServerFixture([nthTestId("agt", 1)])];
+    const line = {
+      t: "settings",
+      settings: { ...fixtureStartLine().settings, listedMcp },
+    } as const;
+    const wire = JSON.stringify(engineLineSchema.encode(line));
+
+    expect(engineLineSchema.parse(JSON.parse(wire))).toEqual(line);
+  });
+
+  it("refuses settings with a listing the listing schema refuses", () => {
+    const server = listedServerFixture([nthTestId("agt", 1)]);
+    const wire = runtimeSettingsSchema.encode({
+      ...fixtureStartLine().settings,
+      listedMcp: [server],
+    });
+    const listing = listedMcpServerSchema.encode(server);
+    const plain = {
+      ...listing,
+      listing: { ...listing.listing, url: "http://rates.example.com/mcp" },
+    };
+    expect(runtimeSettingsSchema.safeParse({ ...wire, listedMcp: [plain] }).success).toBe(false);
+    expect(runtimeSettingsSchema.safeParse(wire).success).toBe(true);
   });
 
   it("refuses a start line whose token is not a client token", () => {

@@ -105,3 +105,17 @@ export type {
   TurnJournalHarness,
   TurnJournalSubject,
 } from "./contracts/turn-journal-contract.js";
+export { createFakeListedMcpSource } from "./testing/fake-listed-mcp-source.js";
+export type { FakeListedMcpSource } from "./testing/fake-listed-mcp-source.js";
+export {
+  fixtureListedTool,
+  fixtureServerTool,
+  largeListedServer,
+  listedServerFixture,
+  listingFixture,
+} from "./testing/listing-fixture.js";
+export { listedMcpSourceContract } from "./contracts/listed-mcp-source-contract.js";
+export type {
+  ListedMcpSourceHarness,
+  ListedMcpSourceSubject,
+} from "./contracts/listed-mcp-source-contract.js";
