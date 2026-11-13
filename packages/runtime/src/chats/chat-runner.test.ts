@@ -342,6 +342,25 @@ describe("createChatRunner", () => {
     expect(turnsStarted(rig)).toStrictEqual([posted.turn]);
   });
 
+  it("keeps every message of a turn a turn quota refused, a wake-up too, until its time", async () => {
+    const rig = await startChatRig({ replies: [textReply("Back.")] });
+    const resumesAt = rig.clock.now() + 20_000;
+    rig.engine.refuse(rig.agent, { started: false, refusal: "quota", resumesAt });
+    const alert = { ...priceAlert(rig.agent, 1), outsideContent: true };
+    const woke = rig.engine.alerted(rig.agent, alert);
+    await rig.received();
+    await rig.runner.rested();
+    expect(dropReasons(rig)).toStrictEqual({});
+    await expect(queued(rig, woke.session, woke.message)).resolves.toBeDefined();
+    rig.engine.refuse(rig.agent, undefined);
+    await rig.clock.advance(19_999);
+    await rig.runner.rested();
+    expect(turnsStarted(rig)).toStrictEqual([]);
+    await rig.clock.advance(1);
+    await rig.runner.rested();
+    expect(turnsStarted(rig)).toStrictEqual([woke.turn]);
+  });
+
   it("starts every turn marked while its tools include an outside party's (decision 0350)", async () => {
     const seen: (boolean | undefined)[] = [];
     const rig = await startChatRig({

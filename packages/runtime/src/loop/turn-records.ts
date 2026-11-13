@@ -236,10 +236,11 @@ export interface TurnEndRecord {
 }
 
 /**
- * Why a turn did not start: the engine refused it (runtime spec, section 4.2), or `unavailable`
- * when `turn/start` itself failed, so the engine holds no running turn and its messages wait.
+ * Why a turn did not start: the engine refused it (runtime spec, section 4.2), `quota` for the
+ * agent's turns of the last minute (decision 0431), or `unavailable` when `turn/start` itself
+ * failed, so the engine holds no running turn and its messages wait.
  */
-export type TurnRefusal = "budget" | "frozen" | "archived" | "not_found" | "unavailable";
+export type TurnRefusal = "budget" | "quota" | "frozen" | "archived" | "not_found" | "unavailable";
 
 /** What `turn/start` names: the messages the turn takes, and whether its context is marked. */
 export interface TurnStartRequest {
@@ -268,6 +269,8 @@ export type TurnStatusLine =
   | { readonly line: "loop" }
   /** The agent's model budget of the day is spent: chat resumes at the owner's next midnight. */
   | { readonly line: "budget"; readonly resumesAt: number }
+  /** The agent's turns of the last minute reached their quota: chat goes on at `resumesAt`. */
+  | { readonly line: "quota"; readonly resumesAt: number }
   /** The owner's images could not be read, and no model was called. */
   | { readonly line: "image"; readonly problem: ImageProblem }
   /** A tool of a turn that ended well finished something the owner hears of. */

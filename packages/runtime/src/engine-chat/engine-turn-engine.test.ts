@@ -111,6 +111,19 @@ describe("createEngineTurnEngine", () => {
     ]);
   });
 
+  it("shows when chat goes on as the engine refuses a turn for its turn quota", async () => {
+    const { engine, stores, message } = await subject(undefined);
+    engine.refuse(agent, { started: false, refusal: "quota", resumesAt: 7 });
+    const place = { agent, session: message.session, turn: message.turn };
+    const clock = createManualClock(5);
+    const turns = createEngineTurnEngine({ chat: engine, stores, place, taken: [], clock });
+    await turns.start({ messages: [message.message], outsideContent: false }, live());
+    const lines = engine.pushes.filter(({ kind }) => kind === "chat/status");
+    expect(lines).toStrictEqual([
+      { kind: "chat/status", agent, turn: message.turn, detail: "turn.quota", values: { when: 7 } },
+    ]);
+  });
+
   it("shows no paused line for a refusal that is not the budget", async () => {
     const { engine, stores, message } = await subject(undefined);
     engine.refuse(agent, { started: false, refusal: "frozen" });

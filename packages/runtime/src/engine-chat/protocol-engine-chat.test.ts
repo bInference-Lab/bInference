@@ -30,8 +30,9 @@ function clientOver(engine: MemoryEngineChat, topics: Map<string, TopicHandlers>
       case "turn/start": {
         const started = await engine.startTurn(args as never, signal);
         if (!started.started) {
-          const code = `agent.${started.refusal}` as const;
-          const details = started.refusal === "budget" ? { resumesAt: 5 } : {};
+          const { refusal } = started;
+          const code = refusal === "quota" ? "quota.turns" : (`agent.${refusal}` as const);
+          const details = refusal === "budget" || refusal === "quota" ? { resumesAt: 5 } : {};
           throw new BinferenceError({ code, message: "refused", details });
         }
         return { budgetLeftMicros: started.budgetLeftMicros };
@@ -125,6 +126,20 @@ describe("createProtocolEngineChat", () => {
     await expect(chat.startTurn(start, new AbortController().signal)).resolves.toStrictEqual({
       started: false,
       refusal: "budget",
+      resumesAt: 5,
+    });
+  });
+
+  it("answers a turn quota with the time the next turn may start", async () => {
+    const engine = createMemoryEngineChat([agent]);
+    engine.refuse(agent, { started: false, refusal: "quota" });
+    const chat = createProtocolEngineChat(clientOver(engine, new Map()));
+    const posted = engine.post(agent, "hi");
+    const { session, turn, message } = posted;
+    const start = { agent, session, turn, messages: [message], outsideContent: false };
+    await expect(chat.startTurn(start, new AbortController().signal)).resolves.toStrictEqual({
+      started: false,
+      refusal: "quota",
       resumesAt: 5,
     });
   });

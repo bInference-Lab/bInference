@@ -11,6 +11,7 @@ type Refusal = Extract<TurnStartAnswer, { readonly started: false }>["refusal"];
 
 const refusals: ReadonlyMap<string, Refusal> = new Map([
   ["agent.budget", "budget"],
+  ["quota.turns", "quota"],
   ["agent.frozen", "frozen"],
   ["agent.archived", "archived"],
   ["agent.not_found", "not_found"],

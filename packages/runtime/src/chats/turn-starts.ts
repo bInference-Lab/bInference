@@ -40,6 +40,8 @@ interface Waiting {
 type Refused = Extract<TurnStartAnswer, { readonly started: false }>;
 
 const retryMsDefault = 30_000;
+// When a turn quota names no time to go on at, the next start waits out its minute.
+const quotaRetryMs = 60_000;
 const maxRunningDefault = 4;
 
 function mayStart(context: ChatContext, agent: Id<"agt">): boolean {
@@ -66,11 +68,28 @@ function pause(context: ChatContext, agent: Id<"agt">, until: number): void {
   }
 }
 
+// When a turn the engine did not take tries again with every message it took: at a turn quota's
+// time (decision 0431), or a minute on when it names none; after the retry wait when the engine
+// was out of reach; never for any other refusal.
+function retryAtOf(context: ChatContext, refused: Refused | undefined): number | undefined {
+  const now = context.clock.now();
+  if (refused === undefined) {
+    return now + (context.retryMs ?? retryMsDefault);
+  }
+  return refused.refusal === "quota" ? (refused.resumesAt ?? now + quotaRetryMs) : undefined;
+}
+
 // How a refused turn leaves its messages (decision 0174). A spent budget skips the schedules'
-// wake-ups and keeps the rest for the resume (runtime spec, section 8.3).
+// wake-ups and keeps the rest for the resume (runtime spec, section 8.3); a turn quota keeps
+// every message for the start at its time (decision 0431).
 async function afterRefusal(context: ChatContext, agent: Id<"agt">, ended: TurnEnded) {
   const { refused, taken } = ended;
   const refusal = refused?.refusal ?? "unavailable";
+  const retryAt = retryAtOf(context, refused);
+  if (retryAt !== undefined) {
+    pause(context, agent, retryAt);
+    return;
+  }
   if (refusal === "budget") {
     const wakeUps = taken.filter(({ queued }) => isWakeUp(queued.kind));
     await dropMessages(
@@ -79,10 +98,6 @@ async function afterRefusal(context: ChatContext, agent: Id<"agt">, ended: TurnE
       refusal,
     );
     pause(context, agent, refused?.resumesAt ?? Number.POSITIVE_INFINITY);
-    return;
-  }
-  if (refusal === "unavailable") {
-    pause(context, agent, context.clock.now() + (context.retryMs ?? retryMsDefault));
     return;
   }
   await dropMessages(

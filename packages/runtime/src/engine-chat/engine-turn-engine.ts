@@ -103,12 +103,11 @@ export function createEngineTurnEngine(options: EngineTurnOptions): TurnEngine {
       const answer = await chat.startTurn(start, signal);
       if (!answer.started) {
         options.onRefused?.(answer);
-        // A spent budget shows the owner when chat resumes; the refusal stands without the line,
-        // and the owner's next message tries the start, and the line, again.
-        if (answer.refusal === "budget" && answer.resumesAt !== undefined) {
-          await status({ line: "budget", resumesAt: answer.resumesAt }, signal).catch(
-            () => undefined,
-          );
+        // A spent budget or a turn quota shows the owner when chat goes on; the refusal stands
+        // without the line, and the owner's next message tries the start, and the line, again.
+        const { refusal, resumesAt } = answer;
+        if ((refusal === "budget" || refusal === "quota") && resumesAt !== undefined) {
+          await status({ line: refusal, resumesAt }, signal).catch(() => undefined);
         }
         return err(answer.refusal);
       }

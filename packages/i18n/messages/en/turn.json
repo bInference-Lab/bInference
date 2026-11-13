@@ -2,6 +2,7 @@
   "proposalWaits": "🟡 Waiting for your answer on its card",
   "moreProposals": "{count, plural, one {One more proposal follows} other {# more proposals follow}} once you answer this card",
   "budget": "Chat paused until {when}: today's model budget is spent. Orders keep running.",
+  "quota": "Chat paused until {when}: this agent answered as often in the last minute as your quota on bInference Cloud allows. Your messages wait.",
   "stopped": "Stopped. Anything you already confirmed still goes through.",
   "stoppedCardOpen": "🟡 Stopped. The card of its proposal is still open: answer it there.",
   "toolCallLimit": "Stopped: this answer reached its limit of 25 tool calls. Ask again to go on.",

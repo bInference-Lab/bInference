@@ -2,6 +2,7 @@
   "proposalWaits": "🟡 等待你在卡片上回复",
   "moreProposals": "你回复此卡片后，还会有 {count, plural, other {# 个提议}}",
   "budget": "对话暂停至 {when}：今日模型预算已用完。自动订单继续运行。",
+  "quota": "对话暂停至 {when}：此 Agent 最近一分钟内的回答次数已达到 bInference Cloud 配额的上限。你的消息会保留。",
   "stopped": "已停止。你已确认的操作仍会执行。",
   "stoppedCardOpen": "🟡 已停止。其提议的卡片仍待处理，请在卡片上回复。",
   "toolCallLimit": "已停止：本次回答已达到 25 次工具调用上限。请再次提问以继续。",
