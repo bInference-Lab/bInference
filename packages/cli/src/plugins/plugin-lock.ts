@@ -3,19 +3,23 @@ import { type FilePermissions, readTextFile, writePrivateFile } from "@binferenc
 import { type CommunityManifest, communityManifestSchema } from "@binference/plugin-sdk/community";
 import type { PluginReview } from "@binference/protocol";
 import { z } from "zod";
+import type { PluginListingRule } from "./plugin-listing-rule.js";
 import type { RevocationFloor } from "./revocation-holder.js";
 
-/**
- * Why an installed plugin is off: the owner turned it off, it crashed, its files changed, or
- * bInference revoked its listing (decision 0435).
- */
-type PluginOffReason = "owner" | "crashes" | "changed" | "revoked";
+/** Why an installed plugin is off: the owner turned it off, it crashed, or its files changed. */
+type PluginOffReason = "owner" | "crashes" | "changed";
 
 /** The plugin listing an installed plugin runs under, on bInference Cloud (decision 0433). */
 export interface LockedListing {
   readonly listing: Id<"pls">;
   /** The listing's version the install or an enable last checked; a later check takes no lower. */
   readonly version: number;
+  /**
+   * Set once a revocation list the engine took names the listing (decision 0435): the plugin is
+   * off, beside any reason it was off for before, and never runs again under this listing,
+   * whatever a later list says. Only an update to another listing turns it on again.
+   */
+  readonly revoked?: true;
 }
 
 /** One installed community plugin as the plugin lock records it (decision 0348). */
@@ -62,30 +66,42 @@ export interface PluginLock {
 
 const sha256Hex = z.string().regex(/^[0-9a-f]{64}$/);
 
+// The fields of an entry as self-hosted writes it.
+const entryFields = {
+  plugin: z.string().regex(/^plg_[0-9a-f-]{36}$/),
+  id: z.string().regex(/^[a-z][a-z0-9-]{1,39}$/),
+  packageName: z.string().min(1).max(214),
+  version: z.string().min(1).max(256),
+  source: z.string().min(1).max(2048),
+  integrity: z.string().regex(/^sha512-[A-Za-z0-9+/]{86}==$/),
+  hash: sha256Hex,
+  manifest: communityManifestSchema,
+  accepted: sha256Hex,
+  provenance: z.enum(["verified", "none"]),
+  publisher: z.string().max(200).exactOptional(),
+  issuer: z.string().max(200).exactOptional(),
+  workflow: z.string().max(200).exactOptional(),
+  enabled: z.boolean(),
+  disabledReason: z.enum(["owner", "crashes", "changed"]).exactOptional(),
+  installedAt: z.int().nonnegative(),
+};
+
+const listingSchema: z.ZodType<LockedListing> = z.strictObject({
+  listing: idSchema("pls"),
+  version: z.int().positive(),
+  revoked: z.literal(true).exactOptional(),
+});
+
 // A plugin's id names its folders, so it holds to the manifest's id pattern and to its manifest.
-const lockedSchema: z.ZodType<LockedPlugin> = z
-  .strictObject({
-    plugin: z.string().regex(/^plg_[0-9a-f-]{36}$/),
-    id: z.string().regex(/^[a-z][a-z0-9-]{1,39}$/),
-    packageName: z.string().min(1).max(214),
-    version: z.string().min(1).max(256),
-    source: z.string().min(1).max(2048),
-    integrity: z.string().regex(/^sha512-[A-Za-z0-9+/]{86}==$/),
-    hash: sha256Hex,
-    manifest: communityManifestSchema,
-    accepted: sha256Hex,
-    provenance: z.enum(["verified", "none"]),
-    publisher: z.string().max(200).exactOptional(),
-    issuer: z.string().max(200).exactOptional(),
-    workflow: z.string().max(200).exactOptional(),
-    enabled: z.boolean(),
-    disabledReason: z.enum(["owner", "crashes", "changed", "revoked"]).exactOptional(),
-    installedAt: z.int().nonnegative(),
-    listing: z
-      .strictObject({ listing: idSchema("pls"), version: z.int().positive() })
-      .exactOptional(),
-  })
-  .refine((entry) => entry.id === entry.manifest.id, "the id must be its manifest's");
+const sameId = (entry: LockedPlugin): boolean => entry.id === entry.manifest.id;
+
+const ownEntrySchema: z.ZodType<LockedPlugin> = z
+  .strictObject(entryFields)
+  .refine(sameId, "the id must be its manifest's");
+
+const listedEntrySchema: z.ZodType<LockedPlugin> = z
+  .strictObject({ ...entryFields, listing: listingSchema.exactOptional() })
+  .refine(sameId, "the id must be its manifest's");
 
 const floorSchema: z.ZodType<RevocationFloor> = z.strictObject({
   sequence: z.int().positive(),
@@ -93,18 +109,30 @@ const floorSchema: z.ZodType<RevocationFloor> = z.strictObject({
   digest: sha256Hex,
 });
 
-const lockSchema = z.strictObject({
-  version: z.literal(1),
-  plugins: z.array(lockedSchema),
-  revocations: floorSchema.exactOptional(),
-});
+// The lock as each rule writes it: under a rule that needs listings, the entries' listings and
+// the revocation floor too; elsewhere neither, so a self-hosted lock that holds them does not read.
+const lockSchemas = {
+  notRequired: z.strictObject({ version: z.literal(1), plugins: z.array(ownEntrySchema) }),
+  required: z.strictObject({
+    version: z.literal(1),
+    plugins: z.array(listedEntrySchema),
+    revocations: floorSchema.exactOptional(),
+  }),
+} as const;
 
 /** The empty lock: no plugin installed. */
 export const emptyPluginLock: PluginLock = { plugins: [] };
 
-function parsedLock(text: string): Result<PluginLock, "unreadable"> {
+/** Which lock a reader takes: the one its composition root's listing rule writes. */
+export type LockForm = PluginListingRule["kind"];
+
+function parsedLock(text: string, form: LockForm): Result<PluginLock, "unreadable"> {
   try {
-    const read = lockSchema.safeParse(JSON.parse(text));
+    if (form === "notRequired") {
+      const read = lockSchemas.notRequired.safeParse(JSON.parse(text));
+      return read.success ? ok({ plugins: read.data.plugins }) : err("unreadable");
+    }
+    const read = lockSchemas.required.safeParse(JSON.parse(text));
     if (!read.success) {
       return err("unreadable");
     }
@@ -116,15 +144,17 @@ function parsedLock(text: string): Result<PluginLock, "unreadable"> {
 }
 
 /**
- * Reads the plugin lock. A missing lock holds no plugin; one that does not read is `unreadable`:
+ * Reads the plugin lock, in the form its composition root's listing rule writes (self-hosted's
+ * when none is named). A missing lock holds no plugin; one that does not read is `unreadable`:
  * its plugins are never started rather than trusted, and it is never written over.
  */
 export async function readPluginLock(
   file: string,
   signal: AbortSignal,
+  form: LockForm = "notRequired",
 ): Promise<Result<PluginLock, "unreadable">> {
   const read = await readTextFile(file, signal);
-  return read.ok ? parsedLock(read.value) : ok(emptyPluginLock);
+  return read.ok ? parsedLock(read.value, form) : ok(emptyPluginLock);
 }
 
 /** Writes the plugin lock in place of the one there, owner-only, its plugins in id order. */

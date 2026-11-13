@@ -1,9 +1,12 @@
 import { join } from "node:path";
 import { createManualClock, createMemoryLogger } from "@binference/core/testing";
+import type { PluginNotice } from "@binference/engine/notices";
+import { ensurePrivateFolder } from "@binference/platform";
 import { createTempFolder, type TempFolder } from "@binference/platform/testing";
 import type { CommunityManifest } from "@binference/plugin-sdk/community";
 import type { PluginReview } from "@binference/protocol";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { noPermissions } from "../e2e/test-host.js";
 import { createSystemHttp, type SystemHttp } from "../runtime/system-http.js";
 import { createListingSigner } from "./fake-listing-signer.js";
 import { type FakeNpmRegistry, startFakeNpmRegistry } from "./fake-npm-registry.js";
@@ -11,10 +14,12 @@ import { createFakePluginCatalog, type FakePluginCatalog } from "./fake-plugin-c
 import { readPluginSource } from "./fetch-plugin.js";
 import { createInstallHarness, type InstallHarness } from "./install-harness.js";
 import { installPlugin } from "./install-plugin.js";
-import { asPayload, listingFixture } from "./listing-fixtures.js";
+import { asPayload, listingFixture, listingIdFixture } from "./listing-fixtures.js";
 import { createListingGate, type ListingGate } from "./listing-gate.js";
 import { createListingKeys } from "./listing-keys.js";
 import type { PluginListing } from "./plugin-listing.schema.js";
+import type { LockedPlugin } from "./plugin-lock.js";
+import { withPlugins } from "./plugin-records.js";
 
 let http: SystemHttp;
 let registry: FakeNpmRegistry;
@@ -126,6 +131,26 @@ function published(): { readonly version: string; readonly hash: string } {
     version,
     hash: registry.publish({ name: "echo-feed", version, files: [index], manifest }),
   };
+}
+
+// The entry an install with no listing rule writes for a version, as the lock records it.
+async function installedEntry(version: string, hash: string): Promise<LockedPlugin> {
+  const plain = await reviewOf(version, hash);
+  const harness = createInstallHarness({
+    registryBase: registry.base,
+    http,
+    clock: createManualClock(startMs),
+    folder: join(folder.path, `entry-${version}`),
+  });
+  const done = await installPlugin(
+    harness.parts,
+    answersOf(version, hash, { accepted: plain.digest }),
+    signal,
+  );
+  if (!done.ok) {
+    throw new Error("Expected an install.");
+  }
+  return done.value;
 }
 
 const asked = (version: string): number =>
@@ -242,12 +267,25 @@ describe("installing a plugin under the listing rule", () => {
     expect(asked(version)).toBe(before);
   });
 
-  it("writes off as revoked a plugin whose listing the list names once its files are in place", async () => {
+  it("answers off and revoked, and tells the owner, when a list taken during the fetch names it", async () => {
     const { version, hash } = published();
     const plain = await reviewOf(version, hash);
+    const listing = listingOf(plain, hash);
     const { catalog, gate, harness } = listedInstall("revoked-late");
-    catalog.list(listingOf(plain, hash));
-    const parts = { ...harness.parts, listing: { ...gate, isRevoked: () => true } };
+    catalog.list(listing);
+    const told: PluginNotice[] = [];
+    const { registry: npm } = harness.parts;
+    // The list that revokes it lands while the tarball downloads.
+    const revoking = {
+      ...npm,
+      tarball: async (at: Parameters<typeof npm.tarball>[0], tarballSignal: AbortSignal) => {
+        catalog.revoke(listing.listing);
+        await gate.refresh(tarballSignal);
+        return npm.tarball(at, tarballSignal);
+      },
+    };
+    const tell = (notice: PluginNotice) => told.push(notice);
+    const parts = { ...harness.parts, registry: revoking, tell };
 
     const done = await installPlugin(
       parts,
@@ -256,8 +294,75 @@ describe("installing a plugin under the listing rule", () => {
     );
     const lock = await harness.parts.records.read(signal);
 
-    expect(done.ok).toBe(true);
-    expect(lock.plugins).toMatchObject([{ enabled: false, disabledReason: "revoked" }]);
+    expect(done).toMatchObject({
+      ok: true,
+      value: { enabled: false, listing: { listing: listing.listing, revoked: true } },
+    });
+    expect(lock.plugins).toMatchObject([{ enabled: false, listing: { revoked: true } }]);
+    expect(told).toStrictEqual([{ kind: "revoked", plugin: "echo-feed", version }]);
+  });
+
+  it.each([
+    ["on", { enabled: true }, true],
+    ["the owner had off", { enabled: false, disabledReason: "owner" }, false],
+  ] as const)(
+    "updates a revoked plugin that was %s to a listed version, keeping the owner's choice",
+    async (_name, was, isOn) => {
+      const first = published();
+      const plain = await reviewOf(first.version, first.hash);
+      const { catalog, harness } = listedInstall(`update-revoked-${String(isOn)}`);
+      const old = listingOf(plain, first.hash);
+      catalog.list(old);
+      const accepted = { accepted: plain.digest };
+      await installPlugin(harness.parts, answersOf(first.version, first.hash, accepted), signal);
+      // The plugin as a revocation of its listing left it.
+      const revoked = (entry: LockedPlugin): LockedPlugin => ({
+        ...entry,
+        ...was,
+        enabled: false,
+        listing: { listing: old.listing, version: 1, revoked: true },
+      });
+      await harness.parts.records.change(
+        (lock) => withPlugins(lock, lock.plugins.map(revoked)),
+        signal,
+      );
+      catalog.revoke(old.listing);
+      const next = published();
+      const nextPlain = await reviewOf(next.version, next.hash);
+      catalog.list({ ...listingOf(nextPlain, next.hash), listing: listingIdFixture(2) });
+
+      const done = await installPlugin(
+        harness.parts,
+        answersOf(next.version, next.hash, { accepted: nextPlain.digest }),
+        signal,
+      );
+
+      expect(done).toMatchObject({
+        ok: true,
+        value: { version: next.version, enabled: isOn, listing: { listing: listingIdFixture(2) } },
+      });
+      expect(done).not.toMatchObject({ value: { listing: { revoked: true } } });
+    },
+  );
+
+  it("refuses a listing the lock marks revoked whatever the list says now, before any fetch", async () => {
+    const { version, hash } = published();
+    const listing = listingOf(await reviewOf(version, hash), hash);
+    const { catalog, harness } = listedInstall("marked");
+    catalog.list(listing);
+    await ensurePrivateFolder(join(folder.path, "marked"), { permissions: noPermissions, signal });
+    const marked = {
+      ...(await installedEntry(version, hash)),
+      enabled: false,
+      listing: { listing: listing.listing, version: 1, revoked: true as const },
+    };
+    await harness.parts.records.change(() => ({ plugins: [marked] }), signal);
+    const before = asked(version);
+
+    await expect(
+      installPlugin(harness.parts, answersOf(version, hash), signal),
+    ).resolves.toStrictEqual({ ok: false, failure: { code: "plugin.listing_revoked" } });
+    expect(asked(version)).toBe(before);
   });
 
   it("refuses an update to a version with no listing of its own, the installed one kept", async () => {

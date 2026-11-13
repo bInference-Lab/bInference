@@ -35,7 +35,11 @@ export function createInstallHarness(options: {
   const parts: InstallParts = {
     registry: createNpmRegistry({ download: options.http, base: options.registryBase }),
     verify: async () => Promise.resolve({ ok: false, error: "unverified" }),
-    records: createPluginRecords({ file, permissions: noPermissions }),
+    records: createPluginRecords({
+      file,
+      permissions: noPermissions,
+      form: options.listing === undefined ? "notRequired" : "required",
+    }),
     shelf: { packages: join(folder, "packages"), work: join(folder, "work") },
     runner: {
       begin: async () => Promise.resolve(false),

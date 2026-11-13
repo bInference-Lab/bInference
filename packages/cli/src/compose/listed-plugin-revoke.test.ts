@@ -134,6 +134,7 @@ async function cloudOnRealHost(root: string) {
   const records = createPluginRecords({
     file: join(root, "lock.json"),
     permissions: noPermissions,
+    form: "required",
   });
   const life = new AbortController();
   const turns = createRunningTurns();

@@ -4,6 +4,8 @@ import {
   createManualClock,
   createMemoryLogger,
   createSeededRandom,
+  type ManualClock,
+  type MemoryLogger,
 } from "@binference/core/testing";
 import type { EnginePush } from "@binference/engine";
 import { createRunningTurns } from "@binference/engine/chat";
@@ -17,7 +19,7 @@ import { createListingSigner } from "../plugins/fake-listing-signer.js";
 import type { FakeNpmRegistry } from "../plugins/fake-npm-registry.js";
 import { createListedRunner, type ListedRunner } from "../plugins/listed-runner.js";
 import { asPayload, listingFixture } from "../plugins/listing-fixtures.js";
-import { listingGateOf } from "../plugins/listing-gate.js";
+import { type ListingGate, listingGateOf } from "../plugins/listing-gate.js";
 import { createNpmRegistry } from "../plugins/npm-registry.js";
 import { createPluginRecords, type PluginRecords } from "../plugins/plugin-records.js";
 import type { PluginRunner } from "../plugins/plugin-runner.js";
@@ -60,6 +62,10 @@ export interface ListedPluginPlace {
 /** The Cloud composition's plugin operations, and how a test adds a plugin through them. */
 export interface CloudPluginOperations {
   readonly root: CloudTestRoot;
+  readonly clock: ManualClock;
+  readonly logger: MemoryLogger;
+  /** The listing gate the operations and the runner share. */
+  readonly listing: ListingGate;
   readonly handlers: EngineHandlerTable;
   readonly records: PluginRecords;
   /** The runner under the listing rule, over one that starts nothing. */
@@ -71,10 +77,11 @@ export interface CloudPluginOperations {
 }
 
 // The parts the operations stand on: the Cloud root's clock and rule, a listed runner over one
-// that starts nothing, and the plugin lock in the test's folder.
-function cloudParts(place: ListedPluginPlace) {
-  const clock = createManualClock(startMs);
-  const root = composeCloudTestRoot({ clock });
+// that starts nothing, and the plugin lock in the test's folder. A restart keeps the root, its
+// clock and the lock, and makes every other part again.
+function cloudParts(place: ListedPluginPlace, before: CloudPluginOperations | undefined) {
+  const clock = before?.clock ?? createManualClock(startMs);
+  const root = before?.root ?? composeCloudTestRoot({ clock });
   const logger = createMemoryLogger({ subsystem: "plugins" });
   const listing = listingGateOf(root.pluginListing, { clock, logger });
   if (listing === undefined) {
@@ -85,6 +92,7 @@ function cloudParts(place: ListedPluginPlace) {
   const records = createPluginRecords({
     file: join(place.folder, "lock.json"),
     permissions: noPermissions,
+    form: "required",
   });
   return { clock, root, logger, listing, runner, records };
 }
@@ -92,9 +100,14 @@ function cloudParts(place: ListedPluginPlace) {
 /** The plugin operations as the Cloud composition wires them: the Cloud test root's listing rule. */
 export function cloudPluginOperations(
   place: ListedPluginPlace,
-  extra: { readonly quotas?: QuotaSource } = {},
+  extra: {
+    readonly quotas?: QuotaSource;
+    /** The operations of the engine before a restart, whose root and clock it keeps. */
+    readonly restartOf?: CloudPluginOperations;
+  } = {},
 ): CloudPluginOperations {
-  const { clock, root, logger, listing, runner, records } = cloudParts(place);
+  const parts = cloudParts(place, extra.restartOf);
+  const { clock, root, logger, listing, runner, records } = parts;
   const random = createSeededRandom(3);
   const ids = createIdSource({ clock, random });
   const ends: ((push: EnginePush) => void)[] = [];
@@ -124,7 +137,7 @@ export function cloudPluginOperations(
     await handlers["plugin/add"]?.({ args, caller: owner, signal: new AbortController().signal });
     return jobFailedPushSchema.parse((await ended).data).error;
   };
-  return { root, handlers, records, runner, owner, add };
+  return { root, clock, logger, listing, handlers, records, runner, owner, add };
 }
 
 /** A version of the test's plugin on the fake registry: its source, integrity and version. */

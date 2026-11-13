@@ -31,11 +31,25 @@ export interface FakePluginCatalog extends PluginListingCatalog {
    */
   goDown(how: "refuse" | "hang" | "stall"): void;
   comeBack(): void;
+  /**
+   * Holds every read of `kind` from now until the function it answers is called; each read then
+   * answers as the catalog stands, so a test can change the catalog while a read waits.
+   */
+  holdReads(kind: ReadKind): HeldReads;
   /** Its reads in order: `find <name>@<version>`, `get <id>` and `revocations`. */
   reads(): readonly string[];
 }
 
 const hourMs = 3_600_000;
+
+/** A read of the catalog, by its method. */
+type ReadKind = "find" | "get" | "revocations";
+
+/** Reads a test holds: `arrived` once the first one waits, `release` to let them all answer. */
+interface HeldReads {
+  readonly arrived: Promise<void>;
+  release(): void;
+}
 
 // What the catalog holds; each part changes only through its own methods.
 interface CatalogState {
@@ -45,14 +59,20 @@ interface CatalogState {
   readonly served: string[];
   readonly down: Set<"refuse" | "hang" | "stall">;
   readonly asked: string[];
+  /** The reads a test holds, by their method, until it lets them go. */
+  readonly held: Map<ReadKind, { readonly arrive: () => void; readonly held: Promise<void> }>;
 }
 
 // A read as the catalog answers it while it is down: at once, once its caller gives up, or never.
 async function answered<T>(
   state: CatalogState,
-  signal: AbortSignal,
+  read: { readonly kind: ReadKind; readonly signal: AbortSignal },
   answer: () => T,
 ): Promise<Result<T, CatalogFailure>> {
+  const { signal } = read;
+  const holding = state.held.get(read.kind);
+  holding?.arrive();
+  await holding?.held;
   if (signal.aborted || state.down.has("refuse")) {
     return err("unreachable");
   }
@@ -72,7 +92,7 @@ function readsOf(state: CatalogState): PluginListingCatalog {
   return {
     find: async (name, version, signal) => {
       state.asked.push(`find ${name}@${version}`);
-      return answered(state, signal, () =>
+      return answered(state, { kind: "find", signal }, () =>
         [...state.listings.values()]
           .filter(({ place }) => place.packageName === name && place.packageVersion === version)
           .map(({ envelope }) => envelope),
@@ -80,11 +100,12 @@ function readsOf(state: CatalogState): PluginListingCatalog {
     },
     get: async (listing, signal) => {
       state.asked.push(`get ${listing}`);
-      return answered(state, signal, () => state.listings.get(listing)?.envelope);
+      return answered(state, { kind: "get", signal }, () => state.listings.get(listing)?.envelope);
     },
     revocations: async (signal) => {
       state.asked.push("revocations");
-      return answered(state, signal, () => state.served[0] ?? state.signed.at(-1)?.envelope ?? "");
+      const newest = () => state.served[0] ?? state.signed.at(-1)?.envelope ?? "";
+      return answered(state, { kind: "revocations", signal }, newest);
     },
   };
 }
@@ -109,6 +130,26 @@ function nextList(
   return list;
 }
 
+// Holds the reads of `kind` until the test lets them go.
+function holdReads(state: CatalogState, kind: ReadKind): HeldReads {
+  const ends: (() => void)[] = [];
+  const arrivals: (() => void)[] = [];
+  const arrived = new Promise<void>((resolve) => {
+    arrivals.push(resolve);
+  });
+  const held = new Promise<void>((resolve) => {
+    ends.push(resolve);
+  });
+  state.held.set(kind, { arrive: () => arrivals.forEach((resolve) => resolve()), held });
+  return {
+    arrived,
+    release: () => {
+      state.held.delete(kind);
+      ends.forEach((resolve) => resolve());
+    },
+  };
+}
+
 /** Stands up a listing catalog that signs with `signer`, or a key of its own, on `clock`. */
 export function createFakePluginCatalog(parts: {
   readonly clock: Clock;
@@ -122,6 +163,7 @@ export function createFakePluginCatalog(parts: {
     served: [],
     down: new Set(),
     asked: [],
+    held: new Map(),
   };
   const serve = (place: ListingPlace, envelope: string): void => {
     state.listings.set(place.listing, { place, envelope });
@@ -145,6 +187,7 @@ export function createFakePluginCatalog(parts: {
     comeBack: () => {
       state.down.clear();
     },
+    holdReads: (kind) => holdReads(state, kind),
     reads: () => [...state.asked],
   };
 }

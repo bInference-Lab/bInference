@@ -1,10 +1,12 @@
 import type { Clock, Logger } from "@binference/core";
 import type { PluginNotice } from "@binference/engine/notices";
+import { revokedEntry } from "./listed-install.js";
 import type { ListedRunner } from "./listed-runner.js";
 import type { ListingGate } from "./listing-gate.js";
 import type { RevocationList } from "./plugin-listing.schema.js";
 import type { LockedPlugin, PluginLock } from "./plugin-lock.js";
 import { type PluginRecords, withPlugins } from "./plugin-records.js";
+import type { RevocationFloor } from "./revocation-holder.js";
 
 /** The revocation list at work on a running engine (decision 0435). */
 export interface ListingWatch {
@@ -61,11 +63,20 @@ function createHoldState(): HoldState {
   };
 }
 
-const isNamed = (list: RevocationList, entry: LockedPlugin): boolean =>
-  entry.listing !== undefined && list.revoked.includes(entry.listing.listing);
+// The entries a list names that the lock does not mark revoked yet.
+const newlyNamed = (list: RevocationList, lock: PluginLock): readonly LockedPlugin[] =>
+  lock.plugins.filter(
+    ({ listing }) =>
+      listing !== undefined && listing.revoked !== true && list.revoked.includes(listing.listing),
+  );
 
-// Writes, in one change, every plugin the list names off as revoked and the list's floor, so a
-// crash between them cannot leave a plugin on under a newer list; answers those it turned off.
+const sameFloor = (lock: PluginLock, floor: RevocationFloor | undefined): boolean =>
+  JSON.stringify(lock.revocations) === JSON.stringify(floor);
+
+// Marks, in one change, every plugin the list names revoked and off, and writes the list's floor,
+// so a crash between them cannot leave a plugin on under a newer list. The plugins are picked
+// inside the change, so an update that landed since the read keeps its own listing; answers
+// those it marked.
 async function turnOffRevoked(
   parts: WatchParts,
   list: RevocationList,
@@ -73,24 +84,19 @@ async function turnOffRevoked(
 ): Promise<readonly LockedPlugin[]> {
   const floor = parts.gate.revocations.floor();
   const before = await parts.records.read(signal);
-  const named = before.plugins.filter(
-    (entry) => isNamed(list, entry) && entry.disabledReason !== "revoked",
-  );
-  const sameFloor = JSON.stringify(before.revocations) === JSON.stringify(floor);
-  if (named.length === 0 && sameFloor) {
+  if (newlyNamed(list, before).length === 0 && sameFloor(before, floor)) {
     return [];
   }
-  const ended = new Set(named.map(({ id }) => id));
+  const marked: { named: readonly LockedPlugin[] } = { named: [] };
   const lock = await parts.records.change((now) => {
-    const plugins = now.plugins.map((entry) =>
-      ended.has(entry.id)
-        ? { ...entry, enabled: false, disabledReason: "revoked" as const }
-        : entry,
-    );
+    marked.named = newlyNamed(list, now);
+    const ended = new Set(marked.named.map(({ id }) => id));
+    const plugins = now.plugins.map((entry) => (ended.has(entry.id) ? revokedEntry(entry) : entry));
     return floor === undefined
       ? withPlugins(now, plugins)
       : { ...withPlugins(now, plugins), revocations: floor };
   }, signal);
+  const { named } = marked;
   if (named.length > 0) {
     await Promise.all(named.map(async ({ id }) => parts.runner.stop(id)));
     await parts.runner.offer(lock);
@@ -153,8 +159,9 @@ async function check(parts: WatchParts, held: HoldState, signal: AbortSignal): P
 /**
  * Keeps the revocation list at work while the engine runs (decision 0435): it reads the list every
  * 60 seconds, each read with the gate's 15 seconds. A list it takes that names a plugin's listing
- * turns that plugin off as revoked in the same lock change that writes the list's floor, then
- * stops it and takes its tools away, and the owner gets `notice.pluginRevoked`. Once the newest
+ * marks that plugin revoked and off, keeping the reason it was off for, in the same lock change
+ * that writes the list's floor, then stops it and takes its tools away, and the owner gets
+ * `notice.pluginRevoked` once. Once the newest
  * list taken expires, every listed plugin on is held and the owner gets `notice.pluginsHeld`, at
  * most once a day; at the next fresh list, each held plugin whose listing passes runs again.
  */

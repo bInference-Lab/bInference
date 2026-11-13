@@ -19,12 +19,12 @@ import type { ListingFailure } from "../plugins/listing-gate.js";
 import type { Outcome } from "../plugins/outcome.js";
 import type { PluginListing } from "../plugins/plugin-listing.schema.js";
 import type { LockedPlugin } from "../plugins/plugin-lock.js";
-import { isPluginsFull, pluginsQuotaOf } from "../plugins/plugin-quota.js";
-import { pluginViewOf, withPlugin, withPlugins } from "../plugins/plugin-records.js";
+import { pluginsQuotaOf } from "../plugins/plugin-quota.js";
+import { pluginViewOf, withPlugins } from "../plugins/plugin-records.js";
 import type { PluginRunner } from "../plugins/plugin-runner.js";
 import { removePluginPackage } from "../plugins/put-plugin.js";
 import type { Closers } from "./closers.js";
-import { enableListing, refusedEnable, withListingVersion } from "./listed-enable.js";
+import { enableListing, refusedEnable, type SwitchRefusal, switchedLock } from "./listed-enable.js";
 import { createSingleJob } from "./single-job.js";
 
 /** What the plugin operations read, write and announce. */
@@ -104,14 +104,6 @@ async function entryOf(
   return lock.plugins.find((entry) => entry.plugin === plugin);
 }
 
-// The entry turned on or off, as the lock holds it when the change is written.
-function switched(entry: LockedPlugin, change: { readonly enabled: boolean }): LockedPlugin {
-  const { disabledReason: _was, ...rest } = entry;
-  return change.enabled
-    ? { ...rest, enabled: true }
-    : { ...rest, enabled: false, disabledReason: "owner" };
-}
-
 // What a switch does before it writes: stops a plugin turned off, and checks the listing of one
 // turned on where the composition root needs one.
 async function beforeSwitch(
@@ -131,7 +123,8 @@ async function beforeSwitch(
 // the plugin as the lock holds it once its start settled, turned off again when the host refused.
 // A plugin turned on past the plugins' quota, counted in the same change, is `quota` and changes
 // nothing (decision 0431); before the quota, one whose listing does not pass changes nothing
-// either, and one whose does takes the listing version its check read (decision 0433).
+// either, and one whose does takes the listing version its check read (decision 0433). The
+// change refuses one whose listing a list taken since the check names (decision 0435).
 async function setEnabled(
   options: PluginOperationsOptions,
   change: { readonly plugin: string; readonly enabled: boolean },
@@ -146,16 +139,15 @@ async function setEnabled(
     return listed.failure;
   }
   const quota = change.enabled ? await pluginsQuotaOf(options.quotas, signal) : undefined;
-  let isFull = false;
+  const written: { refusal: SwitchRefusal | undefined } = { refusal: undefined };
   const lock = await options.records.change((now) => {
-    const current = now.plugins.find(({ plugin }) => plugin === change.plugin);
-    isFull = current !== undefined && change.enabled && isPluginsFull(now, current, quota);
-    return current === undefined || isFull
-      ? now
-      : withPlugin(now, withListingVersion(switched(current, change), listed.value));
+    const switching = { ...change, quota, listing: listed.value };
+    const next = switchedLock({ gate: options.listing, lock: now }, switching);
+    written.refusal = next.refusal;
+    return next.lock;
   }, signal);
-  if (isFull) {
-    return "quota";
+  if (written.refusal !== undefined) {
+    return written.refusal === "quota" ? "quota" : { code: "plugin.listing_revoked" };
   }
   const next = lock.plugins.find(({ plugin }) => plugin === change.plugin);
   if (next !== undefined && change.enabled && !(await options.runner.begin(lock))) {

@@ -6,7 +6,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { noPermissions } from "../e2e/test-host.js";
 import { createFakePluginCatalog, type FakePluginCatalog } from "./fake-plugin-catalog.js";
 import { createListedRunner } from "./listed-runner.js";
-import { listedEntryFixture, listingFixture } from "./listing-fixtures.js";
+import { listedEntryFixture, listingFixture, listingIdFixture } from "./listing-fixtures.js";
 import { createListingGate, type ListingGate } from "./listing-gate.js";
 import { createListingKeys } from "./listing-keys.js";
 import { createListingWatch, type ListingWatch } from "./listing-watch.js";
@@ -89,6 +89,7 @@ function watched(
   const inner = createPluginRecords({
     file: join(folder.path, `${name}.json`),
     permissions: noPermissions,
+    form: "required",
   });
   const changes: string[] = [];
   const records: PluginRecords = {
@@ -138,14 +139,15 @@ describe("the revocation list at work", () => {
     const lock = await w.records.read(signal);
     await w.watch.check(signal);
 
-    expect(lock.plugins).toMatchObject([{ enabled: false, disabledReason: "revoked" }]);
+    expect(lock.plugins).toMatchObject([{ enabled: false, listing: { revoked: true } }]);
+    expect(lock.plugins[0]?.disabledReason).toBeUndefined();
     expect(lock.revocations).toMatchObject({ sequence: 2, key: w.catalog.signer.id });
     expect(w.changes).toHaveLength(1);
     expect(w.asked).toStrictEqual(["stop echo-feed", "offer "]);
     expect(w.told).toStrictEqual([{ kind: "revoked", plugin: "echo-feed", version: "1.0.0" }]);
   });
 
-  it("turns a plugin the owner had off off as revoked too, so no enable brings it back", async () => {
+  it("marks a plugin the owner had off revoked too, keeping the owner's reason", async () => {
     const w = watched("off");
     w.catalog.list(listing);
     await started(w, [listedEntryFixture({ enabled: false, disabledReason: "owner" })]);
@@ -154,9 +156,45 @@ describe("the revocation list at work", () => {
     await w.watch.check(signal);
 
     await expect(w.records.read(signal)).resolves.toMatchObject({
-      plugins: [{ enabled: false, disabledReason: "revoked" }],
+      plugins: [{ enabled: false, disabledReason: "owner", listing: { revoked: true } }],
     });
     expect(w.told).toHaveLength(1);
+  });
+
+  it("marks only what the lock holds at its change, so an update since its read keeps its listing", async () => {
+    const w = watched("updated");
+    const update = { ...listing, listing: listingIdFixture(2), packageVersion: "1.1.0" };
+    w.catalog.list(listing);
+    w.catalog.list(update);
+    const before = listedEntryFixture();
+    const after = listedEntryFixture({
+      version: "1.1.0",
+      listing: { listing: update.listing, version: 1 },
+    });
+    await started(w, [after]);
+    const stale: PluginRecords = {
+      read: async () => Promise.resolve({ plugins: [before] }),
+      change: async (change, changeSignal) => w.records.change(change, changeSignal),
+    };
+    const logger = createMemoryLogger({ subsystem: "plugins" });
+    const life = new AbortController().signal;
+    const watch = createListingWatch({
+      gate: w.gate,
+      records: stale,
+      runner: createListedRunner({ runner: recording([], new Map()), gate: w.gate, logger, life }),
+      clock: w.clock,
+      logger,
+      tell: () => undefined,
+      life,
+    });
+    w.catalog.revoke(listing.listing);
+
+    await watch.check(signal);
+
+    await expect(w.records.read(signal)).resolves.toMatchObject({
+      plugins: [{ version: "1.1.0", enabled: true, listing: { listing: update.listing } }],
+    });
+    expect((await w.records.read(signal)).plugins[0]?.listing?.revoked).toBeUndefined();
   });
 
   it("takes no older list after a restart, from the floor the lock kept", async () => {

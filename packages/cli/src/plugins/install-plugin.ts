@@ -1,4 +1,5 @@
 import { BinferenceError, type Clock, type Random } from "@binference/core";
+import type { PluginNotice } from "@binference/engine/notices";
 import type { QuotaSource } from "@binference/engine/quotas";
 import type { PluginFile } from "@binference/plugin-host";
 import type { PluginReview } from "@binference/protocol";
@@ -9,7 +10,7 @@ import type { ListingFailure, ListingGate } from "./listing-gate.js";
 import type { BundleVerifier } from "./npm-provenance.js";
 import type { NpmRegistry } from "./npm-registry.js";
 import { failed, type Outcome } from "./outcome.js";
-import type { LockedPlugin } from "./plugin-lock.js";
+import type { LockedPlugin, PluginLock } from "./plugin-lock.js";
 import { isPluginsFull, pluginsQuotaOf, withinPluginsQuota } from "./plugin-quota.js";
 import { type PluginRecords, withPlugin } from "./plugin-records.js";
 import type { PluginRunner } from "./plugin-runner.js";
@@ -35,6 +36,8 @@ export interface InstallParts {
    * none installs as decision 0348 has it.
    */
   readonly listing?: ListingGate;
+  /** Tells the owner of a plugin the install wrote off as revoked; none where none is needed. */
+  readonly tell?: (notice: PluginNotice) => void;
 }
 
 /** Why an install changed nothing: what the fetch refused, a refusal, or the review it waits for. */
@@ -60,14 +63,14 @@ interface Placing {
   readonly quota: number | undefined;
 }
 
-// Puts an installed version in place of the running one, records it, and runs it when it is on.
-// Files that cannot be written leave the installed package as it was, and its version, stopped
-// for the move, runs again (decision 0348).
+// Puts an installed version in place of the running one, records it, runs it when it is on, and
+// answers it as the lock's change wrote it. Files that cannot be written leave the installed
+// package as it was, and its version, stopped for the move, runs again (decision 0348).
 async function putInPlace(
   parts: InstallParts,
   placing: Placing,
   signal: AbortSignal,
-): Promise<Outcome<undefined, { readonly code: "plugin.install_failed" }>> {
+): Promise<Outcome<LockedPlugin, { readonly code: "plugin.install_failed" }>> {
   const { entry, files, installed, quota } = placing;
   await parts.runner.stop(entry.id);
   try {
@@ -91,13 +94,26 @@ async function putInPlace(
       withPlugin(lock, withinListing(parts.listing, withinPluginsQuota(lock, entry, quota))),
     signal,
   );
+  return { ok: true, value: await runPlaced(parts, next, entry) };
+}
+
+// Runs the entry the lock's change wrote when it is on, hands the agent the tools of those on, and
+// tells the owner when the change wrote it off as revoked; answers it as written.
+async function runPlaced(
+  parts: InstallParts,
+  next: PluginLock,
+  entry: LockedPlugin,
+): Promise<LockedPlugin> {
   const startedAll = await parts.runner.begin(next);
-  const kept = next.plugins.find(({ id }) => id === entry.id);
-  if (!startedAll && kept?.enabled === true) {
+  const kept = next.plugins.find(({ id }) => id === entry.id) ?? entry;
+  if (!startedAll && kept.enabled) {
     await parts.runner.run(kept);
   }
   await parts.runner.offer(next);
-  return { ok: true, value: undefined };
+  if (kept.listing?.revoked === true) {
+    parts.tell?.({ kind: "revoked", plugin: kept.id, version: kept.version });
+  }
+  return kept;
 }
 
 /**
@@ -135,10 +151,7 @@ export async function installPlugin(
     }
     const files = fetched.pkg.files;
     const placing = { entry: decided.entry, files, installed, quota };
-    const put = await putInPlace(parts, placing, signal);
-    if (!put.ok) {
-      return put;
-    }
+    return putInPlace(parts, placing, signal);
   }
   return { ok: true, value: decided.entry };
 }

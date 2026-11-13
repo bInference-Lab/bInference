@@ -8,7 +8,7 @@ import {
   listingFixture,
   listingIdFixture,
 } from "./listing-fixtures.js";
-import { createListingGate } from "./listing-gate.js";
+import { createListingGate, type ListingGate } from "./listing-gate.js";
 import { createListingKeys } from "./listing-keys.js";
 
 const startMs = 1_767_261_600_000;
@@ -231,13 +231,53 @@ describe("the listing gate for an installed plugin", () => {
     });
   });
 
-  it("tells whether the list it holds names a listing", async () => {
-    const { catalog, gate } = gateOver();
+  it("tells whether the newest list it took names a listing, after that list expired too", async () => {
+    const { catalog, clock, gate } = gateOver();
     catalog.list(listing);
     catalog.revoke(listing.listing);
     await gate.forEntry(entry, signal);
+    await clock.advance(3_600_000);
 
+    expect(gate.revocations.fresh()).toBeUndefined();
     expect(gate.isRevoked(listing.listing)).toBe(true);
     expect(gate.isRevoked(listingIdFixture(2))).toBe(false);
   });
+
+  it("refuses an entry the lock marks revoked before it asks the catalog anything", async () => {
+    const { catalog, gate } = gateOver();
+    catalog.list(listing);
+    const marked = listedEntryFixture({
+      enabled: false,
+      listing: { listing: listing.listing, version: 1, revoked: true },
+    });
+
+    await expect(gate.forEntry(marked, signal)).resolves.toStrictEqual({
+      ok: false,
+      failure: { code: "plugin.listing_revoked" },
+    });
+    expect(catalog.reads()).toStrictEqual([]);
+  });
+
+  it.each([
+    ["get", async (gate: ListingGate) => gate.forEntry(entry, signal)],
+    ["find", async (gate: ListingGate) => gate.forPackage(source, signal)],
+  ] as const)(
+    "refuses a listing a list taken while its %s read waited names",
+    async (kind, check) => {
+      const { catalog, gate } = gateOver();
+      catalog.list(listing);
+      await gate.refresh(signal);
+      const held = catalog.holdReads(kind);
+      const checking = check(gate);
+      await held.arrived;
+      catalog.revoke(listing.listing);
+      await gate.refresh(signal);
+      held.release();
+
+      await expect(checking).resolves.toStrictEqual({
+        ok: false,
+        failure: { code: "plugin.listing_revoked" },
+      });
+    },
+  );
 });

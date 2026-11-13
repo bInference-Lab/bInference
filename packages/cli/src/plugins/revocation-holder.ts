@@ -25,6 +25,8 @@ export interface RevocationHolder {
   take(envelope: string): Result<RevocationList, TakeRefusal>;
   /** The newest list taken while the clock says it is still good; none once it expired. */
   fresh(): RevocationList | undefined;
+  /** The newest list taken, whether or not it expired: what it revoked stays revoked. */
+  newest(): RevocationList | undefined;
   /** The floor of the newest list taken, or the one restored. */
   floor(): RevocationFloor | undefined;
   /**
@@ -118,6 +120,7 @@ export function createRevocationHolder(parts: {
       const { list } = held;
       return list !== undefined && list.expiresAt > parts.clock.now() ? list : undefined;
     },
+    newest: () => held.list,
     floor: () => held.floor,
     restore: (floor) => {
       const isAbove = floor !== undefined && floor.sequence > (held.floor?.sequence ?? 0);

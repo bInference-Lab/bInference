@@ -1,8 +1,11 @@
 import { BinferenceError, err, type Result } from "@binference/core";
+import { isListingRevoked } from "../plugins/listed-install.js";
 import type { ListingFailure, ListingGate } from "../plugins/listing-gate.js";
 import type { Outcome } from "../plugins/outcome.js";
 import type { PluginListing } from "../plugins/plugin-listing.schema.js";
-import type { LockedPlugin } from "../plugins/plugin-lock.js";
+import type { LockedPlugin, PluginLock } from "../plugins/plugin-lock.js";
+import { isPluginsFull } from "../plugins/plugin-quota.js";
+import { withPlugin } from "../plugins/plugin-records.js";
 
 /**
  * The listing an enable turns a plugin on under (decision 0433): checked by the gate before the
@@ -17,15 +20,59 @@ export async function enableListing(
 }
 
 /** An entry turned on with the newest listing version its check read, never a lower one. */
-export function withListingVersion(
-  entry: LockedPlugin,
-  listing: PluginListing | undefined,
-): LockedPlugin {
+function withListingVersion(entry: LockedPlugin, listing: PluginListing | undefined): LockedPlugin {
   const held = entry.listing;
   if (listing === undefined || held === undefined || listing.version <= held.version) {
     return entry;
   }
   return { ...entry, listing: { listing: held.listing, version: listing.version } };
+}
+
+// The entry turned on or off, as the lock holds it when the change is written.
+function switched(entry: LockedPlugin, change: { readonly enabled: boolean }): LockedPlugin {
+  const { disabledReason: _was, ...rest } = entry;
+  return change.enabled
+    ? { ...rest, enabled: true }
+    : { ...rest, enabled: false, disabledReason: "owner" };
+}
+
+/** Why a switch's lock change wrote nothing: the plugins' quota, or a listing revoked since. */
+export type SwitchRefusal = "quota" | "revoked";
+
+/** One plugin turned on or off, as the lock change of `plugin/enable` or `disable` writes it. */
+interface Switching {
+  readonly plugin: string;
+  readonly enabled: boolean;
+  /** The plugins' quota an enable counts (decision 0431); none for a disable. */
+  readonly quota: number | undefined;
+  /** The listing an enable's check read, where the composition root needs one. */
+  readonly listing: PluginListing | undefined;
+}
+
+/**
+ * The lock a switch writes, from the lock as its change reads it. An enable is refused, writing
+ * nothing, when the lock marks the plugin's listing revoked or the newest list the gate took names
+ * it, whatever its check read before (decision 0435), and past the plugins' quota (decision
+ * 0431); one that passes takes the listing version its check read (decision 0433).
+ */
+export function switchedLock(
+  at: { readonly gate: ListingGate | undefined; readonly lock: PluginLock },
+  switching: Switching,
+): { readonly lock: PluginLock; readonly refusal?: SwitchRefusal } {
+  const { lock } = at;
+  const current = lock.plugins.find(({ plugin }) => plugin === switching.plugin);
+  if (current === undefined) {
+    return { lock };
+  }
+  if (switching.enabled && isListingRevoked(at.gate, current)) {
+    return { lock, refusal: "revoked" };
+  }
+  if (switching.enabled && isPluginsFull(lock, current, switching.quota)) {
+    return { lock, refusal: "quota" };
+  }
+  return {
+    lock: withPlugin(lock, withListingVersion(switched(current, switching), switching.listing)),
+  };
 }
 
 /**

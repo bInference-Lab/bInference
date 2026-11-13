@@ -5,6 +5,7 @@ import { pluginToolName } from "@binference/runtime";
 import { declarationsOf } from "./plugin-declarations.js";
 import {
   type LockedPlugin,
+  type LockForm,
   type PluginLock,
   readPluginLock,
   writePluginLock,
@@ -27,14 +28,18 @@ export interface PluginRecords {
   ): Promise<PluginLock>;
 }
 
-/** Keeps the plugin lock at `file`, owner-only. */
+/**
+ * Keeps the plugin lock at `file`, owner-only, in the form of its composition root's listing
+ * rule: self-hosted's unless `form` names the one a rule that needs listings writes.
+ */
 export function createPluginRecords(parts: {
   readonly file: string;
   readonly permissions: FilePermissions;
+  readonly form?: LockForm;
 }): PluginRecords {
   let last: Promise<void> = Promise.resolve();
   const readNow = async (signal: AbortSignal): Promise<PluginLock> => {
-    const read = await readPluginLock(parts.file, signal);
+    const read = await readPluginLock(parts.file, signal, parts.form);
     if (!read.ok) {
       throw new BinferenceError({
         code: "plugin.lock_unreadable",
@@ -86,17 +91,16 @@ function listingViewOf(entry: LockedPlugin, standing: ListedStanding): PluginVie
     listing: protocolIdSchema("pluginListing").parse(listing.listing),
     version: listing.version,
   };
-  return { ...ref, state: entry.disabledReason === "revoked" ? "revoked" : standing };
+  return { ...ref, state: listing.revoked === true ? "revoked" : standing };
 }
 
 /**
  * An installed plugin as `plugin/list` shows it: its permissions as `kind:`, `host:`, `tool:` and
  * `config:` each followed by its name, and its tools by the names the agent calls them. Under a
  * rule that needs listings, `standing` says whether one on is held, and the view names its
- * listing; a revoked plugin is off with no `disabledReason`, which names three reasons only.
+ * listing; a revoked plugin's listing state is `revoked`, beside any reason it was off for.
  */
 export function pluginViewOf(entry: LockedPlugin, standing?: ListedStanding): PluginView {
-  const { disabledReason } = entry;
   const listing = standing === undefined ? undefined : listingViewOf(entry, standing);
   const declared = declarationsOf(entry.manifest);
   const permissions = [
@@ -117,7 +121,7 @@ export function pluginViewOf(entry: LockedPlugin, standing?: ListedStanding): Pl
     installedAt: entry.installedAt,
     provenance: entry.provenance,
     ...(entry.publisher === undefined ? {} : { publisher: entry.publisher }),
-    ...(disabledReason === undefined || disabledReason === "revoked" ? {} : { disabledReason }),
+    ...(entry.disabledReason === undefined ? {} : { disabledReason: entry.disabledReason }),
     tools: entry.manifest.tools.map(({ name }) => pluginToolName(entry.id, name)),
     ...(listing === undefined ? {} : { listing }),
   };

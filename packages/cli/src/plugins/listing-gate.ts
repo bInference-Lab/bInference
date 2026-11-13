@@ -43,7 +43,7 @@ export interface ListingGate {
     entry: LockedPlugin,
     signal: AbortSignal,
   ): Promise<Outcome<PluginListing, ListingFailure>>;
-  /** Whether the newest revocation list taken names the listing. */
+  /** Whether the newest revocation list taken names the listing, expired or not. */
   isRevoked(listing: Id<"pls">): boolean;
   /** The revocation list the gate holds and the floor no older list passes. */
   readonly revocations: RevocationHolder;
@@ -183,7 +183,9 @@ async function forPackage(parts: GateParts, source: PluginSource, signal: AbortS
   if (!listed.ok) {
     return listed;
   }
-  if (list.value.revoked.includes(listed.value.listing)) {
+  // A list taken while the catalog read waited counts too.
+  const newest = parts.holder.newest() ?? list.value;
+  if (newest.revoked.includes(listed.value.listing)) {
     return failed({ code: "plugin.listing_revoked" as const });
   }
   return listed.value.integrity === source.integrity
@@ -214,6 +216,10 @@ async function forEntry(parts: GateParts, entry: LockedPlugin, signal: AbortSign
   if (listing === undefined) {
     return failed({ code: "plugin.not_listed" as const });
   }
+  // A revocation is for good: the lock's mark refuses before the catalog is asked anything.
+  if (listing.revoked === true) {
+    return failed({ code: "plugin.listing_revoked" as const });
+  }
   const list = await freshList(parts, signal);
   if (!list.ok) {
     return list;
@@ -228,17 +234,20 @@ async function forEntry(parts: GateParts, entry: LockedPlugin, signal: AbortSign
     return failed({ code: "plugin.not_listed" as const });
   }
   const [opened] = verified(parts, [answer.value]);
+  // A list taken while the catalog read waited counts too.
+  const newest = parts.holder.newest() ?? list.value;
   return opened === undefined
     ? failed({ code: "plugin.listing_unverified" as const })
-    : againstEntry({ ...entry, listing }, opened, list.value);
+    : againstEntry({ ...entry, listing }, opened, newest);
 }
 
 /**
  * The listing rule's checks for a composition root that requires listings (decisions 0433 and
  * 0435). Every catalog read has 15 seconds; every answer is opened with the root's keys. An add
  * takes the newest listing of its package version; an installed plugin's check takes the newest
- * version of the listing its entry names, never below the entry's. Each check needs a revocation
- * list still good, read again from the catalog when the held one is not.
+ * version of the listing its entry names, never below the entry's, and refuses an entry the lock
+ * marks revoked before any read. Each check needs a revocation list still good, read again from
+ * the catalog when the held one is not, and is refused by the newest list taken by its end.
  */
 export function createListingGate(parts: {
   readonly rule: Required;
@@ -253,7 +262,7 @@ export function createListingGate(parts: {
   return {
     forPackage: async (source, signal) => forPackage(gate, source, signal),
     forEntry: async (entry, signal) => forEntry(gate, entry, signal),
-    isRevoked: (listing) => holder.fresh()?.revoked.includes(listing) === true,
+    isRevoked: (listing) => holder.newest()?.revoked.includes(listing) === true,
     revocations: holder,
     refresh: async (signal) => refresh(gate, signal),
   };
