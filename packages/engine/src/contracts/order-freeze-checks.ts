@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import type { ContractCheck } from "@binference/core/testing";
 import type { FreezeWrite } from "../intents/freeze-write.js";
 import { intentDraft, intentMove } from "./intent-fixtures.js";
 import {
@@ -8,7 +9,7 @@ import {
   orderMove,
   type OrderStoreSubject,
 } from "./order-fixtures.js";
-import { fixtureId, live } from "./store-fixtures.js";
+import { checkOn, fixtureId, live } from "./store-fixtures.js";
 
 /** Order 1, created and moved to `active` on its confirmed card. */
 async function activeOrder(subject: OrderStoreSubject): Promise<void> {
@@ -33,8 +34,8 @@ async function freezeOf(
   };
 }
 
-/** Checks that an order is active only once its `autoOrder` intent holds its card's confirmation. */
-export async function activatesOnTheConfirmedCard(subject: OrderStoreSubject): Promise<void> {
+// Checks that an order is active only once its `autoOrder` intent holds its card's confirmation.
+async function activatesOnTheConfirmedCard(subject: OrderStoreSubject): Promise<void> {
   const { store } = subject;
   await store.create(orderDraft(subject, 1), live());
   const unconfirmed = { ...orderMove(1, 0, "active"), cardId: fixtureId("crd", 11) };
@@ -57,10 +58,8 @@ export async function activatesOnTheConfirmedCard(subject: OrderStoreSubject): P
   );
 }
 
-/** Checks that a frozen agent's order never moves into `active` outside an unfreeze. */
-export async function refusesAnActiveOrderOfAFrozenAgent(
-  subject: OrderStoreSubject,
-): Promise<void> {
+// Checks that a frozen agent's order never moves into `active` outside an unfreeze.
+async function refusesAnActiveOrderOfAFrozenAgent(subject: OrderStoreSubject): Promise<void> {
   const { store, intents } = subject;
   const card = await confirmedCard(subject, 1);
   await store.create(orderDraft(subject, 1), live());
@@ -75,11 +74,9 @@ export async function refusesAnActiveOrderOfAFrozenAgent(
   assert.equal((await store.get(fixtureId("ord", 1), live()))?.state, "awaiting_confirmation");
 }
 
-/**
- * Checks that a freeze pauses its agent's orders in its own write, an unfreeze resumes them, and a
- * resume of an agent that stays frozen is refused with the whole write.
- */
-export async function freezesAndUnfreezesOrders(subject: OrderStoreSubject): Promise<void> {
+// Checks that a freeze pauses its agent's orders in its own write, an unfreeze resumes them, and a
+// resume of an agent that stays frozen is refused with the whole write.
+async function freezesAndUnfreezesOrders(subject: OrderStoreSubject): Promise<void> {
   const { store, intents } = subject;
   await activeOrder(subject);
   const paused = await freezeOf(subject, {
@@ -133,4 +130,26 @@ export async function writesAFrozenFillsRow(subject: OrderStoreSubject): Promise
   assert.ok((await intents.freeze({ ...paused, moves: [cancelled] }, live())).ok);
   assert.deepEqual(await store.fills({ orderId: fixtureId("ord", 1), limit: 5 }, live()), [row]);
   assert.equal((await store.get(fixtureId("ord", 1), live()))?.state, "paused");
+}
+
+/**
+ * The checks of how an `OrderStore` moves orders into `active`: only on the card's confirmation,
+ * never for a frozen agent, and with a freeze and an unfreeze in their own write.
+ */
+export function orderFreezeChecks(
+  create: () => Promise<OrderStoreSubject>,
+): readonly ContractCheck[] {
+  return [
+    checkOn(
+      "activates an order only on its card's confirmation",
+      create,
+      activatesOnTheConfirmedCard,
+    ),
+    checkOn("never activates a frozen agent's order", create, refusesAnActiveOrderOfAFrozenAgent),
+    checkOn(
+      "pauses and resumes orders in the freeze's own write",
+      create,
+      freezesAndUnfreezesOrders,
+    ),
+  ];
 }

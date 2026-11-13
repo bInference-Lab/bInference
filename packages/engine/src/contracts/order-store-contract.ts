@@ -28,12 +28,7 @@ import {
   writesAFillWithItsIntent,
 } from "./order-fill-checks.js";
 import { orderDraft, orderMove, type OrderStoreSubject } from "./order-fixtures.js";
-import {
-  activatesOnTheConfirmedCard,
-  freezesAndUnfreezesOrders,
-  writesAFrozenFillsRow,
-  refusesAnActiveOrderOfAFrozenAgent,
-} from "./order-freeze-checks.js";
+import { orderFreezeChecks, writesAFrozenFillsRow } from "./order-freeze-checks.js";
 import {
   assertReadBack,
   assertRefusesAborted,
@@ -288,17 +283,7 @@ export function orderStoreContract(harness: OrderStoreHarness): readonly Contrac
       create,
       countsALandedFillOnAnEndedOrder,
     ),
-    checkOn(
-      "activates an order only on its card's confirmation",
-      create,
-      activatesOnTheConfirmedCard,
-    ),
-    checkOn("never activates a frozen agent's order", create, refusesAnActiveOrderOfAFrozenAgent),
-    checkOn(
-      "pauses and resumes orders in the freeze's own write",
-      create,
-      freezesAndUnfreezesOrders,
-    ),
+    ...orderFreezeChecks(create),
     checkOn("lists orders by state, agent, wallet, mode and expiry", create, listsByQuery),
     checkOn("refuses every call on an aborted signal and writes nothing", create, refusesAborted),
     checkOn("keeps an order's skips, the newest first", create, recordsSkips),
