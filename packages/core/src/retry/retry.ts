@@ -18,6 +18,11 @@ export interface RetryOptions extends RetryPolicy {
   readonly signal: AbortSignal;
   readonly clock: Clock;
   readonly random: Random;
+  /**
+   * Which faults are tried again; by default, a `BinferenceError` marked retryable. A caller that
+   * must not repeat an operation that may have run narrows it to the faults that show it did not.
+   */
+  readonly isRetryable?: (error: Readonly<Error>) => boolean;
 }
 
 /** What one attempt receives. */
@@ -53,7 +58,8 @@ async function attemptFrom<T>(
   try {
     return await operation({ attempt: progress.attempt, signal: options.signal });
   } catch (error) {
-    if (!(error instanceof Error) || !isTransient(error) || progress.attempt >= options.attempts) {
+    const isRetryable = options.isRetryable ?? isTransient;
+    if (!(error instanceof Error) || !isRetryable(error) || progress.attempt >= options.attempts) {
       throw error;
     }
     const delayMs = backoffDelayMs(options, progress.attempt);
@@ -67,9 +73,9 @@ async function attemptFrom<T>(
 
 /**
  * Runs an operation and retries it after a transient fault: a `BinferenceError` marked
- * retryable. Waits back off exponentially with full jitter, within the attempt count and the time
- * budget. An abort stops it at once with the signal's reason. Never wrap an operation that has
- * caused a side effect before it failed.
+ * retryable, or what `isRetryable` accepts. Waits back off exponentially with full jitter, within
+ * the attempt count and the time budget. An abort stops it at once with the signal's reason. Never
+ * wrap an operation that has caused a side effect before it failed.
  */
 export async function retry<T>(
   operation: (attempt: RetryAttempt) => Promise<T>,

@@ -27,6 +27,15 @@ function failing(times: number, fault: () => Error) {
   });
 }
 
+// Throws each fault in turn, one per attempt.
+function throwing(faults: readonly (() => Error)[]) {
+  return vi.fn<Operation>(async ({ attempt }) => {
+    await Promise.resolve();
+    const fault = faults[attempt - 1] ?? (() => permanent);
+    throw fault();
+  });
+}
+
 // Settles to the value or the rejection reason, so a test can advance the clock first.
 async function outcome(promise: Promise<string>): Promise<unknown> {
   return promise.then(
@@ -51,6 +60,17 @@ describe("retry", () => {
     await clock.advance(10_000);
     expect(await result).toBe("done on 3");
     expect(operation).toHaveBeenCalledTimes(3);
+  });
+
+  it("retries only the faults its own test accepts, when it has one", async () => {
+    const { clock, options } = setup();
+    const busy = new BinferenceError({ code: "protocol.busy", message: "Busy.", retryable: true });
+    const isRetryable = (error: Readonly<Error>): boolean => error === busy;
+    const operation = throwing([() => busy, () => transient]);
+    const result = outcome(retry(operation, { ...options, isRetryable }));
+    await clock.advance(10_000);
+    expect(await result).toBe(transient);
+    expect(operation).toHaveBeenCalledTimes(2);
   });
 
   it("waits at most the capped exponential delay before each attempt", async () => {

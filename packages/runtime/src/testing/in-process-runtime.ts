@@ -20,14 +20,13 @@ import {
 import type { StartLine } from "../control/control-line.schema.js";
 import type { RuntimeModelPrice, RuntimeSettings } from "../control/runtime-settings.schema.js";
 import type { ContextSource } from "../engine-chat/ports.js";
-import { createProtocolContextSource } from "../engine-chat/protocol-context-source.js";
-import { createProtocolEngineChat } from "../engine-chat/protocol-engine-chat.js";
-import { createProtocolImageReader } from "../engine-chat/protocol-image-reader.js";
+import type { ResendPorts } from "../engine-chat/resending-client.js";
 import { createListedMcpClients, type ListedMcpClients } from "../listed-mcp/listed-mcp-clients.js";
 import type { ListedMcpState } from "../listed-mcp/listed-mcp-state.schema.js";
 import { type TestTool, testToolBox } from "../loop/test-turns.js";
 import { turnLimits } from "../loop/turn-run.js";
 import type { AgentDatabase } from "../process/agent-database.js";
+import { linkOverClient } from "../process/engine-link.js";
 import { runRuntime } from "../process/run-runtime.js";
 import type { EngineLink, RuntimeHost } from "../process/runtime-host.js";
 import type { TurnLink } from "../process/turn-link.js";
@@ -141,19 +140,15 @@ const unservedClient: ToolClient = {
 // A sign-in as the options shape it: to a real engine, at once, refused, or never ending until it
 // is abandoned.
 async function signIn(
-  options: InProcessRuntimeOptions & { readonly engine: MemoryEngineChat },
+  options: InProcessRuntimeOptions & {
+    readonly engine: MemoryEngineChat;
+    readonly ports: ResendPorts;
+  },
   start: StartLine,
   signal: AbortSignal,
 ): Promise<EngineLink> {
   if (options.signIn !== undefined) {
-    const client = await options.signIn(start, signal);
-    return {
-      chat: createProtocolEngineChat(client),
-      context: createProtocolContextSource(client),
-      images: createProtocolImageReader(client),
-      client,
-      close: () => client.close(),
-    };
+    return linkOverClient(await options.signIn(start, signal), options.ports);
   }
   if (options.hangsAtSignIn === true) {
     await new Promise((_, reject) => signal.addEventListener("abort", reject, { once: true }));
@@ -322,7 +317,7 @@ export function startInProcessRuntime(options: InProcessRuntimeOptions = {}): In
     write: async (line) => output.push(`${line}\n`),
     connect: async (start, signal) => {
       starts.push(start);
-      return signIn({ ...options, engine }, start, signal);
+      return signIn({ ...options, engine, ports: host }, start, signal);
     },
     ...host,
     ...(options.listedMcpStates === undefined ? {} : { listedMcpStates: options.listedMcpStates }),

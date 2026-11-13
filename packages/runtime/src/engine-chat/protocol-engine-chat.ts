@@ -1,6 +1,7 @@
 import type { ProtocolClient } from "@binference/client";
 import { BinferenceError } from "@binference/core";
 import { inboxMessageViewSchema } from "@binference/protocol";
+import type { CallClient } from "./call-slots.js";
 import type { TurnStartAnswer } from "./engine-chat-records.js";
 import type { EngineChat } from "./ports.js";
 
@@ -35,8 +36,12 @@ function refusalOf(error: Error): TurnStartAnswer | undefined {
   };
 }
 
+// The calls of a turn: the closing ones through `resending`, which sends again a call the engine
+// refused before it ran, each write under one key named by its turn (decision 0442); a draft goes
+// once, since the next one replaces it.
 function turnCalls(
   client: ChatClient,
+  resending: CallClient,
 ): Pick<
   EngineChat,
   | "markTurn"
@@ -48,29 +53,35 @@ function turnCalls(
   | "endTurn"
 > {
   return {
-    ...lineCalls(client),
+    ...lineCalls(client, resending),
     async markTurn({ agent, turn }, signal) {
-      await client.call("turn/mark", { agent, turn }, { signal });
+      await resending.call("turn/mark", { agent, turn }, { signal });
     },
     async sayTurn(say, signal) {
+      if (say.final) {
+        await resending.call("turn/say", { ...say }, { signal, key: `${say.turn}.say` });
+        return;
+      }
       await client.call("turn/say", { ...say }, { signal });
     },
     async recordUsage({ key, ...usage }, signal) {
-      const { budgetLeftMicros, resumesAt } = await client.call("usage/record", usage, {
+      const { budgetLeftMicros, resumesAt } = await resending.call("usage/record", usage, {
         signal,
         key,
       });
       return { budgetLeftMicros, ...(resumesAt === undefined ? {} : { resumesAt }) };
     },
     async endTurn(end, signal) {
-      await client.call("turn/end", { ...end }, { signal });
+      await resending.call("turn/end", { ...end }, { signal, key: `${end.turn}.end` });
     },
   };
 }
 
-// The lines a turn shows: its status line, its progress lines and its model's reasoning.
+// The lines a turn shows: its status line, sent again when refused before it ran, and its
+// progress lines and its model's reasoning, which go once.
 function lineCalls(
   client: ChatClient,
+  resending: CallClient,
 ): Pick<EngineChat, "turnStatus" | "turnProgress" | "turnReasoning"> {
   return {
     async turnStatus({ agent, turn, statusKey, values }, signal) {
@@ -80,7 +91,7 @@ function lineCalls(
         statusKey,
         ...(values === undefined ? {} : { values: { ...values } }),
       };
-      await client.call("turn/status", args, { signal });
+      await resending.call("turn/status", args, { signal });
     },
     async turnProgress({ agent, turn, progressKey, values }, signal) {
       const args = {
@@ -102,9 +113,10 @@ function lineCalls(
  * 4.3): the `inbox` topic and `inbox/list`, `inbox/take` and the `turn/*` operations. A message
  * kind the runtime does not know is skipped; `turn/start` refused with `agent.budget`,
  * `agent.frozen`, `agent.archived` or `agent.not_found` answers the refusal, and any other failure
- * rejects.
+ * rejects. Every call but a draft, a progress line and reasoning goes through `resending`, which
+ * sends again a call the engine refused before it ran (decision 0442).
  */
-export function createProtocolEngineChat(client: ChatClient): EngineChat {
+export function createProtocolEngineChat(client: ChatClient, resending: CallClient): EngineChat {
   return {
     watchInbox: (watch) =>
       client.subscribe("inbox", {
@@ -118,16 +130,16 @@ export function createProtocolEngineChat(client: ChatClient): EngineChat {
       }),
     async listInbox(cursor, signal) {
       const args = { limit: pageSize, ...(cursor === undefined ? {} : { cursor }) };
-      const page = await client.call("inbox/list", args, { signal });
+      const page = await resending.call("inbox/list", args, { signal });
       return { items: page.items, ...(page.next === undefined ? {} : { next: page.next }) };
     },
     async takeInbox(messages, signal) {
-      await client.call("inbox/take", { messages: [...messages] }, { signal });
+      await resending.call("inbox/take", { messages: [...messages] }, { signal });
     },
     async startTurn(start, signal) {
       try {
         const args = { ...start, messages: [...start.messages] };
-        const started = await client.call("turn/start", args, { signal });
+        const started = await resending.call("turn/start", args, { signal });
         return { started: true, budgetLeftMicros: started.budgetLeftMicros };
       } catch (error) {
         const refused = error instanceof Error ? refusalOf(error) : undefined;
@@ -137,6 +149,6 @@ export function createProtocolEngineChat(client: ChatClient): EngineChat {
         return refused;
       }
     },
-    ...turnCalls(client),
+    ...turnCalls(client, resending),
   };
 }
