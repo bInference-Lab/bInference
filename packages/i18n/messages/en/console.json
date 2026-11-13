@@ -55,7 +55,7 @@
   "limits.launchWallet": "Launch wallet {label}, at {address}: trades on a launch's own curve run from it alone.",
   "limits.limit": "Limit",
   "limits.value": "In effect",
-  "limits.pending": "Looser limits that apply at {when} unless you cancel them in the CLI:",
+  "limits.pending": "Looser limits that apply at {when} unless you cancel them:",
   "limits.noAgents": "There is no agent yet. Run `binference init` to make one.",
   "push.title": "Browser notifications",
   "push.off": "Get a notification in this browser when a card waits, even when Telegram is not open.",
@@ -271,5 +271,18 @@
   "safety.openRescue": "Open the rescue card",
   "safety.rescueOpened": "The rescue card waits below. Check the rescue address on it, then confirm it here or on any surface.",
   "safety.unfreezeCard": "The unfreeze card",
-  "safety.rescueCard": "The rescue card"
+  "safety.rescueCard": "The rescue card",
+  "limits.changeOf": "Change a limit of {name}",
+  "limits.newValue": "New value",
+  "limits.hint": "{unit, select, usd {In dollars, such as 50} bps {In percent, such as 0.5} seconds {In seconds, such as 60} days {In days, such as 30} allow {Token addresses as shown above, separated by commas; leave it empty to allow every token that passes the risk check} other {As shown above, separated by commas; leave it empty for none}}",
+  "limits.apply": "Change limit",
+  "limits.rule": "A stricter limit applies at once. A looser one waits 24 hours, every surface announces it, and you can cancel it until then.",
+  "limits.now": "{name} is now {value}.",
+  "limits.waits": "{name} becomes {value} at {when}. Every surface announces it, and you can cancel it until then.",
+  "limits.badValue": "{name} does not take this value. Write it as the line under the field says.",
+  "limits.failed": "Not changed: {reason}",
+  "limits.cancelPending": "Cancel the looser limits",
+  "limits.cancelled": "The looser limits are cancelled, and the limits in effect stay. Every surface announces it.",
+  "limits.noScope": "This connection can read the limits but not change them.",
+  "limits.then": "From then"
 }

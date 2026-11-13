@@ -402,7 +402,9 @@ describe("the limits screen", () => {
     await settle();
     expect(screen.getByText("main · Paper")).toBeDefined();
     expect(
-      screen.getAllByText("Per-trade cap").map((cell) => cell.nextSibling?.textContent),
+      screen
+        .getAllByRole("cell", { name: "Per-trade cap" })
+        .map((cell) => cell.nextSibling?.textContent),
     ).toStrictEqual(["$50.00", "$100.00"]);
     expect(screen.getByText("60 seconds")).toBeDefined();
     expect(screen.getByText("every token that passes the risk check")).toBeDefined();

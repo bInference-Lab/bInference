@@ -55,7 +55,7 @@
   "limits.launchWallet": "发射钱包 {label}，地址 {address}：在发射项目自身的联合曲线上的交易只从它发起。",
   "limits.limit": "限额",
   "limits.value": "当前生效",
-  "limits.pending": "以下更宽松的限额将在 {when} 生效，除非你在命令行中取消：",
+  "limits.pending": "以下更宽松的限额将在 {when} 生效，除非你取消：",
   "limits.noAgents": "还没有 Agent。请运行 `binference init` 创建一个。",
   "push.title": "浏览器通知",
   "push.off": "有卡片等待时在此浏览器中收到通知，即使没有打开 Telegram。",
@@ -271,5 +271,18 @@
   "safety.openRescue": "打开紧急转出卡片",
   "safety.rescueOpened": "紧急转出卡片在下方等待。请先核对卡片上的紧急转出地址，再于此处或任一界面确认。",
   "safety.unfreezeCard": "解除冻结卡片",
-  "safety.rescueCard": "紧急转出卡片"
+  "safety.rescueCard": "紧急转出卡片",
+  "limits.changeOf": "修改 {name} 的限额",
+  "limits.newValue": "新值",
+  "limits.hint": "{unit, select, usd {以美元计，例如 50} bps {以百分比计，例如 0.5} seconds {以秒计，例如 60} days {以天计，例如 30} allow {按上方所示填写代币地址，用逗号分隔；留空则允许所有通过风险检查的代币} other {按上方所示填写，用逗号分隔；留空表示没有}}",
+  "limits.apply": "修改限额",
+  "limits.rule": "更严格的限额立即生效。更宽松的限额要等 24 小时，所有界面都会收到通知，在此之前你可以取消。",
+  "limits.now": "{name}现为 {value}。",
+  "limits.waits": "{name}将于 {when} 变为 {value}。所有界面都会收到通知，在此之前你可以取消。",
+  "limits.badValue": "{name}不接受这个值。请按输入框下方的说明填写。",
+  "limits.failed": "未修改：{reason}",
+  "limits.cancelPending": "取消更宽松的限额",
+  "limits.cancelled": "已取消更宽松的限额，当前生效的限额保持不变。所有界面都会收到通知。",
+  "limits.noScope": "此连接可以查看限额，但不能修改。",
+  "limits.then": "届时"
 }

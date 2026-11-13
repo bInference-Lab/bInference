@@ -27,7 +27,11 @@ The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
   once more in the page, through `safety/freeze` with `confirm`; an unfreeze through
   `safety/unfreeze` with `loosen`, which only opens its card; the rescue card through
   `safety/rescue`. A tap on the card confirms, here or on any surface. While the breaker holds,
-  its `safety.breaker` words show in place of every Unfreeze (decision 0441).
+  its `safety.breaker` words show in place of every Unfreeze (decision 0441). The limits screen
+  changes one limit at a time through `limit/set`, in the unit every surface shows it in, checked
+  by the protocol's schema before it is sent; the engine decides whether it is stricter and
+  applies at once, or looser and waits 24 hours (decision 0111). The gas reserve, set in each
+  chain's coin, changes in the terminal only.
 - The stack is React, Vite, Tailwind, shadcn on Base UI, TanStack Router and TanStack Query.
   Add a component with the shadcn CLI (`pnpm dlx shadcn@<version> add <name>` in this folder).
   `src/components/ui/` stays as the CLI writes it: lint, format, dead-code and duplicate checks
