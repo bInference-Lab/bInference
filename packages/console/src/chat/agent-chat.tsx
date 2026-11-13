@@ -1,6 +1,7 @@
 import type { ProtocolId } from "@binference/protocol";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { SquareIcon } from "lucide-react";
+import { CardGroup } from "../cards/card-group";
 import { Alert, AlertDescription } from "../components/ui/alert";
 import { Button } from "../components/ui/button";
 import { useEngine } from "../connection/engine-context";
@@ -8,7 +9,6 @@ import { errorWords } from "../connection/error-words";
 import { FailedAlert } from "../connection/failed-alert";
 import { MessageText, useText } from "../i18n/console-text";
 import { AgentQuestionCard } from "./agent-question";
-import { ChatCards } from "./chat-cards";
 import { ChatComposer } from "./chat-composer";
 import { chatEntries } from "./chat-entries";
 import { ChatThread, WorkingLine } from "./chat-thread";
@@ -166,6 +166,17 @@ function ChatTop(props: {
   );
 }
 
+// The agent's cards inline under the chat, as the confirmations screen draws them.
+function AgentCards(props: { readonly agent: ProtocolId<"agent"> }): React.JSX.Element {
+  const text = useText();
+  return (
+    <CardGroup
+      label={text("console.chat.cards")}
+      matches={(intent) => intent.agent === props.agent}
+    />
+  );
+}
+
 // What the owner writes with, or why this connection cannot.
 function ChatBottom(props: {
   readonly actions: ChatActions;
@@ -243,7 +254,7 @@ export function AgentChat(props: {
         canAnswer={ready.scopes.includes("confirm")}
       />
       <LaunchDraftCard agent={agent} agentName={agentName} />
-      <ChatCards agent={agent} />
+      <AgentCards agent={agent} />
       <ChatBottom
         actions={actions}
         canChat={canChat}
