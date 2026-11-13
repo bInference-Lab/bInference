@@ -24,10 +24,20 @@ describe("recoveryPhraseSpans", () => {
     expect(recoveryPhraseSpans(text)).toStrictEqual([{ start: 7, end: text.length - 1 }]);
   });
 
+  it("gives a phrase in capitals the span it takes in the text", () => {
+    const text = `words: ${twelve.join(" ").toUpperCase()}.`;
+    expect(recoveryPhraseSpans(text)).toStrictEqual([{ start: 7, end: text.length - 1 }]);
+  });
+
   it.each([
     ["one a line", twelve.join("\n")],
     ["as a numbered list", twelve.map((word, n) => `${String(n + 1)}. ${word}`).join("\n")],
     ["split by commas", twelve.join(", ")],
+    ["in capitals", twelve.join(" ").toUpperCase()],
+    [
+      "with each word capitalized",
+      twelve.map((word) => `${word.charAt(0).toUpperCase()}${word.slice(1)}`).join(" "),
+    ],
   ])("finds a phrase written %s", (_how, text) => {
     expect(holdsRecoveryPhrase(text)).toBe(true);
   });

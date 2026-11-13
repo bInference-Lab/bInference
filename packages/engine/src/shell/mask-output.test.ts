@@ -28,6 +28,12 @@ describe("masking a command's output", () => {
     expect(maskShellOutput(`words: ${twelve} magnet!`)).toBe("words: [recovery phrase hidden]!");
   });
 
+  it("hides a phrase in capitals, or with each word capitalized", () => {
+    const capitalized = twelve.replace(/\b[a-z]/g, (letter) => letter.toUpperCase());
+    expect(maskShellOutput(`A ${twelve.toUpperCase()} B`)).toBe("A [recovery phrase hidden] B");
+    expect(maskShellOutput(`${capitalized}\n`)).toBe("[recovery phrase hidden]\n");
+  });
+
   it("hides a phrase written as a numbered list", () => {
     const numbered = listed
       .slice(0, 12)

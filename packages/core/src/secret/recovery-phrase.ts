@@ -6,9 +6,10 @@ export interface TextSpan {
   readonly end: number;
 }
 
-// Lowercase words, and what may stand between the words of a written-down phrase: spaces, line
-// breaks, and the numbers and marks of a numbered list.
-const word = /[a-z]+/g;
+// Words in any case, each looked up in lowercase, and what may stand between the words of a
+// written-down phrase: spaces, line breaks, and the numbers and marks of a numbered list. Only
+// ASCII letters change case, so a span keeps its place in the text.
+const word = /[a-z]+/gi;
 const joiner = /^[\s\d.,):;-]*$/;
 
 /** The fewest words a recovery phrase has. */
@@ -16,7 +17,8 @@ export const leastPhraseWords = 12;
 
 /**
  * The spans of a text that hold a recovery phrase: runs of at least 12 words of the BIP-39
- * English list with only spaces, line breaks and the numbers and marks of a list between them.
+ * English list, in any case, with only spaces, line breaks and the numbers and marks of a list
+ * between them.
  * A run takes the listed words after its twelfth too. Prose that mixes in other words, and a
  * 64-digit hex string such as a transaction hash, hold none.
  */
@@ -27,7 +29,7 @@ export function recoveryPhraseSpans(text: string): readonly TextSpan[] {
     const start = match.index;
     const end = start + match[0].length;
     const joined = run !== undefined && joiner.test(text.slice(run.end, start));
-    if (!recoveryWords.has(match[0])) {
+    if (!recoveryWords.has(match[0].toLowerCase())) {
       run = undefined;
     } else if (run !== undefined && joined) {
       run = { ...run, end, count: run.count + 1 };
