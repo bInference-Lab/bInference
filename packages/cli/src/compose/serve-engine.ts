@@ -1,4 +1,4 @@
-import { BinferenceError, type Result } from "@binference/core";
+import { BinferenceError, type Logger, type Result } from "@binference/core";
 import { lockedNotice, type PublishPush } from "@binference/engine";
 import { privyUnreachableNotice } from "@binference/engine/install";
 import { restartedNotice } from "@binference/engine/notices";
@@ -66,6 +66,18 @@ function startReadTimers(
   startClaimReadyTimer({ tellClaimsReady: composed.tellClaimsReady, ...timers });
   const { server, pruneRecords } = composed;
   startPruneTimer({ pruneRecords, pruneKeys: async (call) => server.pruneKeys(call), ...timers });
+}
+
+// Starts the downtime re-check's timer and answers its pause check, which the price triggers read.
+async function startDowntime(opening: Opening, composed: ComposedSelfHosted, logger: Logger) {
+  const pauses = await startDowntimeTimer({
+    downtime: composed.downtime,
+    onPause: () => composed.priceWatchers.afterPause(),
+    clock: opening.host.clock,
+    closers: opening.closers,
+    logger,
+  });
+  return pauses.check;
 }
 
 // What a stop left: the positions of paper fills, the rows of order fills, the launches' pins and
@@ -232,14 +244,7 @@ export async function serveEngine(opening: Opening, opened: Opened): Promise<Sta
   await executor.recover({ signal });
   // Before the repairs and the timers: the re-check counts the skips they record, and no price
   // reaches the triggers before it took the orders to check (decision 0267).
-  const pauses = await startDowntimeTimer({
-    downtime: composed.downtime,
-    onPause: () => composed.priceWatchers.afterPause(),
-    clock: opening.host.clock,
-    closers: opening.closers,
-    logger: log.logger,
-  });
-  composed.priceWatchers.triggers.pauses = pauses.check;
+  composed.priceWatchers.triggers.pauses = await startDowntime(opening, composed, log.logger);
   await repairAfterStop(composed, signal);
   if (unlocked.ok) {
     await composed.resume(signal);
