@@ -3,16 +3,26 @@ import { type AccountRef, accountRefParts } from "../caip/account-ref.js";
 import type { FamilyRegistry } from "./family-registry.js";
 
 const lowerHex = /^0x(?:[0-9a-f]{2})+$/;
+const hexDigits = "0123456789abcdef";
 
 /** Bytes as lowercase hex after `0x`, the form the address book stores recipient bytes in. */
 export function recipientHex(bytes: Readonly<Uint8Array>): string {
-  return `0x${Buffer.from(bytes).toString("hex")}`;
+  return `0x${Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")}`;
+}
+
+// The byte two lowercase hex digits at `at` spell; the caller has checked the text.
+function byteAt(text: string, at: number): number {
+  return hexDigits.indexOf(text.charAt(at)) * 16 + hexDigits.indexOf(text.charAt(at + 1));
 }
 
 /** The bytes lowercase hex after `0x` spells; any other text is an expected failure. */
 export function recipientHexBytes(text: string): Result<Uint8Array, "malformed_hex"> {
   return lowerHex.test(text)
-    ? ok(Uint8Array.from(Buffer.from(text.slice(2), "hex")))
+    ? ok(
+        Uint8Array.from({ length: (text.length - 2) / 2 }, (_, index) =>
+          byteAt(text, 2 + 2 * index),
+        ),
+      )
     : err("malformed_hex");
 }
 
