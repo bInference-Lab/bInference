@@ -96,4 +96,15 @@ describe("holding the revocation list", () => {
     expect(gone.floor()).toBeUndefined();
     expect(gone.take(signed(list(1))).ok).toBe(true);
   });
+
+  it("drops a list it holds below a floor it restores", () => {
+    const { held } = holder();
+    held.take(signed(list(2)));
+
+    held.restore({ sequence: 3, key: signer.id, digest: "d".repeat(64) });
+
+    expect(held.fresh()).toBeUndefined();
+    expect(held.newest()).toBeUndefined();
+    expect(held.floor()).toMatchObject({ sequence: 3 });
+  });
 });

@@ -21,6 +21,7 @@ import { createListedRunner, type ListedRunner } from "../plugins/listed-runner.
 import { asPayload, listingFixture } from "../plugins/listing-fixtures.js";
 import { type ListingGate, listingGateOf } from "../plugins/listing-gate.js";
 import { createNpmRegistry } from "../plugins/npm-registry.js";
+import type { PluginLock } from "../plugins/plugin-lock.js";
 import { createPluginRecords, type PluginRecords } from "../plugins/plugin-records.js";
 import type { PluginRunner } from "../plugins/plugin-runner.js";
 import { createClosers } from "./closers.js";
@@ -43,14 +44,35 @@ const manifest: CommunityManifest = {
   tools: [],
 };
 
-// A runner that starts nothing: these cases end before any plugin would run.
-const idleRunner: PluginRunner = {
-  begin: async () => Promise.resolve(false),
-  run: async () => Promise.resolve(),
-  stop: async () => Promise.resolve(),
-  call: async () => Promise.resolve({ ok: false, error: "unknown_plugin" }),
-  offer: async () => Promise.resolve(),
-};
+// The plugins a lock has on, as a runner sees them.
+const names = (lock: PluginLock): string =>
+  lock.plugins
+    .filter(({ enabled }) => enabled)
+    .map(({ id }) => id)
+    .join(",");
+
+// A runner that starts no process, and records each start, run, stop and offer it is asked.
+function recordingRunner(asked: string[]): PluginRunner {
+  return {
+    begin: async (lock) => {
+      asked.push(`begin ${names(lock)}`);
+      return Promise.resolve(false);
+    },
+    run: async (entry) => {
+      asked.push(`run ${entry.id}`);
+      return Promise.resolve();
+    },
+    stop: async (id) => {
+      asked.push(`stop ${id}`);
+      return Promise.resolve();
+    },
+    call: async () => Promise.resolve({ ok: false, error: "unknown_plugin" }),
+    offer: async (lock) => {
+      asked.push(`offer ${names(lock)}`);
+      return Promise.resolve();
+    },
+  };
+}
 
 /** Where the Cloud composition's plugin operations run for a test. */
 export interface ListedPluginPlace {
@@ -70,6 +92,8 @@ export interface CloudPluginOperations {
   readonly records: PluginRecords;
   /** The runner under the listing rule, over one that starts nothing. */
   readonly runner: ListedRunner;
+  /** What the runner under it was asked, in order: `begin`, `run`, `stop` and `offer` lines. */
+  readonly asked: readonly string[];
   /** The caller every operation runs as: the owner at a terminal. */
   readonly owner: typeof owner;
   /** Starts `plugin/add` and answers the error its job ended with. */
@@ -83,18 +107,24 @@ function cloudParts(place: ListedPluginPlace, before: CloudPluginOperations | un
   const clock = before?.clock ?? createManualClock(startMs);
   const root = before?.root ?? composeCloudTestRoot({ clock });
   const logger = createMemoryLogger({ subsystem: "plugins" });
-  const listing = listingGateOf(root.pluginListing, { clock, logger });
-  if (listing === undefined) {
-    throw new Error("Expected the Cloud test root to require listings.");
-  }
-  const life = new AbortController().signal;
-  const runner = createListedRunner({ runner: idleRunner, gate: listing, logger, life });
   const records = createPluginRecords({
     file: join(place.folder, "lock.json"),
     permissions: noPermissions,
     form: "required",
   });
-  return { clock, root, logger, listing, runner, records };
+  const listing = listingGateOf(root.pluginListing, { clock, logger, records });
+  if (listing === undefined) {
+    throw new Error("Expected the Cloud test root to require listings.");
+  }
+  const life = new AbortController().signal;
+  const asked: string[] = [];
+  const runner = createListedRunner({
+    runner: recordingRunner(asked),
+    gate: listing,
+    logger,
+    life,
+  });
+  return { clock, root, logger, listing, runner, records, asked };
 }
 
 /** The plugin operations as the Cloud composition wires them: the Cloud test root's listing rule. */
@@ -104,10 +134,12 @@ export function cloudPluginOperations(
     readonly quotas?: QuotaSource;
     /** The operations of the engine before a restart, whose root and clock it keeps. */
     readonly restartOf?: CloudPluginOperations;
+    /** Removes a plugin's data folder in place of the test folder's own removal. */
+    readonly removeData?: (id: string, signal: AbortSignal) => Promise<void>;
   } = {},
 ): CloudPluginOperations {
   const parts = cloudParts(place, extra.restartOf);
-  const { clock, root, logger, listing, runner, records } = parts;
+  const { clock, root, logger, listing, runner, records, asked } = parts;
   const random = createSeededRandom(3);
   const ids = createIdSource({ clock, random });
   const ends: ((push: EnginePush) => void)[] = [];
@@ -121,7 +153,8 @@ export function cloudPluginOperations(
     isHeld: (id) => runner.isHeld(id),
     makeData: async (id, signal) =>
       ensurePrivateFolder(join(folder, "data", id), { permissions: noPermissions, signal }),
-    removeData: async (id, signal) => removePath(join(folder, "data", id), signal),
+    removeData:
+      extra.removeData ?? (async (id, signal) => removePath(join(folder, "data", id), signal)),
     newPlugin: () => ids.next("plg"),
     turns: createRunningTurns(),
     publish: (push) => ends.shift()?.(push),
@@ -137,7 +170,7 @@ export function cloudPluginOperations(
     await handlers["plugin/add"]?.({ args, caller: owner, signal: new AbortController().signal });
     return jobFailedPushSchema.parse((await ended).data).error;
   };
-  return { root, clock, logger, listing, handlers, records, runner, owner, add };
+  return { root, clock, logger, listing, handlers, records, runner, asked, owner, add };
 }
 
 /** A version of the test's plugin on the fake registry: its source, integrity and version. */

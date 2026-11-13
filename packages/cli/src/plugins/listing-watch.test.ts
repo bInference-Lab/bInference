@@ -5,7 +5,7 @@ import { createTempFolder, type TempFolder } from "@binference/platform/testing"
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { noPermissions } from "../e2e/test-host.js";
 import { createFakePluginCatalog, type FakePluginCatalog } from "./fake-plugin-catalog.js";
-import { createListedRunner } from "./listed-runner.js";
+import { createListedRunner, type ListedRunner } from "./listed-runner.js";
 import { listedEntryFixture, listingFixture, listingIdFixture } from "./listing-fixtures.js";
 import { createListingGate, type ListingGate } from "./listing-gate.js";
 import { createListingKeys } from "./listing-keys.js";
@@ -36,10 +36,13 @@ interface Watched {
   readonly watch: ListingWatch;
   readonly asked: string[];
   readonly told: PluginNotice[];
+  /** Resolves at the next notice told. */
+  nextTell(): Promise<void>;
   /** Resolves once the runner is asked `line`. */
   asking(line: string): Promise<void>;
   /** One entry per change of the lock since the start. */
   readonly changes: string[];
+  readonly runner: ListedRunner;
 }
 
 // The plugins the runner is asked to start or offer, as names.
@@ -85,12 +88,13 @@ function watched(
   const catalog = over.catalog ?? createFakePluginCatalog({ clock });
   const keys = createListingKeys([catalog.signer.spki]);
   const logger = createMemoryLogger({ subsystem: "plugins" });
-  const gate = createListingGate({ rule: { kind: "required", keys, catalog }, clock, logger });
   const inner = createPluginRecords({
     file: join(folder.path, `${name}.json`),
     permissions: noPermissions,
     form: "required",
   });
+  const rule = { kind: "required", keys, catalog } as const;
+  const gate = createListingGate({ rule, clock, logger, records: inner });
   const changes: string[] = [];
   const records: PluginRecords = {
     read: async (readSignal) => inner.read(readSignal),
@@ -108,23 +112,30 @@ function watched(
       waits.set(line, resolve);
     });
   const told: PluginNotice[] = [];
-  const watch = createListingWatch({
-    gate,
-    records,
-    runner,
-    clock,
-    logger,
-    tell: (notice) => told.push(notice),
-    life,
-  });
-  return { clock, catalog, gate, records, watch, asked, told, changes, asking };
+  const tells: (() => void)[] = [];
+  const tell = (notice: PluginNotice): void => {
+    told.push(notice);
+    tells.splice(0).forEach((resolve) => resolve());
+  };
+  const nextTell = async () =>
+    new Promise<void>((resolve) => {
+      tells.push(resolve);
+    });
+  const watch = createListingWatch({ gate, records, runner, clock, logger, tell, life });
+  return { clock, catalog, gate, records, watch, asked, told, nextTell, changes, asking, runner };
 }
 
-// Starts the watched engine on a lock holding `entries`, as the composition root starts it.
+// Records whose reads answer `reads` in turn, then the lock `after` holds; changes go to `after`.
+function readsInTurn(reads: PluginLock[], after: PluginRecords): PluginRecords {
+  return {
+    read: async (readSignal) => reads.shift() ?? after.read(readSignal),
+    change: async (change, changeSignal) => after.change(change, changeSignal),
+  };
+}
+
+// Starts the watched engine on a lock holding `entries`.
 async function started(w: Watched, entries: readonly LockedPlugin[]): Promise<void> {
   await w.records.change(() => ({ plugins: entries }), signal);
-  const lock = await w.records.read(signal);
-  w.watch.restore(lock);
   w.changes.splice(0);
 }
 
@@ -205,7 +216,6 @@ describe("the revocation list at work", () => {
     await first.watch.check(signal);
     const [older] = first.catalog.signedLists();
     const again = watched("restart", { clock: first.clock, catalog: first.catalog });
-    again.watch.restore(await again.records.read(signal));
     first.catalog.serveRevocations(String(older));
 
     const source = {
@@ -242,14 +252,111 @@ describe("the revocation list at work", () => {
     w.catalog.comeBack();
     w.catalog.renew();
     await w.watch.check(signal);
-    w.catalog.goDown("refuse");
     await w.clock.advance(86_400_000);
+    w.catalog.renew();
     await w.watch.check(signal);
+    w.catalog.goDown("refuse");
+    await w.clock.advance(3_600_000);
 
     expect(toldWithinADay).toStrictEqual([{ kind: "held" }]);
     expect(w.told).toStrictEqual([{ kind: "held" }, { kind: "held" }]);
     expect(w.asked.slice(0, 3)).toStrictEqual(["stop echo-feed", "offer ", "run echo-feed"]);
     await expect(w.records.read(signal)).resolves.toMatchObject({ plugins: [{ enabled: true }] });
+  });
+
+  it("holds at each stale check a plugin on since the last, and does nothing when none is", async () => {
+    const w = watched("each-check");
+    w.catalog.list(listing);
+    await started(w, [listedEntryFixture()]);
+    await w.watch.check(signal);
+    w.catalog.goDown("refuse");
+    await w.clock.advance(3_600_000);
+    await w.watch.check(signal);
+    const other = listedEntryFixture({
+      plugin: "plg_0190f1c2-3a4b-7c5d-8e6f-000000000002",
+      id: "other-feed",
+      manifest: { ...listedEntryFixture().manifest, id: "other-feed" },
+    });
+    await w.records.change((lock) => ({ ...lock, plugins: [...lock.plugins, other] }), signal);
+
+    await w.watch.check(signal);
+    const afterSecond = [...w.asked];
+    await w.watch.check(signal);
+
+    expect(afterSecond).toContain("stop other-feed");
+    expect(w.asked).toStrictEqual(afterSecond);
+    expect(w.told).toStrictEqual([{ kind: "held" }]);
+  });
+
+  it("holds the listed plugins at the moment the list expires, between two reads", async () => {
+    const w = watched("expiry");
+    w.catalog.list(listing);
+    await started(w, [listedEntryFixture()]);
+    await w.clock.advance(30_000);
+    w.catalog.renew();
+    await w.watch.check(signal);
+    w.catalog.goDown("refuse");
+    const stopped = w.asking("stop echo-feed");
+    await w.clock.advance(3_600_000 - 1);
+    const beforeExpiry = [...w.asked];
+    await w.clock.advance(1);
+    await stopped;
+
+    expect(beforeExpiry).toStrictEqual([]);
+    expect(w.runner.isHeld("echo-feed")).toBe(true);
+    expect(w.clock.now()).toBe(startMs + 30_000 + 3_600_000);
+  });
+
+  it("tells the owner once in 24 hours that plugins are held, across a restart", async () => {
+    const first = watched("told-restart");
+    first.catalog.list(listing);
+    await started(first, [listedEntryFixture()]);
+    await first.watch.check(signal);
+    first.catalog.goDown("refuse");
+    const tellsHeld = first.nextTell();
+    await first.clock.advance(3_600_000);
+    await tellsHeld;
+    const again = watched("told-restart", { clock: first.clock, catalog: first.catalog });
+
+    await again.watch.check(signal);
+
+    expect(first.told).toStrictEqual([{ kind: "held" }]);
+    expect(again.told).toStrictEqual([]);
+    expect(again.runner.isHeld("echo-feed")).toBe(true);
+    await expect(again.records.read(signal)).resolves.toMatchObject({
+      heldToldAt: startMs + 3_600_000,
+    });
+  });
+
+  it("runs a held plugin only when the lock still holds it on once its check passed", async () => {
+    const w = watched("read-again");
+    w.catalog.list(listing);
+    w.catalog.goDown("refuse");
+    await started(w, [listedEntryFixture()]);
+    await w.runner.begin(await w.records.read(signal));
+    w.catalog.comeBack();
+    // The revocations' read and the holds' first read find it on; the read after its check, off.
+    const reads: PluginLock[] = [
+      { plugins: [listedEntryFixture()] },
+      { plugins: [listedEntryFixture()] },
+      { plugins: [listedEntryFixture({ enabled: false, disabledReason: "crashes" })] },
+    ];
+    // The lock turns the plugin off while its check runs, as a path with no runner stop would.
+    const changing = readsInTurn(reads, w.records);
+    const watch = createListingWatch({
+      gate: w.gate,
+      records: changing,
+      runner: w.runner,
+      clock: w.clock,
+      logger: createMemoryLogger({ subsystem: "plugins" }),
+      tell: () => undefined,
+      life: new AbortController().signal,
+    });
+
+    await watch.check(signal);
+
+    expect(w.asked).not.toContain("run echo-feed");
+    expect(w.runner.isHeld("echo-feed")).toBe(true);
   });
 
   it("stops a revoked plugin at the next read, 60 seconds after the last", async () => {

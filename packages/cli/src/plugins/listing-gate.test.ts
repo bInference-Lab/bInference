@@ -7,6 +7,7 @@ import {
   listedEntryFixture,
   listingFixture,
   listingIdFixture,
+  memoryPluginRecords,
 } from "./listing-fixtures.js";
 import { createListingGate, type ListingGate } from "./listing-gate.js";
 import { createListingKeys } from "./listing-keys.js";
@@ -25,7 +26,13 @@ function gateOver() {
   const catalog = createFakePluginCatalog({ clock });
   const logger = createMemoryLogger({ subsystem: "plugins" });
   const keys = createListingKeys([catalog.signer.spki]);
-  const gate = createListingGate({ rule: { kind: "required", keys, catalog }, clock, logger });
+  const records = memoryPluginRecords();
+  const gate = createListingGate({
+    rule: { kind: "required", keys, catalog },
+    clock,
+    logger,
+    records,
+  });
   return { clock, catalog, gate, logger };
 }
 

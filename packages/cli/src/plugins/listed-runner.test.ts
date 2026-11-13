@@ -2,7 +2,7 @@ import { createManualClock, createMemoryLogger } from "@binference/core/testing"
 import { describe, expect, it } from "vitest";
 import { createFakePluginCatalog } from "./fake-plugin-catalog.js";
 import { createListedRunner } from "./listed-runner.js";
-import { listedEntryFixture, listingFixture } from "./listing-fixtures.js";
+import { listedEntryFixture, listingFixture, memoryPluginRecords } from "./listing-fixtures.js";
 import { createListingGate } from "./listing-gate.js";
 import { createListingKeys } from "./listing-keys.js";
 import type { LockedPlugin, PluginLock } from "./plugin-lock.js";
@@ -53,10 +53,12 @@ function listedRunner() {
   const catalog = createFakePluginCatalog({ clock });
   const keys = createListingKeys([catalog.signer.spki]);
   const logger = createMemoryLogger({ subsystem: "plugins" });
-  const gate = createListingGate({ rule: { kind: "required", keys, catalog }, clock, logger });
+  const rule = { kind: "required", keys, catalog } as const;
+  const gate = createListingGate({ rule, clock, logger, records: memoryPluginRecords() });
   const inner = recordingRunner();
   const life = new AbortController().signal;
   return {
+    clock,
     catalog,
     logger,
     asked: inner.asked,
@@ -85,20 +87,51 @@ describe("running plugins under the listing rule", () => {
     );
   });
 
-  it("holds every plugin while the catalog cannot be read, and runs one again at its next run", async () => {
+  it("holds every plugin while the catalog cannot be read, and runs one only once a check passes", async () => {
     const { catalog, asked, runner } = listedRunner();
     catalog.list(listing);
     catalog.goDown("refuse");
     const lock = { plugins: [entryOf("echo-feed")] };
 
     await runner.begin(lock);
-    const heldAtStart = runner.isHeld("echo-feed");
     await runner.run(entryOf("echo-feed"));
+    const heldAfterRun = runner.isHeld("echo-feed");
+    catalog.comeBack();
+    const resumed = await runner.resume(entryOf("echo-feed"));
     await runner.offer(lock);
 
-    expect(heldAtStart).toBe(true);
+    expect(heldAfterRun).toBe(true);
+    expect(resumed).toBe(true);
     expect(asked).toStrictEqual(["begin ", "run echo-feed", "offer echo-feed"]);
     expect(runner.isHeld("echo-feed")).toBe(false);
+  });
+
+  it("starts nothing for a plugin with no fresh revocation list, and holds it", async () => {
+    const { catalog, clock, asked, runner } = listedRunner();
+    catalog.list(listing);
+    await runner.begin({ plugins: [] });
+    await clock.advance(3_600_000);
+    catalog.goDown("refuse");
+
+    await runner.run(entryOf("echo-feed"));
+
+    expect(asked).toStrictEqual(["begin "]);
+    expect(runner.isHeld("echo-feed")).toBe(true);
+  });
+
+  it("resumes no plugin an operation stopped since, nor another entry than the one held", async () => {
+    const { catalog, asked, runner } = listedRunner();
+    catalog.list(listing);
+    catalog.goDown("refuse");
+    await runner.begin({ plugins: [entryOf("echo-feed"), entryOf("other-feed")] });
+    catalog.comeBack();
+    await runner.stop("echo-feed");
+
+    const stopped = await runner.resume(entryOf("echo-feed"));
+    const other = await runner.resume(entryOf("other-feed", { version: "9.9.9" }));
+
+    expect([stopped, other]).toStrictEqual([false, false]);
+    expect(asked).toStrictEqual(["begin ", "stop echo-feed"]);
   });
 
   it("checks the listings at the start that runs the plugins only, never at a later begin", async () => {
@@ -121,7 +154,7 @@ describe("running plugins under the listing rule", () => {
     const lock = { plugins: [entryOf("echo-feed")] };
     await runner.begin(lock);
 
-    await runner.hold("echo-feed");
+    await runner.hold(entryOf("echo-feed"));
     await runner.offer(lock);
 
     expect(asked).toStrictEqual(["begin echo-feed", "stop echo-feed", "offer "]);

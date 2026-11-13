@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { BinferenceError } from "@binference/core";
 import { createManualClock, createMemoryLogger } from "@binference/core/testing";
 import type { PluginNotice } from "@binference/engine/notices";
 import { ensurePrivateFolder } from "@binference/platform";
@@ -14,12 +15,14 @@ import { createFakePluginCatalog, type FakePluginCatalog } from "./fake-plugin-c
 import { readPluginSource } from "./fetch-plugin.js";
 import { createInstallHarness, type InstallHarness } from "./install-harness.js";
 import { installPlugin } from "./install-plugin.js";
+import { createListedRunner } from "./listed-runner.js";
 import { asPayload, listingFixture, listingIdFixture } from "./listing-fixtures.js";
 import { createListingGate, type ListingGate } from "./listing-gate.js";
 import { createListingKeys } from "./listing-keys.js";
 import type { PluginListing } from "./plugin-listing.schema.js";
 import type { LockedPlugin } from "./plugin-lock.js";
-import { withPlugins } from "./plugin-records.js";
+import { type PluginRecords, withPlugins } from "./plugin-records.js";
+import type { PluginRunner } from "./plugin-runner.js";
 
 let http: SystemHttp;
 let registry: FakeNpmRegistry;
@@ -71,13 +74,24 @@ function listedInstall(name: string): Listed {
   const catalog = createFakePluginCatalog({ clock });
   const keys = createListingKeys([catalog.signer.spki]);
   const logger = createMemoryLogger({ subsystem: "plugins" });
-  const gate = createListingGate({ rule: { kind: "required", keys, catalog }, clock, logger });
-  const base = { registryBase: registry.base, http, clock, listing: gate };
-  return {
-    catalog,
-    gate,
-    harness: createInstallHarness({ ...base, folder: join(folder.path, name) }),
+  const gates: ListingGate[] = [];
+  const listing = (records: PluginRecords): ListingGate => {
+    const made = createListingGate({
+      rule: { kind: "required", keys, catalog },
+      clock,
+      logger,
+      records,
+    });
+    gates.push(made);
+    return made;
   };
+  const base = { registryBase: registry.base, http, clock, listing };
+  const harness = createInstallHarness({ ...base, folder: join(folder.path, name) });
+  const [gate] = gates;
+  if (gate === undefined) {
+    throw new Error("Expected the harness to make a gate.");
+  }
+  return { catalog, gate, harness };
 }
 
 function answersOf(version: string, hash: string, extra: { accepted?: string } = {}) {
@@ -147,6 +161,35 @@ async function installedEntry(version: string, hash: string): Promise<LockedPlug
     answersOf(version, hash, { accepted: plain.digest }),
     signal,
   );
+  if (!done.ok) {
+    throw new Error("Expected an install.");
+  }
+  return done.value;
+}
+
+// A runner that starts no process and records what it is asked.
+function askedRunner(runs: string[]): PluginRunner {
+  return {
+    begin: async () => Promise.resolve(false),
+    run: async (entry) => {
+      runs.push(`run ${entry.id}`);
+      return Promise.resolve();
+    },
+    stop: async (id) => {
+      runs.push(`stop ${id}`);
+      return Promise.resolve();
+    },
+    call: async () => Promise.resolve({ ok: false, error: "unknown_plugin" }),
+    offer: async () => Promise.resolve(),
+  };
+}
+
+// A data folder that cannot be made, as a full disk refuses one.
+const failingData = async (): Promise<void> =>
+  Promise.reject(new BinferenceError({ code: "fs.unwritable", message: "No room." }));
+
+// The entry an install answered.
+function installedOf(done: Awaited<ReturnType<typeof installPlugin>>): LockedPlugin {
   if (!done.ok) {
     throw new Error("Expected an install.");
   }
@@ -363,6 +406,40 @@ describe("installing a plugin under the listing rule", () => {
       installPlugin(harness.parts, answersOf(version, hash), signal),
     ).resolves.toStrictEqual({ ok: false, failure: { code: "plugin.listing_revoked" } });
     expect(asked(version)).toBe(before);
+  });
+
+  it("never runs the held installed version when an update's files cannot be written", async () => {
+    const first = published();
+    const plain = await reviewOf(first.version, first.hash);
+    const { catalog, gate, harness } = listedInstall("held-update-fails");
+    catalog.list(listingOf(plain, first.hash));
+    const done = await installPlugin(
+      harness.parts,
+      answersOf(first.version, first.hash, { accepted: plain.digest }),
+      signal,
+    );
+    const next = published();
+    const nextPlain = await reviewOf(next.version, next.hash);
+    catalog.list({ ...listingOf(nextPlain, next.hash), listing: listingIdFixture(2) });
+    const runs: string[] = [];
+    const runner = createListedRunner({
+      runner: askedRunner(runs),
+      gate,
+      logger: createMemoryLogger({ subsystem: "plugins" }),
+      life: new AbortController().signal,
+    });
+    await runner.hold(installedOf(done));
+    const parts = { ...harness.parts, runner, makeData: failingData };
+
+    const update = await installPlugin(
+      parts,
+      answersOf(next.version, next.hash, { accepted: nextPlain.digest }),
+      signal,
+    );
+
+    expect(update).toStrictEqual({ ok: false, failure: { code: "plugin.install_failed" } });
+    expect(runs).toStrictEqual(["stop echo-feed", "stop echo-feed"]);
+    expect(runner.isHeld("echo-feed")).toBe(true);
   });
 
   it("refuses an update to a version with no listing of its own, the installed one kept", async () => {

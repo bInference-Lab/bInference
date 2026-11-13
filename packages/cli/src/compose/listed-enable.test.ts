@@ -1,7 +1,11 @@
 import { createManualClock, createMemoryLogger } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
 import { createFakePluginCatalog } from "../plugins/fake-plugin-catalog.js";
-import { listedEntryFixture, listingFixture } from "../plugins/listing-fixtures.js";
+import {
+  listedEntryFixture,
+  listingFixture,
+  memoryPluginRecords,
+} from "../plugins/listing-fixtures.js";
 import { createListingGate } from "../plugins/listing-gate.js";
 import { createListingKeys } from "../plugins/listing-keys.js";
 import { switchedLock } from "./listed-enable.js";
@@ -17,7 +21,12 @@ function gateOver() {
   const logger = createMemoryLogger({ subsystem: "plugins" });
   return {
     catalog,
-    gate: createListingGate({ rule: { kind: "required", keys, catalog }, clock, logger }),
+    gate: createListingGate({
+      rule: { kind: "required", keys, catalog },
+      clock,
+      logger,
+      records: memoryPluginRecords(),
+    }),
   };
 }
 

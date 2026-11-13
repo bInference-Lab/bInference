@@ -253,7 +253,7 @@ function composePlugins(opening: Opening, opened: Opened, wiring: PluginWiring):
   const runner = runnerOf(opening, opened, { places, records, wiring, logger, life: stop.signal });
   const ids = createIdSource({ clock: host.clock, random: host.random });
   // The owner reviews every plugin here, so no listing is needed (decision 0433).
-  const listing = listingGateOf({ kind: "notRequired" }, { clock: host.clock, logger });
+  const listing = listingGateOf({ kind: "notRequired" }, { clock: host.clock, logger, records });
   const handlers = createPluginOperations({
     registry: createNpmRegistry({
       download: host.download ?? noDownload,

@@ -1,6 +1,7 @@
 import { idSchema, type JsonValue, jsonValueSchema } from "@binference/core";
 import type { PluginListing, RevocationList } from "./plugin-listing.schema.js";
-import type { LockedPlugin } from "./plugin-lock.js";
+import { emptyPluginLock, type LockedPlugin, type PluginLock } from "./plugin-lock.js";
+import type { PluginRecords } from "./plugin-records.js";
 
 /** A plugin listing's id for tests: the `n`th of a fixed run of UUIDv7 ids. */
 export function listingIdFixture(n: number): PluginListing["listing"] {
@@ -81,5 +82,17 @@ export function listedEntryFixture(overrides: Partial<LockedPlugin> = {}): Locke
     installedAt: 1,
     listing: { listing: listing.listing, version: 1 },
     ...overrides,
+  };
+}
+
+/** The plugin lock in memory, starting from `lock`, for tests that read and change no file. */
+export function memoryPluginRecords(lock: PluginLock = emptyPluginLock): PluginRecords {
+  const held = { lock };
+  return {
+    read: async () => Promise.resolve(held.lock),
+    change: async (change) => {
+      held.lock = await change(held.lock);
+      return held.lock;
+    },
   };
 }

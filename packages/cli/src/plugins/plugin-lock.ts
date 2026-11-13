@@ -62,6 +62,11 @@ export interface PluginLock {
    * no older list is taken after a restart. A self-hosted lock holds none.
    */
   readonly revocations?: RevocationFloor;
+  /**
+   * When the owner was last told that the listed plugins are held for want of a fresh revocation
+   * list, in epoch milliseconds, so a restart tells again only after 24 hours (decision 0435).
+   */
+  readonly heldToldAt?: number;
 }
 
 const sha256Hex = z.string().regex(/^[0-9a-f]{64}$/);
@@ -117,6 +122,7 @@ const lockSchemas = {
     version: z.literal(1),
     plugins: z.array(listedEntrySchema),
     revocations: floorSchema.exactOptional(),
+    heldToldAt: z.int().nonnegative().exactOptional(),
   }),
 } as const;
 
@@ -136,8 +142,12 @@ function parsedLock(text: string, form: LockForm): Result<PluginLock, "unreadabl
     if (!read.success) {
       return err("unreadable");
     }
-    const { plugins, revocations } = read.data;
-    return ok(revocations === undefined ? { plugins } : { plugins, revocations });
+    const { plugins, revocations, heldToldAt } = read.data;
+    return ok({
+      plugins,
+      ...(revocations === undefined ? {} : { revocations }),
+      ...(heldToldAt === undefined ? {} : { heldToldAt }),
+    });
   } catch {
     return err("unreadable");
   }
@@ -164,9 +174,13 @@ export async function writePluginLock(
   options: { readonly permissions: FilePermissions; readonly signal: AbortSignal },
 ): Promise<void> {
   const plugins = lock.plugins.toSorted((a, b) => a.id.localeCompare(b.id));
-  const { revocations } = lock;
-  const written =
-    revocations === undefined ? { version: 1, plugins } : { version: 1, plugins, revocations };
+  const { revocations, heldToldAt } = lock;
+  const written = {
+    version: 1,
+    plugins,
+    ...(revocations === undefined ? {} : { revocations }),
+    ...(heldToldAt === undefined ? {} : { heldToldAt }),
+  };
   const text = `${JSON.stringify(written, undefined, 2)}\n`;
   await writePrivateFile(file, text, options);
 }

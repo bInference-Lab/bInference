@@ -32,7 +32,7 @@ export interface RevocationHolder {
   /**
    * Starts from the floor the plugin lock kept, when it is above the holder's own and its key
    * is still in force; one whose key left the set is dropped, so a key that leaked cannot set a
-   * floor no later list reaches.
+   * floor no later list reaches. A list held below the floor taken is dropped with it.
    */
   restore(floor: RevocationFloor | undefined): void;
 }
@@ -126,6 +126,8 @@ export function createRevocationHolder(parts: {
       const isAbove = floor !== undefined && floor.sequence > (held.floor?.sequence ?? 0);
       if (isAbove && parts.keys.keyOf(floor.key) !== undefined) {
         held.floor = floor;
+        held.list =
+          held.list !== undefined && held.list.sequence < floor.sequence ? undefined : held.list;
       }
     },
   };

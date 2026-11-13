@@ -17,6 +17,7 @@ import {
   type RevocationList,
 } from "./plugin-listing.schema.js";
 import type { LockedPlugin } from "./plugin-lock.js";
+import type { PluginRecords } from "./plugin-records.js";
 import type { CatalogFailure } from "./ports.js";
 import { createRevocationHolder, type RevocationHolder } from "./revocation-holder.js";
 
@@ -61,6 +62,8 @@ interface GateParts {
   readonly clock: Clock;
   readonly logger: Logger;
   readonly holder: RevocationHolder;
+  /** Settles once the lock's floor reached the holder, read once before the first take. */
+  readonly restored: (signal: AbortSignal) => Promise<void>;
 }
 
 /** How long one read of the catalog may take (decision 0433). */
@@ -102,6 +105,7 @@ async function refresh(
   parts: GateParts,
   signal: AbortSignal,
 ): Promise<Result<RevocationList, RefreshFailure>> {
+  await parts.restored(signal);
   const answer = await readCatalog(parts, signal, async (limit) =>
     parts.rule.catalog.revocations(limit),
   );
@@ -248,17 +252,32 @@ async function forEntry(parts: GateParts, entry: LockedPlugin, signal: AbortSign
  * version of the listing its entry names, never below the entry's, and refuses an entry the lock
  * marks revoked before any read. Each check needs a revocation list still good, read again from
  * the catalog when the held one is not, and is refused by the newest list taken by its end.
+ * Before it takes its first list, the gate reads the lock's floor, so it never takes a list older
+ * than one taken before a restart (decision 0435).
  */
 export function createListingGate(parts: {
   readonly rule: Required;
   readonly clock: Clock;
   readonly logger: Logger;
+  /** The plugin lock, whose revocation floor the gate takes before it takes any list. */
+  readonly records: PluginRecords;
 }): ListingGate {
-  const holder = createRevocationHolder({
-    keys: parts.rule.keys,
-    clock: parts.clock,
-  });
-  const gate: GateParts = { rule: parts.rule, clock: parts.clock, logger: parts.logger, holder };
+  const holder = createRevocationHolder({ keys: parts.rule.keys, clock: parts.clock });
+  const floorRead: { done: Promise<void> | undefined } = { done: undefined };
+  const readFloor = async (signal: AbortSignal): Promise<void> => {
+    holder.restore((await parts.records.read(signal)).revocations);
+  };
+  const restored = async (signal: AbortSignal): Promise<void> => {
+    floorRead.done ??= readFloor(signal);
+    try {
+      await floorRead.done;
+    } catch (error) {
+      floorRead.done = undefined;
+      throw error;
+    }
+  };
+  const { rule, clock, logger } = parts;
+  const gate: GateParts = { rule, clock, logger, holder, restored };
   return {
     forPackage: async (source, signal) => forPackage(gate, source, signal),
     forEntry: async (entry, signal) => forEntry(gate, entry, signal),
@@ -274,7 +293,7 @@ export function createListingGate(parts: {
  */
 export function listingGateOf(
   rule: PluginListingRule,
-  parts: { readonly clock: Clock; readonly logger: Logger },
+  parts: { readonly clock: Clock; readonly logger: Logger; readonly records: PluginRecords },
 ): ListingGate | undefined {
   return rule.kind === "notRequired" ? undefined : createListingGate({ ...parts, rule });
 }

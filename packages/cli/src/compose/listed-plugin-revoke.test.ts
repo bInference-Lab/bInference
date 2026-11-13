@@ -127,15 +127,15 @@ async function cloudOnRealHost(root: string) {
   const clock = createManualClock(startMs);
   const cloud = composeCloudTestRoot({ clock });
   const logger = createMemoryLogger({ subsystem: "plugins" });
-  const gate = listingGateOf(cloud.pluginListing, { clock, logger });
-  if (gate === undefined) {
-    throw new Error("Expected the Cloud root to require listings.");
-  }
   const records = createPluginRecords({
     file: join(root, "lock.json"),
     permissions: noPermissions,
     form: "required",
   });
+  const gate = listingGateOf(cloud.pluginListing, { clock, logger, records });
+  if (gate === undefined) {
+    throw new Error("Expected the Cloud root to require listings.");
+  }
   const life = new AbortController();
   const turns = createRunningTurns();
   turns.startRuntime(runtimeToken);

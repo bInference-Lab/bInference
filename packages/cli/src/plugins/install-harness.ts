@@ -6,7 +6,7 @@ import { noPermissions } from "../e2e/test-host.js";
 import type { InstallParts } from "./install-plugin.js";
 import type { ListingGate } from "./listing-gate.js";
 import { createNpmRegistry } from "./npm-registry.js";
-import { createPluginRecords } from "./plugin-records.js";
+import { createPluginRecords, type PluginRecords } from "./plugin-records.js";
 
 /** An install's parts over a test's registry and folder, with no plugin host. */
 export interface InstallHarness {
@@ -25,21 +25,22 @@ export function createInstallHarness(options: {
   readonly http: HttpDownload;
   readonly folder: string;
   readonly clock: ManualClock;
-  /** The listing rule's checks, where the test's composition needs listings. */
-  readonly listing?: ListingGate;
+  /** The listing rule's checks over the harness's lock, where the test's composition needs listings. */
+  readonly listing?: (records: PluginRecords) => ListingGate;
 }): InstallHarness {
   const { folder, clock } = options;
   const random = createSeededRandom(7);
   const ids = createIdSource({ clock, random });
   const file = join(folder, "lock.json");
+  const records = createPluginRecords({
+    file,
+    permissions: noPermissions,
+    form: options.listing === undefined ? "notRequired" : "required",
+  });
   const parts: InstallParts = {
     registry: createNpmRegistry({ download: options.http, base: options.registryBase }),
     verify: async () => Promise.resolve({ ok: false, error: "unverified" }),
-    records: createPluginRecords({
-      file,
-      permissions: noPermissions,
-      form: options.listing === undefined ? "notRequired" : "required",
-    }),
+    records,
     shelf: { packages: join(folder, "packages"), work: join(folder, "work") },
     runner: {
       begin: async () => Promise.resolve(false),
@@ -52,7 +53,7 @@ export function createInstallHarness(options: {
     newPlugin: () => ids.next("plg"),
     clock,
     random,
-    ...(options.listing === undefined ? {} : { listing: options.listing }),
+    ...(options.listing === undefined ? {} : { listing: options.listing(records) }),
   };
   return {
     parts,
