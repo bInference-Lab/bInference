@@ -64,6 +64,22 @@ const waitingClock: Clock = {
   sleep: async (delayMs, signal) => delay(delayMs, undefined, { signal }),
 };
 
+// A host whose COMMIT answers a proxy cuts asks how its writes ended: its waits pass their time on
+// the clock at once, so a check's 3 s and 10 s fit inside the server's 2 s idle timeout.
+let advancedMs = 0;
+const advancingClock: Clock = {
+  now: () => advancedMs,
+  sleep: async (delayMs) => {
+    advancedMs += delayMs;
+    await Promise.resolve();
+  },
+};
+
+/** How a file's hosts reach the server: through a proxy `route` starts for its settings. */
+export interface TestStoresRoute {
+  readonly route?: (settings: PostgresSettings) => Promise<PostgresSettings>;
+}
+
 // Each call gets its own 30 s: one signal made once would bound the whole file.
 function call(): AbortSignal {
   return AbortSignal.timeout(30_000);
@@ -138,31 +154,13 @@ function createWriters(settings: PostgresSettings): Writers {
   };
 }
 
-/**
- * Opens a database of its own on the test server that `url` names (`inject("postgres")`), with
- * the shared schema prepared; each `open` adds an install, whose lease the file's one worker takes
- * for its hosts. One task thread per database serves every install of the file.
- */
-export async function createTestPostgresStores(url: string): Promise<TestPostgresStores> {
-  const server = await createTestPostgresDatabase(url);
-  const database = await openPostgres<MetaTables>(server.settings, {
-    clock: { now: () => Date.now(), sleep: async () => Promise.resolve() },
-    random: createSeededRandom(17),
-    logger: createMemoryLogger({ subsystem: "store" }),
-    signal: call(),
-  });
-  await prepareSharedSchema(database, sharedSchema, call());
-  const threads = new Map<InstallDatabase, Promise<PostgresTaskThread>>();
-  const threadOf = async (name: InstallDatabase): Promise<PostgresTaskThread> => {
-    const thread =
-      threads.get(name) ??
-      startPostgresTaskThread({ worker: workers[name], execArgv, signal: call() });
-    threads.set(name, thread);
-    return thread;
-  };
+// Each call makes a new install on `database`, whose lease the file's one worker takes.
+function placesOn(
+  database: PostgresDatabase<MetaTables>,
+): (name: InstallDatabase) => Promise<HostPlace> {
   const leases = createPostgresAgentLeases({ database, sharedSchema, leaseMs: testLeaseMs });
   let installs = 0;
-  const newPlace = async (name: InstallDatabase): Promise<HostPlace> => {
+  return async (name) => {
     installs += 1;
     const digits = String(installs).padStart(12, "0");
     const installId = idSchema("ins").parse(`ins_0190f1c2-3a4b-7c5d-8e6f-${digits}`);
@@ -172,18 +170,69 @@ export async function createTestPostgresStores(url: string): Promise<TestPostgre
     );
     return { schema: installSchemas(installId)[name], lease: { sharedSchema, held } };
   };
+}
+
+// The pool the hosts `open` gives write through: the file's own, or one along the route.
+async function hostDatabaseOf(
+  routing: TestStoresRoute,
+  settings: PostgresSettings,
+  own: PostgresDatabase<MetaTables>,
+): Promise<PostgresDatabase<MetaTables>> {
+  if (routing.route === undefined) {
+    return own;
+  }
+  return openPostgres<MetaTables>(await routing.route(settings), {
+    clock: advancingClock,
+    random: createSeededRandom(19),
+    logger: createMemoryLogger({ subsystem: "store" }),
+    signal: call(),
+  });
+}
+
+/**
+ * Opens a database of its own on the test server that `url` names (`inject("postgres")`), with
+ * the shared schema prepared; each `open` adds an install, whose lease the file's one worker takes
+ * for its hosts. One task thread per database serves every install of the file. With a `route`,
+ * the hosts `open` gives reach the server through the settings it answers, such as a proxy that
+ * cuts their commits; the file's own setup does not.
+ */
+export async function createTestPostgresStores(
+  url: string,
+  routing: TestStoresRoute = {},
+): Promise<TestPostgresStores> {
+  const server = await createTestPostgresDatabase(url);
+  const database = await openPostgres<MetaTables>(server.settings, {
+    clock: { now: () => Date.now(), sleep: async () => Promise.resolve() },
+    random: createSeededRandom(17),
+    logger: createMemoryLogger({ subsystem: "store" }),
+    signal: call(),
+  });
+  const hostDatabase = await hostDatabaseOf(routing, server.settings, database);
+  await prepareSharedSchema(database, sharedSchema, call());
+  const threads = new Map<InstallDatabase, Promise<PostgresTaskThread>>();
+  const threadOf = async (name: InstallDatabase): Promise<PostgresTaskThread> => {
+    const thread =
+      threads.get(name) ??
+      startPostgresTaskThread({ worker: workers[name], execArgv, signal: call() });
+    threads.set(name, thread);
+    return thread;
+  };
+  const newPlace = placesOn(database);
   const writers = createWriters(server.settings);
   return {
-    async open(name) {
-      const place = { ...(await newPlace(name)), onCommitUnknown: ignoreCommitUnknown };
-      return createPostgresStoreHost({ database, thread: await threadOf(name), ...place });
-    },
+    open: async (name) =>
+      createPostgresStoreHost({
+        database: hostDatabase,
+        ...(await newPlace(name)),
+        thread: await threadOf(name),
+        onCommitUnknown: ignoreCommitUnknown,
+      }),
     writers: async (count, name = "engine") => writers.hostsOn(name, await newPlace(name), count),
     retries: () => writers.retries(),
     async closeAll() {
-      const started = await Promise.all(threads.values());
-      await Promise.all(started.map(async (thread) => thread.close()));
+      await Promise.all([...threads.values()].map(async (thread) => (await thread).close()));
       await writers.close();
+      await (hostDatabase === database ? Promise.resolve() : hostDatabase.close());
       await database.close();
       await server.drop();
     },
