@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "plugins": [
+    {
+      "plugin": "plg_019b7900-2010-7c12-9e96-e7f495ab2dd8",
+      "id": "echo-feed",
+      "packageName": "echo-feed",
+      "version": "1.0.0",
+      "source": "npm:echo-feed@1.0.0",
+      "integrity": "{integrity}",
+      "hash": "3e7265ae06648c5761e8c2119c2a61aae3fb0337f6c1b8ac87da3cebcbb05ded",
+      "manifest": {
+        "api": 1,
+        "id": "echo-feed",
+        "kinds": [
+          "data"
+        ],
+        "entry": "index.mjs",
+        "hosts": [
+          "api.example.com"
+        ],
+        "tools": [
+          {
+            "name": "echo",
+            "description": "Answers its text.",
+            "input": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "text"
+              ],
+              "additionalProperties": false
+            },
+            "output": {
+              "type": "object"
+            }
+          }
+        ]
+      },
+      "accepted": "f1ec1fd12738ef0bd12587eed2de51e40ad4bc38eef2a04682f28a774fff20f3",
+      "provenance": "none",
+      "publisher": "fake-publisher",
+      "enabled": true,
+      "installedAt": 1767261610000
+    }
+  ]
+}
