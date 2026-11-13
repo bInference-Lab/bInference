@@ -11,6 +11,13 @@ const rowSchema = z.strictObject({
     .record(z.string(), z.string())
     .optional()
     .describe("A library allowed only inside one folder of the package, such as src/providers."),
+  node: z
+    .array(z.string())
+    .optional()
+    .describe(
+      "Files and folders of a package a browser loads that only Node runs, such as src/smoke or " +
+        "vite.config.ts; they keep the rules of a package no browser loads, as test files do.",
+    ),
   pure: z.boolean().optional().describe("No I/O, no clock, no randomness, no process."),
   money: z.boolean().optional().describe("Money stays bigint: no Number, parseFloat or toFixed."),
   osLayer: z.boolean().optional().describe("May branch on the operating system."),
@@ -80,6 +87,44 @@ export function findPackages(repo: string): readonly WorkspacePackage[] {
       return { folder, key: key(name), manifest: readManifest(repo, folder) };
     });
   return [...found("packages", (name) => name), ...found("plugins", () => "plugins")];
+}
+
+// The workspace packages a row may import; "*" is every one.
+function workspaceImports(graph: PackageGraph, key: string): readonly string[] {
+  const keys = Object.keys(graph.packages);
+  const imports = graph.packages[key]?.imports ?? [];
+  return imports.includes("*") ? keys : imports.filter((name) => keys.includes(name));
+}
+
+function reachableFrom(graph: PackageGraph, start: string): ReadonlySet<string> {
+  const seen = new Set([start]);
+  const waiting = [start];
+  for (let key = waiting.pop(); key !== undefined; key = waiting.pop()) {
+    const fresh = workspaceImports(graph, key).filter((next) => !seen.has(next));
+    for (const next of fresh) {
+      seen.add(next);
+      waiting.push(next);
+    }
+  }
+  return seen;
+}
+
+/**
+ * The browser packages that load each package: a package's key maps to every `browser` row that
+ * imports it, directly or through another package, by the rows' `imports`. A browser row loads
+ * itself. A package no browser row reaches has no entry.
+ */
+export function browserLoaders(graph: PackageGraph): ReadonlyMap<string, readonly string[]> {
+  const loaders = new Map<string, readonly string[]>();
+  const browsers = Object.keys(graph.packages).filter(
+    (key) => graph.packages[key]?.browser === true,
+  );
+  for (const browser of browsers) {
+    for (const key of reachableFrom(graph, browser)) {
+      loaders.set(key, [...(loaders.get(key) ?? []), browser]);
+    }
+  }
+  return loaders;
 }
 
 /** The npm name a package in the graph must carry. */

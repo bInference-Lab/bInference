@@ -5,17 +5,18 @@ function escapeRegex(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
 }
 
-// Every expected finding names the planted file and the rule, so a case cannot pass on a
-// finding from somewhere else.
+// A finding that names the planted file and the rule, so a case cannot pass on a finding from
+// somewhere else.
+function findingOf(file: string, rule: string): RegExp {
+  return new RegExp(`${escapeRegex(file)}:\\d+:\\d+: .*\\[Error/${escapeRegex(rule)}\\]`);
+}
+
 function lintCase(
   name: string,
   files: Readonly<Record<string, string>>,
   findings: readonly (readonly [file: string, rule: string])[],
 ): GateCase {
-  const output = findings.map(
-    ([file, rule]) =>
-      new RegExp(`${escapeRegex(file)}:\\d+:\\d+: .*\\[Error/${escapeRegex(rule)}\\]`),
-  );
+  const output = findings.map(([file, rule]) => findingOf(file, rule));
   return { name, files, cost: 1.5, steps: [lintStep(files, "fail", output)] };
 }
 
@@ -130,6 +131,61 @@ const importCases: readonly GateCase[] = [
   ),
 ];
 
+// Node's Buffer, which a browser lacks: refused in every package the console bundles, through its
+// imports or theirs, and allowed where only Node runs, tests included.
+const nodeBuffer = 'export const decoded: Uint8Array = Buffer.from("YQ==", "base64");\n';
+const nodeBufferImport = `import { Buffer } from "node:buffer";\n\n${nodeBuffer}`;
+const nodeBufferTest = [
+  'import { expect, it } from "vitest";',
+  "",
+  'it("decodes base64 on Node", () => {',
+  '  expect(Buffer.from("YQ==", "base64").toString("utf8")).toBe("a");',
+  "});",
+  "",
+].join("\n");
+const loadedFiles = {
+  "packages/core/src/decoded.ts": nodeBuffer,
+  "packages/console/src/decoded.ts": nodeBuffer,
+};
+const importFiles = { "packages/core/src/decoded.ts": nodeBufferImport };
+const nodeFiles = {
+  "packages/engine/src/decoded.ts": nodeBuffer,
+  "packages/core/src/decoded.test.ts": nodeBufferTest,
+  "packages/console/src/smoke/decoded.ts": nodeBufferImport,
+};
+
+const browserCases: readonly GateCase[] = [
+  {
+    name: "Buffer in core and the console, which a browser loads, fails eslint/no-restricted-globals",
+    files: loadedFiles,
+    cost: 1.5,
+    steps: [
+      lintStep(loadedFiles, "fail", [
+        ...Object.keys(loadedFiles).map((file) => findingOf(file, "eslint(no-restricted-globals)")),
+        /The console bundles this package, and a browser has no Buffer/,
+      ]),
+    ],
+  },
+  {
+    name: "a node:buffer import in core, which a browser loads, fails eslint/no-restricted-imports",
+    files: importFiles,
+    cost: 1.5,
+    steps: [
+      // The unix format leaves out a pattern's message; only the ^node: pattern takes node:buffer.
+      lintStep(importFiles, "fail", [
+        findingOf("packages/core/src/decoded.ts", "eslint(no-restricted-imports)"),
+        /'node:buffer' import is restricted from being used by a pattern/,
+      ]),
+    ],
+  },
+  {
+    name: "Buffer in engine, a core test and the console's smoke folder, which only Node runs, lints clean",
+    files: nodeFiles,
+    cost: 1.5,
+    steps: [lintStep(nodeFiles, "pass")],
+  },
+];
+
 const typeCases: readonly GateCase[] = [
   lintCase(
     "any and a default export fail their rules",
@@ -178,6 +234,7 @@ export function lintCases(): readonly GateCase[] {
     },
     ...guardCases,
     ...importCases,
+    ...browserCases,
     ...typeCases,
     {
       name: "an unformatted file fails oxfmt --check",

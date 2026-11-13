@@ -125,6 +125,8 @@ interface ScopeOptions {
   readonly row: PackageRow;
   readonly exempt: readonly string[];
   readonly anyThirdParty: boolean;
+  /** The browser packages that load these files; none for a package or folder only Node runs. */
+  readonly loadedBy: readonly string[];
 }
 
 function graphPatterns(graph: PackageGraph, options: ScopeOptions): readonly RestrictedPattern[] {
@@ -156,15 +158,52 @@ const layoutPatterns = (scope: string): readonly RestrictedPattern[] => [
   { regex: "^(?:\\.\\./){2,}", message: "Import another package by its name, not by a path." },
 ];
 
-function globalsFor(row: PackageRow): readonly RestrictedGlobal[] {
-  return [
+// Node's globals a browser lacks, each with what to use instead.
+const nodeOnlyGlobals: readonly (readonly [name: string, instead: string])[] = [
+  ["Buffer", "use Uint8Array, TextEncoder or atob"],
+  ["process", "take the value through a port"],
+  ["setImmediate", "use queueMicrotask or setTimeout"],
+  ["__dirname", "take the path through a port"],
+  ["__filename", "take the path through a port"],
+  ["global", "use globalThis"],
+];
+
+function loadersText(loadedBy: readonly string[]): string {
+  const verb = loadedBy.length === 1 ? "bundles" : "bundle";
+  return `The ${loadedBy.join(" and ")} ${verb} this package, and a browser has no`;
+}
+
+function browserGlobals(loadedBy: readonly string[]): readonly RestrictedGlobal[] {
+  if (loadedBy.length === 0) {
+    return [];
+  }
+  return nodeOnlyGlobals.map(([name, instead]) => ({
+    name,
+    message: `${loadersText(loadedBy)} ${name}: ${instead}.`,
+  }));
+}
+
+function browserPatterns(loadedBy: readonly string[]): readonly RestrictedPattern[] {
+  if (loadedBy.length === 0) {
+    return [];
+  }
+  const instead = "use a web API, or take the work through a port";
+  return [{ regex: "^node:", message: `${loadersText(loadedBy)} node: modules; ${instead}.` }];
+}
+
+// A pure package a browser loads restricts process once, with the browser's reason.
+function globalsFor(row: PackageRow, loadedBy: readonly string[]): readonly RestrictedGlobal[] {
+  const browser = browserGlobals(loadedBy);
+  return uniqueByName([
     { name: "fetch", message: httpText },
+    ...browser.filter((item) => item.name === "process"),
     ...(row.pure === true ? [{ name: "process", message: "Receive typed values instead." }] : []),
     ...(row.money === true
       ? ["Number", "parseFloat", "parseInt"].map((name) => ({ name, message: moneyText }))
       : []),
     ...(row.formatsDisplay === true ? [] : [{ name: "Intl", message: displayText }]),
-  ];
+    ...browser,
+  ]);
 }
 
 function clockProperties(): readonly RestrictedProperty[] {
@@ -208,8 +247,12 @@ function propertiesFor(row: PackageRow): readonly RestrictedProperty[] {
 export function restrictionsFor(graph: PackageGraph, options: ScopeOptions): Restrictions {
   return {
     paths: uniqueByName([...purePaths(options.row), ...nodePaths(options.row)]),
-    patterns: [...graphPatterns(graph, options), ...layoutPatterns(graph.scope)],
-    globals: globalsFor(options.row),
+    patterns: [
+      ...graphPatterns(graph, options),
+      ...layoutPatterns(graph.scope),
+      ...browserPatterns(options.loadedBy),
+    ],
+    globals: globalsFor(options.row, options.loadedBy),
     properties: propertiesFor(options.row),
   };
 }

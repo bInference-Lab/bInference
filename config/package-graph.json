@@ -4,10 +4,12 @@
   "packages": {
     "core": {
       "imports": [],
+      "node": ["src/contracts"],
       "pure": true
     },
     "chain": {
       "imports": ["core"],
+      "node": ["src/contracts", "src/fakes", "src/signing/authorization-payload.ts"],
       "pure": true,
       "money": true,
       "coverage": 95
@@ -164,6 +166,12 @@
       "only": {
         "@playwright/test": "src/smoke"
       },
+      "node": [
+        "src/smoke",
+        "precompress-plugin.ts",
+        "vite.config.ts",
+        "vite.push-worker.config.ts"
+      ],
       "userText": true,
       "browser": true
     },

@@ -142,6 +142,439 @@
               {
                 "regex": "^(?:\\.\\./){2,}",
                 "message": "Import another package by its name, not by a path."
+              },
+              {
+                "regex": "^node:",
+                "message": "The console bundles this package, and a browser has no node: modules; use a web API, or take the work through a port."
+              }
+            ]
+          }
+        ],
+        "eslint/no-restricted-globals": [
+          "error",
+          {"name": "fetch", "message": "Outbound HTTP goes through the Http port."},
+          {
+            "name": "process",
+            "message": "The console bundles this package, and a browser has no process: take the value through a port."
+          },
+          {"name": "Intl", "message": "Format for people in i18n, the one formatter."},
+          {
+            "name": "Buffer",
+            "message": "The console bundles this package, and a browser has no Buffer: use Uint8Array, TextEncoder or atob."
+          },
+          {
+            "name": "setImmediate",
+            "message": "The console bundles this package, and a browser has no setImmediate: use queueMicrotask or setTimeout."
+          },
+          {
+            "name": "__dirname",
+            "message": "The console bundles this package, and a browser has no __dirname: take the path through a port."
+          },
+          {
+            "name": "__filename",
+            "message": "The console bundles this package, and a browser has no __filename: take the path through a port."
+          },
+          {
+            "name": "global",
+            "message": "The console bundles this package, and a browser has no global: use globalThis."
+          }
+        ],
+        "eslint/no-restricted-properties": [
+          "error",
+          {"object": "process", "property": "argv", "message": "Only the CLI reads arguments."},
+          {
+            "object": "process",
+            "property": "platform",
+            "message": "Only platform branches on the OS."
+          },
+          {
+            "object": "Date",
+            "property": "now",
+            "message": "Read time and randomness through the Clock and Random ports."
+          },
+          {
+            "object": "Math",
+            "property": "random",
+            "message": "Read time and randomness through the Clock and Random ports."
+          },
+          {
+            "object": "crypto",
+            "property": "randomUUID",
+            "message": "Read time and randomness through the Clock and Random ports."
+          },
+          {
+            "object": "crypto",
+            "property": "getRandomValues",
+            "message": "Read time and randomness through the Clock and Random ports."
+          },
+          {
+            "object": "performance",
+            "property": "now",
+            "message": "Read time and randomness through the Clock and Random ports."
+          },
+          {"property": "toFixed", "message": "Format for people in i18n, the one formatter."},
+          {"property": "toLocaleString", "message": "Format for people in i18n, the one formatter."}
+        ],
+        "node/no-process-env": "error",
+        "guards/no-argless-date": "error",
+        "typescript/prefer-readonly-parameter-types": ["error", {"treatMethodsAsReadonly": true}]
+      }
+    },
+    {
+      "files": ["packages/core/**/*.test.ts"],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {"name": "node:fs", "message": "A pure package does no I/O; take a port instead."},
+              {
+                "name": "node:fs/promises",
+                "message": "A pure package does no I/O; take a port instead."
+              },
+              {"name": "node:net", "message": "A pure package does no I/O; take a port instead."},
+              {"name": "node:sqlite", "message": "A pure package does no I/O; take a port instead."},
+              {
+                "name": "node:crypto",
+                "importNames": ["randomUUID", "randomBytes", "randomInt", "getRandomValues"],
+                "message": "Read time and randomness through the Clock and Random ports."
+              },
+              {"name": "node:vm", "message": "No node:vm outside the plugin sandbox."},
+              {
+                "name": "node:child_process",
+                "message": "Run child processes through execa with an argument array."
+              },
+              {
+                "name": "execa",
+                "importNames": ["execaCommand", "execaCommandSync", "$"],
+                "message": "Pass an argument array; no command strings."
+              },
+              {"name": "node:https", "message": "Outbound HTTP goes through the Http port."},
+              {"name": "undici", "message": "Outbound HTTP goes through the Http port."},
+              {"name": "node:http", "message": "Outbound HTTP goes through the Http port."},
+              {
+                "name": "node:os",
+                "importNames": ["platform", "type"],
+                "message": "Only the platform package branches on the OS."
+              },
+              {"name": "tslog", "message": "Log through the Logger port."}
+            ],
+            "patterns": [
+              {
+                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser|@binference\\/pdf)(?:/|$)",
+                "message": "See the core row of config/package-graph.json for what it may import."
+              },
+              {
+                "group": [
+                  "@anthropic-ai/sdk",
+                  "@anthropic-ai/sdk/*",
+                  "@base-ui/react",
+                  "@base-ui/react/*",
+                  "@fontsource-variable/hanken-grotesk",
+                  "@fontsource-variable/hanken-grotesk/*",
+                  "@hpke/chacha20poly1305",
+                  "@hpke/chacha20poly1305/*",
+                  "@hpke/core",
+                  "@hpke/core/*",
+                  "@modelcontextprotocol/client",
+                  "@modelcontextprotocol/client/*",
+                  "@modelcontextprotocol/server",
+                  "@modelcontextprotocol/server/*",
+                  "@napi-rs/canvas",
+                  "@napi-rs/canvas/*",
+                  "@napi-rs/keyring",
+                  "@napi-rs/keyring/*",
+                  "@noble/curves",
+                  "@noble/curves/*",
+                  "@playwright/test",
+                  "@playwright/test/*",
+                  "@privy-io/node",
+                  "@privy-io/node/*",
+                  "@solana/kit",
+                  "@solana/kit/*",
+                  "@tailwindcss/vite",
+                  "@tailwindcss/vite/*",
+                  "@tanstack/react-query",
+                  "@tanstack/react-query/*",
+                  "@tanstack/react-router",
+                  "@tanstack/react-router/*",
+                  "@testing-library/dom",
+                  "@testing-library/dom/*",
+                  "@testing-library/react",
+                  "@testing-library/react/*",
+                  "@vitejs/plugin-react",
+                  "@vitejs/plugin-react/*",
+                  "class-variance-authority",
+                  "class-variance-authority/*",
+                  "cn",
+                  "cn/*",
+                  "execa",
+                  "execa/*",
+                  "fake-indexeddb",
+                  "fake-indexeddb/*",
+                  "grammy",
+                  "grammy/*",
+                  "intl-messageformat",
+                  "intl-messageformat/*",
+                  "jsdom",
+                  "jsdom/*",
+                  "kysely",
+                  "kysely/*",
+                  "lucide-react",
+                  "lucide-react/*",
+                  "openai",
+                  "openai/*",
+                  "partial-json",
+                  "partial-json/*",
+                  "pdfjs-dist",
+                  "pdfjs-dist/*",
+                  "pg",
+                  "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
+                  "react",
+                  "react/*",
+                  "react-dom",
+                  "react-dom/*",
+                  "string-width",
+                  "string-width/*",
+                  "tailwindcss",
+                  "tailwindcss/*",
+                  "undici",
+                  "undici/*",
+                  "viem",
+                  "viem/*",
+                  "vite",
+                  "vite/*",
+                  "which-command",
+                  "which-command/*",
+                  "ws",
+                  "ws/*",
+                  "yaml",
+                  "yaml/*"
+                ],
+                "message": "See the core row of config/package-graph.json for what it may import."
+              },
+              {
+                "regex": "^@binference/[^/]+/src/",
+                "message": "Import a package through its exports."
+              },
+              {
+                "regex": "^(?:\\.\\./){2,}",
+                "message": "Import another package by its name, not by a path."
+              }
+            ]
+          }
+        ],
+        "eslint/no-restricted-globals": [
+          "error",
+          {"name": "fetch", "message": "Outbound HTTP goes through the Http port."},
+          {"name": "process", "message": "Receive typed values instead."},
+          {"name": "Intl", "message": "Format for people in i18n, the one formatter."},
+          {
+            "name": "setTimeout",
+            "message": "Unit tests use a fake Clock: no real timers, sleeps or polling."
+          },
+          {
+            "name": "setInterval",
+            "message": "Unit tests use a fake Clock: no real timers, sleeps or polling."
+          }
+        ],
+        "eslint/no-restricted-properties": [
+          "error",
+          {"object": "process", "property": "argv", "message": "Only the CLI reads arguments."},
+          {
+            "object": "process",
+            "property": "platform",
+            "message": "Only platform branches on the OS."
+          },
+          {
+            "object": "Date",
+            "property": "now",
+            "message": "Read time and randomness through the Clock and Random ports."
+          },
+          {
+            "object": "Math",
+            "property": "random",
+            "message": "Read time and randomness through the Clock and Random ports."
+          },
+          {
+            "object": "crypto",
+            "property": "randomUUID",
+            "message": "Read time and randomness through the Clock and Random ports."
+          },
+          {
+            "object": "crypto",
+            "property": "getRandomValues",
+            "message": "Read time and randomness through the Clock and Random ports."
+          },
+          {
+            "object": "performance",
+            "property": "now",
+            "message": "Read time and randomness through the Clock and Random ports."
+          },
+          {"property": "toFixed", "message": "Format for people in i18n, the one formatter."},
+          {"property": "toLocaleString", "message": "Format for people in i18n, the one formatter."},
+          {
+            "object": "expect",
+            "property": "poll",
+            "message": "Unit tests use a fake Clock: no real timers, sleeps or polling."
+          }
+        ],
+        "vitest/no-restricted-vi-methods": [
+          "error",
+          {
+            "useRealTimers": "Unit tests use a fake Clock: no real timers, sleeps or polling.",
+            "waitFor": "Unit tests use a fake Clock: no real timers, sleeps or polling.",
+            "waitUntil": "Unit tests use a fake Clock: no real timers, sleeps or polling.",
+            "mock": "Write a fake that implements the port.",
+            "doMock": "Write a fake that implements the port."
+          }
+        ]
+      }
+    },
+    {
+      "files": ["packages/core/src/contracts/**"],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {"name": "node:fs", "message": "A pure package does no I/O; take a port instead."},
+              {
+                "name": "node:fs/promises",
+                "message": "A pure package does no I/O; take a port instead."
+              },
+              {"name": "node:net", "message": "A pure package does no I/O; take a port instead."},
+              {"name": "node:sqlite", "message": "A pure package does no I/O; take a port instead."},
+              {
+                "name": "node:crypto",
+                "importNames": ["randomUUID", "randomBytes", "randomInt", "getRandomValues"],
+                "message": "Read time and randomness through the Clock and Random ports."
+              },
+              {"name": "node:vm", "message": "No node:vm outside the plugin sandbox."},
+              {
+                "name": "node:child_process",
+                "message": "Run child processes through execa with an argument array."
+              },
+              {
+                "name": "execa",
+                "importNames": ["execaCommand", "execaCommandSync", "$"],
+                "message": "Pass an argument array; no command strings."
+              },
+              {"name": "node:https", "message": "Outbound HTTP goes through the Http port."},
+              {"name": "undici", "message": "Outbound HTTP goes through the Http port."},
+              {"name": "node:http", "message": "Outbound HTTP goes through the Http port."},
+              {
+                "name": "node:os",
+                "importNames": ["platform", "type"],
+                "message": "Only the platform package branches on the OS."
+              },
+              {"name": "tslog", "message": "Log through the Logger port."}
+            ],
+            "patterns": [
+              {
+                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser|@binference\\/pdf)(?:/|$)",
+                "message": "See the core row of config/package-graph.json for what it may import."
+              },
+              {
+                "group": [
+                  "@anthropic-ai/sdk",
+                  "@anthropic-ai/sdk/*",
+                  "@base-ui/react",
+                  "@base-ui/react/*",
+                  "@fontsource-variable/hanken-grotesk",
+                  "@fontsource-variable/hanken-grotesk/*",
+                  "@hpke/chacha20poly1305",
+                  "@hpke/chacha20poly1305/*",
+                  "@hpke/core",
+                  "@hpke/core/*",
+                  "@modelcontextprotocol/client",
+                  "@modelcontextprotocol/client/*",
+                  "@modelcontextprotocol/server",
+                  "@modelcontextprotocol/server/*",
+                  "@napi-rs/canvas",
+                  "@napi-rs/canvas/*",
+                  "@napi-rs/keyring",
+                  "@napi-rs/keyring/*",
+                  "@noble/curves",
+                  "@noble/curves/*",
+                  "@playwright/test",
+                  "@playwright/test/*",
+                  "@privy-io/node",
+                  "@privy-io/node/*",
+                  "@solana/kit",
+                  "@solana/kit/*",
+                  "@tailwindcss/vite",
+                  "@tailwindcss/vite/*",
+                  "@tanstack/react-query",
+                  "@tanstack/react-query/*",
+                  "@tanstack/react-router",
+                  "@tanstack/react-router/*",
+                  "@testing-library/dom",
+                  "@testing-library/dom/*",
+                  "@testing-library/react",
+                  "@testing-library/react/*",
+                  "@vitejs/plugin-react",
+                  "@vitejs/plugin-react/*",
+                  "class-variance-authority",
+                  "class-variance-authority/*",
+                  "cn",
+                  "cn/*",
+                  "execa",
+                  "execa/*",
+                  "fake-indexeddb",
+                  "fake-indexeddb/*",
+                  "grammy",
+                  "grammy/*",
+                  "intl-messageformat",
+                  "intl-messageformat/*",
+                  "jsdom",
+                  "jsdom/*",
+                  "kysely",
+                  "kysely/*",
+                  "lucide-react",
+                  "lucide-react/*",
+                  "openai",
+                  "openai/*",
+                  "partial-json",
+                  "partial-json/*",
+                  "pdfjs-dist",
+                  "pdfjs-dist/*",
+                  "pg",
+                  "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
+                  "react",
+                  "react/*",
+                  "react-dom",
+                  "react-dom/*",
+                  "string-width",
+                  "string-width/*",
+                  "tailwindcss",
+                  "tailwindcss/*",
+                  "undici",
+                  "undici/*",
+                  "viem",
+                  "viem/*",
+                  "vite",
+                  "vite/*",
+                  "which-command",
+                  "which-command/*",
+                  "ws",
+                  "ws/*",
+                  "yaml",
+                  "yaml/*"
+                ],
+                "message": "See the core row of config/package-graph.json for what it may import."
+              },
+              {
+                "regex": "^@binference/[^/]+/src/",
+                "message": "Import a package through its exports."
+              },
+              {
+                "regex": "^(?:\\.\\./){2,}",
+                "message": "Import another package by its name, not by a path."
               }
             ]
           }
@@ -187,14 +620,11 @@
           },
           {"property": "toFixed", "message": "Format for people in i18n, the one formatter."},
           {"property": "toLocaleString", "message": "Format for people in i18n, the one formatter."}
-        ],
-        "node/no-process-env": "error",
-        "guards/no-argless-date": "error",
-        "typescript/prefer-readonly-parameter-types": ["error", {"treatMethodsAsReadonly": true}]
+        ]
       }
     },
     {
-      "files": ["packages/core/**/*.test.ts"],
+      "files": ["packages/core/src/contracts/**/*.test.ts"],
       "rules": {
         "eslint/no-restricted-imports": [
           "error",
@@ -548,6 +978,10 @@
               {
                 "regex": "^(?:\\.\\./){2,}",
                 "message": "Import another package by its name, not by a path."
+              },
+              {
+                "regex": "^node:",
+                "message": "The console bundles this package, and a browser has no node: modules; use a web API, or take the work through a port."
               }
             ]
           }
@@ -555,11 +989,34 @@
         "eslint/no-restricted-globals": [
           "error",
           {"name": "fetch", "message": "Outbound HTTP goes through the Http port."},
-          {"name": "process", "message": "Receive typed values instead."},
+          {
+            "name": "process",
+            "message": "The console bundles this package, and a browser has no process: take the value through a port."
+          },
           {"name": "Number", "message": "Money is bigint in base units; never a number."},
           {"name": "parseFloat", "message": "Money is bigint in base units; never a number."},
           {"name": "parseInt", "message": "Money is bigint in base units; never a number."},
-          {"name": "Intl", "message": "Format for people in i18n, the one formatter."}
+          {"name": "Intl", "message": "Format for people in i18n, the one formatter."},
+          {
+            "name": "Buffer",
+            "message": "The console bundles this package, and a browser has no Buffer: use Uint8Array, TextEncoder or atob."
+          },
+          {
+            "name": "setImmediate",
+            "message": "The console bundles this package, and a browser has no setImmediate: use queueMicrotask or setTimeout."
+          },
+          {
+            "name": "__dirname",
+            "message": "The console bundles this package, and a browser has no __dirname: take the path through a port."
+          },
+          {
+            "name": "__filename",
+            "message": "The console bundles this package, and a browser has no __filename: take the path through a port."
+          },
+          {
+            "name": "global",
+            "message": "The console bundles this package, and a browser has no global: use globalThis."
+          }
         ],
         "eslint/no-restricted-properties": [
           "error",
@@ -836,6 +1293,1067 @@
             "mock": "Write a fake that implements the port.",
             "doMock": "Write a fake that implements the port."
           }
+        ]
+      }
+    },
+    {
+      "files": ["packages/chain/src/contracts/**"],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {"name": "node:fs", "message": "A pure package does no I/O; take a port instead."},
+              {
+                "name": "node:fs/promises",
+                "message": "A pure package does no I/O; take a port instead."
+              },
+              {"name": "node:net", "message": "A pure package does no I/O; take a port instead."},
+              {"name": "node:sqlite", "message": "A pure package does no I/O; take a port instead."},
+              {
+                "name": "node:crypto",
+                "importNames": ["randomUUID", "randomBytes", "randomInt", "getRandomValues"],
+                "message": "Read time and randomness through the Clock and Random ports."
+              },
+              {"name": "node:vm", "message": "No node:vm outside the plugin sandbox."},
+              {
+                "name": "node:child_process",
+                "message": "Run child processes through execa with an argument array."
+              },
+              {
+                "name": "execa",
+                "importNames": ["execaCommand", "execaCommandSync", "$"],
+                "message": "Pass an argument array; no command strings."
+              },
+              {"name": "node:https", "message": "Outbound HTTP goes through the Http port."},
+              {"name": "undici", "message": "Outbound HTTP goes through the Http port."},
+              {"name": "node:http", "message": "Outbound HTTP goes through the Http port."},
+              {
+                "name": "node:os",
+                "importNames": ["platform", "type"],
+                "message": "Only the platform package branches on the OS."
+              },
+              {"name": "tslog", "message": "Log through the Logger port."}
+            ],
+            "patterns": [
+              {
+                "regex": "^(?:@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser|@binference\\/pdf)(?:/|$)",
+                "message": "See the chain row of config/package-graph.json for what it may import."
+              },
+              {
+                "group": [
+                  "@anthropic-ai/sdk",
+                  "@anthropic-ai/sdk/*",
+                  "@base-ui/react",
+                  "@base-ui/react/*",
+                  "@fontsource-variable/hanken-grotesk",
+                  "@fontsource-variable/hanken-grotesk/*",
+                  "@hpke/chacha20poly1305",
+                  "@hpke/chacha20poly1305/*",
+                  "@hpke/core",
+                  "@hpke/core/*",
+                  "@modelcontextprotocol/client",
+                  "@modelcontextprotocol/client/*",
+                  "@modelcontextprotocol/server",
+                  "@modelcontextprotocol/server/*",
+                  "@napi-rs/canvas",
+                  "@napi-rs/canvas/*",
+                  "@napi-rs/keyring",
+                  "@napi-rs/keyring/*",
+                  "@noble/curves",
+                  "@noble/curves/*",
+                  "@playwright/test",
+                  "@playwright/test/*",
+                  "@privy-io/node",
+                  "@privy-io/node/*",
+                  "@solana/kit",
+                  "@solana/kit/*",
+                  "@tailwindcss/vite",
+                  "@tailwindcss/vite/*",
+                  "@tanstack/react-query",
+                  "@tanstack/react-query/*",
+                  "@tanstack/react-router",
+                  "@tanstack/react-router/*",
+                  "@testing-library/dom",
+                  "@testing-library/dom/*",
+                  "@testing-library/react",
+                  "@testing-library/react/*",
+                  "@vitejs/plugin-react",
+                  "@vitejs/plugin-react/*",
+                  "class-variance-authority",
+                  "class-variance-authority/*",
+                  "cn",
+                  "cn/*",
+                  "execa",
+                  "execa/*",
+                  "fake-indexeddb",
+                  "fake-indexeddb/*",
+                  "grammy",
+                  "grammy/*",
+                  "intl-messageformat",
+                  "intl-messageformat/*",
+                  "jsdom",
+                  "jsdom/*",
+                  "kysely",
+                  "kysely/*",
+                  "lucide-react",
+                  "lucide-react/*",
+                  "openai",
+                  "openai/*",
+                  "partial-json",
+                  "partial-json/*",
+                  "pdfjs-dist",
+                  "pdfjs-dist/*",
+                  "pg",
+                  "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
+                  "react",
+                  "react/*",
+                  "react-dom",
+                  "react-dom/*",
+                  "string-width",
+                  "string-width/*",
+                  "tailwindcss",
+                  "tailwindcss/*",
+                  "undici",
+                  "undici/*",
+                  "viem",
+                  "viem/*",
+                  "vite",
+                  "vite/*",
+                  "which-command",
+                  "which-command/*",
+                  "ws",
+                  "ws/*",
+                  "yaml",
+                  "yaml/*"
+                ],
+                "message": "See the chain row of config/package-graph.json for what it may import."
+              },
+              {
+                "regex": "^@binference/[^/]+/src/",
+                "message": "Import a package through its exports."
+              },
+              {
+                "regex": "^(?:\\.\\./){2,}",
+                "message": "Import another package by its name, not by a path."
+              }
+            ]
+          }
+        ],
+        "eslint/no-restricted-globals": [
+          "error",
+          {"name": "fetch", "message": "Outbound HTTP goes through the Http port."},
+          {"name": "process", "message": "Receive typed values instead."},
+          {"name": "Number", "message": "Money is bigint in base units; never a number."},
+          {"name": "parseFloat", "message": "Money is bigint in base units; never a number."},
+          {"name": "parseInt", "message": "Money is bigint in base units; never a number."},
+          {"name": "Intl", "message": "Format for people in i18n, the one formatter."}
+        ],
+        "eslint/no-restricted-properties": [
+          "error",
+          {"object": "process", "property": "argv", "message": "Only the CLI reads arguments."},
+          {
+            "object": "process",
+            "property": "platform",
+            "message": "Only platform branches on the OS."
+          },
+          {
+            "object": "Date",
+            "property": "now",
+            "message": "Read time and randomness through the Clock and Random ports."
+          },
+          {
+            "object": "Math",
+            "property": "random",
+            "message": "Read time and randomness through the Clock and Random ports."
+          },
+          {
+            "object": "crypto",
+            "property": "randomUUID",
+            "message": "Read time and randomness through the Clock and Random ports."
+          },
+          {
+            "object": "crypto",
+            "property": "getRandomValues",
+            "message": "Read time and randomness through the Clock and Random ports."
+          },
+          {
+            "object": "performance",
+            "property": "now",
+            "message": "Read time and randomness through the Clock and Random ports."
+          },
+          {
+            "object": "Number",
+            "property": "parseFloat",
+            "message": "Money is bigint in base units; never a number."
+          },
+          {
+            "object": "Number",
+            "property": "parseInt",
+            "message": "Money is bigint in base units; never a number."
+          },
+          {"property": "toFixed", "message": "Format for people in i18n, the one formatter."},
+          {"property": "toLocaleString", "message": "Format for people in i18n, the one formatter."}
+        ]
+      }
+    },
+    {
+      "files": ["packages/chain/src/contracts/**/*.test.ts"],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {"name": "node:fs", "message": "A pure package does no I/O; take a port instead."},
+              {
+                "name": "node:fs/promises",
+                "message": "A pure package does no I/O; take a port instead."
+              },
+              {"name": "node:net", "message": "A pure package does no I/O; take a port instead."},
+              {"name": "node:sqlite", "message": "A pure package does no I/O; take a port instead."},
+              {
+                "name": "node:crypto",
+                "importNames": ["randomUUID", "randomBytes", "randomInt", "getRandomValues"],
+                "message": "Read time and randomness through the Clock and Random ports."
+              },
+              {"name": "node:vm", "message": "No node:vm outside the plugin sandbox."},
+              {
+                "name": "node:child_process",
+                "message": "Run child processes through execa with an argument array."
+              },
+              {
+                "name": "execa",
+                "importNames": ["execaCommand", "execaCommandSync", "$"],
+                "message": "Pass an argument array; no command strings."
+              },
+              {"name": "node:https", "message": "Outbound HTTP goes through the Http port."},
+              {"name": "undici", "message": "Outbound HTTP goes through the Http port."},
+              {"name": "node:http", "message": "Outbound HTTP goes through the Http port."},
+              {
+                "name": "node:os",
+                "importNames": ["platform", "type"],
+                "message": "Only the platform package branches on the OS."
+              },
+              {"name": "tslog", "message": "Log through the Logger port."}
+            ],
+            "patterns": [
+              {
+                "regex": "^(?:@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser|@binference\\/pdf)(?:/|$)",
+                "message": "See the chain row of config/package-graph.json for what it may import."
+              },
+              {
+                "group": [
+                  "@anthropic-ai/sdk",
+                  "@anthropic-ai/sdk/*",
+                  "@base-ui/react",
+                  "@base-ui/react/*",
+                  "@fontsource-variable/hanken-grotesk",
+                  "@fontsource-variable/hanken-grotesk/*",
+                  "@hpke/chacha20poly1305",
+                  "@hpke/chacha20poly1305/*",
+                  "@hpke/core",
+                  "@hpke/core/*",
+                  "@modelcontextprotocol/client",
+                  "@modelcontextprotocol/client/*",
+                  "@modelcontextprotocol/server",
+                  "@modelcontextprotocol/server/*",
+                  "@napi-rs/canvas",
+                  "@napi-rs/canvas/*",
+                  "@napi-rs/keyring",
+                  "@napi-rs/keyring/*",
+                  "@noble/curves",
+                  "@noble/curves/*",
+                  "@playwright/test",
+                  "@playwright/test/*",
+                  "@privy-io/node",
+                  "@privy-io/node/*",
+                  "@solana/kit",
+                  "@solana/kit/*",
+                  "@tailwindcss/vite",
+                  "@tailwindcss/vite/*",
+                  "@tanstack/react-query",
+                  "@tanstack/react-query/*",
+                  "@tanstack/react-router",
+                  "@tanstack/react-router/*",
+                  "@testing-library/dom",
+                  "@testing-library/dom/*",
+                  "@testing-library/react",
+                  "@testing-library/react/*",
+                  "@vitejs/plugin-react",
+                  "@vitejs/plugin-react/*",
+                  "class-variance-authority",
+                  "class-variance-authority/*",
+                  "cn",
+                  "cn/*",
+                  "execa",
+                  "execa/*",
+                  "fake-indexeddb",
+                  "fake-indexeddb/*",
+                  "grammy",
+                  "grammy/*",
+                  "intl-messageformat",
+                  "intl-messageformat/*",
+                  "jsdom",
+                  "jsdom/*",
+                  "kysely",
+                  "kysely/*",
+                  "lucide-react",
+                  "lucide-react/*",
+                  "openai",
+                  "openai/*",
+                  "partial-json",
+                  "partial-json/*",
+                  "pdfjs-dist",
+                  "pdfjs-dist/*",
+                  "pg",
+                  "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
+                  "react",
+                  "react/*",
+                  "react-dom",
+                  "react-dom/*",
+                  "string-width",
+                  "string-width/*",
+                  "tailwindcss",
+                  "tailwindcss/*",
+                  "undici",
+                  "undici/*",
+                  "viem",
+                  "viem/*",
+                  "vite",
+                  "vite/*",
+                  "which-command",
+                  "which-command/*",
+                  "ws",
+                  "ws/*",
+                  "yaml",
+                  "yaml/*"
+                ],
+                "message": "See the chain row of config/package-graph.json for what it may import."
+              },
+              {
+                "regex": "^@binference/[^/]+/src/",
+                "message": "Import a package through its exports."
+              },
+              {
+                "regex": "^(?:\\.\\./){2,}",
+                "message": "Import another package by its name, not by a path."
+              }
+            ]
+          }
+        ],
+        "eslint/no-restricted-globals": [
+          "error",
+          {"name": "fetch", "message": "Outbound HTTP goes through the Http port."},
+          {"name": "process", "message": "Receive typed values instead."},
+          {"name": "Number", "message": "Money is bigint in base units; never a number."},
+          {"name": "parseFloat", "message": "Money is bigint in base units; never a number."},
+          {"name": "parseInt", "message": "Money is bigint in base units; never a number."},
+          {"name": "Intl", "message": "Format for people in i18n, the one formatter."},
+          {
+            "name": "setTimeout",
+            "message": "Unit tests use a fake Clock: no real timers, sleeps or polling."
+          },
+          {
+            "name": "setInterval",
+            "message": "Unit tests use a fake Clock: no real timers, sleeps or polling."
+          }
+        ],
+        "eslint/no-restricted-properties": [
+          "error",
+          {"object": "process", "property": "argv", "message": "Only the CLI reads arguments."},
+          {
+            "object": "process",
+            "property": "platform",
+            "message": "Only platform branches on the OS."
+          },
+          {
+            "object": "Date",
+            "property": "now",
+            "message": "Read time and randomness through the Clock and Random ports."
+          },
+          {
+            "object": "Math",
+            "property": "random",
+            "message": "Read time and randomness through the Clock and Random ports."
+          },
+          {
+            "object": "crypto",
+            "property": "randomUUID",
+            "message": "Read time and randomness through the Clock and Random ports."
+          },
+          {
+            "object": "crypto",
+            "property": "getRandomValues",
+            "message": "Read time and randomness through the Clock and Random ports."
+          },
+          {
+            "object": "performance",
+            "property": "now",
+            "message": "Read time and randomness through the Clock and Random ports."
+          },
+          {
+            "object": "Number",
+            "property": "parseFloat",
+            "message": "Money is bigint in base units; never a number."
+          },
+          {
+            "object": "Number",
+            "property": "parseInt",
+            "message": "Money is bigint in base units; never a number."
+          },
+          {"property": "toFixed", "message": "Format for people in i18n, the one formatter."},
+          {"property": "toLocaleString", "message": "Format for people in i18n, the one formatter."},
+          {
+            "object": "expect",
+            "property": "poll",
+            "message": "Unit tests use a fake Clock: no real timers, sleeps or polling."
+          }
+        ],
+        "vitest/no-restricted-vi-methods": [
+          "error",
+          {
+            "useRealTimers": "Unit tests use a fake Clock: no real timers, sleeps or polling.",
+            "waitFor": "Unit tests use a fake Clock: no real timers, sleeps or polling.",
+            "waitUntil": "Unit tests use a fake Clock: no real timers, sleeps or polling.",
+            "mock": "Write a fake that implements the port.",
+            "doMock": "Write a fake that implements the port."
+          }
+        ]
+      }
+    },
+    {
+      "files": ["packages/chain/src/fakes/**"],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {"name": "node:fs", "message": "A pure package does no I/O; take a port instead."},
+              {
+                "name": "node:fs/promises",
+                "message": "A pure package does no I/O; take a port instead."
+              },
+              {"name": "node:net", "message": "A pure package does no I/O; take a port instead."},
+              {"name": "node:sqlite", "message": "A pure package does no I/O; take a port instead."},
+              {
+                "name": "node:crypto",
+                "importNames": ["randomUUID", "randomBytes", "randomInt", "getRandomValues"],
+                "message": "Read time and randomness through the Clock and Random ports."
+              },
+              {"name": "node:vm", "message": "No node:vm outside the plugin sandbox."},
+              {
+                "name": "node:child_process",
+                "message": "Run child processes through execa with an argument array."
+              },
+              {
+                "name": "execa",
+                "importNames": ["execaCommand", "execaCommandSync", "$"],
+                "message": "Pass an argument array; no command strings."
+              },
+              {"name": "node:https", "message": "Outbound HTTP goes through the Http port."},
+              {"name": "undici", "message": "Outbound HTTP goes through the Http port."},
+              {"name": "node:http", "message": "Outbound HTTP goes through the Http port."},
+              {
+                "name": "node:os",
+                "importNames": ["platform", "type"],
+                "message": "Only the platform package branches on the OS."
+              },
+              {"name": "tslog", "message": "Log through the Logger port."}
+            ],
+            "patterns": [
+              {
+                "regex": "^(?:@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser|@binference\\/pdf)(?:/|$)",
+                "message": "See the chain row of config/package-graph.json for what it may import."
+              },
+              {
+                "group": [
+                  "@anthropic-ai/sdk",
+                  "@anthropic-ai/sdk/*",
+                  "@base-ui/react",
+                  "@base-ui/react/*",
+                  "@fontsource-variable/hanken-grotesk",
+                  "@fontsource-variable/hanken-grotesk/*",
+                  "@hpke/chacha20poly1305",
+                  "@hpke/chacha20poly1305/*",
+                  "@hpke/core",
+                  "@hpke/core/*",
+                  "@modelcontextprotocol/client",
+                  "@modelcontextprotocol/client/*",
+                  "@modelcontextprotocol/server",
+                  "@modelcontextprotocol/server/*",
+                  "@napi-rs/canvas",
+                  "@napi-rs/canvas/*",
+                  "@napi-rs/keyring",
+                  "@napi-rs/keyring/*",
+                  "@noble/curves",
+                  "@noble/curves/*",
+                  "@playwright/test",
+                  "@playwright/test/*",
+                  "@privy-io/node",
+                  "@privy-io/node/*",
+                  "@solana/kit",
+                  "@solana/kit/*",
+                  "@tailwindcss/vite",
+                  "@tailwindcss/vite/*",
+                  "@tanstack/react-query",
+                  "@tanstack/react-query/*",
+                  "@tanstack/react-router",
+                  "@tanstack/react-router/*",
+                  "@testing-library/dom",
+                  "@testing-library/dom/*",
+                  "@testing-library/react",
+                  "@testing-library/react/*",
+                  "@vitejs/plugin-react",
+                  "@vitejs/plugin-react/*",
+                  "class-variance-authority",
+                  "class-variance-authority/*",
+                  "cn",
+                  "cn/*",
+                  "execa",
+                  "execa/*",
+                  "fake-indexeddb",
+                  "fake-indexeddb/*",
+                  "grammy",
+                  "grammy/*",
+                  "intl-messageformat",
+                  "intl-messageformat/*",
+                  "jsdom",
+                  "jsdom/*",
+                  "kysely",
+                  "kysely/*",
+                  "lucide-react",
+                  "lucide-react/*",
+                  "openai",
+                  "openai/*",
+                  "partial-json",
+                  "partial-json/*",
+                  "pdfjs-dist",
+                  "pdfjs-dist/*",
+                  "pg",
+                  "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
+                  "react",
+                  "react/*",
+                  "react-dom",
+                  "react-dom/*",
+                  "string-width",
+                  "string-width/*",
+                  "tailwindcss",
+                  "tailwindcss/*",
+                  "undici",
+                  "undici/*",
+                  "viem",
+                  "viem/*",
+                  "vite",
+                  "vite/*",
+                  "which-command",
+                  "which-command/*",
+                  "ws",
+                  "ws/*",
+                  "yaml",
+                  "yaml/*"
+                ],
+                "message": "See the chain row of config/package-graph.json for what it may import."
+              },
+              {
+                "regex": "^@binference/[^/]+/src/",
+                "message": "Import a package through its exports."
+              },
+              {
+                "regex": "^(?:\\.\\./){2,}",
+                "message": "Import another package by its name, not by a path."
+              }
+            ]
+          }
+        ],
+        "eslint/no-restricted-globals": [
+          "error",
+          {"name": "fetch", "message": "Outbound HTTP goes through the Http port."},
+          {"name": "process", "message": "Receive typed values instead."},
+          {"name": "Number", "message": "Money is bigint in base units; never a number."},
+          {"name": "parseFloat", "message": "Money is bigint in base units; never a number."},
+          {"name": "parseInt", "message": "Money is bigint in base units; never a number."},
+          {"name": "Intl", "message": "Format for people in i18n, the one formatter."}
+        ],
+        "eslint/no-restricted-properties": [
+          "error",
+          {"object": "process", "property": "argv", "message": "Only the CLI reads arguments."},
+          {
+            "object": "process",
+            "property": "platform",
+            "message": "Only platform branches on the OS."
+          },
+          {
+            "object": "Date",
+            "property": "now",
+            "message": "Read time and randomness through the Clock and Random ports."
+          },
+          {
+            "object": "Math",
+            "property": "random",
+            "message": "Read time and randomness through the Clock and Random ports."
+          },
+          {
+            "object": "crypto",
+            "property": "randomUUID",
+            "message": "Read time and randomness through the Clock and Random ports."
+          },
+          {
+            "object": "crypto",
+            "property": "getRandomValues",
+            "message": "Read time and randomness through the Clock and Random ports."
+          },
+          {
+            "object": "performance",
+            "property": "now",
+            "message": "Read time and randomness through the Clock and Random ports."
+          },
+          {
+            "object": "Number",
+            "property": "parseFloat",
+            "message": "Money is bigint in base units; never a number."
+          },
+          {
+            "object": "Number",
+            "property": "parseInt",
+            "message": "Money is bigint in base units; never a number."
+          },
+          {"property": "toFixed", "message": "Format for people in i18n, the one formatter."},
+          {"property": "toLocaleString", "message": "Format for people in i18n, the one formatter."}
+        ]
+      }
+    },
+    {
+      "files": ["packages/chain/src/fakes/**/*.test.ts"],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {"name": "node:fs", "message": "A pure package does no I/O; take a port instead."},
+              {
+                "name": "node:fs/promises",
+                "message": "A pure package does no I/O; take a port instead."
+              },
+              {"name": "node:net", "message": "A pure package does no I/O; take a port instead."},
+              {"name": "node:sqlite", "message": "A pure package does no I/O; take a port instead."},
+              {
+                "name": "node:crypto",
+                "importNames": ["randomUUID", "randomBytes", "randomInt", "getRandomValues"],
+                "message": "Read time and randomness through the Clock and Random ports."
+              },
+              {"name": "node:vm", "message": "No node:vm outside the plugin sandbox."},
+              {
+                "name": "node:child_process",
+                "message": "Run child processes through execa with an argument array."
+              },
+              {
+                "name": "execa",
+                "importNames": ["execaCommand", "execaCommandSync", "$"],
+                "message": "Pass an argument array; no command strings."
+              },
+              {"name": "node:https", "message": "Outbound HTTP goes through the Http port."},
+              {"name": "undici", "message": "Outbound HTTP goes through the Http port."},
+              {"name": "node:http", "message": "Outbound HTTP goes through the Http port."},
+              {
+                "name": "node:os",
+                "importNames": ["platform", "type"],
+                "message": "Only the platform package branches on the OS."
+              },
+              {"name": "tslog", "message": "Log through the Logger port."}
+            ],
+            "patterns": [
+              {
+                "regex": "^(?:@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser|@binference\\/pdf)(?:/|$)",
+                "message": "See the chain row of config/package-graph.json for what it may import."
+              },
+              {
+                "group": [
+                  "@anthropic-ai/sdk",
+                  "@anthropic-ai/sdk/*",
+                  "@base-ui/react",
+                  "@base-ui/react/*",
+                  "@fontsource-variable/hanken-grotesk",
+                  "@fontsource-variable/hanken-grotesk/*",
+                  "@hpke/chacha20poly1305",
+                  "@hpke/chacha20poly1305/*",
+                  "@hpke/core",
+                  "@hpke/core/*",
+                  "@modelcontextprotocol/client",
+                  "@modelcontextprotocol/client/*",
+                  "@modelcontextprotocol/server",
+                  "@modelcontextprotocol/server/*",
+                  "@napi-rs/canvas",
+                  "@napi-rs/canvas/*",
+                  "@napi-rs/keyring",
+                  "@napi-rs/keyring/*",
+                  "@noble/curves",
+                  "@noble/curves/*",
+                  "@playwright/test",
+                  "@playwright/test/*",
+                  "@privy-io/node",
+                  "@privy-io/node/*",
+                  "@solana/kit",
+                  "@solana/kit/*",
+                  "@tailwindcss/vite",
+                  "@tailwindcss/vite/*",
+                  "@tanstack/react-query",
+                  "@tanstack/react-query/*",
+                  "@tanstack/react-router",
+                  "@tanstack/react-router/*",
+                  "@testing-library/dom",
+                  "@testing-library/dom/*",
+                  "@testing-library/react",
+                  "@testing-library/react/*",
+                  "@vitejs/plugin-react",
+                  "@vitejs/plugin-react/*",
+                  "class-variance-authority",
+                  "class-variance-authority/*",
+                  "cn",
+                  "cn/*",
+                  "execa",
+                  "execa/*",
+                  "fake-indexeddb",
+                  "fake-indexeddb/*",
+                  "grammy",
+                  "grammy/*",
+                  "intl-messageformat",
+                  "intl-messageformat/*",
+                  "jsdom",
+                  "jsdom/*",
+                  "kysely",
+                  "kysely/*",
+                  "lucide-react",
+                  "lucide-react/*",
+                  "openai",
+                  "openai/*",
+                  "partial-json",
+                  "partial-json/*",
+                  "pdfjs-dist",
+                  "pdfjs-dist/*",
+                  "pg",
+                  "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
+                  "react",
+                  "react/*",
+                  "react-dom",
+                  "react-dom/*",
+                  "string-width",
+                  "string-width/*",
+                  "tailwindcss",
+                  "tailwindcss/*",
+                  "undici",
+                  "undici/*",
+                  "viem",
+                  "viem/*",
+                  "vite",
+                  "vite/*",
+                  "which-command",
+                  "which-command/*",
+                  "ws",
+                  "ws/*",
+                  "yaml",
+                  "yaml/*"
+                ],
+                "message": "See the chain row of config/package-graph.json for what it may import."
+              },
+              {
+                "regex": "^@binference/[^/]+/src/",
+                "message": "Import a package through its exports."
+              },
+              {
+                "regex": "^(?:\\.\\./){2,}",
+                "message": "Import another package by its name, not by a path."
+              }
+            ]
+          }
+        ],
+        "eslint/no-restricted-globals": [
+          "error",
+          {"name": "fetch", "message": "Outbound HTTP goes through the Http port."},
+          {"name": "process", "message": "Receive typed values instead."},
+          {"name": "Number", "message": "Money is bigint in base units; never a number."},
+          {"name": "parseFloat", "message": "Money is bigint in base units; never a number."},
+          {"name": "parseInt", "message": "Money is bigint in base units; never a number."},
+          {"name": "Intl", "message": "Format for people in i18n, the one formatter."},
+          {
+            "name": "setTimeout",
+            "message": "Unit tests use a fake Clock: no real timers, sleeps or polling."
+          },
+          {
+            "name": "setInterval",
+            "message": "Unit tests use a fake Clock: no real timers, sleeps or polling."
+          }
+        ],
+        "eslint/no-restricted-properties": [
+          "error",
+          {"object": "process", "property": "argv", "message": "Only the CLI reads arguments."},
+          {
+            "object": "process",
+            "property": "platform",
+            "message": "Only platform branches on the OS."
+          },
+          {
+            "object": "Date",
+            "property": "now",
+            "message": "Read time and randomness through the Clock and Random ports."
+          },
+          {
+            "object": "Math",
+            "property": "random",
+            "message": "Read time and randomness through the Clock and Random ports."
+          },
+          {
+            "object": "crypto",
+            "property": "randomUUID",
+            "message": "Read time and randomness through the Clock and Random ports."
+          },
+          {
+            "object": "crypto",
+            "property": "getRandomValues",
+            "message": "Read time and randomness through the Clock and Random ports."
+          },
+          {
+            "object": "performance",
+            "property": "now",
+            "message": "Read time and randomness through the Clock and Random ports."
+          },
+          {
+            "object": "Number",
+            "property": "parseFloat",
+            "message": "Money is bigint in base units; never a number."
+          },
+          {
+            "object": "Number",
+            "property": "parseInt",
+            "message": "Money is bigint in base units; never a number."
+          },
+          {"property": "toFixed", "message": "Format for people in i18n, the one formatter."},
+          {"property": "toLocaleString", "message": "Format for people in i18n, the one formatter."},
+          {
+            "object": "expect",
+            "property": "poll",
+            "message": "Unit tests use a fake Clock: no real timers, sleeps or polling."
+          }
+        ],
+        "vitest/no-restricted-vi-methods": [
+          "error",
+          {
+            "useRealTimers": "Unit tests use a fake Clock: no real timers, sleeps or polling.",
+            "waitFor": "Unit tests use a fake Clock: no real timers, sleeps or polling.",
+            "waitUntil": "Unit tests use a fake Clock: no real timers, sleeps or polling.",
+            "mock": "Write a fake that implements the port.",
+            "doMock": "Write a fake that implements the port."
+          }
+        ]
+      }
+    },
+    {
+      "files": ["packages/chain/src/signing/authorization-payload.ts"],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {"name": "node:fs", "message": "A pure package does no I/O; take a port instead."},
+              {
+                "name": "node:fs/promises",
+                "message": "A pure package does no I/O; take a port instead."
+              },
+              {"name": "node:net", "message": "A pure package does no I/O; take a port instead."},
+              {"name": "node:sqlite", "message": "A pure package does no I/O; take a port instead."},
+              {
+                "name": "node:crypto",
+                "importNames": ["randomUUID", "randomBytes", "randomInt", "getRandomValues"],
+                "message": "Read time and randomness through the Clock and Random ports."
+              },
+              {"name": "node:vm", "message": "No node:vm outside the plugin sandbox."},
+              {
+                "name": "node:child_process",
+                "message": "Run child processes through execa with an argument array."
+              },
+              {
+                "name": "execa",
+                "importNames": ["execaCommand", "execaCommandSync", "$"],
+                "message": "Pass an argument array; no command strings."
+              },
+              {"name": "node:https", "message": "Outbound HTTP goes through the Http port."},
+              {"name": "undici", "message": "Outbound HTTP goes through the Http port."},
+              {"name": "node:http", "message": "Outbound HTTP goes through the Http port."},
+              {
+                "name": "node:os",
+                "importNames": ["platform", "type"],
+                "message": "Only the platform package branches on the OS."
+              },
+              {"name": "tslog", "message": "Log through the Logger port."}
+            ],
+            "patterns": [
+              {
+                "regex": "^(?:@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/protocol|@binference\\/i18n|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/client|@binference\\/runtime|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/chart|@binference\\/browser|@binference\\/pdf)(?:/|$)",
+                "message": "See the chain row of config/package-graph.json for what it may import."
+              },
+              {
+                "group": [
+                  "@anthropic-ai/sdk",
+                  "@anthropic-ai/sdk/*",
+                  "@base-ui/react",
+                  "@base-ui/react/*",
+                  "@fontsource-variable/hanken-grotesk",
+                  "@fontsource-variable/hanken-grotesk/*",
+                  "@hpke/chacha20poly1305",
+                  "@hpke/chacha20poly1305/*",
+                  "@hpke/core",
+                  "@hpke/core/*",
+                  "@modelcontextprotocol/client",
+                  "@modelcontextprotocol/client/*",
+                  "@modelcontextprotocol/server",
+                  "@modelcontextprotocol/server/*",
+                  "@napi-rs/canvas",
+                  "@napi-rs/canvas/*",
+                  "@napi-rs/keyring",
+                  "@napi-rs/keyring/*",
+                  "@noble/curves",
+                  "@noble/curves/*",
+                  "@playwright/test",
+                  "@playwright/test/*",
+                  "@privy-io/node",
+                  "@privy-io/node/*",
+                  "@solana/kit",
+                  "@solana/kit/*",
+                  "@tailwindcss/vite",
+                  "@tailwindcss/vite/*",
+                  "@tanstack/react-query",
+                  "@tanstack/react-query/*",
+                  "@tanstack/react-router",
+                  "@tanstack/react-router/*",
+                  "@testing-library/dom",
+                  "@testing-library/dom/*",
+                  "@testing-library/react",
+                  "@testing-library/react/*",
+                  "@vitejs/plugin-react",
+                  "@vitejs/plugin-react/*",
+                  "class-variance-authority",
+                  "class-variance-authority/*",
+                  "cn",
+                  "cn/*",
+                  "execa",
+                  "execa/*",
+                  "fake-indexeddb",
+                  "fake-indexeddb/*",
+                  "grammy",
+                  "grammy/*",
+                  "intl-messageformat",
+                  "intl-messageformat/*",
+                  "jsdom",
+                  "jsdom/*",
+                  "kysely",
+                  "kysely/*",
+                  "lucide-react",
+                  "lucide-react/*",
+                  "openai",
+                  "openai/*",
+                  "partial-json",
+                  "partial-json/*",
+                  "pdfjs-dist",
+                  "pdfjs-dist/*",
+                  "pg",
+                  "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
+                  "react",
+                  "react/*",
+                  "react-dom",
+                  "react-dom/*",
+                  "string-width",
+                  "string-width/*",
+                  "tailwindcss",
+                  "tailwindcss/*",
+                  "undici",
+                  "undici/*",
+                  "viem",
+                  "viem/*",
+                  "vite",
+                  "vite/*",
+                  "which-command",
+                  "which-command/*",
+                  "ws",
+                  "ws/*",
+                  "yaml",
+                  "yaml/*"
+                ],
+                "message": "See the chain row of config/package-graph.json for what it may import."
+              },
+              {
+                "regex": "^@binference/[^/]+/src/",
+                "message": "Import a package through its exports."
+              },
+              {
+                "regex": "^(?:\\.\\./){2,}",
+                "message": "Import another package by its name, not by a path."
+              }
+            ]
+          }
+        ],
+        "eslint/no-restricted-globals": [
+          "error",
+          {"name": "fetch", "message": "Outbound HTTP goes through the Http port."},
+          {"name": "process", "message": "Receive typed values instead."},
+          {"name": "Number", "message": "Money is bigint in base units; never a number."},
+          {"name": "parseFloat", "message": "Money is bigint in base units; never a number."},
+          {"name": "parseInt", "message": "Money is bigint in base units; never a number."},
+          {"name": "Intl", "message": "Format for people in i18n, the one formatter."}
+        ],
+        "eslint/no-restricted-properties": [
+          "error",
+          {"object": "process", "property": "argv", "message": "Only the CLI reads arguments."},
+          {
+            "object": "process",
+            "property": "platform",
+            "message": "Only platform branches on the OS."
+          },
+          {
+            "object": "Date",
+            "property": "now",
+            "message": "Read time and randomness through the Clock and Random ports."
+          },
+          {
+            "object": "Math",
+            "property": "random",
+            "message": "Read time and randomness through the Clock and Random ports."
+          },
+          {
+            "object": "crypto",
+            "property": "randomUUID",
+            "message": "Read time and randomness through the Clock and Random ports."
+          },
+          {
+            "object": "crypto",
+            "property": "getRandomValues",
+            "message": "Read time and randomness through the Clock and Random ports."
+          },
+          {
+            "object": "performance",
+            "property": "now",
+            "message": "Read time and randomness through the Clock and Random ports."
+          },
+          {
+            "object": "Number",
+            "property": "parseFloat",
+            "message": "Money is bigint in base units; never a number."
+          },
+          {
+            "object": "Number",
+            "property": "parseInt",
+            "message": "Money is bigint in base units; never a number."
+          },
+          {"property": "toFixed", "message": "Format for people in i18n, the one formatter."},
+          {"property": "toLocaleString", "message": "Format for people in i18n, the one formatter."}
         ]
       }
     },
@@ -2939,6 +4457,10 @@
               {
                 "regex": "^(?:\\.\\./){2,}",
                 "message": "Import another package by its name, not by a path."
+              },
+              {
+                "regex": "^node:",
+                "message": "The console bundles this package, and a browser has no node: modules; use a web API, or take the work through a port."
               }
             ]
           }
@@ -2946,11 +4468,34 @@
         "eslint/no-restricted-globals": [
           "error",
           {"name": "fetch", "message": "Outbound HTTP goes through the Http port."},
-          {"name": "process", "message": "Receive typed values instead."},
+          {
+            "name": "process",
+            "message": "The console bundles this package, and a browser has no process: take the value through a port."
+          },
           {"name": "Number", "message": "Money is bigint in base units; never a number."},
           {"name": "parseFloat", "message": "Money is bigint in base units; never a number."},
           {"name": "parseInt", "message": "Money is bigint in base units; never a number."},
-          {"name": "Intl", "message": "Format for people in i18n, the one formatter."}
+          {"name": "Intl", "message": "Format for people in i18n, the one formatter."},
+          {
+            "name": "Buffer",
+            "message": "The console bundles this package, and a browser has no Buffer: use Uint8Array, TextEncoder or atob."
+          },
+          {
+            "name": "setImmediate",
+            "message": "The console bundles this package, and a browser has no setImmediate: use queueMicrotask or setTimeout."
+          },
+          {
+            "name": "__dirname",
+            "message": "The console bundles this package, and a browser has no __dirname: take the path through a port."
+          },
+          {
+            "name": "__filename",
+            "message": "The console bundles this package, and a browser has no __filename: take the path through a port."
+          },
+          {
+            "name": "global",
+            "message": "The console bundles this package, and a browser has no global: use globalThis."
+          }
         ],
         "eslint/no-restricted-properties": [
           "error",
@@ -3370,6 +4915,10 @@
               {
                 "regex": "^(?:\\.\\./){2,}",
                 "message": "Import another package by its name, not by a path."
+              },
+              {
+                "regex": "^node:",
+                "message": "The console bundles this package, and a browser has no node: modules; use a web API, or take the work through a port."
               }
             ]
           }
@@ -3377,7 +4926,30 @@
         "eslint/no-restricted-globals": [
           "error",
           {"name": "fetch", "message": "Outbound HTTP goes through the Http port."},
-          {"name": "process", "message": "Receive typed values instead."}
+          {
+            "name": "process",
+            "message": "The console bundles this package, and a browser has no process: take the value through a port."
+          },
+          {
+            "name": "Buffer",
+            "message": "The console bundles this package, and a browser has no Buffer: use Uint8Array, TextEncoder or atob."
+          },
+          {
+            "name": "setImmediate",
+            "message": "The console bundles this package, and a browser has no setImmediate: use queueMicrotask or setTimeout."
+          },
+          {
+            "name": "__dirname",
+            "message": "The console bundles this package, and a browser has no __dirname: take the path through a port."
+          },
+          {
+            "name": "__filename",
+            "message": "The console bundles this package, and a browser has no __filename: take the path through a port."
+          },
+          {
+            "name": "global",
+            "message": "The console bundles this package, and a browser has no global: use globalThis."
+          }
         ],
         "eslint/no-restricted-properties": [
           "error",
@@ -6929,6 +8501,10 @@
               {
                 "regex": "^(?:\\.\\./){2,}",
                 "message": "Import another package by its name, not by a path."
+              },
+              {
+                "regex": "^node:",
+                "message": "The console bundles this package, and a browser has no node: modules; use a web API, or take the work through a port."
               }
             ]
           }
@@ -6936,7 +8512,31 @@
         "eslint/no-restricted-globals": [
           "error",
           {"name": "fetch", "message": "Outbound HTTP goes through the Http port."},
-          {"name": "Intl", "message": "Format for people in i18n, the one formatter."}
+          {
+            "name": "process",
+            "message": "The console bundles this package, and a browser has no process: take the value through a port."
+          },
+          {"name": "Intl", "message": "Format for people in i18n, the one formatter."},
+          {
+            "name": "Buffer",
+            "message": "The console bundles this package, and a browser has no Buffer: use Uint8Array, TextEncoder or atob."
+          },
+          {
+            "name": "setImmediate",
+            "message": "The console bundles this package, and a browser has no setImmediate: use queueMicrotask or setTimeout."
+          },
+          {
+            "name": "__dirname",
+            "message": "The console bundles this package, and a browser has no __dirname: take the path through a port."
+          },
+          {
+            "name": "__filename",
+            "message": "The console bundles this package, and a browser has no __filename: take the path through a port."
+          },
+          {
+            "name": "global",
+            "message": "The console bundles this package, and a browser has no global: use globalThis."
+          }
         ],
         "eslint/no-restricted-properties": [
           "error",
@@ -8823,6 +10423,10 @@
               {
                 "regex": "^(?:\\.\\./){2,}",
                 "message": "Import another package by its name, not by a path."
+              },
+              {
+                "regex": "^node:",
+                "message": "The console bundles this package, and a browser has no node: modules; use a web API, or take the work through a port."
               }
             ]
           }
@@ -8830,7 +10434,31 @@
         "eslint/no-restricted-globals": [
           "error",
           {"name": "fetch", "message": "Outbound HTTP goes through the Http port."},
-          {"name": "Intl", "message": "Format for people in i18n, the one formatter."}
+          {
+            "name": "process",
+            "message": "The console bundles this package, and a browser has no process: take the value through a port."
+          },
+          {"name": "Intl", "message": "Format for people in i18n, the one formatter."},
+          {
+            "name": "Buffer",
+            "message": "The console bundles this package, and a browser has no Buffer: use Uint8Array, TextEncoder or atob."
+          },
+          {
+            "name": "setImmediate",
+            "message": "The console bundles this package, and a browser has no setImmediate: use queueMicrotask or setTimeout."
+          },
+          {
+            "name": "__dirname",
+            "message": "The console bundles this package, and a browser has no __dirname: take the path through a port."
+          },
+          {
+            "name": "__filename",
+            "message": "The console bundles this package, and a browser has no __filename: take the path through a port."
+          },
+          {
+            "name": "global",
+            "message": "The console bundles this package, and a browser has no global: use globalThis."
+          }
         ],
         "eslint/no-restricted-properties": [
           "error",
@@ -9248,6 +10876,372 @@
             "waitFor": "Unit tests use a fake Clock: no real timers, sleeps or polling.",
             "waitUntil": "Unit tests use a fake Clock: no real timers, sleeps or polling."
           }
+        ]
+      }
+    },
+    {
+      "files": ["packages/console/precompress-plugin.ts"],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {"name": "node:vm", "message": "No node:vm outside the plugin sandbox."},
+              {
+                "name": "node:child_process",
+                "message": "Run child processes through execa with an argument array."
+              },
+              {
+                "name": "execa",
+                "importNames": ["execaCommand", "execaCommandSync", "$"],
+                "message": "Pass an argument array; no command strings."
+              },
+              {"name": "node:https", "message": "Outbound HTTP goes through the Http port."},
+              {"name": "undici", "message": "Outbound HTTP goes through the Http port."},
+              {"name": "node:http", "message": "Outbound HTTP goes through the Http port."},
+              {"name": "node:fs", "message": "Open files through the platform package."},
+              {"name": "node:fs/promises", "message": "Open files through the platform package."},
+              {
+                "name": "node:os",
+                "importNames": ["platform", "type"],
+                "message": "Only the platform package branches on the OS."
+              },
+              {"name": "tslog", "message": "Log through the Logger port."},
+              {"name": "zod", "message": "Import zod/mini in the browser."}
+            ],
+            "patterns": [
+              {
+                "regex": "^(?:@binference\\/core|@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/runtime|@binference\\/tui|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/browser|@binference\\/pdf)(?:/|$)",
+                "message": "See the console row of config/package-graph.json for what it may import."
+              },
+              {
+                "group": [
+                  "@anthropic-ai/sdk",
+                  "@anthropic-ai/sdk/*",
+                  "@hpke/chacha20poly1305",
+                  "@hpke/chacha20poly1305/*",
+                  "@hpke/core",
+                  "@hpke/core/*",
+                  "@modelcontextprotocol/client",
+                  "@modelcontextprotocol/client/*",
+                  "@modelcontextprotocol/server",
+                  "@modelcontextprotocol/server/*",
+                  "@napi-rs/canvas",
+                  "@napi-rs/canvas/*",
+                  "@napi-rs/keyring",
+                  "@napi-rs/keyring/*",
+                  "@noble/curves",
+                  "@noble/curves/*",
+                  "@privy-io/node",
+                  "@privy-io/node/*",
+                  "@solana/kit",
+                  "@solana/kit/*",
+                  "execa",
+                  "execa/*",
+                  "grammy",
+                  "grammy/*",
+                  "intl-messageformat",
+                  "intl-messageformat/*",
+                  "kysely",
+                  "kysely/*",
+                  "openai",
+                  "openai/*",
+                  "partial-json",
+                  "partial-json/*",
+                  "pdfjs-dist",
+                  "pdfjs-dist/*",
+                  "pg",
+                  "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
+                  "string-width",
+                  "string-width/*",
+                  "undici",
+                  "undici/*",
+                  "viem",
+                  "viem/*",
+                  "which-command",
+                  "which-command/*",
+                  "ws",
+                  "ws/*",
+                  "yaml",
+                  "yaml/*",
+                  "@playwright/test",
+                  "@playwright/test/*"
+                ],
+                "message": "See the console row of config/package-graph.json for what it may import."
+              },
+              {
+                "regex": "^@binference/[^/]+/src/",
+                "message": "Import a package through its exports."
+              },
+              {
+                "regex": "^(?:\\.\\./){2,}",
+                "message": "Import another package by its name, not by a path."
+              }
+            ]
+          }
+        ],
+        "eslint/no-restricted-globals": [
+          "error",
+          {"name": "fetch", "message": "Outbound HTTP goes through the Http port."},
+          {"name": "Intl", "message": "Format for people in i18n, the one formatter."}
+        ],
+        "eslint/no-restricted-properties": [
+          "error",
+          {"object": "process", "property": "argv", "message": "Only the CLI reads arguments."},
+          {
+            "object": "process",
+            "property": "platform",
+            "message": "Only platform branches on the OS."
+          },
+          {"property": "toFixed", "message": "Format for people in i18n, the one formatter."},
+          {"property": "toLocaleString", "message": "Format for people in i18n, the one formatter."},
+          {"property": "message", "message": "Show i18n text chosen by the error code."}
+        ]
+      }
+    },
+    {
+      "files": ["packages/console/vite.config.ts"],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {"name": "node:vm", "message": "No node:vm outside the plugin sandbox."},
+              {
+                "name": "node:child_process",
+                "message": "Run child processes through execa with an argument array."
+              },
+              {
+                "name": "execa",
+                "importNames": ["execaCommand", "execaCommandSync", "$"],
+                "message": "Pass an argument array; no command strings."
+              },
+              {"name": "node:https", "message": "Outbound HTTP goes through the Http port."},
+              {"name": "undici", "message": "Outbound HTTP goes through the Http port."},
+              {"name": "node:http", "message": "Outbound HTTP goes through the Http port."},
+              {"name": "node:fs", "message": "Open files through the platform package."},
+              {"name": "node:fs/promises", "message": "Open files through the platform package."},
+              {
+                "name": "node:os",
+                "importNames": ["platform", "type"],
+                "message": "Only the platform package branches on the OS."
+              },
+              {"name": "tslog", "message": "Log through the Logger port."},
+              {"name": "zod", "message": "Import zod/mini in the browser."}
+            ],
+            "patterns": [
+              {
+                "regex": "^(?:@binference\\/core|@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/runtime|@binference\\/tui|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/browser|@binference\\/pdf)(?:/|$)",
+                "message": "See the console row of config/package-graph.json for what it may import."
+              },
+              {
+                "group": [
+                  "@anthropic-ai/sdk",
+                  "@anthropic-ai/sdk/*",
+                  "@hpke/chacha20poly1305",
+                  "@hpke/chacha20poly1305/*",
+                  "@hpke/core",
+                  "@hpke/core/*",
+                  "@modelcontextprotocol/client",
+                  "@modelcontextprotocol/client/*",
+                  "@modelcontextprotocol/server",
+                  "@modelcontextprotocol/server/*",
+                  "@napi-rs/canvas",
+                  "@napi-rs/canvas/*",
+                  "@napi-rs/keyring",
+                  "@napi-rs/keyring/*",
+                  "@noble/curves",
+                  "@noble/curves/*",
+                  "@privy-io/node",
+                  "@privy-io/node/*",
+                  "@solana/kit",
+                  "@solana/kit/*",
+                  "execa",
+                  "execa/*",
+                  "grammy",
+                  "grammy/*",
+                  "intl-messageformat",
+                  "intl-messageformat/*",
+                  "kysely",
+                  "kysely/*",
+                  "openai",
+                  "openai/*",
+                  "partial-json",
+                  "partial-json/*",
+                  "pdfjs-dist",
+                  "pdfjs-dist/*",
+                  "pg",
+                  "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
+                  "string-width",
+                  "string-width/*",
+                  "undici",
+                  "undici/*",
+                  "viem",
+                  "viem/*",
+                  "which-command",
+                  "which-command/*",
+                  "ws",
+                  "ws/*",
+                  "yaml",
+                  "yaml/*",
+                  "@playwright/test",
+                  "@playwright/test/*"
+                ],
+                "message": "See the console row of config/package-graph.json for what it may import."
+              },
+              {
+                "regex": "^@binference/[^/]+/src/",
+                "message": "Import a package through its exports."
+              },
+              {
+                "regex": "^(?:\\.\\./){2,}",
+                "message": "Import another package by its name, not by a path."
+              }
+            ]
+          }
+        ],
+        "eslint/no-restricted-globals": [
+          "error",
+          {"name": "fetch", "message": "Outbound HTTP goes through the Http port."},
+          {"name": "Intl", "message": "Format for people in i18n, the one formatter."}
+        ],
+        "eslint/no-restricted-properties": [
+          "error",
+          {"object": "process", "property": "argv", "message": "Only the CLI reads arguments."},
+          {
+            "object": "process",
+            "property": "platform",
+            "message": "Only platform branches on the OS."
+          },
+          {"property": "toFixed", "message": "Format for people in i18n, the one formatter."},
+          {"property": "toLocaleString", "message": "Format for people in i18n, the one formatter."},
+          {"property": "message", "message": "Show i18n text chosen by the error code."}
+        ]
+      }
+    },
+    {
+      "files": ["packages/console/vite.push-worker.config.ts"],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {"name": "node:vm", "message": "No node:vm outside the plugin sandbox."},
+              {
+                "name": "node:child_process",
+                "message": "Run child processes through execa with an argument array."
+              },
+              {
+                "name": "execa",
+                "importNames": ["execaCommand", "execaCommandSync", "$"],
+                "message": "Pass an argument array; no command strings."
+              },
+              {"name": "node:https", "message": "Outbound HTTP goes through the Http port."},
+              {"name": "undici", "message": "Outbound HTTP goes through the Http port."},
+              {"name": "node:http", "message": "Outbound HTTP goes through the Http port."},
+              {"name": "node:fs", "message": "Open files through the platform package."},
+              {"name": "node:fs/promises", "message": "Open files through the platform package."},
+              {
+                "name": "node:os",
+                "importNames": ["platform", "type"],
+                "message": "Only the platform package branches on the OS."
+              },
+              {"name": "tslog", "message": "Log through the Logger port."},
+              {"name": "zod", "message": "Import zod/mini in the browser."}
+            ],
+            "patterns": [
+              {
+                "regex": "^(?:@binference\\/core|@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/platform|@binference\\/store|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/runtime|@binference\\/tui|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/browser|@binference\\/pdf)(?:/|$)",
+                "message": "See the console row of config/package-graph.json for what it may import."
+              },
+              {
+                "group": [
+                  "@anthropic-ai/sdk",
+                  "@anthropic-ai/sdk/*",
+                  "@hpke/chacha20poly1305",
+                  "@hpke/chacha20poly1305/*",
+                  "@hpke/core",
+                  "@hpke/core/*",
+                  "@modelcontextprotocol/client",
+                  "@modelcontextprotocol/client/*",
+                  "@modelcontextprotocol/server",
+                  "@modelcontextprotocol/server/*",
+                  "@napi-rs/canvas",
+                  "@napi-rs/canvas/*",
+                  "@napi-rs/keyring",
+                  "@napi-rs/keyring/*",
+                  "@noble/curves",
+                  "@noble/curves/*",
+                  "@privy-io/node",
+                  "@privy-io/node/*",
+                  "@solana/kit",
+                  "@solana/kit/*",
+                  "execa",
+                  "execa/*",
+                  "grammy",
+                  "grammy/*",
+                  "intl-messageformat",
+                  "intl-messageformat/*",
+                  "kysely",
+                  "kysely/*",
+                  "openai",
+                  "openai/*",
+                  "partial-json",
+                  "partial-json/*",
+                  "pdfjs-dist",
+                  "pdfjs-dist/*",
+                  "pg",
+                  "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
+                  "string-width",
+                  "string-width/*",
+                  "undici",
+                  "undici/*",
+                  "viem",
+                  "viem/*",
+                  "which-command",
+                  "which-command/*",
+                  "ws",
+                  "ws/*",
+                  "yaml",
+                  "yaml/*",
+                  "@playwright/test",
+                  "@playwright/test/*"
+                ],
+                "message": "See the console row of config/package-graph.json for what it may import."
+              },
+              {
+                "regex": "^@binference/[^/]+/src/",
+                "message": "Import a package through its exports."
+              },
+              {
+                "regex": "^(?:\\.\\./){2,}",
+                "message": "Import another package by its name, not by a path."
+              }
+            ]
+          }
+        ],
+        "eslint/no-restricted-globals": [
+          "error",
+          {"name": "fetch", "message": "Outbound HTTP goes through the Http port."},
+          {"name": "Intl", "message": "Format for people in i18n, the one formatter."}
+        ],
+        "eslint/no-restricted-properties": [
+          "error",
+          {"object": "process", "property": "argv", "message": "Only the CLI reads arguments."},
+          {
+            "object": "process",
+            "property": "platform",
+            "message": "Only platform branches on the OS."
+          },
+          {"property": "toFixed", "message": "Format for people in i18n, the one formatter."},
+          {"property": "toLocaleString", "message": "Format for people in i18n, the one formatter."},
+          {"property": "message", "message": "Show i18n text chosen by the error code."}
         ]
       }
     },
@@ -11188,6 +13182,10 @@
               {
                 "regex": "^(?:\\.\\./){2,}",
                 "message": "Import another package by its name, not by a path."
+              },
+              {
+                "regex": "^node:",
+                "message": "The console bundles this package, and a browser has no node: modules; use a web API, or take the work through a port."
               }
             ]
           }
@@ -11195,8 +13193,31 @@
         "eslint/no-restricted-globals": [
           "error",
           {"name": "fetch", "message": "Outbound HTTP goes through the Http port."},
-          {"name": "process", "message": "Receive typed values instead."},
-          {"name": "Intl", "message": "Format for people in i18n, the one formatter."}
+          {
+            "name": "process",
+            "message": "The console bundles this package, and a browser has no process: take the value through a port."
+          },
+          {"name": "Intl", "message": "Format for people in i18n, the one formatter."},
+          {
+            "name": "Buffer",
+            "message": "The console bundles this package, and a browser has no Buffer: use Uint8Array, TextEncoder or atob."
+          },
+          {
+            "name": "setImmediate",
+            "message": "The console bundles this package, and a browser has no setImmediate: use queueMicrotask or setTimeout."
+          },
+          {
+            "name": "__dirname",
+            "message": "The console bundles this package, and a browser has no __dirname: take the path through a port."
+          },
+          {
+            "name": "__filename",
+            "message": "The console bundles this package, and a browser has no __filename: take the path through a port."
+          },
+          {
+            "name": "global",
+            "message": "The console bundles this package, and a browser has no global: use globalThis."
+          }
         ],
         "eslint/no-restricted-properties": [
           "error",
@@ -11594,6 +13615,10 @@
               {
                 "regex": "^(?:\\.\\./){2,}",
                 "message": "Import another package by its name, not by a path."
+              },
+              {
+                "regex": "^node:",
+                "message": "The console bundles this package, and a browser has no node: modules; use a web API, or take the work through a port."
               }
             ]
           }
@@ -11601,8 +13626,31 @@
         "eslint/no-restricted-globals": [
           "error",
           {"name": "fetch", "message": "Outbound HTTP goes through the Http port."},
-          {"name": "process", "message": "Receive typed values instead."},
-          {"name": "Intl", "message": "Format for people in i18n, the one formatter."}
+          {
+            "name": "process",
+            "message": "The console bundles this package, and a browser has no process: take the value through a port."
+          },
+          {"name": "Intl", "message": "Format for people in i18n, the one formatter."},
+          {
+            "name": "Buffer",
+            "message": "The console bundles this package, and a browser has no Buffer: use Uint8Array, TextEncoder or atob."
+          },
+          {
+            "name": "setImmediate",
+            "message": "The console bundles this package, and a browser has no setImmediate: use queueMicrotask or setTimeout."
+          },
+          {
+            "name": "__dirname",
+            "message": "The console bundles this package, and a browser has no __dirname: take the path through a port."
+          },
+          {
+            "name": "__filename",
+            "message": "The console bundles this package, and a browser has no __filename: take the path through a port."
+          },
+          {
+            "name": "global",
+            "message": "The console bundles this package, and a browser has no global: use globalThis."
+          }
         ],
         "eslint/no-restricted-properties": [
           "error",
@@ -12000,6 +14048,10 @@
               {
                 "regex": "^(?:\\.\\./){2,}",
                 "message": "Import another package by its name, not by a path."
+              },
+              {
+                "regex": "^node:",
+                "message": "The console bundles this package, and a browser has no node: modules; use a web API, or take the work through a port."
               }
             ]
           }
@@ -12007,8 +14059,31 @@
         "eslint/no-restricted-globals": [
           "error",
           {"name": "fetch", "message": "Outbound HTTP goes through the Http port."},
-          {"name": "process", "message": "Receive typed values instead."},
-          {"name": "Intl", "message": "Format for people in i18n, the one formatter."}
+          {
+            "name": "process",
+            "message": "The console bundles this package, and a browser has no process: take the value through a port."
+          },
+          {"name": "Intl", "message": "Format for people in i18n, the one formatter."},
+          {
+            "name": "Buffer",
+            "message": "The console bundles this package, and a browser has no Buffer: use Uint8Array, TextEncoder or atob."
+          },
+          {
+            "name": "setImmediate",
+            "message": "The console bundles this package, and a browser has no setImmediate: use queueMicrotask or setTimeout."
+          },
+          {
+            "name": "__dirname",
+            "message": "The console bundles this package, and a browser has no __dirname: take the path through a port."
+          },
+          {
+            "name": "__filename",
+            "message": "The console bundles this package, and a browser has no __filename: take the path through a port."
+          },
+          {
+            "name": "global",
+            "message": "The console bundles this package, and a browser has no global: use globalThis."
+          }
         ],
         "eslint/no-restricted-properties": [
           "error",
