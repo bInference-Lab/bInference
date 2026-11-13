@@ -1,4 +1,4 @@
-import type { SignOutcome, Signer, SignRequest } from "@binference/chain";
+import type { SignerServiceRefusal, SignOutcome, Signer, SignRequest } from "@binference/chain";
 import {
   BinferenceError,
   type Clock,
@@ -16,17 +16,13 @@ import { checkedSigned, isOnItsChain, readableTransaction } from "./checked-tran
 import { accountOf, signingWallet, type WalletLookup } from "./privy-wallet.js";
 import { readServiceAnswer } from "./service-answer.js";
 import { type ServiceLease, serviceBodyOf, signsUntilMs } from "./service-request.js";
-import type {
-  ServiceDownReason,
-  ServiceRefusalReason,
-  SignerServiceAnswer,
-} from "./signer-service-wire.schema.js";
+import type { ServiceDownReason, SignerServiceAnswer } from "./signer-service-wire.schema.js";
 
 /** A step the signer service refused, with its reason, for `notice.signerRefused`. */
 export interface ServiceRefusalNotice {
   readonly wallet: Id<"wal">;
   readonly intent: Id<"int">;
-  readonly reason: ServiceRefusalReason;
+  readonly reason: SignerServiceRefusal;
 }
 
 /** What the `privy-service` adapter is built from. */

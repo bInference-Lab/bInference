@@ -4,6 +4,7 @@ import {
   type ChainRef,
   chainRefSchema,
   type SignerLock,
+  type SignerServiceRefusal,
 } from "@binference/chain";
 import { decimalStringSchema, type Id, idSchema } from "@binference/core";
 import { z } from "zod";
@@ -100,23 +101,6 @@ export const signerServiceRequestSchema: z.ZodType<SignerServiceRequest, SignerS
     replaces: z.enum(["speedUp", "cancel"]).exactOptional(),
   });
 
-/** Why the signer service refused to sign (spec 5, section 8.3). */
-export type ServiceRefusalReason =
-  | "rule_1"
-  | "rule_2"
-  | "rule_3"
-  | "rule_4"
-  | "rule_5"
-  | "rule_6"
-  | "malformed"
-  | "unknown_wallet"
-  | "intent_state"
-  | "no_authorization"
-  | "authorization_ended"
-  | "terms_changed"
-  | "nonce_held"
-  | "privy_refused";
-
 /** What the service is short of while it answers `down`. */
 export type ServiceDownReason = "store" | "kms" | "privy";
 
@@ -136,7 +120,7 @@ export type ServiceOutcome =
       readonly outcome: "signed";
       readonly tx: { readonly chain: ChainRef; readonly raw: string; readonly hash: string };
     }
-  | { readonly outcome: "refused"; readonly reason: ServiceRefusalReason }
+  | { readonly outcome: "refused"; readonly reason: SignerServiceRefusal }
   | ({ readonly outcome: "over_sums" } & ServiceSums)
   | { readonly outcome: "locked"; readonly reason: SignerLock }
   | { readonly outcome: "lease_lost" }
@@ -162,7 +146,7 @@ export type SignerServiceAnswerWire = { readonly version: 1; readonly requestId:
       readonly outcome: "signed";
       readonly tx: { readonly chain: string; readonly raw: string; readonly hash: string };
     }
-  | { readonly outcome: "refused"; readonly reason: ServiceRefusalReason }
+  | { readonly outcome: "refused"; readonly reason: SignerServiceRefusal }
   | ({ readonly outcome: "over_sums" } & SumsWire)
   | { readonly outcome: "locked"; readonly reason: SignerLock }
   | { readonly outcome: "lease_lost" }

@@ -1,9 +1,8 @@
-import type { AssetRef, SignerLock } from "@binference/chain";
+import type { AssetRef, SignerLock, SignerServiceRefusal } from "@binference/chain";
 import type { Id } from "@binference/core";
 import type { Address, Hex } from "viem";
 import type {
   ServiceOutcome,
-  ServiceRefusalReason,
   SignerServiceRequest,
 } from "../signing/signer-service-wire.schema.js";
 import type { SumsAsk } from "./fake-signer-sums.js";
@@ -65,7 +64,7 @@ export interface FakeServiceFacts {
 const cancelGraceMs = 60_000;
 
 /** A refusal with its reason. */
-export function refusedFor(reason: ServiceRefusalReason): ServiceOutcome {
+export function refusedFor(reason: SignerServiceRefusal): ServiceOutcome {
   return { outcome: "refused", reason };
 }
 
@@ -136,7 +135,7 @@ export function authorizationRefusal(
   intent: FakeServiceIntent,
   request: SignerServiceRequest,
   nowMs: number,
-): ServiceRefusalReason | undefined {
+): SignerServiceRefusal | undefined {
   const { authorization } = intent;
   if (!namesIt(authorization, request)) {
     return "no_authorization";

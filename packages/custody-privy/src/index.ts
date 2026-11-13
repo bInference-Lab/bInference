@@ -79,7 +79,6 @@ export type {
 } from "./signing/privy-service-signer.js";
 export { signerServiceAnswerBytes } from "./signing/service-answer.js";
 export type { ServiceLease } from "./signing/service-request.js";
-export type { ServiceRefusalReason } from "./signing/signer-service-wire.schema.js";
 export { createAgentWallet } from "./wallets/create-agent-wallet.js";
 export type { AgentWalletRequest } from "./wallets/create-agent-wallet.js";
 export { planCeilingCalls, setCeilingCalls, writePlannedEdits } from "./wallets/ceiling-calls.js";

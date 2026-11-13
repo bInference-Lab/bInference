@@ -119,7 +119,7 @@ export type {
   StepReplacementWire,
 } from "./signing/sign-step.js";
 export { signerRefusalSchema } from "./signing/signer-refusal.js";
-export type { SignerRefusal } from "./signing/signer-refusal.js";
+export type { SignerRefusal, SignerServiceRefusal } from "./signing/signer-refusal.js";
 export { isTxHash, txDraftSchema } from "./transaction.js";
 export type {
   SignatureProblem,
