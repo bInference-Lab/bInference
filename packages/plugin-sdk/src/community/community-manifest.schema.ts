@@ -1,4 +1,4 @@
-import { type JsonValue, jsonValueSchema } from "@binference/core";
+import { isSmallJsonSchema, type JsonValue, jsonValueSchema } from "@binference/core";
 import { communityPluginLimits as limits } from "@binference/protocol";
 import { z } from "zod";
 
@@ -64,92 +64,12 @@ function namesEveryField(node: JsonValue): boolean {
   return [...fields.values()].every(namesEveryField);
 }
 
-// The JSON Schema keywords a community plugin may use. The host checks a plugin's answers with
-// them in the engine's process, so none may run a plugin's own regex (`pattern`,
-// `patternProperties`, `format`) or cost more than linear time (`uniqueItems`), and none may
-// reach elsewhere (`$ref`).
-const schemaKeywords = new Set([
-  "type",
-  "title",
-  "description",
-  "properties",
-  "required",
-  "additionalProperties",
-  "items",
-  "minItems",
-  "maxItems",
-  "minLength",
-  "maxLength",
-  "minimum",
-  "maximum",
-  "exclusiveMinimum",
-  "exclusiveMaximum",
-  "multipleOf",
-  "enum",
-  "const",
-  "anyOf",
-  "oneOf",
-  "allOf",
-]);
-const maxSchemaDepth = 8;
-const maxSchemaChars = 16_384;
-
-function isSchemaNode(node: JsonValue): node is { readonly [key: string]: JsonValue } {
-  return typeof node === "object" && node !== null && !Array.isArray(node);
-}
-
-const listSchema = z.array(jsonValueSchema);
-
-// A keyword's value as a list of schemas: the list it holds, or itself alone.
-function schemasIn(value: JsonValue | undefined): readonly JsonValue[] {
-  if (value === undefined) {
-    return [];
-  }
-  const list = listSchema.safeParse(value);
-  return list.success ? list.data : [value];
-}
-
-// The schemas a node holds: under `properties` by name, under `items` alone or in a list, under
-// `additionalProperties` when it is one, and in the lists of `anyOf`, `oneOf` and `allOf`.
-function childSchemas(node: { readonly [key: string]: JsonValue }): readonly JsonValue[] {
-  const properties = node["properties"];
-  const extra = node["additionalProperties"];
-  return [
-    ...(properties !== undefined && isSchemaNode(properties) ? Object.values(properties) : []),
-    ...schemasIn(node["items"]),
-    ...(extra !== undefined && isSchemaNode(extra) ? [extra] : []),
-    ...schemasIn(node["anyOf"]),
-    ...schemasIn(node["oneOf"]),
-    ...schemasIn(node["allOf"]),
-  ];
-}
-
-// Every node uses only the allowed keywords, within the depth bound.
-function usesOnlySafeKeywords(node: JsonValue, depth: number): boolean {
-  if (!isSchemaNode(node) || depth > maxSchemaDepth) {
-    return false;
-  }
-  return (
-    Object.keys(node).every((key) => schemaKeywords.has(key)) &&
-    childSchemas(node).every((child) => usesOnlySafeKeywords(child, depth + 1))
-  );
-}
-
-function isReadableSchema(schema: JsonSchemaObject): boolean {
-  if (JSON.stringify(schema).length > maxSchemaChars || !usesOnlySafeKeywords(schema, 1)) {
-    return false;
-  }
-  try {
-    z.fromJSONSchema(schema);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 const jsonSchemaObjectSchema: z.ZodType<JsonSchemaObject> = z
   .record(z.string(), jsonValueSchema)
-  .refine(isReadableSchema, "must be a small JSON Schema of the allowed keywords, with no regex");
+  .refine(
+    (schema) => isSmallJsonSchema(schema),
+    "must be a small JSON Schema of the allowed keywords, with no regex",
+  );
 
 const toolSchema: z.ZodType<CommunityToolDeclaration> = z.strictObject({
   name: z.string().regex(toolNamePattern),
