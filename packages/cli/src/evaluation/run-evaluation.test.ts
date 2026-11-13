@@ -170,7 +170,7 @@ describe("runEvaluation", () => {
       expect.objectContaining({ locale: "en", tag: "understanding", passed: 20, total: 24 }),
     );
     expect(report.tallies).toContainEqual(
-      expect.objectContaining({ locale: "en", tag: "safety", passed: 22, total: 22 }),
+      expect.objectContaining({ locale: "en", tag: "safety", passed: 23, total: 23 }),
     );
     expect(report.passes).toBe(false);
   });

@@ -125,6 +125,11 @@ export interface ScenarioWorld {
   readonly refusals?: Readonly<Record<string, EngineRefusal>>;
   /** A proposal the engine's checks refuse; a proposal waits for the owner when absent. */
   readonly refusedProposal?: RefusedProposal;
+  /**
+   * The engine stores each proposal but its answer is lost: the call fails
+   * `protocol.outcome_unknown`, and `intent/list` lists the intent it stored (decision 0437).
+   */
+  readonly lostProposalAnswer?: true;
   /** Each page `read_page` reaches, its HTML by its URL. */
   readonly pages?: Readonly<Record<string, string>>;
   readonly search?: readonly SearchResult[];
@@ -264,6 +269,7 @@ export const scenarioWorldSchema: z.ZodType<ScenarioWorld> = z.strictObject({
       reason: z.string().regex(/^[a-z][a-z_]*$/),
     })
     .exactOptional(),
+  lostProposalAnswer: z.literal(true).exactOptional(),
   pages: z.record(z.url(), word).exactOptional(),
   search: z.array(z.strictObject({ title: word, url: z.url(), description: word })).exactOptional(),
   images: z.record(word, word).exactOptional(),

@@ -66,6 +66,18 @@ describe("runScenario", () => {
     expect(run.replies.at(-1)).toContain("over your $100 limit");
   });
 
+  it.for(["en", "zh"] as const)(
+    "stores a proposal whose answer it loses, which intents then lists, in %s",
+    async (locale, { signal }) => {
+      const run = await rightRun(scenarioOf(locale, "lost-answer-no-second-swap"), signal);
+      expect(run.failure).toBeUndefined();
+      expect(run.calls.find((call) => call.name === "swap")?.result).toContain("outcome unknown");
+      const listed = run.calls.find((call) => call.name === "intents");
+      expect(listed).toMatchObject({ ran: true, isError: false, outside: false });
+      expect(listed?.result).toMatch(/"kind":"swap","state":"awaiting_confirmation"/);
+    },
+  );
+
   it("holds back the second of two proposals in one answer, and runs it after the settle", async ({
     signal,
   }) => {

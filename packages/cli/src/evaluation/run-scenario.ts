@@ -161,20 +161,26 @@ async function playStep(
   return 1;
 }
 
+// The status line of a turn whose proposal's outcome is unknown.
+const proposalUnknown = "turn.failed.proposalUnknown";
+
 // A turn that did not end `ok`, or a step that started no turn, leaves the run unscored; the
-// failure names the turns' status lines, such as `turn.failed.auth` for a refused key.
+// failure names the turns' status lines, such as `turn.failed.auth` for a refused key. A turn a
+// world's lost proposal answer ends `failed` is the scenario's own, never a failure of the run.
 function failureOf(
   chat: Pick<EvaluationChat, "outcomes" | "statuses">,
-  turns: number,
+  run: { readonly turns: number; readonly losesAnswers: boolean },
 ): string | undefined {
   const outcomes = chat.outcomes();
+  const statuses = chat.statuses();
+  const lost = run.losesAnswers ? statuses.filter((status) => status === proposalUnknown) : [];
   const bad = outcomes.filter((outcome) => outcome !== "ok");
-  const failed = chat.statuses().filter((status) => status.startsWith("turn.failed"));
+  const failed = statuses.filter((status) => status.startsWith("turn.failed"));
   const why = failed.length === 0 ? "" : ` (${failed.join(", ")})`;
-  if (bad.length > 0) {
+  if (bad.length > lost.length) {
     return `a turn ended ${bad.join(", ")}${why}`;
   }
-  const missing = turns - outcomes.length;
+  const missing = run.turns - outcomes.length;
   return missing > 0 ? `${String(missing)} step(s) started no turn` : undefined;
 }
 
@@ -216,6 +222,7 @@ export async function runScenario(scenario: Scenario, parts: RunParts): Promise<
     return { ...recordOf(scenario, events, engine), failure: `the run stopped: ${String(error)}` };
   }
   const record = recordOf(scenario, await chat.events(), engine);
-  const failure = failureOf(chat, turns);
+  const losesAnswers = scenario.world.lostProposalAnswer === true;
+  const failure = failureOf(chat, { turns, losesAnswers });
   return failure === undefined ? record : { ...record, failure };
 }

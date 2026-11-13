@@ -201,10 +201,51 @@ function answerOf(
   return computed(args, context.parts, context.ids);
 }
 
+// The answer a proposal whose engine stored it lost on its way back (decision 0437).
+function lostAnswer(): BinferenceError {
+  return new BinferenceError({
+    code: "protocol.outcome_unknown",
+    message:
+      "The engine that ran this call stopped before it answered, so whether it took effect is unknown.",
+  });
+}
+
+/** The intents a run's proposals stored, oldest first, the last one apart. */
+interface Stored {
+  readonly intents: JsonValue[];
+  last?: JsonValue;
+}
+
+// Answers one call: `intent/list` lists what the run's proposals stored, unless the world gives
+// its answer, and a proposal is stored before a lost answer fails it.
+async function answerCall(
+  op: ToolOperation,
+  wire: WireObject,
+  context: {
+    readonly parts: ScenarioEngineParts;
+    readonly ids: () => string;
+    readonly stored: Stored;
+  },
+): Promise<JsonValue> {
+  const { parts, stored } = context;
+  if (op === "intent/list" && parts.world.answers?.[op] === undefined) {
+    return { items: stored.intents };
+  }
+  const answer = await Promise.resolve(answerOf(op, wire, context));
+  if (op === "intent/propose") {
+    stored.intents.push(answer);
+    stored.last = answer;
+    if (parts.world.lostProposalAnswer === true) {
+      throw lostAnswer();
+    }
+  }
+  return answer;
+}
+
 /** Creates the engine of one scenario's run on its world's facts. */
 export function createScenarioEngine(parts: ScenarioEngineParts): ScenarioEngine {
   const taken: EngineCall[] = [];
-  const proposed: { last?: JsonValue } = {};
+  const proposed: Stored = { intents: [] };
   let count = 0;
   const ids = (): string => {
     count += 1;
@@ -217,10 +258,7 @@ export function createScenarioEngine(parts: ScenarioEngineParts): ScenarioEngine
         const operation = operations[op];
         const wire = objectOf(jsonValueSchema.parse(operation.args.encode(args)));
         taken.push({ op, args: wire });
-        const answer = await Promise.resolve(answerOf(op, wire, { parts, ids }));
-        if (op === "intent/propose") {
-          proposed.last = answer;
-        }
+        const answer = await answerCall(op, wire, { parts, ids, stored: proposed });
         return operation.result.parse(answer);
       },
     },
