@@ -61,8 +61,16 @@ export {
   modelChargeSchema,
   modelSpendSchema,
   spendQuerySchema,
+  usedTurnQuerySchema,
+  usedTurnSchema,
 } from "./billing/model-charge.js";
-export type { BudgetNoticeClaim, ModelSpend, SpendQuery } from "./billing/model-charge.js";
+export type {
+  BudgetNoticeClaim,
+  ModelSpend,
+  SpendQuery,
+  UsedTurn,
+  UsedTurnQuery,
+} from "./billing/model-charge.js";
 export type { ModelUsageStore } from "./billing/ports.js";
 export { createDailyModelBudget, ownerDayOf } from "./billing/daily-model-budget.js";
 export type { DailyModelBudgetOptions, OwnerDay } from "./billing/daily-model-budget.js";

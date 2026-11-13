@@ -1,4 +1,11 @@
-import type { BudgetNoticeClaim, ModelCharge, ModelSpend, SpendQuery } from "./model-charge.js";
+import type {
+  BudgetNoticeClaim,
+  ModelCharge,
+  ModelSpend,
+  SpendQuery,
+  UsedTurn,
+  UsedTurnQuery,
+} from "./model-charge.js";
 
 /** What every store call takes. A call on an aborted signal rejects with the signal's reason. */
 interface StoreCall {
@@ -26,4 +33,10 @@ export interface ModelUsageStore {
    * agent and day, `false` after, so the owner is told once a day.
    */
   claimBudgetNotice(claim: BudgetNoticeClaim, options: StoreCall): Promise<boolean>;
+  /**
+   * One agent's turns and helper runs with a model call at or after `fromMs`, each once however
+   * many calls it made, with the time of its last call; the earliest last call first, then by
+   * turn. The turn quota reads it (decision 0431).
+   */
+  turnsSince(query: UsedTurnQuery, options: StoreCall): Promise<readonly UsedTurn[]>;
 }

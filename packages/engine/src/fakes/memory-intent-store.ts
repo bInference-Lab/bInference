@@ -18,6 +18,7 @@ import type { IntentStore } from "../ports.js";
 import type { MemoryAgentInboxStore } from "./memory-agent-inbox-store.js";
 import type { MemoryAgentStore } from "./memory-agent-store.js";
 import { memoryCall } from "./memory-call.js";
+import { createdSince } from "./memory-created-intents.js";
 import { fillsInFlightOf, recordLandedLate } from "./memory-fill-landings.js";
 import { checkFillWrites, ordersOf, saveFillWrites } from "./memory-fill-writes.js";
 import type { MemoryInstallStore } from "./memory-install-store.js";
@@ -325,6 +326,7 @@ export function createMemoryIntentStore(options: MemoryIntentStoreOptions): Memo
       memoryCall(call, () => newestStoredAssets(tables.intents(), assets)),
     confirmedSince: async (query, call) =>
       memoryCall(call, () => confirmedSince(tables, landings, query)),
+    createdSince: async (query, call) => memoryCall(call, () => createdSince(tables, query)),
     recordLandedLate: async (landing, call) =>
       memoryCall(call, () =>
         recordLandedLate({ tables, landings, stores: options }, structuredClone(landing)),

@@ -82,3 +82,30 @@ export const budgetNoticeClaimSchema: z.ZodType<BudgetNoticeClaim> = z.strictObj
   dayAtMs: epochMsSchema,
   atMs: epochMsSchema,
 });
+
+/** Which turns to read by their model calls: one agent's, with a call at or after `fromMs`. */
+export interface UsedTurnQuery {
+  readonly agent: Id<"agt">;
+  readonly fromMs: number;
+}
+
+/** Parses a query of turns by their model calls. */
+export const usedTurnQuerySchema: z.ZodType<UsedTurnQuery> = z.strictObject({
+  agent: idSchema("agt"),
+  fromMs: epochMsSchema,
+});
+
+/**
+ * A turn or a helper run that called a model, once however many calls it made: its id and the
+ * time of its last call the query reads.
+ */
+export interface UsedTurn {
+  readonly turn: Id<"trn">;
+  readonly lastAtMs: number;
+}
+
+/** Parses a turn as its model calls show it. */
+export const usedTurnSchema: z.ZodType<UsedTurn> = z.strictObject({
+  turn: idSchema("trn"),
+  lastAtMs: epochMsSchema,
+});

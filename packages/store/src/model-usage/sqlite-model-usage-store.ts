@@ -5,6 +5,7 @@ import {
   claimBudgetNoticeTask,
   modelSpendTask,
   recordModelUsageTask,
+  usedTurnsTask,
 } from "./model-usage-tasks.js";
 
 /** Every task of the SQLite model usage store. */
@@ -12,6 +13,7 @@ export const modelUsageTasks: readonly TaskRunner[] = [
   recordModelUsageTask,
   modelSpendTask,
   claimBudgetNoticeTask,
+  usedTurnsTask,
 ];
 
 /**
@@ -22,9 +24,11 @@ export function createSqliteModelUsageStore(host: StoreHost): ModelUsageStore {
   const record = bindTask(host, recordModelUsageTask);
   const spent = bindTask(host, modelSpendTask);
   const claim = bindTask(host, claimBudgetNoticeTask);
+  const turnsSince = bindTask(host, usedTurnsTask);
   return {
     record: async (charge, options) => ((await record(charge, options)) ? "recorded" : "exists"),
     spent: async (query, options) => spent(query, options),
     claimBudgetNotice: async (notice, options) => claim(notice, options),
+    turnsSince: async (query, options) => turnsSince(query, options),
   };
 }

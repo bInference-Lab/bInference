@@ -2,6 +2,7 @@ import type { IntentStore } from "@binference/engine";
 import { newestAssetInfos } from "@binference/engine/surfaces";
 import { bindTask, type StoreHost } from "../tasks/store-host.js";
 import { confirmedSinceTask, recordLandedLateTask } from "./confirmed-tasks.js";
+import { createdSinceTask } from "./created-since-task.js";
 import { fillsInFlightTask } from "./fills-in-flight-task.js";
 import {
   assetDocumentsTask,
@@ -34,6 +35,7 @@ export function createSqliteIntentStore(host: StoreHost): IntentStore {
     list: bindTask(host, listIntentsTask),
     fillsInFlight: bindTask(host, fillsInFlightTask),
     confirmedSince: bindTask(host, confirmedSinceTask),
+    createdSince: bindTask(host, createdSinceTask),
     recordLandedLate: bindTask(host, recordLandedLateTask),
     events: bindTask(host, intentEventsTask),
     cards: bindTask(host, intentCardsTask),

@@ -7,6 +7,10 @@ import {
   modelSpendSchema,
   type SpendQuery,
   spendQuerySchema,
+  type UsedTurn,
+  type UsedTurnQuery,
+  usedTurnQuerySchema,
+  usedTurnSchema,
 } from "@binference/engine/chat";
 import { z } from "zod";
 import type { EngineTables } from "../databases/engine-tables.js";
@@ -114,5 +118,28 @@ export const claimBudgetNoticeTask: StoreTask<BudgetNoticeClaim, boolean> = defi
         .onConflict((conflict) => conflict.columns(["agent_id", "day_at"]).doNothing()),
     );
     return (written.numAffectedRows ?? 0n) > 0n;
+  },
+});
+
+/** One agent's turns with a model call in the range, each once at its last call, earliest first. */
+export const usedTurnsTask: StoreTask<UsedTurnQuery, readonly UsedTurn[]> = defineTask({
+  name: "model_usage.turns_since",
+  access: "read",
+  input: usedTurnQuerySchema,
+  output: z.array(usedTurnSchema).readonly(),
+  run(database, query) {
+    const { kysely, execute } = createSyncKysely<EngineTables>(database);
+    const turns = kysely
+      .selectFrom("model_usage")
+      .select((builder) => ["turn_id", builder.fn.max<number>("at").as("last_at")])
+      .where("agent_id", "=", query.agent)
+      .where("at", ">=", query.fromMs)
+      .where("turn_id", "is not", null)
+      .groupBy("turn_id")
+      .orderBy("last_at")
+      .orderBy("turn_id");
+    return execute(turns).rows.map((row) =>
+      usedTurnSchema.parse({ turn: row.turn_id, lastAtMs: row.last_at }),
+    );
   },
 });

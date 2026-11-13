@@ -44,6 +44,7 @@ import type {
 import type { CardRecord } from "./intents/card-record.js";
 import type { StoredConfirmation } from "./intents/confirmation-record.js";
 import type { ConfirmedIntent, ConfirmedQuery, LandedLate } from "./intents/confirmed-intent.js";
+import type { CreatedIntent, CreatedQuery } from "./intents/created-intent.js";
 import type { FreezeOutcome, FreezeWrite } from "./intents/freeze-write.js";
 import type {
   IntentChange,
@@ -232,6 +233,11 @@ export interface IntentStore extends LandedLate, StoredAssetsRead {
    * then by id. The rolling 24-hour cap reads them (decision 0136).
    */
   confirmedSince(query: ConfirmedQuery, options: StoreCall): Promise<readonly ConfirmedIntent[]>;
+  /**
+   * One agent's intents stored at or after the query's time, in any state, with their kind and
+   * proposer; the first stored first, then by id. The proposal quota reads them (decision 0431).
+   */
+  createdSince(query: CreatedQuery, options: StoreCall): Promise<readonly CreatedIntent[]>;
   /** An intent's events, oldest first. */
   events(id: Id<"int">, options: StoreCall): Promise<readonly IntentEventRecord[]>;
   /** An intent's card versions, oldest first. */

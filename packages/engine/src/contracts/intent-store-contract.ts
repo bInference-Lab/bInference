@@ -11,7 +11,11 @@ import {
   refusesClosedCard,
   refusesTakenVersion,
 } from "./intent-card-checks.js";
-import { listsConfirmedSince, recordsLateLandings } from "./intent-confirmed-checks.js";
+import {
+  listsConfirmedSince,
+  listsCreatedSince,
+  recordsLateLandings,
+} from "./intent-confirmed-checks.js";
 import {
   intentDraft,
   intentLedger,
@@ -295,6 +299,7 @@ export function intentStoreContract(harness: IntentStoreHarness): readonly Contr
       listsByState,
     ),
     checkOn("lists an agent's confirmed intents since a time", create, listsConfirmedSince),
+    checkOn("lists an agent's intents stored since a time", create, listsCreatedSince),
     checkOn("links one late landing to an intent it leaves as it is", create, recordsLateLandings),
     ...intentOrderChecks(create),
     checkOn("opens, replaces and closes card versions with the moves", create, closesWithMoves),

@@ -106,3 +106,28 @@ export async function recordsLateLandings(subject: IntentStoreSubject): Promise<
   ]);
   await assertRefusesAborted(async (options) => store.recordLandedLate(landing, options));
 }
+
+/**
+ * Lists one agent's intents stored since a time, in any state, with their kind and proposer, the
+ * first stored first (decision 0431).
+ */
+export async function listsCreatedSince(subject: IntentStoreSubject): Promise<void> {
+  const { store, agentId } = subject;
+  await plant(subject, { n: 1, isPaper: true, moves: [] });
+  await plant(subject, { n: 2, isPaper: false, moves: ["checked", "cancelled"] });
+  const fill = { ...intentDraft(subject, 3), proposer: "engine" } as const;
+  assert.ok((await store.create(fill, live())).ok);
+  assert.deepEqual(await store.createdSince({ agentId, fromMs: 2_000 }, live()), [
+    {
+      intentId: fixtureId("int", 2),
+      kind: "swap",
+      proposer: fixtureId("tok", 1),
+      createdAtMs: 2_000,
+    },
+    { intentId: fixtureId("int", 3), kind: "swap", proposer: "engine", createdAtMs: 3_000 },
+  ]);
+  assert.equal((await store.createdSince({ agentId, fromMs: 0 }, live())).length, 3);
+  const stranger = { agentId: fixtureId("agt", 9), fromMs: 0 };
+  assert.deepEqual(await store.createdSince(stranger, live()), []);
+  await assertRefusesAborted(async (options) => store.createdSince(stranger, options));
+}

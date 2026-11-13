@@ -93,6 +93,24 @@ async function countsOnlyTheRange(store: ModelUsageStore): Promise<void> {
   assert.deepEqual(await store.spent({ fromMs: 0, toMs: 1 }, live()), []);
 }
 
+async function readsEachTurnOnce(store: ModelUsageStore): Promise<void> {
+  const other = fixtureId("trn", 2);
+  for (const n of [1, 2, 3, 4, 5, 6, 7, 8]) {
+    // oxlint-disable-next-line eslint/no-await-in-loop -- the attempts land in their order
+    await store.record(attempt(n), live());
+  }
+  await store.record(attempt(9, { turn: other, key: `${other}.usage.1` }), live());
+  await store.record(attempt(10, { agent: second, key: `${other}.usage.2` }), live());
+  assert.deepEqual(await store.turnsSince({ agent: first, fromMs: dayAtMs }, live()), [
+    { turn, lastAtMs: dayAtMs + 8 },
+    { turn: other, lastAtMs: dayAtMs + 9 },
+  ]);
+  assert.deepEqual(await store.turnsSince({ agent: first, fromMs: dayAtMs + 9 }, live()), [
+    { turn: other, lastAtMs: dayAtMs + 9 },
+  ]);
+  assert.deepEqual(await store.turnsSince({ agent: first, fromMs: dayAtMs + 10 }, live()), []);
+}
+
 async function claimsANoticeOncePerDay(store: ModelUsageStore): Promise<void> {
   const claim = { agent: first, dayAtMs, atMs: dayAtMs + 5 };
   assert.equal(await store.claimBudgetNotice(claim, live()), true);
@@ -106,6 +124,8 @@ async function refusesAborted(store: ModelUsageStore): Promise<void> {
   await assertRefusesAborted(async (options) => store.spent(today, options));
   const claim = { agent: first, dayAtMs, atMs: dayAtMs };
   await assertRefusesAborted(async (options) => store.claimBudgetNotice(claim, options));
+  const since = { agent: first, fromMs: 0 };
+  await assertRefusesAborted(async (options) => store.turnsSince(since, options));
   assert.deepEqual(await store.spent(today, live()), []);
   assert.equal(await store.claimBudgetNotice(claim, live()), true);
 }
@@ -121,6 +141,11 @@ export function modelUsageStoreContract(harness: ModelUsageStoreHarness): readon
     ),
     checkOn("keeps an attempt's key once and the first cost with it", create, keepsAKeyOnce),
     checkOn("counts only the attempts inside the range", create, countsOnlyTheRange),
+    checkOn(
+      "reads each turn once at its last call, however many calls it made",
+      create,
+      readsEachTurnOnce,
+    ),
     checkOn("claims each agent's budget notice once a day", create, claimsANoticeOncePerDay),
     checkOn("refuses every call on an aborted signal and keeps nothing", create, refusesAborted),
   ];
