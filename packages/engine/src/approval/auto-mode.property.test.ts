@@ -109,6 +109,8 @@ interface Case {
   readonly isTokenDenied: boolean;
   /** The venue approves a contract it never declared. */
   readonly hasStrangerSpender: boolean;
+  /** A listed MCP server is on for the agent, whose words reach each of its turns. */
+  readonly listedMcpOn: boolean;
 }
 
 // The fake venue, building an approval to a stranger before its trade call.
@@ -166,6 +168,7 @@ function optionsOf(c: Case): TestEngineOptions {
     agent: { approvalMode: c.approvalMode, mode: c.isLive ? "live" : "paper", limits },
     facts: { feePerGasNativeBase: feeCap + c.feeOverCap, recentOutflows: spent },
     venues: [c.hasStrangerSpender ? strangerSpenderVenue() : createFakeVenue()],
+    ...(c.listedMcpOn ? { listedMcpOn: (agent) => agent === testAgent } : {}),
     // The paper portfolio holds the token a swap sells: a fill takes nothing it does not hold.
     paper: c.sellsToken && c.other === undefined ? holdingToken : holdingCoin,
     prices: new Map([
@@ -195,13 +198,14 @@ function requestOf(c: Case): IntentRequest {
 }
 
 // Spec 6, section 5, as this test models it: a swap the agent runtime proposes in auto mode, in a
-// turn it says read no outside content, from an honest venue, that buys no denied token and sells
-// none, inside both caps and the fee cap.
+// turn it says read no outside content, with no listed MCP server on for the agent (decision 0428),
+// from an honest venue, that buys no denied token and sells none, inside both caps and the fee cap.
 function mayRunAlone(c: Case): boolean {
   return (
     c.approvalMode === "auto" &&
     c.caller === "runtime" &&
     c.turn === "clean" &&
+    !c.listedMcpOn &&
     c.other === undefined &&
     !c.hasStrangerSpender &&
     !c.isTokenDenied &&
@@ -291,11 +295,16 @@ function refusalOf(c: Case): string {
     : "quote.no_route";
 }
 
-// A stake within both caps and a claim run alone for the agent runtime in a clean turn, under the
-// fee cap; a claim counts against no cap; an unstake always asks (decision 0296).
+// A stake within both caps and a claim run alone for the agent runtime in a clean turn with no
+// listed MCP server on, under the fee cap; a claim counts against no cap; an unstake always asks
+// (decision 0296).
 function mayStakeAlone(c: Case, action: string): boolean {
   const isAsked =
-    c.approvalMode === "auto" && c.caller === "runtime" && c.turn === "clean" && c.feeOverCap <= 0n;
+    c.approvalMode === "auto" &&
+    c.caller === "runtime" &&
+    c.turn === "clean" &&
+    !c.listedMcpOn &&
+    c.feeOverCap <= 0n;
   if (action === "claim") {
     return isAsked && c.isLive;
   }
@@ -405,6 +414,7 @@ const cases: fc.Arbitrary<Case> = fc.record({
   ),
   isTokenDenied: fc.boolean(),
   hasStrangerSpender: mostly(false, true),
+  listedMcpOn: mostly(false, true),
 });
 
 // A send, a bridge and a revoke in a clean runtime turn, each run on every pass, so the count of
@@ -424,6 +434,7 @@ const transferCases: readonly (readonly [Case])[] = [0, 1, 3].map((other) => [
     feeOverCap: 0n,
     isTokenDenied: false,
     hasStrangerSpender: false,
+    listedMcpOn: false,
   },
 ]);
 
@@ -438,6 +449,18 @@ const stakeCases: readonly (readonly [Case])[] = [5, 6, 7].flatMap((other) =>
   }),
 );
 
+// A swap, a stake and a claim that would run alone, each with a listed MCP server on, run on every
+// pass, so each path of the switch is met whatever the seed draws (decision 0428).
+const listedCases: readonly (readonly [Case])[] = [undefined, 5, 7].map(
+  (other): readonly [Case] => {
+    const [example] = transferCases[0] ?? [];
+    if (example === undefined) {
+      throw new Error("Expected a transfer case.");
+    }
+    return [{ ...example, other, listedMcpOn: true }];
+  },
+);
+
 describe("auto mode, end to end", () => {
   it("runs alone only a runtime swap within every cap, and a switch to manual ends it", async () => {
     const outcomes: Outcome[] = [];
@@ -447,7 +470,7 @@ describe("auto mode, end to end", () => {
         outcomes.push(outcome);
         expect(outcome.problems).toStrictEqual([]);
       }),
-      { numRuns: 200, examples: [...transferCases, ...stakeCases] },
+      { numRuns: 200, examples: [...transferCases, ...stakeCases, ...listedCases] },
     );
     expect(outcomes.filter((outcome) => outcome.isAuto).length).toBeGreaterThan(0);
     expect(outcomes.filter((outcome) => outcome.isAskedTransfer === true).length).toBeGreaterThan(

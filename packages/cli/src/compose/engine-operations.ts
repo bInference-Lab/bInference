@@ -1,4 +1,4 @@
-import { BinferenceError, createSecret, ok } from "@binference/core";
+import { BinferenceError, createSecret, type Id, ok } from "@binference/core";
 import type { AgentStore } from "@binference/engine";
 import { authorOf } from "@binference/engine/audit";
 import type { InstallStore } from "@binference/engine/install";
@@ -25,6 +25,8 @@ export interface EngineOperationsOptions {
   readonly nodeOptions: readonly string[];
   /** Whether a community plugin is on, which keeps auto mode asking (decision 0350). */
   readonly communityPluginsOn: () => boolean;
+  /** Whether a listed MCP server is on for an agent, which keeps its auto mode asking (decision 0428). */
+  readonly listedMcpOn?: (agent: Id<"agt">) => boolean;
   /**
    * Starts the shutdown sequence. It must not wait for the sequence: the sequence closes the
    * server that answers the call.
@@ -81,21 +83,29 @@ function agentsOf(
     });
 }
 
-// While a community plugin is on, each agent in auto mode says that every proposal asks
-// (decision 0350).
+// While a community plugin is on (decision 0350), or a listed MCP server is on for the agent
+// (decision 0428), each agent in auto mode says that every proposal asks.
 async function withAutoAsks(
   options: EngineOperationsOptions,
   agents: EngineStatus["agents"],
   signal: AbortSignal,
 ): Promise<EngineStatus["agents"]> {
-  if (!options.communityPluginsOn()) {
+  const plugins = options.communityPluginsOn();
+  const listed = (agent: Id<"agt">): boolean => options.listedMcpOn?.(agent) === true;
+  if (!plugins && !agents.some(({ id }) => listed(id))) {
     return agents;
   }
   return Promise.all(
     agents.map(async (agent) => {
       const settings = await options.agents.get(agent.id, { signal });
-      const auto = settings?.approvalMode.mode === "auto";
-      return auto ? { ...agent, autoAsks: "plugin" as const } : agent;
+      if (settings?.approvalMode.mode !== "auto") {
+        return agent;
+      }
+      return {
+        ...agent,
+        ...(plugins ? { autoAsks: "plugin" as const } : {}),
+        ...(listed(agent.id) ? { listedMcpOn: true as const } : {}),
+      };
     }),
   );
 }

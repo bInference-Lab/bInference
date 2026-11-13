@@ -30,5 +30,6 @@ export function switchesOf(options: TestEngineOptions): Partial<EngineOptions> {
     ...(options.communityPluginsOn === undefined
       ? {}
       : { communityPluginsOn: options.communityPluginsOn }),
+    ...(options.listedMcpOn === undefined ? {} : { listedMcpOn: options.listedMcpOn }),
   };
 }

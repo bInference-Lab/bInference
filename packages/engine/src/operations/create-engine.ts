@@ -7,7 +7,7 @@ import type {
   TxSimulator,
 } from "@binference/chain";
 import type { StakingVenue } from "@binference/chain/staking";
-import type { Clock, IdSource, Random, WorkspaceFiles } from "@binference/core";
+import type { Clock, Id, IdSource, Random, WorkspaceFiles } from "@binference/core";
 import { createAddressBookHandlers } from "../address-book/address-book-handlers.js";
 import type { DestinationChain } from "../address-book/destination-chain.js";
 import { withLimitsInEffect } from "../agents/limits-in-effect.js";
@@ -235,6 +235,12 @@ export interface EngineOptions extends MarketParts, ModelBudgetParts, ChatSource
    */
   readonly communityPluginsOn?: () => boolean;
   /**
+   * Whether an agent has a listed MCP server on, whose tools' words reach each of its turns: every
+   * turn of that agent then starts marked as outside content and auto mode asks for every proposal
+   * (decision 0428). None when absent.
+   */
+  readonly listedMcpOn?: (agent: Id<"agt">) => boolean;
+  /**
    * Whether the price watcher can price a token now; `order/create` refuses a limit, take-profit,
    * stop-loss or trailing order for a token it cannot (`order.unpriced_token`, decision 0194).
    */
@@ -338,7 +344,11 @@ function ownerSettingsHandlers(options: EngineOptions, paper: PaperParts) {
   const { stores, host, chains } = options;
   return {
     ...settingsHandlers(options, paper),
-    ...createApprovalHandlers({ ...settingsParts, communityPluginsOn: options.communityPluginsOn }),
+    ...createApprovalHandlers({
+      ...settingsParts,
+      communityPluginsOn: options.communityPluginsOn,
+      listedMcpOn: options.listedMcpOn,
+    }),
     ...createLimitHandlers({ ...settingsParts, install: stores.install, host, chains }),
     ...createSendLevelHandlers(settingsParts),
     ...createAddressBookHandlers({

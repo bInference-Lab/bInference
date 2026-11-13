@@ -97,8 +97,14 @@ export const testCallers: Readonly<Record<"cli" | "mcp" | "runtime", EngineCalle
   },
 };
 
-/** How a test engine differs from the default: a paper agent in manual mode on the fake venue. */
-export interface TestEngineOptions {
+type OutsideSwitches = "communityPluginsOn" | "listedMcpOn";
+
+/**
+ * How a test engine differs from the default: a paper agent in manual mode on the fake venue.
+ * Whether a community plugin (decision 0350) or a listed MCP server (decision 0428) is on comes
+ * as the engine takes it; neither is when absent.
+ */
+export interface TestEngineOptions extends Pick<EngineOptions, OutsideSwitches> {
   readonly agent?: Partial<AgentDraft>;
   /** Whether the engine runs a launch feed, whose records `market/scan` reads. */
   readonly launchFeed?: boolean;
@@ -140,8 +146,6 @@ export interface TestEngineOptions {
   readonly priceSource?: (source: PriceSource) => PriceSource;
   /** Whether the engine is locked; never when absent. */
   readonly isLocked?: () => boolean;
-  /** Whether a community plugin offers the agent tools; none when absent (decision 0350). */
-  readonly communityPluginsOn?: () => boolean;
   /** Whether a live order may fill and so be made; off when absent, as in the product now. */
   readonly liveOrderFills?: boolean;
   /** The quote assets, whose leader buys no copy order follows; none when absent. */

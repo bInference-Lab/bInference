@@ -398,6 +398,24 @@ describe("the fast commands' replies", () => {
     ]);
   });
 
+  it("says when a listed MCP server keeps an agent's auto mode asking", async () => {
+    const bot = await startCommandBot({
+      ...served,
+      "engine/status": async () =>
+        Promise.resolve(
+          ok({
+            ...status,
+            agents: [{ id: agent, mode: "live", frozen: false, listedMcpOn: true }],
+          }),
+        ),
+      "safety/status": async () => Promise.resolve(ok({ frozen: false })),
+    });
+    await bot.send("/status");
+    expect(bot.texts()[0]).toContain(
+      `${agent} · ${icons.live} Live\nAuto mode asks for every proposal while a listed MCP server is on.`,
+    );
+  });
+
   it("says when no rescue address is set, and when every health signal is fine", async () => {
     const bot = await startCommandBot({
       ...served,

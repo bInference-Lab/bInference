@@ -50,6 +50,11 @@ export interface AutoModeFacts {
    * proposes nothing on its own (decision 0350). Absent when none is.
    */
   readonly communityPluginsOn?: boolean;
+  /**
+   * The agent has a listed MCP server on: its tools' words reach every turn of the agent, so auto
+   * mode proposes nothing on its own (decision 0428). Absent when it has none.
+   */
+  readonly listedMcpOn?: boolean;
 }
 
 /** The parts of an intent the auto test reads. */
@@ -88,6 +93,9 @@ function whereFromRefusal(
   }
   if (facts.communityPluginsOn === true) {
     return "plugin";
+  }
+  if (facts.listedMcpOn === true) {
+    return "listedMcp";
   }
   if (intent.hasOutsideContent) {
     return "outside";
@@ -132,7 +140,8 @@ function autoModeRefusal(
  * a risk warning (decision 0363), the value fits the
  * per-trade and rolling-day caps, the fee per gas is at most the network fee cap, every approval
  * goes to a registry spender, no community plugin is on, the turn read no outside content, and
- * the agent runtime proposed it. Anything else opens a card.
+ * the agent runtime proposed it. No listed MCP server is on for the agent either (decision 0428).
+ * Anything else opens a card.
  */
 export function checkAutoMode(
   intent: AutoModeSubject,

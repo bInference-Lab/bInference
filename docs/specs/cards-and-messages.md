@@ -282,7 +282,9 @@ paper fill uses the quote. A live trade always needs its simulation.
 / 「超出自动交易限额」, `autoAsks.send` "sends always ask" / 「转账总是需要确认」,
 `autoAsks.outside` "the idea came from outside content" / 「该想法来自外部内容」, `autoAsks.plugin`
 "a community plugin is on, and its words reach every turn" / 「社区插件已启用，其内容会进入每一轮」
-([decision 0350](../DECISIONS.md#d0350)), `autoAsks.mcp`
+([decision 0350](../DECISIONS.md#d0350)), `autoAsks.listedMcp` "a listed MCP server is on, and its
+words reach every turn" / 「上架 MCP 服务器已启用，其内容会进入每一轮」
+([decision 0428](../DECISIONS.md#d0428)), `autoAsks.mcp`
 "proposed from {client}" / 「由 {client} 提出」, `autoAsks.kind` "this kind always asks"
 / 「此类操作总是需要确认」, `autoAsks.spender` "it approves a contract that is not verified"
 / 「需要向未验证的合约授权」, `autoAsks.deniedToken` "it sells a token on your deny list"

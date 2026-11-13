@@ -52,6 +52,28 @@ function printSignal(
   }
 }
 
+// One agent's lines: its mode and freeze, its launch and bridge wallets, and what keeps its auto
+// mode asking, a community plugin (decision 0350) or a listed MCP server (decision 0428).
+function printAgent(output: CliOutput, agent: EngineStatus["agents"][number]): void {
+  output.item("status.agent", {
+    id: agent.id,
+    mode: agent.mode,
+    frozen: agent.frozen ? "yes" : "no",
+  });
+  if (agent.launchWallet !== undefined) {
+    output.item("status.launchWallet", { id: agent.id, wallet: agent.launchWallet });
+  }
+  if (agent.bridgeWallet !== undefined) {
+    output.item("status.bridgeWallet", { id: agent.id, wallet: agent.bridgeWallet });
+  }
+  if (agent.autoAsks === "plugin") {
+    output.item("status.autoAsksPlugin", { id: agent.id });
+  }
+  if (agent.listedMcpOn === true) {
+    output.item("status.autoAsksListedMcp", { id: agent.id });
+  }
+}
+
 function printStatus(output: CliOutput, status: EngineStatus, words: StatusWords) {
   output.say("status.summary", {
     version: status.version,
@@ -66,20 +88,7 @@ function printStatus(output: CliOutput, status: EngineStatus, words: StatusWords
   }
   output.say("status.agents", { count: status.agents.length });
   for (const agent of status.agents) {
-    output.item("status.agent", {
-      id: agent.id,
-      mode: agent.mode,
-      frozen: agent.frozen ? "yes" : "no",
-    });
-    if (agent.launchWallet !== undefined) {
-      output.item("status.launchWallet", { id: agent.id, wallet: agent.launchWallet });
-    }
-    if (agent.bridgeWallet !== undefined) {
-      output.item("status.bridgeWallet", { id: agent.id, wallet: agent.bridgeWallet });
-    }
-    if (agent.autoAsks === "plugin") {
-      output.item("status.autoAsksPlugin", { id: agent.id });
-    }
+    printAgent(output, agent);
   }
   output.say("status.signals");
   for (const signal of status.health) {

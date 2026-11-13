@@ -5,8 +5,9 @@
  * unbonds (decision 0296), `deniedToken` that the intent sells a token on the deny list,
  * `riskWarn` that it buys a token that is not verified or has a risk warning (decision 0363),
  * `overFeeCap` that its fee per gas is above the network fee cap, and `spender` that a step
- * approves a spender outside the registry, and `plugin` that a community plugin is on, whose words
- * reach every turn of the agent (decision 0350). A card version auto mode opened keeps its code.
+ * approves a spender outside the registry, `plugin` that a community plugin is on, whose words
+ * reach every turn of the agent (decision 0350), and `listedMcp` that a listed MCP server is on
+ * for the agent, whose words do too (decision 0428). A card version auto mode opened keeps its code.
  */
 export const autoAskCodes = [
   "locked",
@@ -19,6 +20,7 @@ export const autoAskCodes = [
   "overFeeCap",
   "spender",
   "plugin",
+  "listedMcp",
   "outside",
   "mcp",
 ] as const;

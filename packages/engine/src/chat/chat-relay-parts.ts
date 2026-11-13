@@ -66,6 +66,11 @@ export interface ChatRelayOptions {
    */
   readonly communityPluginsOn?: () => boolean;
   /**
+   * Whether an agent has a listed MCP server on, whose tools' words reach every turn of the agent:
+   * each of its turns then starts marked as outside content (decision 0428).
+   */
+  readonly listedMcpOn?: (agent: Id<"agt">) => boolean;
+  /**
    * Hears the owner's stop of an agent's chat and a freeze, of one agent or, with none named, of
    * every agent, once it landed: the agent's shell stops its commands then (decision 0409).
    */

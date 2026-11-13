@@ -155,6 +155,40 @@ describe("the engine's own operations", () => {
     expect(off).not.toMatchObject({ value: { agents: [{ autoAsks: "plugin" }, {}] } });
   });
 
+  it("says in engine/status, beside autoAsks, which auto mode agents a listed MCP server keeps asking", async () => {
+    const agents = createMemoryAgentStore();
+    await agents.create(testAgentDraft({ id: agentId(1), approvalMode: "auto" }), call);
+    await agents.create(
+      testAgentDraft({ id: agentId(2), name: "second", approvalMode: "auto" }),
+      call,
+    );
+    await agents.create(testAgentDraft({ id: agentId(3), name: "third" }), call);
+    const handlers = createEngineOperations({
+      lock: passphraseLock().lock,
+      agents,
+      install: { read: async () => Promise.resolve({ wallets: [] }) },
+      version: "2026.10.0",
+      state: () => "ready",
+      health: () => [],
+      nodeOptions: [],
+      communityPluginsOn: () => false,
+      listedMcpOn: (id) => id !== agentId(2),
+      stop: () => undefined,
+      restart: { request: async () => Promise.resolve() },
+    });
+
+    const status = await handlers["engine/status"]?.({ ...call, args: {} });
+
+    expect(status).toMatchObject({
+      value: {
+        agents: [{ id: agentId(1), listedMcpOn: true }, { id: agentId(2) }, { id: agentId(3) }],
+      },
+    });
+    expect(status).not.toMatchObject({ value: { agents: [{}, { listedMcpOn: true }, {}] } });
+    expect(status).not.toMatchObject({ value: { agents: [{}, {}, { listedMcpOn: true }] } });
+    expect(status).not.toMatchObject({ value: { agents: [{ autoAsks: "plugin" }, {}, {}] } });
+  });
+
   it("answers engine/status with the agents that are not archived", async () => {
     const { handlers } = operationsWith([
       agent(1),

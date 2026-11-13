@@ -35,6 +35,8 @@ export interface AuthorizationInput {
   readonly stake?: { readonly isUnstake: boolean };
   /** A community plugin is on, so auto mode asks (decision 0350). */
   readonly communityPluginsOn?: boolean;
+  /** A listed MCP server is on for the agent, so auto mode asks (decision 0428). */
+  readonly listedMcpOn?: boolean;
 }
 
 /**
@@ -48,7 +50,10 @@ export function authorizationCheckOf(
 ): IntentTrigger<"authorization_checked"> {
   const { settings, pass, wallet, isLocked, hasUnlistedSpender, hasTokenRiskWarning, stake } =
     input;
-  const plugins = input.communityPluginsOn === true ? { communityPluginsOn: true } : {};
+  const plugins = {
+    ...(input.communityPluginsOn === true ? { communityPluginsOn: true } : {}),
+    ...(input.listedMcpOn === true ? { listedMcpOn: true } : {}),
+  };
   const { limits, approvalMode } = settings;
   const facts: AutoModeFacts = {
     approvalMode: approvalMode.mode,

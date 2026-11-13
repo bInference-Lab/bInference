@@ -28,8 +28,12 @@ function agentLines(
       frozen: frozenAt === undefined ? "no" : "yes",
       when: frozenAt === undefined ? "" : formatter.dateTime(frozenAt),
     });
-    // In auto mode, a community plugin keeps every proposal asking (decision 0350).
-    const asks = agent.autoAsks === "plugin" ? [words("cmd.status.autoAsksPlugin")] : [];
+    // In auto mode, a community plugin (decision 0350) or a listed MCP server (decision 0428)
+    // keeps every proposal asking.
+    const asks = [
+      ...(agent.autoAsks === "plugin" ? [words("cmd.status.autoAsksPlugin")] : []),
+      ...(agent.listedMcpOn === true ? [words("cmd.status.autoAsksListedMcp")] : []),
+    ];
     return [line, ...asks];
   });
 }

@@ -212,6 +212,19 @@ describe("the money path", () => {
     );
   });
 
+  it("opens a card in auto mode while a listed MCP server is on for the agent, and says why (decision 0428)", async () => {
+    const test = await startTestEngine({
+      agent: { approvalMode: "auto" },
+      listedMcpOn: (agent) => agent === testAgent,
+    });
+    const view = await propose(test, testSwap(), testCallers.runtime);
+
+    expect(view.state).toBe("awaiting_confirmation");
+    expect(await testCardText(test, view, "en")).toContain(
+      "Auto mode asks you here: a listed MCP server is on, and its words reach every turn",
+    );
+  });
+
   it("opens a card for an MCP client's proposal even in auto mode", async () => {
     const test = await startTestEngine({ agent: { approvalMode: "auto" } });
     expect((await propose(test, testSwap(), testCallers.mcp)).state).toBe("awaiting_confirmation");

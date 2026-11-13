@@ -1,4 +1,4 @@
-import { err, idSchema, ok } from "@binference/core";
+import { err, type Id, idSchema, ok } from "@binference/core";
 import type { ProtocolId } from "@binference/protocol";
 import { activeAgent } from "../operations/active-agent.js";
 import type { EngineCall, EngineHandler } from "../operations/engine-call.js";
@@ -80,6 +80,12 @@ function runtimeOnly<N extends keyof RuntimeChatHandlers>(
     options.turns.isRuntime(call.caller.credential) ? handler(call) : err("auth.scope");
 }
 
+// A plugin's or a listed MCP server's tools are in the turn's context from its start, whatever the
+// runtime says (decisions 0350 and 0428).
+function offersOutsideTools(options: ChatRelayOptions, agent: Id<"agt">): boolean {
+  return options.communityPluginsOn?.() === true || options.listedMcpOn?.(agent) === true;
+}
+
 function turnHandlers(
   options: ChatRelayOptions,
 ): Pick<RuntimeChatHandlers, "turn/start" | "turn/mark" | "turn/say" | "turn/status" | "turn/end"> {
@@ -92,8 +98,7 @@ function turnHandlers(
         return active;
       }
       const left = await options.budget.open(active.value, call);
-      // A plugin's tools are in the turn's context from its start, whatever the runtime says.
-      const marked = outsideContent || options.communityPluginsOn?.() === true;
+      const marked = outsideContent || offersOutsideTools(options, agent);
       turns.start({ agent, turn, hasOutsideContent: marked, messages });
       publish({
         topic: chatTopic(agent),

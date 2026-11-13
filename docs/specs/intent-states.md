@@ -374,7 +374,9 @@ and `step_unsent` (a step never signed after an earlier one landed,
   this order and names the first that fails: `manual` (the agent is in manual mode), `locked` (the
   engine is locked and the intent is live), `send`, `kind`, `unstake` (an unstake), `deniedToken`
   (it sells a token on the deny list), `riskWarn` (it buys a token with a risk warning), `overCap`, `overFeeCap` (its fee per gas is above the network
-  fee cap), `spender` (an approval to a spender outside the registry), `outside` or `mcp`. The card
+  fee cap), `spender` (an approval to a spender outside the registry), `plugin` (a community plugin
+  is on, [decision 0350](../DECISIONS.md#d0350)), `listedMcp` (a listed MCP server is on for the
+  agent, [decision 0428](../DECISIONS.md#d0428)), `outside` or `mcp`. The card
   shows each code but `manual` with its `autoAsks` message (spec 4, section 3.4).
 - **A token on the deny list** ([decision 0101](../DECISIONS.md#d0101)) may leave the wallet, by a
   sale, a swap or a send, but never enter it. The policy passes such an intent with the mark

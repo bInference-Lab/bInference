@@ -135,6 +135,22 @@ describe("the approval mode operations", () => {
     expect(read).toMatchObject({ ok: true, value: { mode: "auto", autoAsks: "plugin" } });
   });
 
+  it("says in auto mode, beside autoAsks, that a listed MCP server keeps every proposal asking", async () => {
+    const test = await startTestEngine({ listedMcpOn: (agent) => agent === testAgent });
+    const manual = expectOk(
+      await test.engine.handlers["approval/get"](testCall({ agent: testAgent })),
+    );
+    expect(manual).not.toHaveProperty("listedMcpOn");
+
+    const set = expectOk(await setMode(test, "auto"));
+    const read = expectOk(
+      await test.engine.handlers["approval/get"](testCall({ agent: testAgent })),
+    );
+
+    expect(set).toMatchObject({ mode: "auto", listedMcpOn: true });
+    expect(read).toStrictEqual({ mode: "auto", changedAt: read.changedAt, listedMcpOn: true });
+  });
+
   it("switches to auto from a caller with loosen, and records the surface", async () => {
     const test = await startTestEngine();
     await test.clock.advance(5_000);

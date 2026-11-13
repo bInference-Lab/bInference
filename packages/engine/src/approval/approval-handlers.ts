@@ -1,4 +1,4 @@
-import { BinferenceError, type Clock, err, ok, type Result } from "@binference/core";
+import { BinferenceError, type Clock, err, type Id, ok, type Result } from "@binference/core";
 import type { ProtocolErrorCode, ResultOf, Scope } from "@binference/protocol";
 import type { AgentRecord } from "../agents/agent-record.js";
 import type { ApprovalModeRecord } from "../agents/approval-mode-record.js";
@@ -24,6 +24,8 @@ export interface ApprovalHandlersOptions {
   readonly publish: PublishPush;
   /** Whether a community plugin is on, so auto mode asks for every proposal (decision 0350). */
   readonly communityPluginsOn?: (() => boolean) | undefined;
+  /** Whether a listed MCP server is on for an agent, so auto mode asks (decision 0428). */
+  readonly listedMcpOn?: ((agent: Id<"agt">) => boolean) | undefined;
 }
 
 type ApprovalModeView = ResultOf<"approval/get">;
@@ -41,11 +43,20 @@ const neededScope: Readonly<Record<ApprovalMode, Scope>> = { auto: "loosen", man
 // Another write to the mode, such as a switch from another surface, makes a set read it again.
 const setAttempts = 3;
 
-// In auto mode, the view says while a community plugin keeps every proposal asking (decision 0350).
-function viewOf(options: ApprovalHandlersOptions, record: ApprovalModeRecord): ApprovalModeView {
+// In auto mode, the view says while a community plugin (decision 0350) or a listed MCP server
+// (decision 0428) keeps every proposal asking; `autoAsks` keeps its one value for older clients.
+function viewOf(
+  options: ApprovalHandlersOptions,
+  agent: Id<"agt">,
+  record: ApprovalModeRecord,
+): ApprovalModeView {
   const view = { mode: record.mode, changedAt: record.changedAtMs };
-  const held = record.mode === "auto" && options.communityPluginsOn?.() === true;
-  return held ? { ...view, autoAsks: "plugin" } : view;
+  const isAuto = record.mode === "auto";
+  return {
+    ...view,
+    ...(isAuto && options.communityPluginsOn?.() === true ? { autoAsks: "plugin" as const } : {}),
+    ...(isAuto && options.listedMcpOn?.(agent) === true ? { listedMcpOn: true as const } : {}),
+  };
 }
 
 // Every change is journaled with who made it and where, pushed on the config topic, and announced
@@ -78,7 +89,7 @@ async function setMode(
   const { args, signal } = call;
   const found = await activeAgent(options.agents, args.agent, { signal });
   if (!found.ok || found.value.approvalMode.mode === args.mode) {
-    return found.ok ? ok(viewOf(options, found.value.approvalMode)) : found;
+    return found.ok ? ok(viewOf(options, args.agent, found.value.approvalMode)) : found;
   }
   const { agent, approvalMode: before } = found.value;
   const set = await options.agents.setApprovalMode(
@@ -93,7 +104,7 @@ async function setMode(
   );
   if (set.ok) {
     await announce(options, call, { agent, before, after: set.value });
-    return ok(viewOf(options, set.value));
+    return ok(viewOf(options, agent.id, set.value));
   }
   if (attemptsLeft <= 1) {
     throw new BinferenceError({
@@ -109,7 +120,8 @@ async function setMode(
 /**
  * Creates the approval mode handlers. `approval/get` answers an agent's mode and when it last
  * changed; both answers carry `autoAsks: plugin` in auto mode while a community plugin is on
- * (decision 0350). `approval/set` to `auto` is a loosening that needs the `loosen` scope; to `manual` it
+ * (decision 0350), and `listedMcpOn: true` while a listed MCP server is on for the agent
+ * (decision 0428). `approval/set` to `auto` is a loosening that needs the `loosen` scope; to `manual` it
  * brakes with `confirm`, and takes effect at once: the mode's version rises, so every intent the
  * auto mode authorized under the old version loses its grant before it is signed, and the next
  * intent opens a card. Each switch is journaled, pushed as `config/changed` and announced as the
@@ -122,7 +134,7 @@ export function createApprovalHandlers(options: ApprovalHandlersOptions): Approv
       if (!found.ok) {
         return found;
       }
-      return ok(viewOf(options, found.value.approvalMode));
+      return ok(viewOf(options, args.agent, found.value.approvalMode));
     },
     async "approval/set"(call) {
       if (!call.caller.scopes.includes(neededScope[call.args.mode])) {

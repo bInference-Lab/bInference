@@ -131,6 +131,7 @@ export function moneyPathOf(
     ...(options.communityPluginsOn === undefined
       ? {}
       : { communityPluginsOn: options.communityPluginsOn }),
+    ...(options.listedMcpOn === undefined ? {} : { listedMcpOn: options.listedMcpOn }),
     lowGas,
     gate,
     liveFills: options.liveOrderFills === true,

@@ -132,18 +132,19 @@ function shellSideOf(shell: EngineOptions["shell"]): Pick<ChatRelayOptions, Shel
   };
 }
 
+type AgentSide = "viewImages" | "communityPluginsOn" | "listedMcpOn" | "runtimeChats" | ShellSide;
+
 // What the agent's chat reaches beyond the engine, when the composition root gives it: the images
-// it views, its shell's parts, whether a community plugin speaks in its turns, and the runtime's
-// side of a chat deletion.
-function agentSideOf(
-  options: EngineOptions,
-): Pick<ChatRelayOptions, "viewImages" | "communityPluginsOn" | "runtimeChats" | ShellSide> {
-  const { viewImages, shell, communityPluginsOn, runtimeChats } = options;
+// it views, its shell's parts, whether a community plugin or a listed MCP server speaks in its
+// turns, and the runtime's side of a chat deletion.
+function agentSideOf(options: EngineOptions): Pick<ChatRelayOptions, AgentSide> {
+  const { viewImages, shell, communityPluginsOn, listedMcpOn, runtimeChats } = options;
   return {
     ...(viewImages === undefined ? {} : { viewImages }),
     ...(runtimeChats === undefined ? {} : { runtimeChats }),
     ...shellSideOf(shell),
     ...(communityPluginsOn === undefined ? {} : { communityPluginsOn }),
+    ...(listedMcpOn === undefined ? {} : { listedMcpOn }),
   };
 }
 

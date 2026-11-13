@@ -810,6 +810,10 @@
                   "autoAsks": {
                     "type": "string",
                     "const": "plugin"
+                  },
+                  "listedMcpOn": {
+                    "type": "boolean",
+                    "const": true
                   }
                 },
                 "required": [
@@ -35101,6 +35105,10 @@
             "autoAsks": {
               "type": "string",
               "const": "plugin"
+            },
+            "listedMcpOn": {
+              "type": "boolean",
+              "const": true
             }
           },
           "required": [
@@ -35207,6 +35215,10 @@
             "autoAsks": {
               "type": "string",
               "const": "plugin"
+            },
+            "listedMcpOn": {
+              "type": "boolean",
+              "const": true
             }
           },
           "required": [

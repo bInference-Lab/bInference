@@ -100,6 +100,15 @@ describe("the auto test", () => {
     expect(refusalOf(swap, { communityPluginsOn: false })).toBe("passes");
   });
 
+  it("asks while a listed MCP server is on for the agent, after a plugin and before outside content (decision 0428)", () => {
+    expect(refusalOf(swap, { listedMcpOn: true })).toBe("listedMcp");
+    expect(refusalOf({ ...swap, hasOutsideContent: true }, { listedMcpOn: true })).toBe(
+      "listedMcp",
+    );
+    expect(refusalOf(swap, { listedMcpOn: true, communityPluginsOn: true })).toBe("plugin");
+    expect(refusalOf(swap, { listedMcpOn: false })).toBe("passes");
+  });
+
   it("asks for an unlisted spender, outside content and every proposer but the runtime", () => {
     expect(refusalOf(swap, { hasUnlistedSpender: true })).toBe("spender");
     expect(refusalOf({ ...swap, hasOutsideContent: true })).toBe("outside");

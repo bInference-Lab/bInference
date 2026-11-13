@@ -1,5 +1,5 @@
 import type { PriceSource } from "@binference/chain";
-import { type Clock, err, type IdSource, ok, type Result } from "@binference/core";
+import { type Clock, err, type Id, type IdSource, ok, type Result } from "@binference/core";
 import type { IntentRequest, ProtocolErrorCode } from "@binference/protocol";
 import type { CapGate } from "../confirmations/cap-gate.js";
 import { gasReadingOf, type LowGasAlerts } from "../gas/low-gas-alerts.js";
@@ -94,6 +94,8 @@ export interface MoneyPathOptions extends ResolveOptions {
   readonly isLocked: () => boolean;
   /** Whether a community plugin is on: auto mode then asks (decision 0350). */
   readonly communityPluginsOn?: () => boolean;
+  /** Whether a listed MCP server is on for an agent: auto mode then asks (decision 0428). */
+  readonly listedMcpOn?: (agent: Id<"agt">) => boolean;
   /** Told each live wallet's native balance as a proposal reads it. */
   readonly lowGas: LowGasAlerts;
   /** The rolling cap each confirmation is checked against, one agent's at a time. */
@@ -301,13 +303,17 @@ async function authorizeAndExecute(
   simulated: IntentSnapshot,
   chosen: { readonly pass: PolicyPass; readonly plan: TradePlan },
 ): Promise<IntentSnapshot> {
-  const { stored, gate, isLocked, execute, liveFills = false, communityPluginsOn } = run.options;
+  const { stored, gate, isLocked, execute, liveFills = false } = run.options;
+  const { communityPluginsOn, listedMcpOn } = run.options;
   const { machine, signal, fill } = run;
   const { facts: wallet, chain } = run.resolved;
   const { chains } = run.options;
   const family = chain.family;
   const parts = { stored, machine, signal, gate, isLocked, liveFills, wallet, family, chains };
-  const plugins = communityPluginsOn === undefined ? {} : { communityPluginsOn };
+  const plugins = {
+    ...(communityPluginsOn === undefined ? {} : { communityPluginsOn }),
+    ...(listedMcpOn === undefined ? {} : { listedMcpOn }),
+  };
   const authorized = await authorizeSimulated(
     { ...parts, ...plugins, ...(fill === undefined ? {} : { fill }) },
     simulated,

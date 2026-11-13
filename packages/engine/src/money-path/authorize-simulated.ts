@@ -1,4 +1,5 @@
 import type { ChainFamily, ChainRegistry } from "@binference/chain";
+import type { Id } from "@binference/core";
 import { cardRulesOf } from "../agents/card-rules-of.js";
 import type { CapGate } from "../confirmations/cap-gate.js";
 import type { FillAuthorization } from "../intents/authorization.js";
@@ -49,6 +50,8 @@ export interface AuthorizeParts extends AdvanceParts {
   readonly isLocked: () => boolean;
   /** Whether a community plugin is on: auto mode then asks (decision 0350). */
   readonly communityPluginsOn?: () => boolean;
+  /** Whether a listed MCP server is on for an agent: auto mode then asks (decision 0428). */
+  readonly listedMcpOn?: (agent: Id<"agt">) => boolean;
   /** The wallet's facts as the proposal read them. */
   readonly wallet: WalletFacts;
   /** The family of the wallet's chain, which reads the spenders of the plan's approvals. */
@@ -108,6 +111,7 @@ async function autoTrigger(
     hasUnlistedSpender: approvesLaunchContract(chosen.plan, parts.family),
     hasTokenRiskWarning: hasTokenRiskWarning(simulated.record, parts.chains),
     communityPluginsOn: parts.communityPluginsOn?.() === true,
+    listedMcpOn: parts.listedMcpOn?.(simulated.record.agentId) === true,
   });
 }
 

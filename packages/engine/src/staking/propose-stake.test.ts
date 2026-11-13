@@ -350,6 +350,20 @@ describe("staking in auto mode", () => {
     );
   });
 
+  it("opens a card for a stake while a listed MCP server is on for the agent (decision 0428)", async () => {
+    const test = await startStakeEngine(withOwnCap(testStakingFake()), {
+      agent: { approvalMode: "auto" },
+      listedMcpOn: () => true,
+    });
+    const request = testCall(stakeRequest("stake"), testCallers.runtime);
+    const view = expectOk(await test.engine.handlers["intent/propose"](request));
+
+    expect(view.state).toBe("awaiting_confirmation");
+    expect(await testCardText(test, view, "en")).toContain(
+      "Auto mode asks you here: a listed MCP server is on, and its words reach every turn",
+    );
+  });
+
   it("leaves a live stake to the owner's card while the engine is locked", async () => {
     const test = await startStakeEngine(withOwnCap(await stakedFake()), {
       agent: { mode: "live", approvalMode: "auto" },

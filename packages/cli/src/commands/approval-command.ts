@@ -20,16 +20,23 @@ function printMode(
   state: { readonly approval: ApprovalState; readonly key: string },
 ): void {
   const { approval, key } = state;
-  const asks = approval.autoAsks === undefined ? {} : { autoAsks: approval.autoAsks };
+  const asks = {
+    ...(approval.autoAsks === undefined ? {} : { autoAsks: approval.autoAsks }),
+    ...(approval.listedMcpOn === undefined ? {} : { listedMcpOn: approval.listedMcpOn }),
+  };
   run.output.json({ agent, mode: approval.mode, changedAt: approval.changedAt, ...asks });
   run.output.say(key, {
     agent,
     mode: approval.mode,
     changedAt: run.formatter.dateTime(approval.changedAt),
   });
-  // While a community plugin is on, auto mode asks for every proposal (decision 0350).
+  // While a community plugin (decision 0350) or a listed MCP server (decision 0428) is on, auto
+  // mode asks for every proposal.
   if (approval.autoAsks === "plugin") {
     run.output.say("approval.pluginAsks");
+  }
+  if (approval.listedMcpOn === true) {
+    run.output.say("approval.listedMcpAsks");
   }
 }
 
@@ -37,8 +44,9 @@ function printMode(
  * `binference approval [manual|auto] [--agent <id>]`: shows the agent's approval mode, or sets it
  * through `approval/set`. Switching to `auto` is a loosening the CLI may make, since it holds the
  * `loosen` scope; the engine journals each switch and announces it on every surface. Setting the
- * mode the agent is in changes nothing. While a community plugin is on, it says auto mode asks
- * for every proposal. With `--json` it prints `{ agent, mode, changedAt, autoAsks? }`.
+ * mode the agent is in changes nothing. While a community plugin or a listed MCP server is on, it
+ * says auto mode asks for every proposal. With `--json` it prints
+ * `{ agent, mode, changedAt, autoAsks?, listedMcpOn? }`.
  */
 export async function runApproval(run: CommandRun, request: ApprovalRequest): Promise<ExitCode> {
   const { host, output } = run;

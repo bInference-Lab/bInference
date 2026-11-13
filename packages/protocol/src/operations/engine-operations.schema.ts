@@ -63,6 +63,11 @@ interface EngineStatus {
      * asks (decision 0350); absent otherwise.
      */
     readonly autoAsks?: "plugin";
+    /**
+     * `true` while the agent is in auto mode and a listed MCP server is on for it, so every
+     * proposal asks (decision 0428); absent otherwise.
+     */
+    readonly listedMcpOn?: true;
   }[];
   readonly health: readonly HealthSignal[];
   /**
@@ -218,6 +223,7 @@ export const engineOperations: OperationTable<EngineOperationShapes> = {
           launchWallet: protocolIdSchema("wallet").exactOptional(),
           bridgeWallet: protocolIdSchema("wallet").exactOptional(),
           autoAsks: z.literal("plugin").exactOptional(),
+          listedMcpOn: z.literal(true).exactOptional(),
         }),
       ),
       health: z.array(

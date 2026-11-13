@@ -24,12 +24,14 @@ type ApprovalMode = "manual" | "auto";
 
 /**
  * An agent's approval mode and when it last changed; in auto mode, `autoAsks: plugin` while a
- * community plugin is on, so every proposal asks (decision 0350).
+ * community plugin is on (decision 0350) and `listedMcpOn: true` while a listed MCP server is on
+ * for the agent (decision 0428), so every proposal asks.
  */
 interface ApprovalModeView {
   readonly mode: ApprovalMode;
   readonly changedAt: number;
   readonly autoAsks?: "plugin";
+  readonly listedMcpOn?: true;
 }
 
 /**
@@ -72,6 +74,7 @@ const approvalModeView = z.object({
   mode: approvalMode,
   changedAt: epochMsSchema,
   autoAsks: z.literal("plugin").exactOptional(),
+  listedMcpOn: z.literal(true).exactOptional(),
 });
 
 /** The limit, send level and approval mode operations, by name. */

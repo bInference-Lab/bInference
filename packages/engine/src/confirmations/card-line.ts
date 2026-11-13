@@ -112,6 +112,7 @@ export const cardKeys = [
   "autoAsks.spender",
   "autoAsks.outside",
   "autoAsks.plugin",
+  "autoAsks.listedMcp",
   "autoAsks.mcp",
   "autoAsks.deniedToken",
   "autoAsks.riskWarn",

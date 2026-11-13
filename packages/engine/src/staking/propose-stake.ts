@@ -1,5 +1,5 @@
 import type { TxSimulator } from "@binference/chain";
-import { type IdSource, ok, type Result } from "@binference/core";
+import { type Id, type IdSource, ok, type Result } from "@binference/core";
 import type { AssetInfos, ProtocolErrorCode, StakeRequest } from "@binference/protocol";
 import type { CapGate } from "../confirmations/cap-gate.js";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
@@ -36,6 +36,8 @@ export interface StakePathOptions extends StakeResolveOptions, StakePlanParts, S
   readonly isLocked: () => boolean;
   /** Whether a community plugin is on: auto mode then asks (decision 0350). */
   readonly communityPluginsOn?: () => boolean;
+  /** Whether a listed MCP server is on for an agent: auto mode then asks (decision 0428). */
+  readonly listedMcpOn?: (agent: Id<"agt">) => boolean;
   readonly execute: ExecuteConfirmed;
   readonly ids: IdSource;
   /** Reads a receipt token's own symbol, name and decimals when the registry lists none. */
@@ -109,6 +111,7 @@ async function authorize(
       hasTokenRiskWarning: false,
       stake: { isUnstake: resolved.ask.action === "unstake" },
       communityPluginsOn: options.communityPluginsOn?.() === true,
+      listedMcpOn: options.listedMcpOn?.(simulated.record.agentId) === true,
     });
     return advanceIntent(advance, simulated, { trigger });
   });

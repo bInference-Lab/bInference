@@ -80,6 +80,18 @@ describe("the chat relay", () => {
     expect(marked).toBe(true);
   });
 
+  it.each<readonly [string, readonly string[], boolean]>([
+    ["the agent", [testAgent], true],
+    ["another agent only", [secondAgent], false],
+  ])(
+    "starts a turn marked as outside content whatever the runtime says, while a listed MCP server is on for %s",
+    async (_name, agents, marked) => {
+      const test = await startTestEngine({ listedMcpOn: (agent) => agents.includes(agent) });
+      expectOk(await startTurn(test));
+      expect(test.turns.runningOf(testAgent)?.hasOutsideContent).toBe(marked);
+    },
+  );
+
   it("stores a chat/post before it replies, and the runtime takes it once", async () => {
     const test = await startTestEngine();
     const { handlers } = test.engine;
