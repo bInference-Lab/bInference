@@ -5,7 +5,7 @@ import { isLeaseLost, throwIfLeaseLost } from "./lease-lost.js";
 const fault = (code: ErrorCode) => new BinferenceError({ code, message: "A store fault." });
 
 describe("a lost lease", () => {
-  it.each(["store.lease_lost", "store.lease_mismatch"] as const)(
+  it.each(["store.lease_lost", "store.lease_mismatch", "store.commit_unknown"] as const)(
     "is %s, which is thrown on untouched",
     (code) => {
       const lost = fault(code);

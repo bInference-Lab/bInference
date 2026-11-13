@@ -90,6 +90,16 @@ const cases: readonly LossCase[] = [
     left: "executing",
   },
   {
+    name: "a signed step's store whose commit the database could not tell about",
+    loss: { at: "transactions.saveSigned", call: 1, code: "store.commit_unknown" },
+    left: "executing",
+  },
+  {
+    name: "a step's receipt record whose commit the database could not tell about",
+    loss: { at: "transactions.recordReceipt", call: 1, code: "store.commit_unknown" },
+    left: "executing",
+  },
+  {
     name: "the record of a step's receipt",
     loss: { at: "transactions.recordReceipt", call: 1, code: lost },
     left: "executing",

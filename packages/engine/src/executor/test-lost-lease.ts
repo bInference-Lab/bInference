@@ -3,8 +3,11 @@ import { BinferenceError } from "@binference/core";
 import type { IntentStore, PositionStore, TransactionStore } from "../ports.js";
 import type { BenchOptions } from "./test-executor.js";
 
-/** A code a store or the signer service throws once the install is another worker's. */
-export type LostLeaseCode = "store.lease_lost" | "store.lease_mismatch";
+/**
+ * A code a store or the signer service throws once the install is another worker's, or once a
+ * store host writes no more after a commit it could not tell about.
+ */
+export type LostLeaseCode = "store.lease_lost" | "store.lease_mismatch" | "store.commit_unknown";
 
 /** The fault a store write or the signer service throws once the lease is gone. */
 export function lostLeaseFault(code: LostLeaseCode = "store.lease_lost"): BinferenceError {
