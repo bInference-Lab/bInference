@@ -1,6 +1,7 @@
 import type { Id } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { fixtureId } from "../contracts/store-fixtures.js";
+import { lostLeaseFault } from "../executor/test-lost-lease.js";
 import type { IntentQuery } from "../intents/intent-change.js";
 import type { IntentKind } from "../intents/intent-kind.js";
 import type { IntentRecord } from "../intents/intent-record.js";
@@ -72,6 +73,23 @@ describe("the pin follow of every token launch", () => {
       details: { intents: fixtureId("int", 1), count: 1 },
     });
     expect(read).toStrictEqual([1, 2, 3].map((n) => fixtureId("int", n)));
+  });
+
+  it("stops at a lost lease and throws it on, following no launch after it", async () => {
+    const launches = [1, 2].map((n) => recordOf(n, "launchToken"));
+    const read: Id<"int">[] = [];
+    const stored = {
+      list: async () => Promise.resolve(launches),
+      snapshot: async (id: Id<"int">) => {
+        read.push(id);
+        return Promise.reject(lostLeaseFault());
+      },
+    };
+    const options = { stored } as unknown as LaunchPathOptions;
+    await expect(followLaunchPins(options, live)).rejects.toMatchObject({
+      code: "store.lease_lost",
+    });
+    expect(read).toStrictEqual([fixtureId("int", 1)]);
   });
 
   it("answers a launch another write moved on since the list as it is, following nothing", async () => {

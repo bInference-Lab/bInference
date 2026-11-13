@@ -10,6 +10,7 @@ import type {
 } from "@binference/chain";
 import { BinferenceError, type Err, err, ok, type Result } from "@binference/core";
 import type { IntentRecord } from "../intents/intent-record.js";
+import { throwIfLeaseLost } from "../records/lease-lost.js";
 import type { SignedTransaction, TransactionRecord } from "../wallet-queue/transaction-record.js";
 import type { WalletSlot } from "../wallet-queue/wallet-slot.js";
 import type { ExecutionRun } from "./executor-run.js";
@@ -54,7 +55,8 @@ export interface StepReplacing {
 
 /**
  * Takes the next nonce from the slot and prepares the step's draft at it, read from the chain.
- * `unprepared` when no node gave the nonce or the fees, logged as `executor.prepare_failed`.
+ * `unprepared` when no node gave the nonce or the fees, logged as `executor.prepare_failed`. A
+ * lost lease at the slot's nonce write throws on: the run stops there (decision 0436).
  */
 export async function prepareStep(
   run: ExecutionRun,
@@ -68,6 +70,7 @@ export async function prepareStep(
     const prepared = await plan.sending.preparer.prepare({ draft, nonce }, { signal });
     return prepared.ok ? ok({ index, draft, nonce, prepared: prepared.value }) : prepared;
   } catch (error) {
+    throwIfLeaseLost(error);
     logFault(
       run,
       "executor.prepare_failed",
@@ -77,7 +80,8 @@ export async function prepareStep(
   }
 }
 
-// Custody signs; a fault there signed nothing that left this machine.
+// Custody signs; a fault there signed nothing that left this machine. A lost lease is no fault of
+// the step: it throws on, and the install's next holder finds the intent as it is stored.
 async function signed(
   run: ExecutionRun,
   request: SignRequest,
@@ -85,6 +89,7 @@ async function signed(
   try {
     return await run.parts.custody.signTransaction(request, { signal: run.signal });
   } catch (error) {
+    throwIfLeaseLost(error);
     logFault(
       run,
       "executor.sign_failed",

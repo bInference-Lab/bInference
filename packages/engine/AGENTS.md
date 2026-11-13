@@ -431,6 +431,10 @@ Rules for this package:
   engine's shutdown order (ARCHITECTURE.md section 24): it takes nothing more, every wait ends and
   no step or replacement starts, while a signature or a send under way runs to its end within the
   shutdown's budget.
+- A lost lease (`store.lease_lost`, `store.lease_mismatch`, `src/records/lease-lost.ts`, decision 0436) is no fault of a step, a fill or an intent: every catch of the money code that turns a
+  throw into a stored end, a skip, a count, another try or a normal answer calls
+  `throwIfLeaseLost` first, so the run stops where it stands and writes nothing after it. The
+  executor logs it as `executor.lease_lost`, and the install's next holder recovers the intent.
 - The risk step (`src/risk/`, exported as `@binference/engine/risk`) weighs the token a quoted
   trade buys; a sale passes it, and its own simulation decides. A token the registry lists passes
   without asking anyone. Any other needs a report from every required `TokenRiskSource`, each

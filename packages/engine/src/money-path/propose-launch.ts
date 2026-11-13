@@ -8,6 +8,7 @@ import { type TokenLaunchQuote, tokenLaunchQuoteDocument } from "../intents/toke
 import { statesBeforeSigning } from "../intents/transition-table.js";
 import { callsOutsideCeiling } from "../limits/limit-ceiling.js";
 import type { PolicyPass, PolicyVerdict } from "../policy/check-policy.js";
+import { throwIfLeaseLost } from "../records/lease-lost.js";
 import { minOutFloor } from "../venues/build-checks.js";
 import type { LaunchUpload } from "../venues/launch-calls.js";
 import type { LaunchSetting } from "../venues/launch-settings.schema.js";
@@ -248,7 +249,8 @@ async function pictureOf(run: LaunchRun): Promise<Result<ReadPicture | undefined
   return fit === "too_large" ? err("picture_too_large") : ok(picture);
 }
 
-// Once its upload begins, the owner hears of any end before the pin wait (decision 0237).
+// Once its upload begins, the owner hears of any end before the pin wait (decision 0237). A lost
+// lease ends nothing: the install's next holder repairs the launch (decision 0436).
 async function upload(run: LaunchRun, quoted: Quoted): Promise<IntentSnapshot> {
   const picture = await pictureOf(run);
   if (!picture.ok) {
@@ -257,6 +259,7 @@ async function upload(run: LaunchRun, quoted: Quoted): Promise<IntentSnapshot> {
   try {
     return toldIfEnded(run.options, await uploadAndBuild(run, quoted, picture.value));
   } catch (fault) {
+    throwIfLeaseLost(fault);
     await loseUpload(run, quoted.checked).catch(() => undefined);
     throw fault;
   }
@@ -303,8 +306,10 @@ async function runLaunch(given: LaunchRun, proposed: IntentSnapshot): Promise<In
   if (quoted.record.state !== "quoted") {
     return quoted;
   }
-  // A first follow that fails leaves the launch where it got to, and the timer follows it on.
-  return followLaunchPin(options, quoted, { signal }).catch(async () => {
+  // A first follow that fails leaves the launch where it got to, and the timer follows it on; a
+  // lost lease throws on.
+  return followLaunchPin(options, quoted, { signal }).catch(async (fault: Error["cause"]) => {
+    throwIfLeaseLost(fault);
     const now = await options.stored.snapshot(quoted.record.id, { signal }).catch(() => undefined);
     return now ?? quoted;
   });

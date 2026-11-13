@@ -15,6 +15,7 @@ import type { InstallStore, PositionStore } from "../ports.js";
 import type { Positions } from "../positions/create-positions.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import { noticePush } from "../pushes/notice-push.js";
+import { throwIfLeaseLost } from "../records/lease-lost.js";
 import type { BridgeCursor, BridgeMove, BridgeRecord } from "./bridge-record.js";
 import { openBridgeStates } from "./bridge-record.js";
 import {
@@ -304,8 +305,10 @@ export function createBridgeFollower(parts: BridgeFollowParts): {
           // oxlint-disable-next-line eslint/no-await-in-loop -- one bridge at a time keeps the node reads paced
           await followOne(following, bridge, signal);
         } catch (error) {
-          // A node or a venue that failed this pass is read again on the next.
+          // A node or a venue that failed this pass is read again on the next; a lost lease stops
+          // the pass, as no bridge is this engine's to book any more (decision 0436).
           signal.throwIfAborted();
+          throwIfLeaseLost(error);
           const errorCode = error instanceof BinferenceError ? error.code : "internal.error";
           parts.log?.warn("bridge.follow_failed", { intentId: bridge.intentId, errorCode });
         }

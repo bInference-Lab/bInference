@@ -6,6 +6,7 @@ import { isTerminalState } from "../intents/intent-state.js";
 import type { MoneyPath } from "../money-path/create-money-path.js";
 import type { AgentStore, IntentStore, PositionStore } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
+import { isLeaseLost } from "../records/lease-lost.js";
 import { asCopyOrder, planCopyFill } from "./copy-fills.js";
 import { isPeriodLate } from "./dca-period.js";
 import { endEmptyExit, endLateExits, wasEmptiedSince } from "./end-exit-orders.js";
@@ -303,7 +304,7 @@ async function failed(
 }
 
 // Runs the fill within its deadline; a fault in it, or a fill past its deadline, is a skip. A stop
-// is no fault: it throws on.
+// is no fault: it throws on, as a lost lease does, which ends nothing (decision 0436).
 async function fillOrFail(
   parts: OrderFillsParts,
   state: FillState,
@@ -315,7 +316,7 @@ async function fillOrFail(
       fillNow(parts, state, { ...run, signal }),
     );
   } catch (error) {
-    if (run.signal.aborted) {
+    if (run.signal.aborted || isLeaseLost(error)) {
       throw error;
     }
     return failed(parts, state, run);

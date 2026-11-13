@@ -4,6 +4,7 @@ import { inFlightStates } from "../intents/fills-in-flight.js";
 import { isTerminalState } from "../intents/intent-state.js";
 import { withinDeadline } from "../orders/fill-faults.js";
 import type { OrderFillReason } from "../orders/order-fill.js";
+import { isLeaseLost } from "../records/lease-lost.js";
 import type { AlertFillRecord } from "./alert-fill-record.js";
 import { type AlertSkip, announceAlerts, endAlertSkipped } from "./end-alert.js";
 import { proposeRuleFill } from "./propose-rule-fill.js";
@@ -134,7 +135,8 @@ async function fillInLine(
 
 // Proposes the alert's fill within the fill's deadline. A fill that threw or ran past it cancels,
 // unsigned, any intent it stored and is a skip, `fill_failed` (decision 0338); one the executor
-// already holds ends the alert as it ends (decision 0342).
+// already holds ends the alert as it ends (decision 0342). A lost lease throws on and ends nothing
+// (decision 0436).
 async function proposeWithin(
   parts: WebhookFillParts,
   run: {
@@ -151,7 +153,7 @@ async function proposeWithin(
     );
     await endOfIntent(parts, { rule, alert, signal }, proposed);
   } catch (error) {
-    if (signal.aborted) {
+    if (signal.aborted || isLeaseLost(error)) {
       throw error;
     }
     await cancelAlertFill(parts, { agentId: rule.agentId, event: alert.event }, signal);

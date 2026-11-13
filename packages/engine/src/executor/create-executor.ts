@@ -9,6 +9,7 @@ import { createFillEnd } from "../orders/fill-ends.js";
 import { createPolicyCheck } from "../policy/check-policy.js";
 import type { Executor } from "../ports.js";
 import { createPositions } from "../positions/create-positions.js";
+import { isLeaseLost } from "../records/lease-lost.js";
 import { createRuleFillEnd } from "../webhooks/rule-fill-end.js";
 import { executeInSlot } from "./execute-in-slot.js";
 import { executeRescue, recoverRescue, rescueGroupsOf } from "./execute-rescue.js";
@@ -211,8 +212,10 @@ interface Stops {
   readonly lifetime: AbortController;
 }
 
-// A work's fault is logged with its code; one the engine's stop caused is no error. The work
-// starts at once, so a work that queues takes its place in the queue as it is tracked.
+// A work's fault is logged with its code; one the engine's stop caused is no error. A lost lease
+// ends the work where it stands and is no fault of the intent, which the install's next holder
+// recovers (decision 0436). The work starts at once, so a work that queues takes its place in the
+// queue as it is tracked.
 async function execute(parts: ExecutorParts, work: Work, stops: Stops): Promise<void> {
   const signal = stops.lifetime.signal;
   const stopping = AbortSignal.any([stops.stopping.signal, signal]);
@@ -220,6 +223,10 @@ async function execute(parts: ExecutorParts, work: Work, stops: Stops): Promise<
   try {
     await work.go(run);
   } catch (error) {
+    if (isLeaseLost(error)) {
+      parts.log.warn("executor.lease_lost", { intentId: work.intent, errorCode: error.code });
+      return;
+    }
     const errorCode = error instanceof BinferenceError ? error.code : "unexpected";
     const level = stopping.aborted ? "info" : "error";
     parts.log[level]("executor.failed", { intentId: work.intent, errorCode });

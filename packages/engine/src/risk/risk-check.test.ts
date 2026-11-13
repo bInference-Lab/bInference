@@ -9,8 +9,10 @@ import { bpsSchema } from "@binference/core";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
 import { riskCheckContract } from "../contracts/risk-check-contract.js";
+import { lostLeaseFault } from "../executor/test-lost-lease.js";
 import { createMemoryRiskCacheStore } from "../fakes/memory-risk-cache-store.js";
 import { testChains } from "../operations/test-engine.js";
+import type { RiskCacheStore } from "../ports.js";
 import { createVenueHost } from "../venues/venue-host.js";
 import { createRiskCheck, type RiskSourceUse } from "./risk-check.js";
 import {
@@ -30,6 +32,7 @@ interface Bench {
   readonly sources?: readonly RiskSourceUse[];
   readonly model?: TokenModel;
   readonly venue?: Venue;
+  readonly cache?: RiskCacheStore;
 }
 
 function sourceOf(id: string, report: TokenRiskReport | undefined, isDown = false) {
@@ -50,7 +53,7 @@ function benchOf(bench: Bench = {}) {
   const required = sourceOf("first", deep);
   const check = createRiskCheck({
     sources: bench.sources ?? [{ source: required, isRequired: true }],
-    cache: createMemoryRiskCacheStore(["first", "second"]),
+    cache: bench.cache ?? createMemoryRiskCacheStore(["first", "second"]),
     cacheTtlMs: () => 600_000,
     sourceTimeoutMs: 5_000,
     host,
@@ -202,6 +205,18 @@ describe("risk check", () => {
     await clock.advance(5_000);
     await expect(assessed).resolves.toMatchObject({ refusal: "sources_down" });
     expect(silent.asked()).toBe(true);
+  });
+
+  it("throws a lost lease at the cache's write on, so no source counts as down", async () => {
+    const memory = createMemoryRiskCacheStore(["first"]);
+    const cache: RiskCacheStore = {
+      ...memory,
+      write: async () => Promise.reject(lostLeaseFault()),
+    };
+    const { check } = benchOf({ cache });
+    await expect(check.assess(unknownSubject(), live)).rejects.toMatchObject({
+      code: "store.lease_lost",
+    });
   });
 
   it("asks each source once per token while its report holds", async () => {

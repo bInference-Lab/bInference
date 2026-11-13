@@ -9,6 +9,7 @@ import type { MoneyPath } from "../money-path/create-money-path.js";
 import type { FillCheckParts } from "../orders/fill-check.js";
 import type { FillSizeParts } from "../orders/fill-request.js";
 import type { AgentStore, IntentStore } from "../ports.js";
+import { isLeaseLost } from "../records/lease-lost.js";
 import type { AlertFillRecord } from "./alert-fill-record.js";
 import { type AlertEndParts, announceAlerts, endAlertSkipped } from "./end-alert.js";
 import { fillAlert, isLeftToItsFill } from "./fill-alert.js";
@@ -166,6 +167,50 @@ async function eachLine(
   await Promise.all(Array.from({ length: Math.min(agentsAtOnce, waiting.length) }, worker));
 }
 
+/** What a run's lines came to: how many entries threw, and the lost lease when one was. */
+interface LinesOutcome {
+  readonly faults: number;
+  readonly lost?: BinferenceError;
+}
+
+// Fills each agent's line of the taken entries. A lost lease is no failure of an entry: it counts
+// nothing, no entry starts after it, and the lines under way settle before the run throws it
+// (decision 0436).
+async function fillLines(
+  run: {
+    readonly parts: WebhookFillParts;
+    readonly failures: EntryFailures;
+    readonly signal: AbortSignal;
+  },
+  taken: readonly TakenEntry[],
+): Promise<LinesOutcome> {
+  const { parts, failures, signal } = run;
+  const outcome: { faults: number; lost?: BinferenceError } = { faults: 0 };
+  await eachLine(byAgent(taken), async (item) => {
+    if (outcome.lost !== undefined) {
+      return;
+    }
+    try {
+      if (item.isUnread !== true) {
+        await fillAlert(parts, item, signal);
+        await failures.handled(item.entry, signal);
+        return;
+      }
+    } catch (error) {
+      if (signal.aborted) {
+        throw error;
+      }
+      if (isLeaseLost(error)) {
+        outcome.lost = error;
+        return;
+      }
+      outcome.faults += 1;
+    }
+    await failures.failed(item, signal);
+  });
+  return outcome;
+}
+
 /**
  * Creates the {@link WebhookFills} (decisions 0336 to 0338): each accepted alert of an active
  * rule is a fill authorized by the rule, `{ webhookRule, event }`, sized from the rule's bounds and
@@ -175,7 +220,8 @@ async function eachLine(
  * handled. A run tells first the notices a stop left untold, then fills each agent's alerts in the
  * order they arrived, up to four agents at once. An entry that throws is left for the next run;
  * after its third failure its alert ends `fill_failed` and it is handled, so it never holds the
- * alerts behind it. A run whose entries threw rejects with the first fault once the rest settled.
+ * alerts behind it. A run whose entries threw rejects with the first fault once the rest settled;
+ * one that met a lost lease starts no entry after it and rejects with it (decision 0436).
  */
 export function createWebhookFills(parts: WebhookFillParts): WebhookFills {
   const failures = createEntryFailures(parts);
@@ -199,21 +245,11 @@ export function createWebhookFills(parts: WebhookFillParts): WebhookFills {
           }
         }),
       );
-      await eachLine(byAgent(taken), async (item) => {
-        try {
-          if (item.isUnread !== true) {
-            await fillAlert(parts, item, signal);
-            await failures.handled(item.entry, signal);
-            return;
-          }
-        } catch (error) {
-          if (signal.aborted) {
-            throw error;
-          }
-          faults += 1;
-        }
-        await failures.failed(item, signal);
-      });
+      const lines = await fillLines({ parts, failures, signal }, taken);
+      if (lines.lost !== undefined) {
+        throw lines.lost;
+      }
+      faults += lines.faults;
       if (faults > 0) {
         throw new BinferenceError({
           code: "engine.webhook_alert_failed",

@@ -3,6 +3,7 @@ import { err, idSchema } from "@binference/core";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
 import type { IntentRequest, IntentView } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
+import { losingLeaseAt } from "../executor/test-lost-lease.js";
 import { expectOk, testCoin, testNowMs, testWallet } from "../intents/test-intents.js";
 import { racedTo } from "../intents/test-raced-store.js";
 import { type TokenLaunchQuote, tokenLaunchQuoteDocument } from "../intents/token-launch-quote.js";
@@ -250,6 +251,35 @@ describe("a token launch a fault or a stop cut short once its upload began", () 
         values: { symbol: "MCAT", venue: pad, reason: "upload_lost", private: "no" },
       }),
     );
+  });
+});
+
+// The launch's moves into `state` find the lease gone, and the moves after them are noted.
+async function losingAt(state: string) {
+  const movesAfter: string[] = [];
+  const noteAfter = (moved: string) => movesAfter.push(moved);
+  const intents = losingLeaseAt({ state, noteAfter });
+  const { test, launcher } = await engineOver({ options: { intents } });
+  const proposing = test.engine.handlers["intent/propose"](testCall(launch, testCallers.cli));
+  await expect(proposing).rejects.toMatchObject({ code: "store.lease_lost" });
+  const left = await test.stores.intents.list({ states: ["checked", "quoted"], limit: 5 }, signal);
+  return { test, launcher, movesAfter, left };
+}
+
+describe("a token launch once the install's lease is lost", () => {
+  it("throws it on at its quote's move after the upload, ending nothing", async () => {
+    const { test, launcher, movesAfter, left } = await losingAt("quoted");
+    expect(launcher.uploads()).toHaveLength(1);
+    expect(movesAfter).toStrictEqual([]);
+    expect(left.map(({ state }) => state)).toStrictEqual(["checked"]);
+    expect(notices(test)).toStrictEqual([]);
+  });
+
+  it("throws it on at its first pin follow, leaving it quoted", async () => {
+    const { test, movesAfter, left } = await losingAt("assessed");
+    expect(movesAfter).toStrictEqual([]);
+    expect(left.map(({ state }) => state)).toStrictEqual(["quoted"]);
+    expect(cardsOpened(test)).toStrictEqual([]);
   });
 });
 

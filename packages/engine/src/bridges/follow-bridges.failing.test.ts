@@ -8,6 +8,7 @@ import {
 import { createFakeBridge, createFakeDeliveryReader } from "@binference/chain/testing";
 import { BinferenceError } from "@binference/core";
 import { describe, expect, it } from "vitest";
+import { lostLeaseFault } from "../executor/test-lost-lease.js";
 import { testToken } from "../intents/test-intents.js";
 import { startBridgeFollowBench } from "./test-bridge-follow.js";
 import { testArrives, testFarEntry } from "./test-bridges.js";
@@ -88,6 +89,20 @@ describe("following a bridge whose reads fail", () => {
       ]);
     },
   );
+
+  it("stops the pass at a lost lease and throws it on, logging no failed follow", async () => {
+    const bench = await startBridgeFollowBench({
+      readers: [throwingReader(() => lostLeaseFault())],
+      recipient: testFarEntry.account,
+      minOut,
+      fill,
+    });
+
+    await expect(bench.follow()).rejects.toMatchObject({ code: "store.lease_lost" });
+
+    expect(await bench.states()).toStrictEqual(["finalized", "in_transit"]);
+    expect(bench.logged()).toStrictEqual([]);
+  });
 
   it("leaves a refunded bridge in transit until its refund lands on the source chain", async () => {
     const depositTx = hashOf("d1");

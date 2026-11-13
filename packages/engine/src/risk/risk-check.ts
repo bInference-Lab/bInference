@@ -8,6 +8,7 @@ import { type Clock, createDeadline, type Random } from "@binference/core";
 import type { RiskView } from "@binference/protocol";
 import { assetInfoOf } from "../money-path/asset-infos.js";
 import type { RiskCacheStore, RiskCheck } from "../ports.js";
+import { throwIfLeaseLost } from "../records/lease-lost.js";
 import type { VenueHost } from "../venues/venue-host.js";
 import { cachedRiskSource } from "./cached-risk-source.js";
 import { routeHookFeeBps } from "./hook-fees.js";
@@ -58,8 +59,10 @@ async function answerOf(
     return answer.ok
       ? { id: source.id, isRequired, outcome: "reported", report: answer.value }
       : { id: source.id, isRequired, outcome: "not_covered" };
-  } catch {
+  } catch (error) {
+    // The cache's write of a report can find the install's lease gone, which no source caused.
     call.signal.throwIfAborted();
+    throwIfLeaseLost(error);
     return { id: source.id, isRequired, outcome: "down" };
   } finally {
     deadline.clear();

@@ -726,7 +726,10 @@ On startup ([ARCHITECTURE.md section 24](../ARCHITECTURE.md#section-24)), before
    ends an intent the same way when a step cannot be signed or stored, custody or the signer fails
    as it signs (`eth_signTransaction` sends nothing), or no node answers as the step is prepared. A signer service's `over_sums` stores
    `day_sums`, and its `locked` stores `signer_locked`, in the place of `step_unsent`
-   ([decision 0427](../DECISIONS.md#d0427)). A rescue left `executing`
+   ([decision 0427](../DECISIONS.md#d0427)). A lost lease, `store.lease_lost` or
+   `store.lease_mismatch` from a store write or the signer service, ends nothing: the run stops
+   where it stands, and the install's next holder recovers the intent from what is stored
+   ([decision 0436](../DECISIONS.md#d0436)). A rescue left `executing`
    goes on instead: a step a block holds is done, a signed or sent step goes on with its stored
    bytes, and a step with no stored transaction is signed as at its first run while the owner's
    confirmation lasts. Once it has run out, that step fails and the rescue reconciles with what

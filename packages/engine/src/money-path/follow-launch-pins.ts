@@ -1,5 +1,6 @@
 import { BinferenceError } from "@binference/core";
 import type { IntentRecord } from "../intents/intent-record.js";
+import { throwIfLeaseLost } from "../records/lease-lost.js";
 import { followedStates, followLaunchPin, type PinFollow } from "./follow-launch-pin.js";
 import { liveIntentsIn } from "./live-intents.js";
 import type { LaunchPathOptions } from "./resolve-launch.js";
@@ -7,6 +8,7 @@ import type { LaunchPathOptions } from "./resolve-launch.js";
 /** One launch's follow: whether it moved, or that it threw. */
 type Followed = { readonly moved: boolean } | { readonly threw: true };
 
+// A lost lease stops the whole follow at once: no other launch is the engine's to write.
 async function followOne(
   options: LaunchPathOptions,
   record: IntentRecord,
@@ -17,8 +19,9 @@ async function followOne(
     const moved =
       snapshot === undefined ? snapshot : await followLaunchPin(options, snapshot, follow);
     return { moved: moved !== undefined && moved.record.state !== record.state };
-  } catch {
+  } catch (error) {
     follow.signal.throwIfAborted();
+    throwIfLeaseLost(error);
     return { threw: true };
   }
 }

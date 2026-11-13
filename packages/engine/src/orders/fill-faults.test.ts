@@ -1,5 +1,6 @@
 import type { OrderRequest } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
+import { losingLeaseAt } from "../executor/test-lost-lease.js";
 import type { IntentChange } from "../intents/intent-change.js";
 import type { IntentStore } from "../ports.js";
 import {
@@ -61,6 +62,25 @@ describe("an auto order's fill that throws", () => {
     expect(noticesOf(test)).toMatchObject([
       { key: "notice.skipped", parts: { reason: { key: "reason.fill_failed" } } },
     ]);
+  });
+
+  it("throws a lost lease on, with no skip, no cancel and no notice after it", async () => {
+    const writesAfter: string[] = [];
+    const fault = { isArmed: false };
+    const noteAfter = (state: string) => writesAfter.push(state);
+    const loss = { state: "quoted", isArmed: () => fault.isArmed, noteAfter };
+    const test = await startFillEngine({ intents: losingLeaseAt(loss) });
+    const order = await activeOrder(test, testStopLoss());
+    fault.isArmed = true;
+    const filling = test.engine.fillOrder({ order: order.id, price: eightyCents }, live);
+
+    await expect(filling).rejects.toMatchObject({ code: "store.lease_lost" });
+    expect(writesAfter).toStrictEqual([]);
+    expect(await fillRowsOf(test, order.id)).toStrictEqual([]);
+    expect(await fillIntentsOf(test)).toStrictEqual([]);
+    const left = await test.stores.intents.list({ states: ["checked"], limit: 5 }, live);
+    expect(left.map(({ kind }) => kind)).toStrictEqual(["sell"]);
+    expect(noticesOf(test)).toStrictEqual([]);
   });
 
   it("makes a buy wait before it tries again, as any skip does", async () => {

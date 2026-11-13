@@ -2,6 +2,7 @@ import type { Clock } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { fixtureId } from "../contracts/store-fixtures.js";
 import { flush } from "../executor/test-executor.js";
+import { losingLeaseAt } from "../executor/test-lost-lease.js";
 import type { IntentChange } from "../intents/intent-change.js";
 import { testAgent, testAgentDraft, testLimits } from "../intents/test-intents.js";
 import type { TestEngine } from "../operations/test-engine.js";
@@ -16,6 +17,7 @@ import {
   routeOf,
   testRuleRequest,
 } from "./test-webhook-rules.js";
+import { webhookInboxPrefix } from "./webhook-alert.js";
 import { createWebhookIntake } from "./webhook-intake.js";
 import type { WebhookRuleRecord } from "./webhook-rule-record.js";
 import { webhookUrlOf } from "./webhook-secret.js";
@@ -137,6 +139,36 @@ function hangingAtQuote(store: IntentStore, fault: Fault): IntentStore {
     },
   };
 }
+
+describe("a webhook rule's fill once the install's lease is lost", () => {
+  it("throws it on each run, ending, cancelling and counting nothing", async () => {
+    const fault = faultOf();
+    const movesAfter: string[] = [];
+    const noteAfter = (state: string) => movesAfter.push(state);
+    const loss = { state: "quoted", isArmed: fault.isArmed, noteAfter };
+    const test = await startFillEngine({ intents: losingLeaseAt(loss) });
+    const created = await activeRule(test, testRuleRequest({ ratePerMinute: 60 }));
+    await alertTo(test, created.url, "one");
+    fault.arm({ isArmed: true });
+    const lost = { code: "store.lease_lost" };
+
+    await expect(test.engine.fillWebhookAlerts(live)).rejects.toMatchObject(lost);
+    expect(movesAfter).toStrictEqual([]);
+    for (const run of [2, 3]) {
+      // oxlint-disable-next-line eslint/no-await-in-loop -- one run after another, as the timer runs them
+      await expect(test.engine.fillWebhookAlerts(live), `run ${String(run)}`).rejects.toMatchObject(
+        lost,
+      );
+    }
+
+    expect(await fillIntentsOf(test)).toStrictEqual([]);
+    expect((await alertsOf(test, created.rule)).map(({ outcome }) => outcome)).toStrictEqual([
+      undefined,
+    ]);
+    const page = { keyPrefix: webhookInboxPrefix, limit: 5 };
+    expect(await test.stores.inbox.unhandled(page, live)).toHaveLength(1);
+  });
+});
 
 describe("a webhook rule's fill a stop or a fault cut short", () => {
   it("is cancelled at the next start, frees its cap, and a start in the minute fills no second", async () => {
