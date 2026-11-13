@@ -352,6 +352,11 @@ A token without `expires_at` works until it is revoked ([decision 0159](../DECIS
 of installed plugins, and the engine refuses to start a plugin whose files do not hash to its pin,
 or whose declarations do not hash to the digest the owner accepted
 ([decision 0348](../DECISIONS.md#d0348), [ARCHITECTURE.md section 14](../ARCHITECTURE.md#section-14)).
+On bInference Cloud each lock entry also names its plugin listing, marked `revoked` for good once
+a revocation list names it, and the lock keeps the floor of the newest revocation list the engine
+took, so a restart never takes an older one, and the time the owner was last told the listed
+plugins are held (decisions [0433](../DECISIONS.md#d0433) and [0435](../DECISIONS.md#d0435)). A
+self-hosted engine reads none of these, so a self-hosted lock that holds them does not read.
 
 Secrets are never stored here: tokens, webhook secrets and pairing codes appear only as SHA-256
 hashes; provider tokens live in the keychain and are named by `secret_ref`.

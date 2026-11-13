@@ -26,6 +26,11 @@ addition to protocol v1.
 Made with decision [0431](../DECISIONS.md#d0431), accepted by the tech lead on 2026-11-13: the
 quotas (section 7.16) and the `quota` error area (section 10), an addition to protocol v1.
 
+Made with decisions [0433](../DECISIONS.md#d0433) to [0435](../DECISIONS.md#d0435), accepted by
+the tech lead on 2026-11-13: listed plugins on bInference Cloud (section 7.8), the id prefix
+`pls_` (section 1.1) and the `plugin` codes they add (section 10), each an addition to protocol
+v1.
+
 The engine serves one protocol to every client: the agent runtime, the console and Mini App, the CLI
 and terminal chat, and the MCP server. The engine is the only server. Every other part of binference
 is a client with scopes, and none of them can confirm a transaction unless its scopes say so.
@@ -70,7 +75,7 @@ below.
 | `shj_` | shell job          | `shq_` | shell request    |
 | `crq_` | credential request | `sac_` | allowed command  |
 | `msg_` | inbox message      | `qst_` | agent question   |
-| `mls_` | MCP listing        |        |                  |
+| `mls_` | MCP listing        | `pls_` | plugin listing   |
 
 <a id="section-2"></a>
 
@@ -1000,7 +1005,7 @@ aside, is `image.walled`, and one that is not there is `image.not_found`
 | ---------------------- | --------- | ----- | ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `model/list`           | `read`    |       |       | `{ agent? }` → configured models by role, with prices when known; with `agent`, `current: true` marks the model its next turn uses for each role ([decision 0204](../DECISIONS.md#d0204))                                                                                                                |
 | `model/set`            | `confirm` | ✓     |       | `{ agent, role, model }` → the agent's models (`/ai`); a model not configured is `protocol.bad_args`, and the role's own configured model clears the pick                                                                                                                                                |
-| `plugin/list`          | `read`    |       |       | → installed plugins, tiers, permissions, state; a community plugin's provenance, publisher, why it is off and its tools as the agent names them                                                                                                                                                          |
+| `plugin/list`          | `read`    |       |       | → installed plugins, tiers, permissions, state; a community plugin's provenance, publisher, why it is off and its tools as the agent names them; on bInference Cloud its listing (below)                                                                                                                 |
 | `plugin/add`           | `admin`   | ✓     | ✓     | `{ source, hash, accepted?, typedName? }` → `{ job }`; the permission review (below)                                                                                                                                                                                                                     |
 | `plugin/enable`        | `admin`   | ✓     |       | `{ plugin }` → plugin                                                                                                                                                                                                                                                                                    |
 | `plugin/disable`       | `confirm` | ✓     |       | `{ plugin }` → plugin (braking)                                                                                                                                                                                                                                                                          |
@@ -1056,6 +1061,43 @@ remove takes the data folder first: one that stays is `plugin.data_not_removed`,
 `plugin.launcher_unreachable` in the image ([decision 0351](../DECISIONS.md#d0351)), and the
 plugin stays installed. `plugin/call` answers `plugin.not_found`, `plugin.disabled`, or
 `plugin.call_failed` with the host's reason in `details.reason`.
+
+**Listed plugins on bInference Cloud** ([decisions 0433](../DECISIONS.md#d0433) to
+[0435](../DECISIONS.md#d0435)). The composition root sets the plugin listing rule, and no config
+key, flag or operation changes it. The self-hosted root's needs no listing, so the rules above
+hold as written. The Cloud root's needs, for each plugin, a plugin listing (`pls_…`) that verifies
+with a listing key the root holds and that the newest revocation list does not name. The engine
+checks both itself; the listing catalog only serves signed text. On Cloud:
+
+- `plugin/add` reads the version's listing before it fetches anything. No listing is
+  `plugin.not_listed`; one that does not verify under a key in force, or is not in its canonical
+  form, is `plugin.listing_unverified`; one the revocation list names is `plugin.listing_revoked`;
+  a `hash` other than its integrity is `plugin.listing_mismatch` with
+  `details.field: "integrity"`. After the fetch, the package name and version, the integrity, the
+  files' pin, the manifest's id, the provenance, the publisher, the issuer, the workflow, and the
+  kinds, hosts, tools and config keys must each equal the listing's, else
+  `plugin.listing_mismatch` names the first field that differs. The review and its consent are as
+  above; the review also carries `listing: { listing, version }`, which its `digest` does not hash.
+  An update needs a listing of its own version.
+- `plugin/enable` checks the plugin's listing the same way, before the quota, and its lock change
+  refuses a listing revoked since the check. Each start reads the revocation list, then checks the
+  listing of every enabled plugin before it runs any. A plugin whose check fails for any reason
+  but a revocation is held: not started, its tools not offered, its lock entry unchanged, until a
+  check passes.
+- A revocation is for good: the lock marks the plugin's listing revoked, and an add, an enable, an
+  update or a start of that listing answers `plugin.listing_revoked` whatever a later list says.
+- The engine reads the revocation list at start and every 60 seconds. A list it takes that names a
+  plugin's listing stops the plugin at once, so a call in flight ends `plugin.call_failed`
+  (`not_running`); it turns the plugin off for good and sends `notice.pluginRevoked`, and an enable
+  then answers `plugin.listing_revoked`. Once the newest list taken expires, at most an hour after
+  it was signed, installs and enables answer `plugin.listings_unreachable`, retryable, with
+  `details.reason` `stale`, `unreachable` or `bad_answer`; every listed plugin is held, and the
+  owner gets `notice.pluginsHeld`. Each held plugin whose listing passes starts again at the next
+  fresh list.
+- `plugin/list` gives a listed plugin `listing: { listing, version, state }`, its `state`
+  `listed`, `revoked`, `held` or `unlisted`; a revoked plugin is `disabled`, with the
+  `disabledReason` it was off for before, if any.
+- `plugin/disable`, `plugin/remove` and `plugin/call` never wait on the catalog.
 
 **Skill proposals** ([decision 0408](../DECISIONS.md#d0408)). Only the runtime the engine runs
 now calls `skillProposal/create` and `skillProposal/revise`, in a running turn of its agent that
@@ -1820,7 +1862,7 @@ later unchanged.
 | `limit`      | `needs_admin`, `over_ceiling`, `daily_cap`, `needs_launch_wallet`, `needs_bridge_wallet`, `bridge_ceiling`                                                                                                                                                                                                                                                                                     |
 | `quota`      | `agents`, `live_agents`, `orders`, `plugins`, `proposals`, `turns` ([decision 0431](../DECISIONS.md#d0431))                                                                                                                                                                                                                                                                                    |
 | `config`     | `invalid`, `secret_inline`                                                                                                                                                                                                                                                                                                                                                                     |
-| `plugin`     | `not_found`, `hash_mismatch`, `review_needed`, `fetch_failed`, `provenance_failed`, `invalid`, `id_taken`, `disabled`, `call_failed`, `install_failed`, `lock_unreadable`, `too_many`, `data_not_removed`, `launcher_unreachable`                                                                                                                                                              |
+| `plugin`     | `not_found`, `hash_mismatch`, `review_needed`, `fetch_failed`, `provenance_failed`, `invalid`, `id_taken`, `disabled`, `call_failed`, `install_failed`, `lock_unreadable`, `too_many`, `data_not_removed`, `launcher_unreachable`, `not_listed`, `listing_unverified`, `listing_mismatch`, `listing_revoked`, `listings_unreachable`                                                           |
 | `skill`      | `not_found`, `hash_mismatch`, `refused`, `invalid`, `name_taken`, `fetch_failed`, `proxy_held`, `ssh_through_proxy`, `changed`, `not_editable`, `patch_unmatched`, `outside_content`, `proposal_not_found`, `proposal_done`, `proposal_stale`, `proposal_blocked`, `proposal_limit`                                                                                                            |
 | `job`        | `not_found`                                                                                                                                                                                                                                                                                                                                                                                    |
 | `backup`     | `no_owner_key`, `snapshot_failed`, `write_failed`, `check_failed`, `copy_failed`                                                                                                                                                                                                                                                                                                               |

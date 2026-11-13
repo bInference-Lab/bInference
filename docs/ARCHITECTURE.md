@@ -874,6 +874,15 @@ Installs (`binference plugin add`, `list`, `enable`, `disable`, `remove`) are pr
   `plugin enable` and `plugin add` need the CLI. Publisher signatures arrive with the Verified tier
   and its registry in v2.
 
+**Listed plugins (Cloud).** On bInference Cloud a fourth protection comes first: a plugin installs,
+turns on and runs only under a plugin listing the listing catalog reviewed and signed, which the
+engine verifies itself with the listing keys the composition root holds, and which matches the
+package it fetched field by field ([decisions 0433](DECISIONS.md#d0433) to
+[0435](DECISIONS.md#d0435)). A signed revocation list, read every minute, stops and turns off a
+revoked plugin within 75 seconds; once no fresh list arrives for an hour, every listed plugin is
+held until one does. The owner's review and consent stay as above, and a listed plugin
+stays a community plugin. The self-hosted root needs no listing.
+
 **MCP server.** `binference mcp` is a stdio MCP server that connects to the engine with a `read` and
 `propose` token. Claude Code, Codex, Cursor or any MCP client can then quote, check risk and
 propose. Every proposal waits for the owner's tap in binference's Telegram or console.
@@ -1407,6 +1416,7 @@ the Cloud profile. A port with two adapters runs one contract test suite against
 | Remote access    | Tailscale `serve` and `funnel` ([decision 0051](DECISIONS.md#d0051))                   | Not needed: the console and webhooks live on binference.io                        |
 | Binance Agent OS | OAuth back to `127.0.0.1`                                                              | OAuth back to binference.io, one encrypted token per user                         |
 | Backups, updates | Local encrypted backups; `binference update`                                           | Managed database backups; we deploy                                               |
+| Plugins          | Any npm package the owner reviews ([decision 0348](DECISIONS.md#d0348))                | Only packages bInference listed and signed ([decision 0433](DECISIONS.md#d0433))  |
 
 **Rules for both profiles:**
 
@@ -1421,7 +1431,8 @@ the Cloud profile. A port with two adapters runs one contract test suite against
   `BotUpdateSource`, models `ModelBilling`, store the store ports, market data `MarketData`,
   quotas `QuotaSource` (`@binference/engine`,
   [spec 1, section 7.16](specs/protocol.md#section-7-16)); secrets `SecretStore`
-  (`@binference/core`). The test composition root
+  (`@binference/core`); the plugin listing rule with its catalog `PluginListingCatalog`
+  (`binference`, [spec 1, section 7.8](specs/protocol.md#section-7-8)). The test composition root
   in `cli/src/compose/` fills them with fakes shaped like the Cloud adapters.
 
 **What Cloud adds:**
