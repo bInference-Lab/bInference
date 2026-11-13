@@ -187,7 +187,8 @@ const encoded = [
   "cm8Kem9uZQp6b28=",
 ].join("");
 
-/** The 2,048 words of the BIP-39 English list, which recovery phrases are written in. */
-export const recoveryWords: ReadonlySet<string> = new Set(
-  Buffer.from(encoded, "base64").toString("utf8").split("\n"),
-);
+/**
+ * The 2,048 words of the BIP-39 English list, which recovery phrases are written in. It is read
+ * with `atob`, which browsers and Node both have, since the console bundles this package.
+ */
+export const recoveryWords: ReadonlySet<string> = new Set(atob(encoded).split("\n"));
