@@ -9,7 +9,9 @@ proposal rule is [decision 0167](../DECISIONS.md#d0167), accepted on 2026-10-10.
 [decision 0415](../DECISIONS.md#d0415) (deleting chats) and decisions
 [0428](../DECISIONS.md#d0428) to [0430](../DECISIONS.md#d0430) (listed MCP servers). Made with
 decision [0431](../DECISIONS.md#d0431), accepted by the tech lead on 2026-11-13: the wait for a turn
-quota.
+quota. Made with decision [0437](../DECISIONS.md#d0437), accepted by the tech lead on 2026-11-13: a
+propose call answered `protocol.outcome_unknown` is a proposal whose outcome is unknown
+(section 6.1).
 
 The agent runtime is the process that runs each agent's model loop: sessions, context, tools,
 compaction and model calls ([ARCHITECTURE.md section 4](../ARCHITECTURE.md#section-4)). It is a
@@ -608,8 +610,9 @@ self-hosted agent gets none of these tools.
 - The batch finishes, and the turn ends. No model call follows, so no retry and no model fallback
   can follow either ([ARCHITECTURE.md section 16](../ARCHITECTURE.md#section-16)).
 - A message that waits or arrives meanwhile starts a new turn, which is not committed.
-- When the engine does not answer the propose call, its outcome is unknown: the result says so, the
-  turn ends `failed`, and the call is never sent again.
+- When the engine does not answer the propose call, or answers `protocol.outcome_unknown` for a key
+  an engine that stopped left unfinished ([decision 0437](../DECISIONS.md#d0437)), its outcome is
+  unknown: the result says so, the turn ends `failed`, and the call is never sent again.
 
 <a id="section-6-2"></a>
 

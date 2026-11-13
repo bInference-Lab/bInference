@@ -31,6 +31,10 @@ the tech lead on 2026-11-13: listed plugins on bInference Cloud (section 7.8), t
 `pls_` (section 1.1) and the `plugin` codes they add (section 10), each an addition to protocol
 v1.
 
+Made with decision [0437](../DECISIONS.md#d0437), accepted by the tech lead on 2026-11-13: a
+write's key marked started in the store before the write runs, and `protocol.outcome_unknown` for a
+key whose write an engine left unfinished (sections 5 and 10), an addition to protocol v1.
+
 The engine serves one protocol to every client: the agent runtime, the console and Mini App, the CLI
 and terminal chat, and the MCP server. The engine is the only server. Every other part of binference
 is a client with scopes, and none of them can confirm a transaction unless its scopes say so.
@@ -276,12 +280,24 @@ A Telegram tap is handled inside the engine and never travels over this protocol
 
 - Every operation marked `write` in section 7 needs `key`: a client-made string of at most 64
   characters, unique per intended action (a UUIDv7 works).
-- The engine stores `(credential, op, key)` with a hash of `args` and the result for 24 hours. The
-  same key with the same args returns the stored result; the same key with different args fails with
-  `protocol.key_reused`. The hash leaves out a passphrase (`engine/unlock`), so the store holds no
-  trace of it. The result of `webhookRule/create` and `webhookRule/rotateUrl` is stored without its
-  URL, which ends in the rule's secret, and the same key fails `webhook.url_shown` from then on:
-  the URL is shown once ([decision 0337](../DECISIONS.md#d0337)).
+- Before a write runs, the engine marks `(credential, op, key)` started in its store, with a hash
+  of `args`, in a write of its own; on bInference Cloud the mark passes the install's lease fence,
+  so only the worker that holds the install runs the write
+  ([decision 0437](../DECISIONS.md#d0437)). The write's result then fills the mark and is kept for
+  24 hours. The hash leaves out a passphrase (`engine/unlock`), so the store holds no trace of it.
+  The result of `webhookRule/create` and `webhookRule/rotateUrl` is stored without its URL, which
+  ends in the rule's secret, and the same key fails `webhook.url_shown` from then on: the URL is
+  shown once ([decision 0337](../DECISIONS.md#d0337)).
+- The same key with the same args returns the stored result; the same key with different args fails
+  with `protocol.key_reused`. A call whose key's write still runs waits for it and gets its answer.
+  A write refused with an error frees its key, so the same key may run again. A write whose
+  handler failed, or ran past the call's timeout, keeps its key: part of it may have run.
+- A key whose write never answered, since its engine stopped or its handler failed, fails
+  `protocol.outcome_unknown`, not retryable, with the same args, until the key's 24 hours end: the
+  write may have taken effect in part, in whole or not at all. The client lists its intents
+  changed since it sent the call (`intent/list` with `changedSince`, section 7.4), then sends the
+  write again with a new key only if none matches. A client that got no answer at all sends the
+  same key again, never a new one.
 - A write is stored durably before its `reply` is sent.
 
 <a id="section-6"></a>
@@ -1836,7 +1852,7 @@ later unchanged.
 
 | Area         | Codes                                                                                                                                                                                                                                                                                                                                                                                          |
 | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `protocol`   | `not_open`, `bad_frame`, `unknown_op`, `bad_args`, `busy`, `too_large`, `key_reused`, `version`                                                                                                                                                                                                                                                                                                |
+| `protocol`   | `not_open`, `bad_frame`, `unknown_op`, `bad_args`, `busy`, `too_large`, `key_reused`, `version`, `outcome_unknown` ([decision 0437](../DECISIONS.md#d0437))                                                                                                                                                                                                                                    |
 | `auth`       | `required`, `invalid`, `expired`, `revoked`, `origin`, `scope`, `local_only`, `device_only`                                                                                                                                                                                                                                                                                                    |
 | `engine`     | `starting`, `stopping`, `locked`, `timeout`                                                                                                                                                                                                                                                                                                                                                    |
 | `runtime`    | `unavailable`                                                                                                                                                                                                                                                                                                                                                                                  |

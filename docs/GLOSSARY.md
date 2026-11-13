@@ -740,6 +740,8 @@ check` tries it as `network.proxy`.
   for `staking/options` and `binference_bridge_quote` for `bridge/quote`.
 - **request id**: the optional `requestId` an MCP client gives a propose tool, sent as the call's
   idempotency key: a retry with the same id returns the first intent and its card, not a new one.
+  When the engine that ran the first call stopped before it answered, a retry fails
+  `protocol.outcome_unknown`, and the client reads its intents.
 - **coding-agent skills**: `clean-diff`, `review-diff`, `shape-commit`, `review-money-path`,
   `add-migration`, `write-adr`.
 

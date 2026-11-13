@@ -20,6 +20,10 @@ Approved by the owner on 2026-11-05: the Postgres form of both databases, with t
 and the database roles of bInference Cloud (section 6), on decisions
 [0365](../DECISIONS.md#d0365) to [0367](../DECISIONS.md#d0367).
 
+Made with decision [0437](../DECISIONS.md#d0437), accepted by the tech lead on 2026-11-13: a
+write's key kept as started, with no result, while its write runs (sections 2.7 and 4), in engine
+migration 0065.
+
 <a id="section-1"></a>
 
 ## 1. Files and settings
@@ -297,7 +301,7 @@ and its `fill_outcome` is written once, a fill in the same write as its intent's
 | `inbox`             | `id`, `source` (`telegram`, `webhook`), `source_key` (`tg:<bot>:<update>`), `payload JSON`, `received_at`, `handled_at`                                                                                                                                                                                                                                                            | unique `source_key`                                      |
 | `outbox`            | `id`, `surface`, `target JSON`, `payload JSON`, `state` (`queued`, `sent`, `unknown_after_send`, `failed`), `attempts`, `next_at`, `ref`, `created_at`, `sent_at`                                                                                                                                                                                                                  | `(state, next_at)`                                       |
 | `notices`           | `id`, `agent_id`, `kind` (the notice's name), `i18n_key`, `values JSON` (the message's values, times, amounts, parts and the messages that follow it), `level` (`info`, `warning`, `critical`), `at`, `delivered JSON` (each surface's delivery state), `intent_id` (the intent it is about, [decision 0133](../DECISIONS.md#d0133)), `seq` (its write-order key, from `counters`) | `(at)`, unique `seq`                                     |
-| `idempotency`       | `credential`, `op`, `key`, `args_hash`, `result JSON`, `at`                                                                                                                                                                                                                                                                                                                        | PK `(credential, op, key)`                               |
+| `idempotency`       | `credential`, `op`, `key`, `args_hash`, `result JSON` (empty while the key's write runs), `at` (when the key was started, then when its result was stored)                                                                                                                                                                                                                         | PK `(credential, op, key)`                               |
 | `agent_inbox`       | `id` (`msg_…`), `agent_id`, `session_id`, `kind` (the `inbox` push kind), `turn_id` (the turn reserved for it), `payload JSON`, `created_at`, `taken_at`, `seq` (its write-order key, from `counters`)                                                                                                                                                                             | `(agent_id, taken_at)`, unique `seq`                     |
 | `model_usage`       | `id`, `key` (each attempt's own, `<turn>.usage.<n>`), `agent_id`, `turn_id`, `model`, `input_tokens`, `output_tokens`, `cached_tokens`, `usd_micros`, `at`                                                                                                                                                                                                                         | unique `key`; `(agent_id, at)`                           |
 | `budget_notices`    | `agent_id`, `day_at` (the start of the owner's day on which the agent's model budget was spent), `at`                                                                                                                                                                                                                                                                              | PK `(agent_id, day_at)`                                  |
@@ -313,6 +317,14 @@ install runs: `target` `{ "to": "owner" }`, `payload` `{ "notice": <id> }`. A de
 changes the row and the notice's `delivered` in one transaction
 ([decision 0133](../DECISIONS.md#d0133)). A notice the owner muted is stored with no `outbox` row
 and an empty `delivered` ([decision 0185](../DECISIONS.md#d0185)).
+
+`idempotency` holds one row per write key (spec 1, section 5). A write marks its key started, with
+its args hash and no result, in a write of its own before it runs, and fills `result` in another
+before its reply ([decision 0437](../DECISIONS.md#d0437)); a result whose started row is gone
+writes the row whole. Only a write its handler refuses removes the row; one whose handler threw
+keeps it, since part of it may have run. A row with no result that no running write holds belongs
+to a write that never answered, and answers `protocol.outcome_unknown` until it is pruned. The
+prune leaves the rows of the writes the engine runs now.
 
 `questions` holds the agent's questions to the owner (spec 1, section 7.7): at most one open per
 agent, which the partial unique index keeps. The write that answers a question also stores its
@@ -436,7 +448,7 @@ A daily job (inside the engine's schedule queue) prunes:
 | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
 | `ledger`, `executions`, `arrivals`, `departures`, `positions`, `intents`, `txs`, `cards`, `confirmations`, `late_landings`, `carried_outflows`, `stake_unbondings`, `bridges` | forever                                                            |
 | `transcript_events`, `turns`, `chat_queue`                                                                                                                                    | 90 days ([decision 0056](../DECISIONS.md#d0056); `chats.keepDays`) |
-| `idempotency`                                                                                                                                                                 | 24 hours                                                           |
+| `idempotency`                                                                                                                                                                 | 24 hours after `at`, a started key with no result too              |
 | `mini_app_launches`                                                                                                                                                           | 24 hours, deleted at each Mini App sign-in                         |
 | `mini_app_tickets`                                                                                                                                                            | 5 minutes, deleted at each new ticket; a sign-in deletes its own   |
 | `inbox` handled, `outbox` sent, `agent_inbox` taken                                                                                                                           | 30 days                                                            |
