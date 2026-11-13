@@ -9,7 +9,11 @@ import type { MetaTables } from "../migrations/run-postgres-migrations.js";
 import type { StoreHost } from "../tasks/store-host.js";
 import { probeWorker, recordStamped, summarize } from "../testing/probe-database.js";
 import { createProbeInstall, type ProbeInstall } from "../testing/probe-install.js";
-import { createTestPostgresDatabase, type TestPostgresDatabase } from "../testing/test-postgres.js";
+import {
+  createTestPostgresDatabase,
+  ignoreCommitUnknown,
+  type TestPostgresDatabase,
+} from "../testing/test-postgres.js";
 import { openPostgres, type PostgresDatabase } from "./open-postgres.js";
 import { createPostgresAgentLeases } from "./postgres-agent-leases.js";
 import { createPostgresStoreHost } from "./postgres-store-host.js";
@@ -76,7 +80,9 @@ function hostOf(worker: Worker, probe: ProbeInstall, lease: HeldLease | undefine
   const { pool, thread } = worker;
   const place = { database: pool, thread, schema: probe.schema };
   return createPostgresStoreHost(
-    lease === undefined ? place : { ...place, lease: { sharedSchema, held: lease } },
+    lease === undefined
+      ? place
+      : { ...place, lease: { sharedSchema, held: lease }, onCommitUnknown: ignoreCommitUnknown },
   );
 }
 

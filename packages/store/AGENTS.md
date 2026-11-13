@@ -68,6 +68,16 @@ Rules for this package:
   `postgresRead` holds on the thread that started it, and `createPostgresStoreHost` binds the
   adapters to one install's schema. Postgres reports no `insertId`: a task that runs there reads
   a new key with `returning`.
+- A Postgres write reads its transaction id, its session and the server's start before `COMMIT`
+  (`commit-identity.ts`). When `COMMIT`'s answer is lost, it asks the database how the transaction
+  ended on a connection of its own, each ask and session end cut at what is left of 10 s
+  (`commit-step.ts`, `commit-status.ts`, decision 0438): committed answers the task's output, not
+  committed runs again within the three tries, and one the database cannot tell about within 10 s
+  fails `store.commit_unknown`. After an abort while `COMMIT` runs, `COMMIT`'s own answer races
+  the check, and the write keeps its connection until both ended (`write-once.ts`), so a session
+  end never reaches another call. After `store.commit_unknown`, its store host refuses every write,
+  those already queued too, and calls `onCommitUnknown`, which every host with a lease has; reads
+  go on. No caller replays a write.
 - A store's Postgres test, `<store>.postgres.test.ts`, runs the port's contract suite on
   `createTestPostgresStores`, a fresh install's schemas per check, beside its SQLite test.
   A suite plants the rows it needs through store tasks (`testing/plant-agent.ts`,

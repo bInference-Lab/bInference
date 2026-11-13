@@ -24,6 +24,20 @@ function recordingClock(waits: number[]): Clock {
   };
 }
 
+// A clock whose waits last as long on the server, so its time keeps pace with the database's.
+function pacedClock(database: PostgresDatabase<Tables>): Clock {
+  let nowMs = 0;
+  return {
+    now: () => nowMs,
+    sleep: async (delayMs) => {
+      await database.read(async ({ kysely, execute }) => {
+        await execute(sql`select pg_sleep(${delayMs / 1_000})`.compile(kysely));
+      }, never);
+      nowMs += delayMs;
+    },
+  };
+}
+
 function conflict(): DatabaseError {
   const error = new DatabaseError("could not serialize access", 0, "error");
   error.code = "40001";
@@ -383,17 +397,25 @@ describe.runIf(url !== "")("a Postgres store connection", () => {
     await expect(keyStored(database, 2)).resolves.toBe(false);
   });
 
-  it("calls a write whose commit an abort interrupted unknown, though it may land", async () => {
+  it("answers a write whose commit an abort interrupted once the database says it landed", async () => {
+    // The check's waits pass as fast as the server's, so it sees the slow COMMIT land.
+    const paced = await openPostgres<Tables>(server.settings, {
+      clock: pacedClock(database),
+      random: createSeededRandom(3),
+      logger: createMemoryLogger({ subsystem: "store" }),
+      signal: never,
+    });
     const stop = new AbortController();
-    const writing = database.write(async ({ kysely, execute }) => {
+    const writing = paced.write(async ({ kysely, execute }) => {
       await execute(kysely.insertInto("t.items").values({ k: 3, v: 3 }));
+      return 3;
     }, stop.signal);
     // Row 3's deferred trigger holds its COMMIT for half a second.
     await waitForStatement(database, "commit", "running");
     stop.abort(new Error("stopped"));
-    await expect(writing).rejects.toMatchObject({ code: "store.commit_unknown" });
-    await waitForStatement(database, "commit", "ended");
+    await expect(writing).resolves.toBe(3);
     await expect(keyStored(database, 3)).resolves.toBe(true);
+    await paced.close();
   });
 
   it("cancels a read's query on the server when its signal aborts", async () => {

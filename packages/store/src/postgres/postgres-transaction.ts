@@ -1,31 +1,15 @@
-import { BinferenceError, type Clock, type Logger, type Random } from "@binference/core";
+import type { Random } from "@binference/core";
 import { type Kysely, sql } from "kysely";
-import { connectionOf, type PostgresConnection } from "./postgres-connection.js";
+import { connectionOf } from "./postgres-connection.js";
 import {
-  commitUnknown,
+  commitsLost,
   isUniqueViolation,
   isWriteConflict,
   sqlStateOf,
   storeFaultOf,
   writeConflict,
 } from "./postgres-error.js";
-
-/** The work of one transaction. It makes no network call but its queries, and returns only data. */
-export type PostgresWork<Schema, Output> = (
-  connection: PostgresConnection<Schema>,
-) => Promise<Output>;
-
-/** What a write's retries wait through and report to. */
-export interface RetryPorts {
-  readonly clock: Clock;
-  readonly random: Random;
-  readonly logger: Logger;
-}
-
-/** A write's ports and the signal that stops it. */
-export interface WriteOptions extends RetryPorts {
-  readonly signal: AbortSignal;
-}
+import { type PostgresWork, type Tried, type WriteOptions, writeOnce } from "./write-once.js";
 
 /** The waits before each retry of a write that met a conflict (decision 0366). */
 const conflictWaitsMs: readonly number[] = [10, 40, 160];
@@ -36,61 +20,17 @@ function jittered(waitMs: number, random: Random): number {
   return waitMs + Math.floor((waitMs * byte) / 512);
 }
 
-function ignore(): void {
-  // Nothing waits for it any more.
-}
-
-async function writeOnce<Schema, Output>(
-  kysely: Kysely<Schema>,
-  work: PostgresWork<Schema, Output>,
-  signal: AbortSignal,
-): Promise<Output> {
-  signal.throwIfAborted();
-  let committing = false;
-  const running = kysely
-    .transaction()
-    .setIsolationLevel("serializable")
-    .setAccessMode("read write")
-    .execute(async (transaction) => {
-      const output = await work(connectionOf(transaction, signal));
-      // An abort before COMMIT throws here, and the transaction rolls back.
-      signal.throwIfAborted();
-      committing = true;
-      return output;
-    });
-  let refuse: (fault: BinferenceError) => void = ignore;
-  const aborted = new Promise<never>((_resolve, reject) => {
-    refuse = reject;
-  });
-  const onAbort = (): void => {
-    if (committing) {
-      refuse(commitUnknown(signal.reason));
-    }
-  };
-  signal.addEventListener("abort", onAbort, { once: true });
-  // The COMMIT may still settle after an abort stopped the wait; its outcome is unknown either way.
-  void running.catch(ignore);
-  try {
-    return await Promise.race([running, aborted]);
-  } catch (error) {
-    // A COMMIT that the server refused rolled back; one that lost its connection may have landed.
-    throw committing && sqlStateOf(error) === undefined && !(error instanceof BinferenceError)
-      ? commitUnknown(error)
-      : error;
-  } finally {
-    signal.removeEventListener("abort", onAbort);
-  }
-}
-
 /**
  * Runs `work` in one `SERIALIZABLE`, read-write transaction and commits. A conflict (SQLSTATE
  * 40001 or 40P01) runs it again from its first read, at most three times more after 10, 40 and
  * 160 ms with jitter, each retry logged; then it throws `store.write_conflict`. A unique or
  * exclusion key in use (23505 or 23P01) runs it again once, inside the same three, since a writer
  * that did not read the key meets a concurrent insert of it so (decision 0413); a second one, or
- * one with no retry left, throws `store.constraint`. A connection lost or the signal aborted while
- * `COMMIT` is in flight throws `store.commit_unknown`, never retried: the caller replays the write,
- * which answers as its first run did. An abort before `COMMIT` rolls back.
+ * one with no retry left, throws `store.constraint`. A connection lost while `COMMIT` is in flight
+ * asks the database how the transaction ended, and an abort then races that ask with `COMMIT`'s
+ * own answer (decision 0438): a committed one answers the task's output, one that did not commit
+ * runs again inside the same three, and one the database cannot tell about within 10 s throws
+ * `store.commit_unknown`, never retried. An abort before `COMMIT` rolls back.
  */
 export async function postgresWrite<Schema, Output>(
   kysely: Kysely<Schema>,
@@ -132,22 +72,41 @@ async function writeFrom<Schema, Output>(
   work: PostgresWork<Schema, Output>,
   options: WriteOptions & Attempt,
 ): Promise<Output> {
+  let tried: Tried<Output>;
   try {
-    return await writeOnce(kysely, work, options.signal);
+    tried = await writeOnce(kysely, work, options);
   } catch (error) {
     const final = finalFault(error, options);
     if (final !== undefined) {
       throw final.fault;
     }
-    options.logger.warn("store.write_retried", {
-      errorCode: sqlStateOf(error) ?? "",
-      durationMs: options.clock.now() - options.startedMs,
-    });
-    const waitMs = conflictWaitsMs[options.attempt] ?? 0;
-    await options.clock.sleep(jittered(waitMs, options.random), options.signal);
     const hasRerunUnique = options.hasRerunUnique || isUniqueViolation(error);
-    return writeFrom(kysely, work, { ...options, attempt: options.attempt + 1, hasRerunUnique });
+    const why = sqlStateOf(error) ?? "";
+    return writeAgain(kysely, work, { ...options, hasRerunUnique, why });
   }
+  if (tried.kind === "done") {
+    return tried.output;
+  }
+  if (conflictWaitsMs[options.attempt] === undefined) {
+    throw commitsLost(options.attempt + 1);
+  }
+  return writeAgain(kysely, work, { ...options, why: "commit_lost" });
+}
+
+// Runs a write again after a conflict, or after a lost commit that did not land, once its wait
+// with jitter has passed.
+async function writeAgain<Schema, Output>(
+  kysely: Kysely<Schema>,
+  work: PostgresWork<Schema, Output>,
+  options: WriteOptions & Attempt & { readonly why: string },
+): Promise<Output> {
+  options.logger.warn("store.write_retried", {
+    errorCode: options.why,
+    durationMs: options.clock.now() - options.startedMs,
+  });
+  const waitMs = conflictWaitsMs[options.attempt] ?? 0;
+  await options.clock.sleep(jittered(waitMs, options.random), options.signal);
+  return writeFrom(kysely, work, { ...options, attempt: options.attempt + 1 });
 }
 
 /**

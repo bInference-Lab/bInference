@@ -22,7 +22,11 @@ import {
 import { createProbeInstall } from "../testing/probe-install.js";
 import { testAgentWorker } from "../testing/test-agent-database.js";
 import { testEngineWorker } from "../testing/test-engine-database.js";
-import { createTestPostgresDatabase, type TestPostgresDatabase } from "../testing/test-postgres.js";
+import {
+  createTestPostgresDatabase,
+  ignoreCommitUnknown,
+  type TestPostgresDatabase,
+} from "../testing/test-postgres.js";
 import { openPostgres, type PostgresDatabase } from "./open-postgres.js";
 import { postgresLimits } from "./pool-config.js";
 import { createPostgresAgentLeases } from "./postgres-agent-leases.js";
@@ -113,12 +117,14 @@ describe.runIf(url !== "")("the lease fence of a Postgres store host", () => {
         thread: threadOf("engine"),
         schema: schemas.engine,
         lease,
+        onCommitUnknown: ignoreCommitUnknown,
       }),
       agent: createPostgresStoreHost({
         database,
         thread: threadOf("agent"),
         schema: schemas.agent,
         lease,
+        onCommitUnknown: ignoreCommitUnknown,
       }),
     };
   };
@@ -198,6 +204,7 @@ describe.runIf(url !== "")("the lease fence of a Postgres store host", () => {
         thread: threadOf("engine"),
         schema: other.engine,
         lease: { sharedSchema, held },
+        onCommitUnknown: ignoreCommitUnknown,
       }),
     ).toThrow(expect.objectContaining({ code: "store.lease_mismatch" }));
   });
@@ -214,6 +221,7 @@ describe.runIf(url !== "")("the lease fence of a Postgres store host", () => {
       thread: threadOf("probe"),
       schema: probe.schema,
       lease: { sharedSchema, held },
+      onCommitUnknown: ignoreCommitUnknown,
     });
     const ended: string[] = [];
     // The write passes the check at once, then holds its transaction for a second on the server.
@@ -244,6 +252,7 @@ describe.runIf(url !== "")("the lease fence of a Postgres store host", () => {
         thread: threadOf("probe"),
         schema: probe.schema,
         lease: { sharedSchema, held: lease },
+        onCommitUnknown: ignoreCommitUnknown,
       });
     const paused = hostOf(held);
     const settled: string[] = [];

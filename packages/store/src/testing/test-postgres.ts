@@ -19,6 +19,14 @@ export interface TestPostgresDatabase {
   drop(): Promise<void>;
 }
 
+/**
+ * The `onCommitUnknown` of a test's writing store hosts: the failed write's own error tells the
+ * test, and no install's engine runs to stop.
+ */
+export function ignoreCommitUnknown(): void {
+  // Nothing runs to stop.
+}
+
 /** The settings a test connects with, read from the test server's URL. */
 function testPostgresSettings(url: string): PostgresSettings {
   const parsed = new URL(url);

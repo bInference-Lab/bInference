@@ -21,9 +21,14 @@ export { createPostgresAgentLeases } from "./postgres/postgres-agent-leases.js";
 export type { PostgresAgentLeasesOptions } from "./postgres/postgres-agent-leases.js";
 export type { PostgresDatabase } from "./postgres/open-postgres.js";
 export type { PostgresSettings } from "./postgres/postgres-settings.js";
-export type { RetryPorts } from "./postgres/postgres-transaction.js";
+export type { RetryPorts } from "./postgres/write-once.js";
 export { createPostgresStoreHost } from "./postgres/postgres-store-host.js";
-export type { PostgresStoreHostOptions } from "./postgres/postgres-store-host.js";
+export type {
+  PostgresReadingHost,
+  PostgresStoreHostOptions,
+  PostgresStorePlace,
+  PostgresWritingHost,
+} from "./postgres/postgres-store-host.js";
 export { startPostgresTaskThread, taskWaitMs } from "./postgres/postgres-task-thread.js";
 export type {
   PostgresTaskThread,

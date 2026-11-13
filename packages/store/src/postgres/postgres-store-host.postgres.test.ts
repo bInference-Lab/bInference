@@ -18,7 +18,11 @@ import {
   summarize,
 } from "../testing/probe-database.js";
 import { createProbeInstall } from "../testing/probe-install.js";
-import { createTestPostgresDatabase, type TestPostgresDatabase } from "../testing/test-postgres.js";
+import {
+  createTestPostgresDatabase,
+  ignoreCommitUnknown,
+  type TestPostgresDatabase,
+} from "../testing/test-postgres.js";
 import type { StoreLease } from "./lease-fence.js";
 import { openPostgres, type PostgresDatabase } from "./open-postgres.js";
 import { poolConfigOf } from "./pool-config.js";
@@ -81,7 +85,13 @@ describe.runIf(url !== "")("a store host on Postgres", () => {
     const start = { worker: probeWorker, execArgv, signal: AbortSignal.timeout(30_000) };
     thread = await startPostgresTaskThread(start);
     quick = await startPostgresTaskThread({ ...start, waitMs: 300 });
-    host = createPostgresStoreHost({ database, thread, schema, lease });
+    host = createPostgresStoreHost({
+      database,
+      thread,
+      schema,
+      lease,
+      onCommitUnknown: ignoreCommitUnknown,
+    });
   });
 
   afterAll(async () => {
@@ -148,7 +158,13 @@ describe.runIf(url !== "")("a store host on Postgres", () => {
   });
 
   it("stops a statement Postgres leaves unanswered past the task's wait bound", async () => {
-    const bounded = createPostgresStoreHost({ database, thread: quick, schema, lease });
+    const bounded = createPostgresStoreHost({
+      database,
+      thread: quick,
+      schema,
+      lease,
+      onCommitUnknown: ignoreCommitUnknown,
+    });
     await expect(bounded.run(sleepOnServer, 30, { signal: never })).rejects.toMatchObject({
       code: "store.postgres_unreachable",
       details: { waitMs: 300 },
@@ -160,7 +176,14 @@ describe.runIf(url !== "")("a store host on Postgres", () => {
   });
 
   it("fails a call past its time bound as a time-out and rolls it back", async () => {
-    const bounded = createPostgresStoreHost({ database, thread, schema, lease, timeoutMs: 300 });
+    const bounded = createPostgresStoreHost({
+      database,
+      thread,
+      schema,
+      lease,
+      onCommitUnknown: ignoreCommitUnknown,
+      timeoutMs: 300,
+    });
     await expect(
       bounded.run(recordThenSleep, { writer: 5, seq: 1 }, { signal: never }),
     ).rejects.toMatchObject({ code: "store.timeout" });

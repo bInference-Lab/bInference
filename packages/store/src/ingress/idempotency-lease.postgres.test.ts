@@ -16,7 +16,11 @@ import {
   startPostgresTaskThread,
 } from "../postgres/postgres-task-thread.js";
 import { testEngineWorker } from "../testing/test-engine-database.js";
-import { createTestPostgresDatabase, type TestPostgresDatabase } from "../testing/test-postgres.js";
+import {
+  createTestPostgresDatabase,
+  ignoreCommitUnknown,
+  type TestPostgresDatabase,
+} from "../testing/test-postgres.js";
 import { createSqliteIdempotencyStore } from "./sqlite-idempotency-store.js";
 
 const url = inject("postgres");
@@ -79,7 +83,9 @@ describe.runIf(url !== "")("the idempotency store under an install's lease on Po
         database,
         thread,
         schema: installSchemas(installId).engine,
-        ...(held === undefined ? {} : { lease: { sharedSchema, held } }),
+        ...(held === undefined
+          ? {}
+          : { lease: { sharedSchema, held }, onCommitUnknown: ignoreCommitUnknown }),
       }),
     );
 

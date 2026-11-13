@@ -68,13 +68,41 @@ export function storeFaultOf(error: Caught, signal: AbortSignal): Caught {
   });
 }
 
-/** The fault of a write whose `COMMIT` was in flight when its connection was lost or aborted. */
-export function commitUnknown(cause: Caught): BinferenceError {
+/**
+ * The fault of a write whose `COMMIT` answer was lost and whose ending the database could not tell
+ * within 10 s (decision 0438), with its transaction id when it had one.
+ */
+export function commitUnknown(cause: Caught, transactionId: string | undefined): BinferenceError {
   return new BinferenceError({
     code: "store.commit_unknown",
     message:
-      "The connection to Postgres ended while a write was committing, so it may or may not have taken effect. Read the rows again before deciding again; never repeat the write blindly.",
+      "The connection to Postgres ended while a write was committing, and the database could not tell within 10 seconds whether it took effect. Its store host writes nothing more: stop the install's engine and runtime, and their next start reads the rows.",
     cause,
+    details: transactionId === undefined ? {} : { transactionId },
+  });
+}
+
+/** The fault of a write a store host refused because an earlier write's commit is unknown. */
+export function commitStillUnknown(earlier: BinferenceError): BinferenceError {
+  return new BinferenceError({
+    code: "store.commit_unknown",
+    message:
+      "An earlier write of this store host lost its COMMIT answer, and the database could not tell how it ended, so this host writes nothing more. Stop the install's engine and runtime; their next start reads the rows.",
+    cause: earlier,
+    details: earlier.details,
+  });
+}
+
+/**
+ * The fault of a write whose every try lost its `COMMIT` answer, each one known by the database not
+ * to have landed: nothing changed, and the call may run again later.
+ */
+export function commitsLost(attempts: number): BinferenceError {
+  return new BinferenceError({
+    code: "store.postgres_unreachable",
+    message: `Postgres lost the COMMIT of a write ${String(attempts)} times, and none of them landed; nothing changed. Try the call again.`,
+    retryable: true,
+    details: { attempts },
   });
 }
 

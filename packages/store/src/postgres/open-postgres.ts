@@ -1,15 +1,12 @@
 import { BinferenceError } from "@binference/core";
 import { Kysely, PostgresDialect, sql } from "kysely";
 import { Client, DatabaseError, Pool } from "pg";
+import { createCommitStatus } from "./commit-status.js";
 import { poolConfigOf } from "./pool-config.js";
 import { storeFaultOf } from "./postgres-error.js";
 import type { PostgresSettings } from "./postgres-settings.js";
-import {
-  postgresRead,
-  postgresWrite,
-  type PostgresWork,
-  type RetryPorts,
-} from "./postgres-transaction.js";
+import { postgresRead, postgresWrite } from "./postgres-transaction.js";
+import type { PostgresWork, RetryPorts } from "./write-once.js";
 
 function ignore(): void {
   // Each client's own listener logs the error.
@@ -64,7 +61,7 @@ async function assertServer<Schema>(kysely: Kysely<Schema>, signal: AbortSignal)
  * returns and refuses one older than Postgres 17 with `store.postgres_too_old`. A session the
  * server ends goes to the log as a fault, whether the pool or a call held it, and never ends the
  * process. Every call takes a signal; a write retries a conflict through the given clock and
- * random source.
+ * random source, and asks how it ended when its COMMIT answer is lost (decision 0438).
  */
 export async function openPostgres<Schema>(
   settings: PostgresSettings,
@@ -105,8 +102,15 @@ export async function openPostgres<Schema>(
       void client.end().catch(() => undefined);
     }
   };
+  // A write whose COMMIT answer was lost asks how it ended on a connection of its own (decision
+  // 0438), so a pool whose connections broke can still ask; TCP keepalive finds a dead path even
+  // between the check's own deadlines.
+  const status = createCommitStatus(
+    () => new Client({ ...poolConfigOf(settings), keepAlive: true }),
+    options.logger,
+  );
   return {
-    write: async (work, signal) => postgresWrite(kysely, work, { ...options, signal }),
+    write: async (work, signal) => postgresWrite(kysely, work, { ...options, signal, status }),
     read: async (work, signal) => postgresRead(kysely, work, { signal, cancel }),
     close: async () => kysely.destroy(),
   };

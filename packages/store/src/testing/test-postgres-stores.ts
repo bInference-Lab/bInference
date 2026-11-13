@@ -22,7 +22,7 @@ import {
 import type { StoreHost } from "../tasks/store-host.js";
 import { testAgentWorker } from "./test-agent-database.js";
 import { testEngineWorker } from "./test-engine-database.js";
-import { createTestPostgresDatabase } from "./test-postgres.js";
+import { createTestPostgresDatabase, ignoreCommitUnknown } from "./test-postgres.js";
 
 /** The databases an install holds, by the name their definitions give them. */
 type InstallDatabase = "engine" | "agent";
@@ -112,7 +112,12 @@ function createWriters(settings: PostgresSettings): Writers {
     const writer = started.get(key) ?? start(database, n);
     started.set(key, writer);
     const { pool, thread } = await writer;
-    return createPostgresStoreHost({ database: pool, thread, ...place });
+    return createPostgresStoreHost({
+      database: pool,
+      thread,
+      ...place,
+      onCommitUnknown: ignoreCommitUnknown,
+    });
   };
   return {
     hostsOn: async (database, place, count) =>
@@ -170,7 +175,7 @@ export async function createTestPostgresStores(url: string): Promise<TestPostgre
   const writers = createWriters(server.settings);
   return {
     async open(name) {
-      const place = await newPlace(name);
+      const place = { ...(await newPlace(name)), onCommitUnknown: ignoreCommitUnknown };
       return createPostgresStoreHost({ database, thread: await threadOf(name), ...place });
     },
     writers: async (count, name = "engine") => writers.hostsOn(name, await newPlace(name), count),
