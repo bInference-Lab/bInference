@@ -105,6 +105,7 @@ Agent 的模型在一轮中可以调用的工具，按每轮提供的顺序排�
 | `binference_resolve_name` | 读取 .bnb 域名指向的地址。 | `name/resolve` | 否 |
 | `binference_propose` | 提议一笔交易、转账、跨链或质押，并打开一张卡片。 | `intent/propose` | 是 |
 | `binference_intent_status` | 读取一个提议的状态、卡片和链上交易。 | `intent/get` | 否 |
+| `binference_intents` | 按 Agent、状态和变化时间列出提议。 | `intent/list` | 否 |
 | `binference_order_create` | 提议一个自动订单，并打开一张卡片。 | `order/create` | 是 |
 | `binference_order_cancel` | 取消一个自动订单。 | `order/cancel` | 否 |
 | `binference_alert_create` | 设置价格提醒、钱包提醒或发射提醒。 | `alert/create` | 否 |

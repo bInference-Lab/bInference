@@ -58,12 +58,12 @@ async function callTool<N extends ToolOperation>(
     const key = requestId === undefined ? {} : { key: requestId };
     result = await options.client.call(call.operation, args, { signal, ...key });
   } catch (error) {
-    return failed(toolFailure(call.tool.name, error), options.logger);
+    return failed(toolFailure(call.tool, error), options.logger);
   }
   const wire = wireResultOf(operations[call.operation].result, result);
   if (wire === undefined) {
     const message = `The result of ${call.operation} breaks its schema.`;
-    const failure = toolFailure(call.tool.name, { code: "client.bad_reply", message });
+    const failure = toolFailure(call.tool, { code: "client.bad_reply", message });
     return failed(failure, options.logger);
   }
   return toolAnswer(call.operation, wire);

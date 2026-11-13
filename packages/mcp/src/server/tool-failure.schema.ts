@@ -3,6 +3,12 @@ import type { ProtocolErrorCode } from "@binference/protocol";
 import type { CallToolResult } from "@modelcontextprotocol/server";
 import { z } from "zod";
 
+/** The tool a failure belongs to: its name, and whether it proposes with a request id. */
+export interface FailedTool {
+  readonly name: string;
+  readonly takesRequestId: boolean;
+}
+
 /** A failed tool call: what the MCP client reads, and the code to log. */
 export interface ToolFailure {
   readonly result: CallToolResult;
@@ -47,18 +53,37 @@ const nextSteps: Readonly<Partial<Record<KnownCode, string>>> = {
   "engine.stopping": engineStep,
   "protocol.bad_args": "Check the input against the tool's input schema.",
   "protocol.outcome_unknown":
-    "The engine that ran the first call with this requestId stopped before it answered, so whether it took effect is unknown. Never send it again blindly: read binference_orders, binference_portfolio and binference_ledger first, and send it again with a new requestId only if it did not happen.",
+    "The engine that ran the first call with this requestId stopped before it answered, so whether it took effect is unknown. Never send it with a new requestId blindly: list the agent's intents changed since you first sent it with binference_intents, and send it again with a new requestId only if none matches.",
   "order.expiry_limit":
     "The order ends later than the agent's order expiry limit, orderExpiryDays, allows. Name an earlier expiresAt, or leave it out to end the order at the limit; only the owner raises the limit, with `binference limit set orders.expiryDays=DAYS`.",
 };
+
+// A proposal whose answer never came may have run: the same request id answers its first result,
+// and a new one could run it twice.
+const lostAnswerCodes: ReadonlySet<string> = new Set<KnownCode>([
+  "core.timeout",
+  "client.disconnected",
+  "client.closed",
+  "engine.timeout",
+]);
+
+const lostAnswerStep =
+  "The engine did not answer, so this proposal may have taken effect. Once `binference status` shows the engine running, send it again with the same requestId, which answers the first result and never runs it twice. Without a requestId, list the agent's intents changed since you sent it with binference_intents first, and propose it again only if none matches.";
 
 function isKnownCode(code: string): code is KnownCode {
   return Object.hasOwn(nextSteps, code);
 }
 
-function failureText(tool: string, error: CodedError): string {
-  const next = isKnownCode(error.code) ? nextSteps[error.code] : undefined;
-  const text = `${tool} failed with ${error.code}: ${error.message}`;
+function nextStepOf(tool: FailedTool, code: string): string | undefined {
+  if (tool.takesRequestId && lostAnswerCodes.has(code)) {
+    return lostAnswerStep;
+  }
+  return isKnownCode(code) ? nextSteps[code] : undefined;
+}
+
+function failureText(tool: FailedTool, error: CodedError): string {
+  const next = nextStepOf(tool, error.code);
+  const text = `${tool.name} failed with ${error.code}: ${error.message}`;
   return next === undefined ? text : `${text} ${next}`;
 }
 
@@ -70,10 +95,11 @@ export function codedErrorOf(error: unknown): CodedError | undefined {
 
 /**
  * A tool call that failed, as an MCP tool error the model can read and act on: the error's code,
- * its message and, for failures a person can fix, the next step. An error without a code reaches
- * the client as `internal.error`, without its message.
+ * its message and, for failures a person can fix, the next step. A proposal whose answer never
+ * came is told to send its request id again, never a new one (decision 0437). An error without a
+ * code reaches the client as `internal.error`, without its message.
  */
-export function toolFailure(tool: string, error: unknown): ToolFailure {
+export function toolFailure(tool: FailedTool, error: unknown): ToolFailure {
   const known = codedErrorOf(error) ?? {
     code: "internal.error",
     message: "The MCP server failed to answer this call.",

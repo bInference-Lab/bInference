@@ -78,6 +78,11 @@ export const toolTexts: Readonly<Record<string, ToolText>> = {
     description:
       "Reads one intent: its state, terms, card and outcome. Use it to follow a proposal until the owner confirms or denies it.",
   },
+  binference_intents: {
+    title: "Intents",
+    description:
+      "Lists intents by agent, state and kind, the least recently changed first, a page at a time: pass the answer's next as cursor for the next page. changedSince, in epoch milliseconds, keeps only the intents changed at or after it. When a proposal got no answer or failed with protocol.outcome_unknown, list the agent's intents changed since you sent it, and propose it again only if none matches.",
+  },
   binference_order_create: {
     title: "Propose an auto order",
     description: `Proposes an auto order. ${waits} Once confirmed, each fill runs inside the order's bounds. ${ids} ${units}`,

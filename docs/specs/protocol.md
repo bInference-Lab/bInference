@@ -1924,12 +1924,16 @@ carry the `binference_` prefix and map one to one onto operations:
 | `binference_orders`          | `order/list`      | `binference_resolve_name`  | `name/resolve`   |
 | `binference_staking_options` | `staking/options` | `binference_bridge_quote`  | `bridge/quote`   |
 | `binference_addresses`       | `address/list`    | `binference_wallets`       | `wallet/list`    |
+| `binference_intents`         | `intent/list`     |                            |                  |
 
 Each tool's input schema is the operation's args schema from `engine/describe`. A proposal answers
 with the intent and "waiting for the owner's confirmation in Telegram or the console". A client
 finds its ids with the first two: the agent and its wallet's chain with `binference_agents`, each
 asset's id with `binference_token_search`, which reads only the engine's registry and the held
-tokens and says when a symbol is ambiguous.
+tokens and says when a symbol is ambiguous. A propose tool whose call got no answer, or failed
+`protocol.outcome_unknown`, tells the client to send the same `requestId` again, which answers the
+first result and never runs the call twice, and never a new one before `binference_intents`, with
+`changedSince`, shows no intent that matches ([decision 0437](../DECISIONS.md#d0437)).
 
 <a id="section-11-1"></a>
 

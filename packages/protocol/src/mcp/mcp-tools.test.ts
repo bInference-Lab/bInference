@@ -19,6 +19,7 @@ describe("mcpTools", () => {
       ["binference_resolve_name", "name/resolve"],
       ["binference_propose", "intent/propose"],
       ["binference_intent_status", "intent/get"],
+      ["binference_intents", "intent/list"],
       ["binference_order_create", "order/create"],
       ["binference_order_cancel", "order/cancel"],
       ["binference_alert_create", "alert/create"],

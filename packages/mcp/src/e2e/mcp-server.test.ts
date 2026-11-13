@@ -180,7 +180,22 @@ describe("createMcpServer", () => {
       const answer = await mcp.callTool({ name: "binference_propose", arguments: retried });
       expect(answer.isError).toBe(true);
       expect(textsOf(answer)).toStrictEqual([
-        "binference_propose failed with protocol.outcome_unknown: The first call never answered. The engine that ran the first call with this requestId stopped before it answered, so whether it took effect is unknown. Never send it again blindly: read binference_orders, binference_portfolio and binference_ledger first, and send it again with a new requestId only if it did not happen.",
+        "binference_propose failed with protocol.outcome_unknown: The first call never answered. The engine that ran the first call with this requestId stopped before it answered, so whether it took effect is unknown. Never send it with a new requestId blindly: list the agent's intents changed since you first sent it with binference_intents, and send it again with a new requestId only if none matches.",
+      ]);
+    });
+  });
+
+  it("tells a client whose proposal got no answer to send the same requestId, never a new one", async () => {
+    const lost = codedError("core.timeout", "No answer within 30 seconds.");
+    await withSession({ "intent/propose": lost, "portfolio/get": lost }, async ({ mcp }) => {
+      const proposed = { ...swapArgs, requestId: "0190f1c2-lost" };
+      const answer = await mcp.callTool({ name: "binference_propose", arguments: proposed });
+      expect(textsOf(answer)).toStrictEqual([
+        "binference_propose failed with core.timeout: No answer within 30 seconds. The engine did not answer, so this proposal may have taken effect. Once `binference status` shows the engine running, send it again with the same requestId, which answers the first result and never runs it twice. Without a requestId, list the agent's intents changed since you sent it with binference_intents first, and propose it again only if none matches.",
+      ]);
+      const read = await mcp.callTool({ name: "binference_portfolio", arguments: {} });
+      expect(textsOf(read)).toStrictEqual([
+        "binference_portfolio failed with core.timeout: No answer within 30 seconds. The engine is not reachable. Check it with `binference status`, start it with `binference start`, then try again.",
       ]);
     });
   });

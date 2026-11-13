@@ -43,6 +43,7 @@ and nothing moves until the owner taps Confirm in binference's Telegram bot or c
 | `binference_staking_options` | List validators, their commission and rate, and the agent's stakes  |
 | `binference_propose`         | Propose a swap, buy, sell, send, bridge, revoke or stake            |
 | `binference_intent_status`   | Read a proposal's state, card and outcome                           |
+| `binference_intents`         | List the agent's proposals changed since a time                     |
 | `binference_order_create`    | Propose an auto order: limit, take-profit, stop-loss, trailing, DCA |
 | `binference_orders`          | List auto orders                                                    |
 | `binference_order_cancel`    | Cancel an auto order this client proposed                           |
@@ -79,6 +80,9 @@ Each tool's description lists its fields; `binference_propose` lists the fields 
 - **USD values** are micro-dollars as decimal strings: `"123450000"` is $123.45.
 - **`requestId`:** give each proposal a new UUID. Send the same id again only to retry that same
   call after an error or a timeout; the retry returns the first intent instead of a second card.
+  When a retry fails `protocol.outcome_unknown`, or a proposal without an id got no answer, call
+  `binference_intents` with the agent and `changedSince` a few minutes before the first call, and
+  propose again with a new id only if no intent there matches.
 
 ## Propose a swap
 

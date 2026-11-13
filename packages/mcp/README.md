@@ -20,9 +20,10 @@ engine's read and propose tools over stdio. The spec is section 11 of
 - **Retries make no second card.** `binference_propose` and `binference_order_create` take an
   optional `requestId` of 1 to 64 characters, sent as the call's idempotency key. A retry with the
   same id and the same args returns the first intent and its card; other args with that id fail
-  with `protocol.key_reused`. A retry of a call whose engine stopped before it answered fails with
-  `protocol.outcome_unknown`: the client reads the state, then sends it again with a new id only if
-  it did not happen. The engine keeps a key for 24 hours.
+  with `protocol.key_reused`. A propose call that got no answer is sent again with the same id. A
+  retry of a call whose engine stopped before it answered fails with `protocol.outcome_unknown`: the
+  client lists the agent's intents changed since the first call with `binference_intents`, then
+  sends it again with a new id only if none matches. The engine keeps a key for 24 hours.
 - **Failures.** A refused or failed call answers as a tool error with the code, the engine's
   message and, for a failure a person can fix, the next step. Tool texts are English.
 - **Without the engine.** Tools list while the engine is down; a call waits for the connection
@@ -39,6 +40,7 @@ engine's read and propose tools over stdio. The spec is section 11 of
 | `binference_token_risk`   | `risk/check`    | `binference_resolve_name`    | `name/resolve`    |
 | `binference_quote`        | `quote/get`     | `binference_orders`          | `order/list`      |
 | `binference_bridge_quote` | `bridge/quote`  | `binference_staking_options` | `staking/options` |
+| `binference_intents`      | `intent/list`   |                              |                   |
 
 `binference_propose` takes every kind of intent a client may propose: a send to a `.bnb` name as
 the user wrote it, which the engine reads, or to a saved address by its entry id from

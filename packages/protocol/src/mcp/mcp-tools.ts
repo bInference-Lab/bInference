@@ -35,6 +35,7 @@ export const mcpTools: readonly McpTool[] = [
   { name: "binference_resolve_name", operation: "name/resolve" },
   { name: "binference_propose", operation: "intent/propose", takesRequestId: true },
   { name: "binference_intent_status", operation: "intent/get" },
+  { name: "binference_intents", operation: "intent/list" },
   { name: "binference_order_create", operation: "order/create", takesRequestId: true },
   { name: "binference_order_cancel", operation: "order/cancel" },
   { name: "binference_alert_create", operation: "alert/create" },

@@ -121,6 +121,7 @@
   "tools.summary.binference_resolve_name": "Reads the address a .bnb name points to.",
   "tools.summary.binference_propose": "Proposes a trade, send, bridge or stake, which opens a card.",
   "tools.summary.binference_intent_status": "Reads one proposal's state, card and transactions.",
+  "tools.summary.binference_intents": "Lists proposals by agent, state and change time.",
   "tools.summary.binference_order_create": "Proposes an auto order, which opens a card.",
   "tools.summary.binference_order_cancel": "Cancels an auto order.",
   "tools.summary.binference_alert_create": "Sets a price, wallet or launch alert.",

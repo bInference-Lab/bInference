@@ -105,6 +105,7 @@ The tools `binference mcp` serves to MCP clients, each calling one engine operat
 | `binference_resolve_name` | Reads the address a .bnb name points to. | `name/resolve` | no |
 | `binference_propose` | Proposes a trade, send, bridge or stake, which opens a card. | `intent/propose` | yes |
 | `binference_intent_status` | Reads one proposal's state, card and transactions. | `intent/get` | no |
+| `binference_intents` | Lists proposals by agent, state and change time. | `intent/list` | no |
 | `binference_order_create` | Proposes an auto order, which opens a card. | `order/create` | yes |
 | `binference_order_cancel` | Cancels an auto order. | `order/cancel` | no |
 | `binference_alert_create` | Sets a price, wallet or launch alert. | `alert/create` | no |
