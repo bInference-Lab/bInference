@@ -100,6 +100,15 @@ describe("the wallets the agent showed to fund, in the chat", () => {
     expect(screen.getByText("Working on it · 0 s")).toBeDefined();
   });
 
+  it("names the breaker's hold on the card in the place of a freeze", async () => {
+    await showDeposit([main], { mode: "live", frozen: true, breaker: true });
+    const card = screen.getByRole("region", { name: "Main · agent wallet" });
+    expect(card.textContent).toContain(
+      "Held by bInference's breaker: deposits arrive and stay in this wallet, but the agent trades nothing until bInference lifts it.",
+    );
+    expect(card.textContent).not.toContain(frozen);
+  });
+
   it("draws the address's QR code from its module grid, ink on white in both themes", async () => {
     await showDeposit([main], { mode: "live", frozen: false });
     const figure = screen.getByRole("figure", { name: `QR code of ${address}` });

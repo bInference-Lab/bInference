@@ -44,9 +44,16 @@ async function setUp(stream: "progress" | "partial" = "progress") {
   return { botApi, clock, replies };
 }
 
-const deposit = ({ frozen }: { readonly frozen: boolean }) => ({
+const deposit = ({ frozen, breaker }: { readonly frozen: boolean; readonly breaker?: true }) => ({
   kind: "chat/deposit",
-  data: { agent, turn, mode: "paper", frozen, wallets: [wallet] },
+  data: {
+    agent,
+    turn,
+    mode: "paper",
+    frozen,
+    ...(breaker === undefined ? {} : { breaker }),
+    wallets: [wallet],
+  },
 });
 
 describe("the deposit the agent shows in Telegram", () => {
@@ -66,6 +73,15 @@ describe("the deposit the agent shows in Telegram", () => {
       "",
       "View on scan.example.invalid",
     ]);
+  });
+
+  it("names the breaker's hold in the caption in the place of a freeze", async () => {
+    const { botApi, replies } = await setUp();
+    await replies.show({ kind: "chat/turnStarted", data: at }, live);
+    await replies.show(deposit({ frozen: true, breaker: true }), live);
+    expect(botApi.messages()[0]?.text.split("\n")).toContain(
+      "Held by bInference's breaker: deposits arrive and stay in this wallet, but the agent trades nothing until bInference lifts it.",
+    );
   });
 
   it("counts the photos as the turn's answer, so the turn ends with no other message", async () => {

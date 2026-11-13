@@ -1,5 +1,5 @@
 import { ok } from "@binference/core";
-import type { OrderView } from "@binference/protocol";
+import { type OrderView, protocolIdSchema, type ResultOf } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
 import { unlistedHandlers } from "../testing/unlisted-fixtures.js";
 import { menuOf } from "./register-commands.js";
@@ -22,6 +22,32 @@ describe("the fast commands in Chinese", () => {
       "此版本的 binference 不支持该请求。请更新 binference 或客户端。",
       "binference 与你沟通使用中文。点按一种语言即可切换，binference 会立即生效。",
     ]);
+  });
+
+  it("name the breaker's hold on /status, every agent frozen", async () => {
+    const agent = protocolIdSchema("agent").parse("agt_0190f1c2-3a4b-7c5d-8e6f-0000000000a1");
+    const engineStatus: ResultOf<"engine/status"> = {
+      state: "ready",
+      version: "2026.10.0",
+      protocol: 1,
+      frozen: true,
+      agents: [{ id: agent, mode: "paper", frozen: true }],
+      health: [],
+    };
+    const bot = await startCommandBot(
+      {
+        "engine/status": async () => Promise.resolve(ok(engineStatus)),
+        "safety/status": async () =>
+          Promise.resolve(ok({ frozen: true, breaker: { pulledAt: nowMs } })),
+      },
+      { locale: "zh" },
+    );
+    await bot.send("/status");
+    expect(bot.texts()[0]?.split("\n").slice(1, 2)).toStrictEqual([
+      `${alarm} 自 2026年10月10日 09:30:00 起，bInference 的熔断开关冻结了全部 Agent。解除冻结无法解除它；紧急转出仍然可用，解除时会通知你。`,
+    ]);
+    expect(bot.texts()[0]).toContain(`${agent} · `);
+    expect(bot.texts()[0]).toContain("自 2026年10月10日 09:30:00 起已冻结");
   });
 
   it("name an unlisted token by its stored symbol and short address, as its card did", async () => {

@@ -26,6 +26,7 @@ const main = walletOf(10);
 const launch = walletOf(11, { role: "launch" });
 const old = walletOf(12, { archivedAt: 20 });
 const spare = walletOf(13, { bridge: true, extra: true });
+const onlyMain: EngineHandler<"wallet/list"> = async () => Promise.resolve(ok({ items: [main] }));
 
 async function deposits(
   items: readonly WalletView[],
@@ -64,6 +65,17 @@ describe("the deposit the agent shows", () => {
         },
       },
     ]);
+  });
+
+  it("marks the push while the breaker holds the agent, which no unfreeze lifts", async () => {
+    const install = { frozenAt: () => undefined, breakerMark: { at: () => 5 } };
+    const agents = createMemoryAgentStore({ install });
+    await agents.create(testAgentDraft({}), testCall({}));
+    const pushes: EnginePush[] = [];
+    const listWallets = onlyMain;
+    const handlers = createDepositHandlers({ agents, listWallets, publish: (p) => pushes.push(p) });
+    expectOk(await handlers["turn/deposit"](testCall({ agent: testAgent, turn })));
+    expect(pushes[0]?.data).toMatchObject({ frozen: true, breaker: true });
   });
 
   it("shows only the wallet the call names", async () => {

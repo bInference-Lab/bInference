@@ -72,6 +72,8 @@ export type ChatPush =
       /** The agent's mode and freeze now, which a surface warns of beside each address. */
       readonly mode: AgentMode;
       readonly frozen: boolean;
+      /** `true` while bInference's breaker holds the agent (decision 0441); absent otherwise. */
+      readonly breaker?: true;
       /** The wallets to show, each with the address its QR code holds (decision 0380). */
       readonly wallets: readonly WalletView[];
     }
@@ -151,6 +153,7 @@ const shownSchema = z.discriminatedUnion("kind", [
       ...at,
       mode: agentModeSchema,
       frozen: z.boolean(),
+      breaker: z.literal(true).optional(),
       wallets: z.array(walletViewSchema).min(1),
     }),
   }),
@@ -214,8 +217,9 @@ function shownPushOf(push: RawPush): ChatPush | undefined {
   }
   const read = parsed.data;
   if (read.kind === "chat/deposit") {
-    const { agent, turn, mode, frozen, wallets } = read.data;
-    return { kind: read.kind, agent, turn, mode, frozen, wallets };
+    const { agent, turn, mode, frozen, breaker, wallets } = read.data;
+    const braked = breaker === true ? { breaker } : {};
+    return { kind: read.kind, agent, turn, mode, frozen, ...braked, wallets };
   }
   if (read.kind === "chat/chart") {
     const { agent, turn, chart } = read.data;

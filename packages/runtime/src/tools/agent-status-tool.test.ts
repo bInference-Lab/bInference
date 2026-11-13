@@ -28,22 +28,23 @@ const models: RuntimeModels = {
   prices: {},
 };
 
+const facts = {
+  agent,
+  at: nowMs,
+  timeZone: "Europe/Berlin",
+  mode: "paper",
+  frozen: false,
+  approvalMode: "manual",
+  sendLevel: 3,
+  orders: [],
+  spentTodayUsdMicros: "0",
+  perTradeUsdMicros: "50000000",
+  rollingDayUsdMicros: "500000000",
+  assets: {},
+};
 const answers: Readonly<Record<string, FakeAnswer>> = {
   "agent/get": { agent, name: "Scout", mode: "paper", locale: "en", createdAt: 1, changedAt: 1 },
-  "facts/get": {
-    agent,
-    at: nowMs,
-    timeZone: "Europe/Berlin",
-    mode: "paper",
-    frozen: false,
-    approvalMode: "manual",
-    sendLevel: 3,
-    orders: [],
-    spentTodayUsdMicros: "0",
-    perTradeUsdMicros: "50000000",
-    rollingDayUsdMicros: "500000000",
-    assets: {},
-  },
+  "facts/get": facts,
   "usage/get": {
     rows: [
       {
@@ -181,6 +182,14 @@ describe("agent_status", () => {
       ].join("\n"),
       isError: false,
     });
+  });
+
+  it("names the breaker's hold, which no unfreeze lifts", async () => {
+    const braked = { ...answers, "facts/get": { ...facts, frozen: true, breaker: true } };
+    const { text } = await callStatus(partsOf(chatsOf({ chat }).source, braked));
+    expect(text.split("\n")[0]).toBe(
+      `Agent: Scout (${agent}). Mode paper, frozen by bInference's breaker, which no unfreeze lifts, approval mode manual.`,
+    );
   });
 
   it("says what it could not read, and the budget the engine last answered", async () => {

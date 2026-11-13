@@ -141,13 +141,30 @@ describe("a look at the breaker that cannot finish", () => {
     expect(reads).not.toHaveBeenCalled();
   });
 
-  it("tells a pull whose told mark failed on the next look, and marks it then", async () => {
+  it("tells a pull again on the next look when its told mark failed after its notice went", async () => {
     const test = await watchedEngine({ breaker: inTurn([pulled(1)]) });
     vi.spyOn(test.stores.install, "tellBreaker").mockRejectedValueOnce(unreachable);
     await expect(test.engine.followBreaker(live)).rejects.toBeDefined();
     const before = await test.stores.install.read(live);
+    const first = pullsOf(test);
     await expect(test.engine.followBreaker(live)).resolves.toStrictEqual({ outcome: "kept" });
     const after = await test.stores.install.read(live);
     expect([before.breakerToldVersion, after.breakerToldVersion]).toStrictEqual([undefined, 1]);
+    expect([first, pullsOf(test)]).toStrictEqual([1, 2]);
+  });
+
+  it("tells a pull once when nothing fails, across looks and a restart", async () => {
+    const test = await watchedEngine({ breaker: inTurn([pulled(1)]) });
+    await test.engine.followBreaker(live);
+    await test.engine.followBreaker(live);
+    const restarted = test.restart();
+    await expect(restarted.followBreaker(live)).resolves.toStrictEqual({ outcome: "kept" });
+    await restarted.followBreaker(live);
+    expect(pullsOf(test)).toBe(1);
   });
 });
+
+// How many pull notices the engine published.
+function pullsOf(test: TestEngine): number {
+  return test.pushes.filter(({ data }) => JSON.stringify(data).includes("breakerPulled")).length;
+}

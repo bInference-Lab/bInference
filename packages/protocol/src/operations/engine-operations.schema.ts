@@ -99,6 +99,11 @@ interface SafetyStatus {
   readonly pendingRescueAddress?: AccountRef;
   /** When the new rescue address takes effect. */
   readonly pendingRescueAt?: number;
+  /**
+   * While bInference's breaker holds the install, when its hold took effect there (decision
+   * 0441); `frozen` is then true, and `frozenAt` and `agents` stay the owner's own freeze.
+   */
+  readonly breaker?: { readonly pulledAt: number };
 }
 
 /**
@@ -285,6 +290,7 @@ export const engineOperations: OperationTable<EngineOperationShapes> = {
       rescueAddress: accountRefSchema.exactOptional(),
       pendingRescueAddress: accountRefSchema.exactOptional(),
       pendingRescueAt: epochMsSchema.exactOptional(),
+      breaker: z.object({ pulledAt: epochMsSchema }).exactOptional(),
     }),
   },
   "safety/freeze": {

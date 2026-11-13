@@ -45,9 +45,9 @@ function statusOf(
 ): SafetyStatus {
   const agents = frozenAgents(read.agents);
   const { rescueAddress, pendingRescue } = rescueAt(facts, read.nowMs);
-  const { frozenAtMs } = facts;
+  const { frozenAtMs, breakerAtMs } = facts;
   return {
-    frozen: frozenAtMs !== undefined || agents.length > 0,
+    frozen: frozenAtMs !== undefined || agents.length > 0 || breakerAtMs !== undefined,
     ...(frozenAtMs === undefined ? {} : { frozenAt: frozenAtMs }),
     agents,
     ...(read.rescue === undefined
@@ -57,6 +57,7 @@ function statusOf(
     ...(pendingRescue === undefined
       ? {}
       : { pendingRescueAddress: pendingRescue.address, pendingRescueAt: pendingRescue.atMs }),
+    ...(breakerAtMs === undefined ? {} : { breaker: { pulledAt: breakerAtMs } }),
   };
 }
 

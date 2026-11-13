@@ -112,7 +112,7 @@ export function DepositCards(props: {
   readonly agentName: string;
 }): React.JSX.Element {
   const text = useText();
-  const { mode, frozen, wallets } = props.deposit;
+  const { mode, frozen, breaker, wallets } = props.deposit;
   return (
     <ul
       aria-label={text("console.chat.deposit", { agent: props.agentName })}
@@ -120,7 +120,7 @@ export function DepositCards(props: {
     >
       {wallets.map((view) => (
         <li key={view.wallet}>
-          <DepositCard wallet={{ view, mode, isFrozen: frozen }} />
+          <DepositCard wallet={{ view, mode, isFrozen: frozen, isBraked: breaker === true }} />
         </li>
       ))}
     </ul>

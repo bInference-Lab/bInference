@@ -9,6 +9,16 @@ export interface DepositWallet {
   readonly view: WalletView;
   readonly mode: AgentMode;
   readonly isFrozen: boolean;
+  /** Whether bInference's breaker holds the agent (decision 0441), which no unfreeze lifts. */
+  readonly isBraked?: boolean;
+}
+
+// The freeze's warning: the breaker's hold, which only bInference lifts, else the owner's own.
+function freezeWarnings(formatter: Formatter, wallet: DepositWallet): readonly string[] {
+  if (wallet.isBraked === true) {
+    return [formatter.message("cmd.wallet.brakedFunds")];
+  }
+  return wallet.isFrozen ? [formatter.message("cmd.wallet.frozenFunds")] : [];
 }
 
 /**
@@ -29,8 +39,8 @@ export function walletRoleOf(view: WalletView): WalletRoleName {
 
 /**
  * What the owner must know before sending to a wallet (spec 4, section 5), in order: the network
- * `chain` names, a paper agent's real funds, a freeze. A wallet nothing runs from says only to send
- * it nothing.
+ * `chain` names, a paper agent's real funds, a freeze, which while bInference's breaker holds the
+ * agent names the breaker and no unfreeze. A wallet nothing runs from says only to send it nothing.
  */
 export function depositWarnings(
   formatter: Formatter,
@@ -43,6 +53,6 @@ export function depositWarnings(
   return [
     formatter.message("cmd.wallet.network", { chain }),
     ...(wallet.mode === "paper" ? [formatter.message("cmd.wallet.paperFunds")] : []),
-    ...(wallet.isFrozen ? [formatter.message("cmd.wallet.frozenFunds")] : []),
+    ...freezeWarnings(formatter, wallet),
   ];
 }

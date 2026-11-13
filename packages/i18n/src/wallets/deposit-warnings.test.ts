@@ -50,6 +50,14 @@ describe("a wallet to fund", () => {
     ]);
   });
 
+  it("names the breaker's hold in the place of a freeze, and no unfreeze", () => {
+    const wallet = { view: main, mode: "live", isFrozen: true, isBraked: true } as const;
+    expect(depositWarnings(formatter, wallet, "Fake One")).toStrictEqual([
+      network,
+      "Held by bInference's breaker: deposits arrive and stay in this wallet, but the agent trades nothing until bInference lifts it.",
+    ]);
+  });
+
   it("tells the owner to send nothing to a wallet nothing runs from", () => {
     const extra = { ...main, role: "launch", extra: true } as const;
     const wallet = { view: extra, mode: "paper", isFrozen: true } as const;

@@ -85,6 +85,13 @@ describe("the live facts as the model reads them", () => {
     ]);
   });
 
+  it("say the breaker holds the agent, so the model offers no unfreeze", () => {
+    const facts = { ...testLiveFacts(agent, at), frozen: true, breaker: true as const };
+    expect(liveFactsText({ facts, budgetLeftMicros: 0n }).split("\n")[2]).toBe(
+      "- Mode: paper. Frozen: yes, by bInference's breaker, which no unfreeze lifts; nothing trades until bInference lifts it. Approval mode: manual. Send level: 0.",
+    );
+  });
+
   it("say they could not be read when the engine did not answer", () => {
     expect(liveFactsText({ budgetLeftMicros: 0n })).toBe(
       [

@@ -25,6 +25,11 @@ export interface NoticePart {
   readonly amounts?: Readonly<Record<string, Amount>>;
   /** The message's arguments that are messages themselves, each written before the message. */
   readonly parts?: Readonly<Record<string, NoticePart>>;
+  /**
+   * The message's arguments that are lists of plain words, such as agents' names; a surface joins
+   * each the way the owner's language lists words.
+   */
+  readonly lists?: Readonly<Record<string, readonly string[]>>;
 }
 
 /**
@@ -56,6 +61,7 @@ interface NoticePartWire {
   readonly times?: Readonly<Record<string, number>>;
   readonly amounts?: Readonly<Record<string, AmountWire>>;
   readonly parts?: Readonly<Record<string, NoticePartWire>>;
+  readonly lists?: Readonly<Record<string, readonly string[]>>;
 }
 
 /** A notice as the `notice/new` push carries it as JSON: each amount's base units as decimal text. */
@@ -76,6 +82,7 @@ const messageShape = {
   values: z.record(z.string(), z.string()),
   times: z.record(z.string(), epochMsSchema).exactOptional(),
   amounts: z.record(z.string(), amountSchema).exactOptional(),
+  lists: z.record(z.string(), z.array(z.string()).readonly()).exactOptional(),
 };
 
 // A part that may hold parts `levels` deep below it.
@@ -120,12 +127,20 @@ interface PartData {
   readonly [name: string]: JsonValue;
 }
 
+// A list argument as JSON carries it.
+function listData([name, items]: readonly [string, readonly string[]]): [string, string[]] {
+  return [name, [...items]];
+}
+
 // A part as JSON carries it, its own parts too.
 function partData(part: NoticePart): PartData {
-  const { key, values, times, amounts, parts } = part;
+  const { key, values, times, amounts, parts, lists } = part;
   return {
     key,
     values: { ...values },
+    ...(lists === undefined
+      ? {}
+      : { lists: Object.fromEntries(Object.entries(lists).map(listData)) }),
     ...(times === undefined ? {} : { times: { ...times } }),
     ...(amounts === undefined ? {} : { amounts: amountWires(amounts) }),
     ...(parts === undefined

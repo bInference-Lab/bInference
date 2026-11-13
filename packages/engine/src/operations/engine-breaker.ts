@@ -28,6 +28,8 @@ export function breakerWorkOf(
     intents: stores.intents,
     install: stores.install,
     orders: stores.orders,
+    transactions: stores.transactions,
+    chains: options.chains,
     clock,
     ids,
     publish,

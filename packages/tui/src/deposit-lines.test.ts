@@ -13,6 +13,23 @@ const main = {
   createdAt: 1,
 };
 
+describe("the deposit lines in the terminal, while the breaker holds", () => {
+  it("name the breaker's hold in the place of a freeze", () => {
+    const lines = depositLines(formatter, {
+      kind: "chat/deposit",
+      agent,
+      turn: "trn_0190f1c2-3a4b-7c5d-8e6f-0123456789ab",
+      mode: "live",
+      frozen: true,
+      breaker: true,
+      wallets: [main] as never,
+    });
+    expect(lines.map(({ text }) => text).at(-1)).toBe(
+      "Held by bInference's breaker: deposits arrive and stay in this wallet, but the agent trades nothing until bInference lifts it.",
+    );
+  });
+});
+
 describe("the deposit lines in the terminal", () => {
   it("print each wallet's address as the engine read it, the network, and a paper agent's warning", () => {
     const lines = depositLines(formatter, {

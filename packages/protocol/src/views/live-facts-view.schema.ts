@@ -38,6 +38,11 @@ export interface LiveFactsView {
   /** The rolling 24-hour cap in effect, which `spentTodayUsdMicros` counts against. */
   readonly rollingDayUsdMicros: bigint;
   readonly assets: AssetInfos;
+  /**
+   * `true` while bInference's breaker holds the install (decision 0441), so the agent says why it
+   * cannot trade and suggests no unfreeze; absent otherwise.
+   */
+  readonly breaker?: true;
 }
 
 /** Parses the live facts of `facts/get`. */
@@ -56,4 +61,5 @@ export const liveFactsViewSchema: z.ZodType<LiveFactsView> = z.object({
   perTradeUsdMicros: decimalStringSchema,
   rollingDayUsdMicros: decimalStringSchema,
   assets: assetInfosSchema,
+  breaker: z.literal(true).exactOptional(),
 });

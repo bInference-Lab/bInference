@@ -1,4 +1,10 @@
 import assert from "node:assert/strict";
+import { createChainRegistry } from "@binference/chain";
+import {
+  createFakeChainDefinition,
+  createFakeFamily,
+  createFakeSigningScheme,
+} from "@binference/chain/testing";
 import { createIdSource, type Id } from "@binference/core";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
 import * as fc from "fast-check";
@@ -9,7 +15,7 @@ import { createStoredIntents } from "../intents/create-stored-intents.js";
 import { testNowMs } from "../intents/test-intents.js";
 import { unfreezeOrderMoves } from "../orders/freeze-order-moves.js";
 import type { OrderStore } from "../orders/ports.js";
-import type { AgentStore, InstallStore, IntentStore } from "../ports.js";
+import type { AgentStore, InstallStore, IntentStore, TransactionStore } from "../ports.js";
 import { oneLookAtATime } from "../safety/breaker-looks.js";
 import type { BreakerFollow, FollowBreakerOptions } from "../safety/follow-breaker.js";
 import { freezeAgents } from "../safety/freeze-agents.js";
@@ -23,6 +29,8 @@ export interface BreakerFreezeSubject {
   readonly intents: IntentStore;
   readonly install: InstallStore;
   readonly orders: OrderStore;
+  /** The transactions a lift reads to find the approvals fills left. */
+  readonly transactions: TransactionStore;
   /** The agent whose order and rescue the property watches, and its wallet. */
   readonly first: PlantedPair;
   readonly second: Id<"agt">;
@@ -69,6 +77,11 @@ const rescueId = fixtureId("int", 4);
 const author = { by: "tok_owner", surface: "cli" };
 
 const publish = (): void => undefined;
+const chains = createChainRegistry({
+  chains: [createFakeChainDefinition()],
+  families: [createFakeFamily()],
+  signingSchemes: [createFakeSigningScheme()],
+});
 const stopTurns = async (): Promise<void> => Promise.resolve();
 
 const namesOf = (to: Target): readonly Name[] => (to === "install" ? ["first", "second"] : [to]);
@@ -103,7 +116,7 @@ function benchOf(subject: BreakerFreezeSubject): Bench {
   const clock = createManualClock(testNowMs);
   const ids = createIdSource({ clock, random: createSeededRandom(11) });
   const stored = createStoredIntents({ ...subject, ids, publish });
-  const options = { ...subject, stored, clock, ids, publish, source: breaker, stopTurns };
+  const options = { ...subject, stored, chains, clock, ids, publish, source: breaker, stopTurns };
   const engine = { look: oneLookAtATime(options) };
   return {
     subject,

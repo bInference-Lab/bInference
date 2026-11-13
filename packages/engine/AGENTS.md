@@ -343,12 +343,16 @@ Rules for this package:
   the intent store's `freeze` with its `breaker` part, planned on the version the install holds:
   the install's own mark (`breaker_at`) holds every agent apart from the owner's freeze
   (`frozenAtMs` is the earlier of the two, `ownFreezeOf` the owner's own), every unsigned intent
-  but a rescue is cancelled, orders pause and turns stop. A version is marked told only once it
-  was told (`InstallStore.tellBreaker`), and a look tells one that waits first. A lagging copy or
-  an unread source changes nothing. Only a lift ends the breaker's hold and only the owner's
-  unfreeze ends the owner's; while the breaker holds, an unfreeze, its card's Confirm and a config
-  change are `safety.breaker`, and the policy's `breaker` rule comes first. A change to either
-  freeze changes `breaker-freeze-property.ts`, which runs on the fakes and on SQLite.
+  but a rescue is cancelled, orders pause and turns stop. The pull and the lift are each told
+  once, and the lift tells each approval a live fill left standing while the breaker held
+  (`breaker-approvals.ts`), since the reset of decision 0211 cannot sign by then: a version is
+  marked told (`InstallStore.tellBreaker`) after its notices go, so a fault between them tells it
+  again, and a look tells one that waits first. A lagging copy or an unread source changes
+  nothing. Only a lift ends the breaker's hold and only the owner's unfreeze ends the owner's;
+  while the breaker holds, an unfreeze, its card's Confirm and a config change are
+  `safety.breaker`, and the policy's `breaker` rule comes first.
+  A change to either freeze changes `breaker-freeze-property.ts`, which runs on the fakes and on
+  SQLite.
 - A rescue (`src/safety/`, `safety/rescue`) is one live intent stored under the first wallet that
   moves something and whose agent is active, whatever the agents' modes, freezes and send levels.
   It plans every wallet of the install on the rescue address's chain: each token the registry

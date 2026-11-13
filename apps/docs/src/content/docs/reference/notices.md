@@ -767,6 +767,30 @@ Level: info. Can be muted: no.
 A command is no longer allowed, removed from the CLI: git status in /srv/project
 ```
 
+## `breakerPulled`
+
+Level: critical. Can be muted: no.
+
+```text
+🔴 bInference pulled its breaker, so every agent it runs is frozen: the cards that waited were cancelled and auto orders paused. Your funds stay in your wallets, and a rescue to your rescue address still works. You will be told when it lifts.
+```
+
+## `breakerLifted`
+
+Level: info. Can be muted: no.
+
+```text
+🟢 bInference lifted its breaker: your agents can trade again, but your own freeze still holds main, second. Unfreeze them when you want them to trade.
+```
+
+## `breakerApprovalLeft`
+
+Level: warning. Can be muted: no.
+
+```text
+⚠️ A trade stopped part way while bInference's breaker held it, and the approval its first step gave still stands: 0x10ED…024E may still spend up to 1.8 BNB from 0x9F3c…41aB. If you no longer want that, revoke the approval.
+```
+
 ## `identityMismatch`
 
 Level: warning. Can be muted: no.

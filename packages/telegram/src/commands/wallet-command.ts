@@ -25,10 +25,20 @@ export async function runWallet(context: CommandContext): Promise<void> {
     await context.say(context.words("cmd.wallet.none"));
     return;
   }
+  // The breaker's hold (decision 0441), which the agent's own freeze does not tell apart; a
+  // warning, so a status that cannot be read leaves the freeze's own words.
+  const { calls, senderId, signal } = context;
+  const safety = await calls.call({ op: "safety/status", args: {}, senderId }, { signal });
+  const isBraked = safety.ok && safety.value.breaker !== undefined;
   // One message per wallet, in order, so each code sits beside its own address.
   await views.reduce(async (previous, view) => {
     await previous;
-    const lines = depositLines(context, { view, mode: agent.mode, isFrozen: agent.frozen });
+    const lines = depositLines(context, {
+      view,
+      mode: agent.mode,
+      isFrozen: agent.frozen,
+      isBraked,
+    });
     await (isExtraWallet(view)
       ? context.sayRich(lines)
       : context.sayPhoto(qrPng(walletAddressOf(view)), lines));

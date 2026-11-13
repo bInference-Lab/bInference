@@ -103,6 +103,7 @@ export function createLiveFactsHandlers(parts: LiveFactsParts): LiveFactsHandler
         perTradeUsdMicros: limits.perTradeUsdMicros,
         rollingDayUsdMicros: limits.rollingDayUsdMicros,
         assets: { ...assets, ...(await knownAssetInfos(parts, tokens, { signal })) },
+        ...(settings.agent.breakerAtMs === undefined ? {} : { breaker: true as const }),
       });
     },
   };

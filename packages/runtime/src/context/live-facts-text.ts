@@ -65,12 +65,20 @@ function orderText(order: OrderView, assets: AssetInfos): string {
   return `${order.kind} ${request.side} ${tokenText(request.token, assets)}, ${order.state} (${order.order})`;
 }
 
+// The breaker's hold is bInference's, so no unfreeze of the owner's lifts it (decision 0441).
+function frozenText(facts: LiveFactsView): string {
+  if (facts.breaker === true) {
+    return "yes, by bInference's breaker, which no unfreeze lifts; nothing trades until bInference lifts it";
+  }
+  return facts.frozen ? "yes" : "no";
+}
+
 function factLines(facts: LiveFactsView): readonly string[] {
   const formatter = createFormatter({ locale: "en", timeZone: facts.timeZone });
   const orders = facts.orders.map((order) => orderText(order, facts.assets));
   return [
     `- Time: ${formatter.dateTime(facts.at)} (${facts.timeZone}).`,
-    `- Mode: ${facts.mode}. Frozen: ${facts.frozen ? "yes" : "no"}. Approval mode: ${facts.approvalMode}. Send level: ${String(facts.sendLevel)}.`,
+    `- Mode: ${facts.mode}. Frozen: ${frozenText(facts)}. Approval mode: ${facts.approvalMode}. Send level: ${String(facts.sendLevel)}.`,
     balancesLine(facts, formatter),
     `- Open orders: ${orders.length === 0 ? "none" : orders.join("; ")}.`,
     `- Spent in the last 24 hours: ${formatter.usd(facts.spentTodayUsdMicros)} of the ${formatter.usd(facts.rollingDayUsdMicros)} cap. Per-trade cap: ${formatter.usd(facts.perTradeUsdMicros)}.`,

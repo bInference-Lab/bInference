@@ -398,6 +398,22 @@ describe("the fast commands' replies", () => {
     ]);
   });
 
+  it("shows every agent frozen and names the breaker while it holds", async () => {
+    const bot = await startCommandBot({
+      ...served,
+      "engine/status": async () =>
+        Promise.resolve(ok({ ...status, agents: [{ id: agent, mode: "live", frozen: true }] })),
+      "safety/status": async () =>
+        Promise.resolve(ok({ frozen: true, breaker: { pulledAt: nowMs }, rescueAddress })),
+    });
+    await bot.send("/status");
+    expect(bot.texts()[0]?.split("\n").slice(1, 4)).toStrictEqual([
+      `${icons.live} bInference's breaker holds every agent since Oct 10, 2026, 09:30:00. No unfreeze lifts it; a rescue still works, and you will be told when it lifts.`,
+      "Rescue address: 0x00000000000000000000000000000000000000a1",
+      `${agent} · ${icons.live} Live · frozen since Oct 10, 2026, 09:30:00`,
+    ]);
+  });
+
   it("says when a listed MCP server keeps an agent's auto mode asking", async () => {
     const bot = await startCommandBot({
       ...served,

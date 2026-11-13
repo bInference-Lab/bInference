@@ -55,8 +55,8 @@ export async function startLiveFills(
     readonly recentOutflows?: NonNullable<BenchOptions["recentOutflows"]>;
     /** The USD prices; the coin at $600 and the test token at $0.80 when absent. */
     readonly prices?: typeof fillPrices;
-    /** Wraps the inbox and webhook rule stores the engine reads and writes through. */
-    readonly engineStores?: Pick<TestEngineOptions, "inbox" | "webhookRules">;
+    /** Wraps the inbox and webhook rule stores the engine reads and writes through; the breaker. */
+    readonly engineStores?: Pick<TestEngineOptions, "inbox" | "webhookRules" | "breaker">;
   } = {},
 ): Promise<ExecutorBench> {
   const {

@@ -31,7 +31,7 @@ export type StatusHelpers = readonly HelperRecord[] | "unread" | "helper_turn";
 /** Every fact the answer names, each `undefined` when it could not be read now. */
 export interface StatusFacts {
   readonly agent?: Pick<AgentView, "agent" | "name">;
-  readonly facts?: Pick<LiveFactsView, "mode" | "frozen" | "approvalMode">;
+  readonly facts?: Pick<LiveFactsView, "mode" | "frozen" | "approvalMode" | "breaker">;
   readonly spend: StatusSpend;
   readonly chat?: ChatStanding;
   readonly turn: TurnState;
@@ -49,14 +49,21 @@ export interface StatusFacts {
 
 const unread = "could not be read now";
 
+// The breaker's hold is bInference's, so no unfreeze of the owner's lifts it (decision 0441).
+function frozenText(facts: NonNullable<StatusFacts["facts"]>): string {
+  if (facts.breaker === true) {
+    return "frozen by bInference's breaker, which no unfreeze lifts";
+  }
+  return facts.frozen ? "frozen" : "not frozen";
+}
+
 function agentLine({ agent, facts }: StatusFacts): string {
   const who =
     agent === undefined ? `Agent: name ${unread}.` : `Agent: ${agent.name} (${agent.agent}).`;
   if (facts === undefined) {
     return `${who} Mode, freeze and approval mode ${unread}.`;
   }
-  const frozen = facts.frozen ? "frozen" : "not frozen";
-  return `${who} Mode ${facts.mode}, ${frozen}, approval mode ${facts.approvalMode}.`;
+  return `${who} Mode ${facts.mode}, ${frozenText(facts)}, approval mode ${facts.approvalMode}.`;
 }
 
 function named(model: string | undefined): string {

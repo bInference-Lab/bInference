@@ -1,11 +1,13 @@
 import { type Id, idSchema } from "@binference/core";
 import { describe, expect, it } from "vitest";
+import type { AgentRecord } from "../agents/agent-record.js";
 import { createMemoryBreaker, type MemoryBreaker } from "../fakes/memory-breaker.js";
 import { requestDocument } from "../intents/intent-documents.schema.js";
 import type { IntentKind } from "../intents/intent-kind.js";
 import type { IntentState } from "../intents/intent-state.js";
 import { expectOk, testAgent, testNowMs, testSwap, testWallet } from "../intents/test-intents.js";
 import { startTestEngine, testCall, type TestEngine } from "../operations/test-engine.js";
+import type { AgentStore } from "../ports.js";
 
 const live = { signal: new AbortController().signal };
 
@@ -59,6 +61,37 @@ async function ledgerKinds(test: TestEngine): Promise<readonly string[]> {
     .map((entry) => entry.kind);
 }
 
+// The breaker's notices the engine published, oldest first, each as its key and values.
+function breakerNotices(test: TestEngine): readonly unknown[] {
+  return test.pushes
+    .filter(({ kind }) => kind === "notice/new")
+    .map(
+      ({ data }) =>
+        data as { readonly key: string; readonly values: unknown; readonly lists?: unknown },
+    )
+    .filter(({ key }) => key.startsWith("notice.breaker"))
+    .map(({ key, values, lists }) =>
+      lists === undefined ? { key, values } : { key, values, lists },
+    );
+}
+
+const pulledNotice = { key: "notice.breakerPulled", values: {} };
+
+// An agent store that lists every agent as archived once `archive` is called.
+function archivedOnCue() {
+  const state = { isArchived: false };
+  const archived = (agent: AgentRecord): AgentRecord =>
+    state.isArchived ? Object.assign({}, agent, { archivedAtMs: 1 }) : agent;
+  const agents = (store: AgentStore): AgentStore => ({
+    ...store,
+    list: async (call) => (await store.list(call)).map(archived),
+  });
+  const archive = (): void => {
+    state.isArchived = true;
+  };
+  return { agents, archive };
+}
+
 async function startHeld(): Promise<{
   readonly test: TestEngine;
   readonly breaker: MemoryBreaker;
@@ -91,6 +124,7 @@ describe("following the breaker", () => {
     await expect(ledgerKinds(test)).resolves.toStrictEqual(["freeze"]);
     const inbox = await test.stores.agentInbox.untaken({ agentId: testAgent, limit: 10 }, live);
     expect(inbox.map(({ kind }) => kind)).toContain("inbox/stop");
+    expect(breakerNotices(test)).toStrictEqual([pulledNotice]);
   });
 
   it("applies each version once, and a lagging copy changes nothing", async () => {
@@ -104,6 +138,7 @@ describe("following the breaker", () => {
     await expect(test.engine.followBreaker(live)).resolves.toStrictEqual({ outcome: "kept" });
     await expect(markOf(test)).resolves.toStrictEqual([testNowMs, 2]);
     await expect(ledgerKinds(test)).resolves.toStrictEqual(["freeze"]);
+    expect(breakerNotices(test)).toStrictEqual([pulledNotice]);
   });
 
   it("lifts only the breaker's hold, the owner's own freeze kept", async () => {
@@ -117,6 +152,44 @@ describe("following the breaker", () => {
     const [agent] = await test.stores.agents.list(live);
     expect([agent?.frozenAtMs, agent?.breakerAtMs]).toStrictEqual([testNowMs, undefined]);
     await expect(ledgerKinds(test)).resolves.toStrictEqual(["freeze", "unfreeze"]);
+    expect(breakerNotices(test)).toStrictEqual([
+      pulledNotice,
+      {
+        key: "notice.breakerLifted",
+        values: { frozen: "some" },
+        lists: { agents: [agent?.name] },
+      },
+    ]);
+  });
+
+  it("tells a lift that leaves no agent frozen once, naming none", async () => {
+    const { test, breaker } = await startHeld();
+    breaker.pull(testNowMs);
+    await test.engine.followBreaker(live);
+    breaker.lift(testNowMs + 1);
+    await test.engine.followBreaker(live);
+    await test.engine.followBreaker(live);
+    expect(breakerNotices(test)).toStrictEqual([
+      pulledNotice,
+      { key: "notice.breakerLifted", values: { frozen: "none" }, lists: { agents: [] } },
+    ]);
+  });
+
+  it("names no archived agent among those the owner's freeze still holds at the lift", async () => {
+    const breaker = createMemoryBreaker();
+    const cue = archivedOnCue();
+    const test = await startTestEngine({ breaker, agents: cue.agents });
+    await test.engine.handlers["safety/freeze"](testCall({ agent: testAgent }));
+    breaker.pull(testNowMs);
+    await test.engine.followBreaker(live);
+    cue.archive();
+    breaker.lift(testNowMs + 1);
+    await test.engine.followBreaker(live);
+    expect(breakerNotices(test).at(-1)).toStrictEqual({
+      key: "notice.breakerLifted",
+      values: { frozen: "none" },
+      lists: { agents: [] },
+    });
   });
 
   it("keeps the state applied last while its source does not answer", async () => {
@@ -162,5 +235,6 @@ describe("following the breaker across a restart", () => {
     await expect(restarted.followBreaker(live)).resolves.toStrictEqual({ outcome: "moved" });
     await expect(markOf(test)).resolves.toStrictEqual([undefined, 2]);
     await expect(ledgerKinds(test)).resolves.toStrictEqual([]);
+    expect(breakerNotices(test)).toStrictEqual([]);
   });
 });

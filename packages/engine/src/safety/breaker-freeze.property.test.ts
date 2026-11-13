@@ -17,12 +17,13 @@ async function memorySubject(): Promise<BreakerFreezeSubject> {
   await stores.agents.create(testAgentDraft({ id: second, name: "second" }), live);
   const wallet = { id: testWallet, agentId: testAgent, label: "main", createdAtMs: testNowMs };
   stores.install.addWallet(testWalletRecord(wallet));
-  const { agents, intents, install, orders } = stores;
+  const { agents, intents, install, orders, transactions } = stores;
   return {
     agents,
     intents,
     install,
     orders,
+    transactions,
     first: { agentId: testAgent, walletId: testWallet },
     second,
   };

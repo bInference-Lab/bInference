@@ -12,7 +12,7 @@ export type MadeMedia = Extract<ChatPush, { readonly kind: "chat/media" }>["medi
 /** The wallets the agent showed the owner to fund, with its mode and freeze (decision 0380). */
 export type ShownDeposit = Pick<
   Extract<ChatPush, { readonly kind: "chat/deposit" }>,
-  "mode" | "frozen" | "wallets"
+  "mode" | "frozen" | "breaker" | "wallets"
 >;
 
 /** One message of the agent's transcript, as `chat/messages` reads it. */

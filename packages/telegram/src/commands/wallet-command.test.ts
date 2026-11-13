@@ -101,6 +101,19 @@ describe("the /wallet command", () => {
     ]);
   });
 
+  it("names the breaker's hold in the place of a freeze, and no unfreeze", async () => {
+    const { handlers } = walletsBot([view(10, "Main")], { mode: "live", frozen: true });
+    const held = { frozen: true, breaker: { pulledAt: 1 } } as const;
+    const bot = await startCommandBot({
+      ...handlers,
+      "safety/status": async () => Promise.resolve(ok(held)),
+    });
+    await bot.send("/wallet");
+    expect(bot.botApi.messages()[0]?.text.split("\n")).toContain(
+      "Held by bInference's breaker: deposits arrive and stay in this wallet, but the agent trades nothing until bInference lifts it.",
+    );
+  });
+
   it("gives a wallet nothing runs from no QR code, and says to send it nothing", async () => {
     const bot = await startCommandBot(
       walletsBot([view(13, "Spare", { bridge: true, extra: true })]).handlers,

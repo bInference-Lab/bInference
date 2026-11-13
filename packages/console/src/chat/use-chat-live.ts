@@ -63,8 +63,9 @@ function messageStep(push: MessagePush, id: string): PushStep {
 // own.
 function shownLineOf(push: ChatPush, id: string): LiveLine | undefined {
   if (push.kind === "chat/deposit") {
-    const { mode, frozen, wallets } = push;
-    return { kind: "deposit", id, turn: push.turn, deposit: { mode, frozen, wallets } };
+    const { mode, frozen, breaker, wallets } = push;
+    const deposit = { mode, frozen, ...(breaker === undefined ? {} : { breaker }), wallets };
+    return { kind: "deposit", id, turn: push.turn, deposit };
   }
   if (push.kind === "chat/chart") {
     return { kind: "chart", id, turn: push.turn, chart: push.chart };

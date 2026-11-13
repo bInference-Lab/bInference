@@ -11,6 +11,7 @@ import { createSqliteInstallStore } from "../install/sqlite-install-store.js";
 import { createSqliteOrderStore } from "../orders/sqlite-order-store.js";
 import { plantWalletOn } from "../testing/plant-agent.js";
 import { createTestDatabases } from "../testing/test-databases.worker.js";
+import { createSqliteTransactionStore } from "../transactions/sqlite-transaction-store.js";
 import { createSqliteIntentStore } from "./sqlite-intent-store.js";
 
 const databases = createTestDatabases();
@@ -33,6 +34,7 @@ async function sqliteSubject(): Promise<BreakerFreezeSubject> {
     intents: createSqliteIntentStore(host),
     install: createSqliteInstallStore(host),
     orders: createSqliteOrderStore(host),
+    transactions: createSqliteTransactionStore(host),
     first,
     second: secondId,
   };

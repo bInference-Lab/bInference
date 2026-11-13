@@ -32,7 +32,8 @@ async function sendDepositPhotos(
   const parts = { words, formatter };
   await push.wallets.reduce(async (previous, view) => {
     await previous;
-    const caption = depositLines(parts, { view, mode: push.mode, isFrozen: push.frozen });
+    const isBraked = push.breaker === true;
+    const caption = depositLines(parts, { view, mode: push.mode, isFrozen: push.frozen, isBraked });
     await bot.sayPhoto({ chatId }, { png: qrPng(walletAddressOf(view)), caption }, { signal });
   }, Promise.resolve());
 }

@@ -23,11 +23,13 @@ function view(n: number, label: string, marks: Partial<WalletView> = {}): Wallet
   return { wallet, agent, address, label, createdAt: n, ...chain, ...marks };
 }
 
-async function walletReply(items: readonly WalletView[]) {
+async function walletReply(items: readonly WalletView[], breaker?: { readonly pulledAt: number }) {
+  const safety = { frozen: breaker !== undefined, ...(breaker === undefined ? {} : { breaker }) };
   const bot = await startCommandBot(
     {
       "engine/status": async () => Promise.resolve(ok(status)),
       "wallet/list": async () => Promise.resolve(ok({ items })),
+      "safety/status": async () => Promise.resolve(ok(safety)),
     },
     { locale: "zh" },
   );
@@ -67,6 +69,13 @@ describe("the /wallet command in Chinese", () => {
         "在 scan.example.invalid 查看",
       ].join("\n"),
     ]);
+  });
+
+  it("names the breaker's hold in Chinese in the place of a freeze", async () => {
+    const bot = await walletReply([view(10, "Main")], { pulledAt: 1 });
+    expect(bot.botApi.messages()[0]?.text.split("\n")).toContain(
+      "被 bInference 的熔断开关冻结：转账的资金会到账并留在这个钱包里，但在 bInference 解除之前 Agent 不会交易。",
+    );
   });
 
   it("says in Chinese when the agent has no wallet yet", async () => {

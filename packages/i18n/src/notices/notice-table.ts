@@ -1,4 +1,5 @@
 import type { ProtocolId } from "@binference/protocol";
+import { breakerNoticeTable } from "./breaker-notice-table.js";
 import { bridgeNoticeTable } from "./bridge-notice-table.js";
 import { dailyNothingElse, noticeTableAtMs, noticeTableParts } from "./notice-table-parts.js";
 import { orderNoticeTable } from "./order-notice-table.js";
@@ -254,6 +255,7 @@ export const noticeTable: Readonly<Record<string, TableNotice>> = {
   ...skillNoticeTable,
   ...bridgeNoticeTable,
   ...shellNoticeTable,
+  ...breakerNoticeTable,
   "notice.identityMismatch": { key: "notice.identityMismatch", values: agent },
   "notice.identityDuplicate": { key: "notice.identityDuplicate", values: agent },
   "notice.launchStopped": {

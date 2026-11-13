@@ -767,6 +767,30 @@ main 的钱包不会跨链到你在 Base 上的紧急转出地址 0x9F3c…41aB�
 一条允许的命令已被移除（来自命令行）：git status（目录 /srv/project）
 ```
 
+## `breakerPulled`
+
+级别：严重。可静音：否。
+
+```text
+🔴 bInference 已拉下熔断开关，其运行的全部 Agent 均已冻结：等待中的卡片已取消，自动订单已暂停。你的资金仍在你的钱包中，紧急转出到你的紧急转出地址仍然可用。解除时会通知你。
+```
+
+## `breakerLifted`
+
+级别：信息。可静音：否。
+
+```text
+🟢 bInference 已解除熔断开关：你的 Agent 可以重新交易，但你自己的冻结仍作用于 main、second。需要它们交易时请解除冻结。
+```
+
+## `breakerApprovalLeft`
+
+级别：警告。可静音：否。
+
+```text
+⚠️ 一笔交易在 bInference 熔断开关生效期间中途停止，其第一步给出的授权仍然有效：0x10ED…024E 仍可从 0x9F3c…41aB 动用最多 1.8 BNB。如不再需要，请撤销该授权。
+```
+
 ## `identityMismatch`
 
 级别：警告。可静音：否。

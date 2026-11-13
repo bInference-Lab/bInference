@@ -47,4 +47,32 @@ describe("the owner's freeze beside the breaker's hold", () => {
     const after = expectOk(await test.engine.handlers["safety/status"](testCall({})));
     expect(after.agents).toStrictEqual([{ agent: testAgent, frozenAt: testNowMs }]);
   });
+
+  it("says in the safety status that the breaker holds, and stops saying it at the lift", async () => {
+    const test = await startTestEngine();
+    await moveBreaker(test, { version: 1, isPulled: true });
+    const held = expectOk(await test.engine.handlers["safety/status"](testCall({})));
+    expect([held.frozen, held.frozenAt, held.breaker]).toStrictEqual([
+      true,
+      undefined,
+      { pulledAt: pulledAtMs },
+    ]);
+    await moveBreaker(test, { version: 2, isPulled: false });
+    const lifted = expectOk(await test.engine.handlers["safety/status"](testCall({})));
+    expect([lifted.frozen, "breaker" in lifted]).toStrictEqual([false, false]);
+  });
+
+  it("marks the agent's live facts while the breaker holds, and only then", async () => {
+    const test = await startTestEngine();
+    const facts = async () =>
+      expectOk(await test.engine.handlers["facts/get"](testCall({ agent: testAgent })));
+    expect("breaker" in (await facts())).toBe(false);
+    await moveBreaker(test, { version: 1, isPulled: true });
+    const held = await facts();
+    expect([held.frozen, held.breaker]).toStrictEqual([true, true]);
+    await test.engine.handlers["safety/freeze"](testCall({ agent: testAgent }));
+    await moveBreaker(test, { version: 2, isPulled: false });
+    const owners = await facts();
+    expect([owners.frozen, "breaker" in owners]).toStrictEqual([true, false]);
+  });
 });

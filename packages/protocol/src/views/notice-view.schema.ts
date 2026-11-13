@@ -21,6 +21,11 @@ export interface NoticePartView {
   readonly values: Readonly<Record<string, string>>;
   readonly amounts?: Readonly<Record<string, Amount>>;
   readonly times?: Readonly<Record<string, number>>;
+  /**
+   * The message's arguments that are lists of plain words, such as agents' names; a surface joins
+   * each the way the owner's language lists words before the message.
+   */
+  readonly lists?: Readonly<Record<string, readonly string[]>>;
 }
 
 /**
@@ -52,6 +57,7 @@ const messageShape = {
   amounts: z.record(z.string(), amountSchema).exactOptional(),
   times: z.record(z.string(), epochMsSchema).exactOptional(),
   values: z.record(z.string(), z.string()),
+  lists: z.record(z.string(), z.array(z.string())).exactOptional(),
 };
 
 // A part with parts of its own one level below it, whose parts take none.

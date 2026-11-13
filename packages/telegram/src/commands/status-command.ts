@@ -21,7 +21,9 @@ function agentLines(
     return [words("cmd.status.noAgents")];
   }
   return status.agents.flatMap((agent) => {
-    const frozenAt = safety.agents?.find((frozen) => frozen.agent === agent.id)?.frozenAt;
+    // The owner's own freeze, else the breaker's hold, which holds every agent (decision 0441).
+    const own = safety.agents?.find((frozen) => frozen.agent === agent.id)?.frozenAt;
+    const frozenAt = own ?? safety.breaker?.pulledAt;
     const line = words("cmd.status.agent", {
       agent: agent.id,
       mode: words("cmd.mode", { mode: agent.mode }),
@@ -45,8 +47,12 @@ function address(account: AccountRef): string {
 // The install's freeze, the rescue under way, and the rescue address with a change that waits.
 function safetyLines(context: CommandContext, safety: SafetyStatus): readonly string[] {
   const { words, formatter } = context;
-  const { frozenAt, rescue, rescueAddress, pendingRescueAddress, pendingRescueAt } = safety;
+  const { frozenAt, rescue, rescueAddress, pendingRescueAddress, pendingRescueAt, breaker } =
+    safety;
   return [
+    ...(breaker === undefined
+      ? []
+      : [words("cmd.status.breaker", { when: formatter.dateTime(breaker.pulledAt) })]),
     ...(frozenAt === undefined
       ? []
       : [words("cmd.status.installFrozen", { when: formatter.dateTime(frozenAt) })]),
@@ -75,7 +81,8 @@ function healthLine(context: CommandContext, health: EngineStatus["health"]): st
 
 /**
  * `/status`: the engine's state and release, a locked engine said so (decision 0104), the
- * install's freeze, each agent with its mode and freeze and whether a community plugin keeps its
+ * breaker's hold (decision 0441) and the install's freeze, each agent with its mode and freeze,
+ * the breaker's hold among them, and whether a community plugin keeps its
  * auto mode asking (decision 0350), the rescue under way, the rescue address
  * with a change that waits, and how many health signals fail.
  */

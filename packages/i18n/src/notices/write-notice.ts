@@ -43,8 +43,14 @@ function amountText(amount: Amount, writing: NoticeWriting): string {
     : `${formatter.tokenAmount(amount.base, info.decimals)} ${symbolText(amount, info, formatter)}`;
 }
 
+// Words a list argument holds, joined as the owner's language lists them.
+function listText(items: readonly string[], formatter: Formatter): string {
+  return items.join(formatter.locale === "zh" ? String.fromCodePoint(0x3001) : ", ");
+}
+
 // A message with its arguments filled in: each time as the day and time in the owner's timezone,
-// each amount in its token's units and symbol, and each part as its own message, written first.
+// each amount in its token's units and symbol, each list joined as the owner's language lists
+// words, and each part as its own message, written first.
 function messageText(part: NoticePartView, writing: NoticeWriting): string {
   const { formatter } = writing;
   const times = Object.entries(part.times ?? {}).map(
@@ -57,7 +63,12 @@ function messageText(part: NoticePartView, writing: NoticeWriting): string {
     ([name, inner]: readonly [string, NoticePartView]) =>
       [name, messageText(inner, writing)] as const,
   );
-  const values = { ...part.values, ...Object.fromEntries([...times, ...amounts, ...parts]) };
+  const lists = Object.entries(part.lists ?? {}).map(
+    ([name, items]: readonly [string, readonly string[]]) =>
+      [name, listText(items, formatter)] as const,
+  );
+  const filled = [...times, ...amounts, ...lists, ...parts];
+  const values = { ...part.values, ...Object.fromEntries(filled) };
   return formatter.message(part.key, values);
 }
 

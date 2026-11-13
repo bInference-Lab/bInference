@@ -18,7 +18,12 @@ export function depositLines(
   return push.wallets.flatMap((view) => {
     const at = view.address.lastIndexOf(":");
     const chain = view.chainName ?? view.address.slice(0, at);
-    const wallet = { view, mode: push.mode, isFrozen: push.frozen };
+    const wallet = {
+      view,
+      mode: push.mode,
+      isFrozen: push.frozen,
+      isBraked: push.breaker === true,
+    };
     return [
       { text: `${displayOutsideText(view.label, labelLength)} · ${chain}` },
       { text: `  ${view.address.slice(at + 1)}` },

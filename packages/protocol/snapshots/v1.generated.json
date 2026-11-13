@@ -1410,6 +1410,19 @@
               "type": "integer",
               "minimum": 0,
               "maximum": 9007199254740991
+            },
+            "breaker": {
+              "type": "object",
+              "properties": {
+                "pulledAt": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "pulledAt"
+              ]
             }
           },
           "required": [
@@ -1928,6 +1941,18 @@
                       "type": "string"
                     }
                   },
+                  "lists": {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "additionalProperties": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  },
                   "agent": {
                     "type": "string",
                     "pattern": "^agt_"
@@ -1991,6 +2016,18 @@
                             "type": "string"
                           }
                         },
+                        "lists": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        },
                         "parts": {
                           "type": "object",
                           "propertyNames": {
@@ -2044,6 +2081,18 @@
                                 },
                                 "additionalProperties": {
                                   "type": "string"
+                                }
+                              },
+                              "lists": {
+                                "type": "object",
+                                "propertyNames": {
+                                  "type": "string"
+                                },
+                                "additionalProperties": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
                                 }
                               }
                             },
@@ -2112,6 +2161,18 @@
                             "type": "string"
                           }
                         },
+                        "lists": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        },
                         "parts": {
                           "type": "object",
                           "propertyNames": {
@@ -2165,6 +2226,18 @@
                                 },
                                 "additionalProperties": {
                                   "type": "string"
+                                }
+                              },
+                              "lists": {
+                                "type": "object",
+                                "propertyNames": {
+                                  "type": "string"
+                                },
+                                "additionalProperties": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
                                 }
                               }
                             },
@@ -5952,6 +6025,10 @@
                   "verified"
                 ]
               }
+            },
+            "breaker": {
+              "type": "boolean",
+              "const": true
             }
           },
           "required": [

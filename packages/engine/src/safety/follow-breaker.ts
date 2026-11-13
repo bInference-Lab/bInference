@@ -2,6 +2,7 @@ import { BinferenceError, err, ok, type Result } from "@binference/core";
 import type { AgentRecord } from "../agents/agent-record.js";
 import { ownFreezeOf } from "../agents/breaker-hold.js";
 import type { BreakerState } from "../breaker/breaker-state.js";
+import type { InstallFacts } from "../install/install-record.js";
 import type { StoredFreeze } from "../intents/create-stored-intents.js";
 import type { BreakerWrite, FreezeCommit } from "../intents/freeze-write.js";
 import type { LedgerDraft } from "../ledger/ledger-entry.js";
@@ -11,6 +12,9 @@ import {
   unfreezeOrderMoves,
 } from "../orders/freeze-order-moves.js";
 import type { BreakerSource } from "../ports.js";
+import type { EnginePush } from "../pushes/engine-push.js";
+import { type BreakerApprovalParts, breakerApprovalNotices } from "./breaker-approvals.js";
+import { liftedNotice, pulledNotice } from "./breaker-notices.js";
 import { readBreaker } from "./breaker-read.js";
 import { cancelMoves, type FreezeAgentsOptions, unsignedOf } from "./freeze-agents.js";
 
@@ -34,7 +38,7 @@ export interface BreakerLook {
 }
 
 /** What following the breaker reads and writes through. */
-export interface FollowBreakerOptions extends FreezeAgentsOptions {
+export interface FollowBreakerOptions extends FreezeAgentsOptions, BreakerApprovalParts {
   readonly source: BreakerSource;
   /** Stops every running turn of every agent the breaker now holds, as a freeze does. */
   readonly stopTurns: (signal: AbortSignal) => Promise<void>;
@@ -174,10 +178,33 @@ async function applyFrom(
   return applyFrom(options, { ...at, round: at.round + 1 }, signal);
 }
 
+// What telling the version the install applied takes: a pull stops every running turn and is
+// told once; a lift is told once, then each approval a fill left standing while the breaker held,
+// read from a minute before the breaker's row turned to pulled (decision 0441).
+async function noticesOf(
+  options: FollowBreakerOptions,
+  facts: InstallFacts,
+  signal: AbortSignal,
+): Promise<readonly EnginePush[]> {
+  if (facts.breakerAtMs !== undefined) {
+    await options.stopTurns(signal);
+    return [pulledNotice()];
+  }
+  const lifted = liftedNotice(await options.agents.list({ signal }));
+  const pulledAtMs = facts.breakerPulledAtMs;
+  if (pulledAtMs === undefined) {
+    return [lifted];
+  }
+  const since = { breakerAtMs: pulledAtMs - 60_000, signal };
+  return [lifted, ...(await breakerApprovalNotices(options, since))];
+}
+
 /**
- * Tells the owner of the version the install applied, once (decision 0440): a pull stops every
- * running turn; then the version is marked told. A version alone was told with its write, and a
- * fault before the mark leaves it to the next look. Answers the version applied.
+ * Tells the owner of the version the install applied, at least once (decision 0440): its notices
+ * go first, each stored by the notice log before anything delivers it, then the version is marked
+ * told. A fault between the two tells it again at the next look, as a repeat, and a fault before
+ * the notices leaves it all to the next look. A version alone was told with its write. Answers the
+ * version applied.
  */
 async function tellApplied(options: FollowBreakerOptions, signal: AbortSignal): Promise<number> {
   const facts = await options.install.read({ signal });
@@ -185,8 +212,8 @@ async function tellApplied(options: FollowBreakerOptions, signal: AbortSignal): 
   if ((facts.breakerToldVersion ?? 0) >= applied) {
     return applied;
   }
-  if (facts.breakerAtMs !== undefined) {
-    await options.stopTurns(signal);
+  for (const notice of await noticesOf(options, facts, signal)) {
+    options.publish(notice);
   }
   await options.install.tellBreaker(applied, { signal });
   return applied;
@@ -198,8 +225,9 @@ async function tellApplied(options: FollowBreakerOptions, signal: AbortSignal): 
  * version alone, once, planned on the version the install held. A pull cancels every unsigned
  * intent but a rescue, pauses each active auto order and cancels each awaiting its card, in the
  * breaker's own write, then stops every running turn; a lift resumes the paused orders of every
- * agent its owner has not frozen. Neither writes an owner's freeze. A pull or a lift not yet told
- * is told first, so a fault after a write loses nothing. A source that does not answer in time
+ * agent its owner has not frozen. Neither writes an owner's freeze. A pull is told once and a lift
+ * once, with each approval a live fill left standing while the breaker held. A pull or a lift not
+ * yet told is told first, so a fault after a write loses nothing. A source that does not answer in time
  * writes nothing and answers `unread`, so the install keeps the state it applied last; a version
  * equal to `known`, the one the last look left applied and told, reads no install. A write
  * another write beat is planned again; a store fault, a lost lease among them, rejects.

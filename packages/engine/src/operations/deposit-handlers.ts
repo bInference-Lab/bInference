@@ -50,10 +50,18 @@ export function createDepositHandlers(options: DepositOptions): DepositHandlers 
       if (wallets.length === 0) {
         return err("wallet.not_found");
       }
-      const { mode, frozenAtMs } = settings.agent;
+      const { mode, frozenAtMs, breakerAtMs } = settings.agent;
       const frozen = frozenAtMs !== undefined;
       const encoded = z.array(walletViewSchema).encode(wallets);
-      const data = jsonValueSchema.parse({ agent, turn, mode, frozen, wallets: encoded });
+      const braked = breakerAtMs === undefined ? {} : { breaker: true };
+      const data = jsonValueSchema.parse({
+        agent,
+        turn,
+        mode,
+        frozen,
+        ...braked,
+        wallets: encoded,
+      });
       options.publish({ topic: chatTopic(agent), kind: "chat/deposit", data });
       return ok({ wallets });
     },
