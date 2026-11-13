@@ -21,7 +21,6 @@ import {
   walledPaths,
 } from "@binference/platform";
 import { maxImageBytes } from "@binference/protocol";
-import { english } from "viem/accounts";
 import type { BinferenceConfig } from "../config/schema/config.schema.js";
 import { asJson } from "../config/shown-config.js";
 import { browserOf } from "./compose-browser.js";
@@ -41,8 +40,6 @@ export interface ShellParts {
   /** The shell commands start in: PowerShell on Windows, a POSIX shell elsewhere. */
   readonly dialect?: "posix" | "powershell";
 }
-
-const recoveryWords: ReadonlySet<string> = new Set(english);
 
 // The most a check of the wall a refused command asks for may take: bubblewrap answers in
 // milliseconds.
@@ -147,7 +144,7 @@ export function commandRunnerOf(parts: ShellParts): CommandRunner {
         },
       });
     },
-    mask: (text) => maskShellOutput(text, recoveryWords),
+    mask: (text) => maskShellOutput(text),
     dialect: parts.dialect ?? "posix",
     locate: async (where, { signal }) => {
       const folder = folderOf(where.folder, home);

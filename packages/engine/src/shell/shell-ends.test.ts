@@ -30,7 +30,7 @@ describe("the end of a command the agent left running", () => {
     const shell = await leftRunning();
     await shell.clock.advance(125_000);
     const lines = Array.from({ length: 30 }, (_, at) => `line ${String(at + 1)}`).join("\n");
-    shell.runner.finish("serve", { output: `${lines}\nseed: ${phrase}\n`, exitCode: 3 });
+    shell.runner.finish("serve", { output: `${lines}\nwords: ${phrase}\n`, exitCode: 3 });
     await shell.clock.advance(0);
     expect(shell.woken()).toMatchObject([
       { kind: "inbox/message", agent: testAgent, surface: "telegram", outsideContent: true },
@@ -38,7 +38,7 @@ describe("the end of a command the agent left running", () => {
     const [text] = shell.wokenTexts();
     expect(text).toContain('your command "serve" (job shj_');
     expect(text).toContain("ended with exit code 3 after 2 min 5 s.");
-    expect(text).toContain("seed: [recovery phrase hidden]");
+    expect(text).toContain("words: [recovery phrase hidden]");
     expect(text).toContain("line 30");
     expect(text).not.toContain("line 11\n");
     expect(text).toContain("(earlier lines left out)");

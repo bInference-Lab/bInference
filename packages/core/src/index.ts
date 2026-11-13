@@ -71,6 +71,13 @@ export type { OutboundRoute, ProxySetting, RouteChoice } from "./proxy/outbound-
 export { throwProxiedFailure } from "./proxy/proxied-failure.js";
 export { retry } from "./retry/retry.js";
 export type { RetryAttempt, RetryOptions, RetryPolicy } from "./retry/retry.js";
+export {
+  holdsRecoveryPhrase,
+  leastPhraseWords,
+  recoveryPhraseSpans,
+} from "./secret/recovery-phrase.js";
+export type { TextSpan } from "./secret/recovery-phrase.js";
+export { recoveryWords } from "./secret/recovery-words.js";
 export { checkSecretName } from "./secret/secret-name.js";
 export {
   checkWorkspacePlace,

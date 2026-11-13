@@ -136,7 +136,6 @@ export async function createTestShell(options: TestShellOptions = {}): Promise<T
   const runner = createFakeCommandRunner({
     ...(script === undefined ? {} : { script }),
     folders: ["/home/owner", "/srv/project"],
-    words: new Set(["apple"]),
     ...(missing === undefined ? {} : { missing }),
     ...(dialect === undefined ? {} : { dialect }),
   });

@@ -22,7 +22,6 @@ export interface FakeCommandRunner extends CommandRunner {
 export interface FakeRunnerOptions {
   readonly script?: Readonly<Record<string, FakeCommand>>;
   readonly folders?: readonly string[];
-  readonly words?: ReadonlySet<string>;
   /** The programs no `PATH` holds; any other bare name is found in `/usr/bin`. */
   readonly missing?: readonly string[];
   readonly dialect?: "posix" | "powershell";
@@ -88,14 +87,13 @@ function createFakeRuns(): FakeRuns {
 
 /**
  * Creates a fake runner. A command the script does not name prints nothing and exits 0. A
- * `runs` command ends when stopped, with the signal `SIGTERM`, or when `finish` ends it. Masking
- * uses `words` as the recovery phrase word list.
+ * `runs` command ends when stopped, with the signal `SIGTERM`, or when `finish` ends it. It masks
+ * output as the real runner does.
  */
 export function createFakeCommandRunner(options: FakeRunnerOptions): FakeCommandRunner {
   const folders = options.folders ?? ["/home/owner"];
   const started: string[] = [];
   const runs = createFakeRuns();
-  const words = options.words ?? new Set<string>();
   const missing = options.missing ?? [];
   const folderOf = (folder: string | undefined) => {
     const wanted = folder ?? folders[0] ?? "/";
@@ -105,7 +103,7 @@ export function createFakeCommandRunner(options: FakeRunnerOptions): FakeCommand
     folders,
     started,
     dialect: options.dialect ?? "posix",
-    mask: (text) => maskShellOutput(text, words),
+    mask: (text) => maskShellOutput(text),
     locate: async (where) => {
       const folder = folderOf(where.folder);
       return Promise.resolve(

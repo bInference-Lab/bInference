@@ -1,8 +1,10 @@
-import { secretKindsIn } from "@binference/core";
-import { recoveryWords } from "./recovery-words.js";
+import {
+  holdsRecoveryPhrase,
+  leastPhraseWords,
+  recoveryWords,
+  secretKindsIn,
+} from "@binference/core";
 
-/** The fewest words a recovery phrase has. */
-const phraseWords = 12;
 /** The most words a recovery phrase has. */
 const maxPhraseWords = 24;
 // A private key written without its 0x prefix, as wallets export it.
@@ -17,16 +19,6 @@ function holdsKeyOrToken(text: string): boolean {
   return kinds.length > 0 || bareKey.test(text);
 }
 
-function longestRun(words: readonly string[]): number {
-  return words.reduce(
-    (runs, word) => {
-      const current = recoveryWords.has(word) ? runs.current + 1 : 0;
-      return { current, longest: Math.max(runs.longest, current) };
-    },
-    { current: 0, longest: 0 },
-  ).longest;
-}
-
 // Words of the BIP-39 list, however they were pasted: one a line, numbered, capitalized, or in
 // full-width letters. A phrase pasted alone may hold one mistyped word.
 function holdsWordPhrase(text: string): boolean {
@@ -37,8 +29,10 @@ function holdsWordPhrase(text: string): boolean {
     .filter((word) => word !== "");
   const listed = words.filter((word) => recoveryWords.has(word)).length;
   const isPhraseAlone =
-    words.length >= phraseWords && words.length <= maxPhraseWords && listed >= words.length - 1;
-  return isPhraseAlone || longestRun(words) >= phraseWords;
+    words.length >= leastPhraseWords &&
+    words.length <= maxPhraseWords &&
+    listed >= words.length - 1;
+  return isPhraseAlone || holdsRecoveryPhrase(words.join(" "));
 }
 
 /**

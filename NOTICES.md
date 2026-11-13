@@ -10,7 +10,7 @@ per source, in the same change.
 
 ### BIP-39 English word list
 
-`packages/telegram/src/screening/recovery-words.ts` holds the BIP-39 English word list
+`packages/core/src/secret/recovery-words.ts` holds the BIP-39 English word list
 (`bip-0039/english.txt` in the bitcoin/bips repository, SHA-256
 `2f5eed53a4727b4bf8880d8f3f199efc90e58503646d9ff8eff3a2ed3b24dbda`), encoded in base64. It was
 taken from `@scure/bip39` 1.6.0, `wordlists/english.js`:
