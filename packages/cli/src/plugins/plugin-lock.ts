@@ -3,6 +3,7 @@ import { type FilePermissions, readTextFile, writePrivateFile } from "@binferenc
 import { type CommunityManifest, communityManifestSchema } from "@binference/plugin-sdk/community";
 import type { PluginReview } from "@binference/protocol";
 import { z } from "zod";
+import type { RevocationFloor } from "./revocation-holder.js";
 
 /**
  * Why an installed plugin is off: the owner turned it off, it crashed, its files changed, or
@@ -52,6 +53,11 @@ export interface LockedPlugin {
 /** The plugin lock, `plugins/lock.json`: the one record of the installed community plugins. */
 export interface PluginLock {
   readonly plugins: readonly LockedPlugin[];
+  /**
+   * The newest revocation list the engine took, where plugins need listings (decision 0435):
+   * no older list is taken after a restart. A self-hosted lock holds none.
+   */
+  readonly revocations?: RevocationFloor;
 }
 
 const sha256Hex = z.string().regex(/^[0-9a-f]{64}$/);
@@ -81,7 +87,17 @@ const lockedSchema: z.ZodType<LockedPlugin> = z
   })
   .refine((entry) => entry.id === entry.manifest.id, "the id must be its manifest's");
 
-const lockSchema = z.strictObject({ version: z.literal(1), plugins: z.array(lockedSchema) });
+const floorSchema: z.ZodType<RevocationFloor> = z.strictObject({
+  sequence: z.int().positive(),
+  key: z.string().regex(/^[0-9a-f]{32}$/),
+  digest: sha256Hex,
+});
+
+const lockSchema = z.strictObject({
+  version: z.literal(1),
+  plugins: z.array(lockedSchema),
+  revocations: floorSchema.exactOptional(),
+});
 
 /** The empty lock: no plugin installed. */
 export const emptyPluginLock: PluginLock = { plugins: [] };
@@ -89,7 +105,11 @@ export const emptyPluginLock: PluginLock = { plugins: [] };
 function parsedLock(text: string): Result<PluginLock, "unreadable"> {
   try {
     const read = lockSchema.safeParse(JSON.parse(text));
-    return read.success ? ok({ plugins: read.data.plugins }) : err("unreadable");
+    if (!read.success) {
+      return err("unreadable");
+    }
+    const { plugins, revocations } = read.data;
+    return ok(revocations === undefined ? { plugins } : { plugins, revocations });
   } catch {
     return err("unreadable");
   }
@@ -114,6 +134,9 @@ export async function writePluginLock(
   options: { readonly permissions: FilePermissions; readonly signal: AbortSignal },
 ): Promise<void> {
   const plugins = lock.plugins.toSorted((a, b) => a.id.localeCompare(b.id));
-  const text = `${JSON.stringify({ version: 1, plugins }, undefined, 2)}\n`;
+  const { revocations } = lock;
+  const written =
+    revocations === undefined ? { version: 1, plugins } : { version: 1, plugins, revocations };
+  const text = `${JSON.stringify(written, undefined, 2)}\n`;
   await writePrivateFile(file, text, options);
 }

@@ -87,8 +87,10 @@ describe("holding the revocation list", () => {
   it("starts from a floor and drops one set by a key no longer in force", () => {
     const clock = createManualClock(startMs);
     const floor = { sequence: 9, key: signer.id, digest: "d".repeat(64) };
-    const kept = createRevocationHolder({ keys, clock, floor });
-    const gone = createRevocationHolder({ keys, clock, floor: { ...floor, key: "e".repeat(32) } });
+    const kept = createRevocationHolder({ keys, clock });
+    const gone = createRevocationHolder({ keys, clock });
+    kept.restore(floor);
+    gone.restore({ ...floor, key: "e".repeat(32) });
 
     expect(kept.take(signed(list(8)))).toStrictEqual({ ok: false, error: "older" });
     expect(gone.floor()).toBeUndefined();

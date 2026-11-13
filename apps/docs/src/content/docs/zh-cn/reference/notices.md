@@ -511,6 +511,22 @@ binference 已重启以应用你的设置，现已恢复服务：models.imageMak
 🔴 插件 fear-index 未启动：它的文件已不是你添加时的那些。请用 `binference plugin remove fear-index` 移除后重新添加。
 ```
 
+## `pluginRevoked`
+
+级别：严重。可静音：否。
+
+```text
+🔴 bInference 已撤销插件 fear-index 1.2.0 的上架条目，binference 已关闭这个版本。请移除它，或添加 bInference 已上架的版本。
+```
+
+## `pluginsHeld`
+
+级别：警告。可静音：否。
+
+```text
+⚠️ binference 当前无法核对 bInference 的插件上架条目，已先停止你的插件。恢复核对后，它们会自动重新启动。
+```
+
 ## `pluginSandboxOff`
 
 级别：严重。可静音：否。

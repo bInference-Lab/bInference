@@ -32,6 +32,11 @@ describe("createPluginNotices", () => {
       { kind: "sandboxOff", reason: "childProcess" },
       { key: "notice.pluginSandboxOff", values: { reason: "childProcess" } },
     ],
+    [
+      { kind: "revoked", plugin: "fear-index", version: "1.2.0" },
+      { key: "notice.pluginRevoked", values: { plugin: "fear-index", version: "1.2.0" } },
+    ],
+    [{ kind: "held" }, { key: "notice.pluginsHeld", values: {} }],
   ] as const)("words %o as a notice to the whole install", (notice, expected) => {
     const { tell, data } = notices();
     tell(notice);

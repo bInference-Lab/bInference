@@ -25,8 +25,14 @@ export interface RevocationHolder {
   take(envelope: string): Result<RevocationList, TakeRefusal>;
   /** The newest list taken while the clock says it is still good; none once it expired. */
   fresh(): RevocationList | undefined;
-  /** The floor of the newest list taken, or the one this holder started from. */
+  /** The floor of the newest list taken, or the one restored. */
   floor(): RevocationFloor | undefined;
+  /**
+   * Starts from the floor the plugin lock kept, when it is above the holder's own and its key
+   * is still in force; one whose key left the set is dropped, so a key that leaked cannot set a
+   * floor no later list reaches.
+   */
+  restore(floor: RevocationFloor | undefined): void;
 }
 
 const earlyMs = 5 * 60_000;
@@ -81,19 +87,13 @@ function refusalOf(
  * Holds the newest revocation list this engine took (decision 0435). A list is taken only when it
  * verifies under a key in force, reads as a list, was signed at most 5 minutes ahead of the clock
  * and has not expired, comes above the floor (or is the floor's own list read again), and names
- * every listing the list taken before named. A starting floor whose key is no longer in force is
- * dropped, so a key that leaked cannot set a floor no later list reaches.
+ * every listing the list taken before named.
  */
 export function createRevocationHolder(parts: {
   readonly keys: ListingKeys;
   readonly clock: Clock;
-  readonly floor?: RevocationFloor;
 }): RevocationHolder {
-  const start = parts.floor;
-  const held: Held = {
-    list: undefined,
-    floor: start !== undefined && parts.keys.keyOf(start.key) !== undefined ? start : undefined,
-  };
+  const held: Held = { list: undefined, floor: undefined };
   return {
     take(envelope) {
       const opened = openEnvelope(envelope, { kind: "pluginRevocations", keys: parts.keys });
@@ -119,5 +119,11 @@ export function createRevocationHolder(parts: {
       return list !== undefined && list.expiresAt > parts.clock.now() ? list : undefined;
     },
     floor: () => held.floor,
+    restore: (floor) => {
+      const isAbove = floor !== undefined && floor.sequence > (held.floor?.sequence ?? 0);
+      if (isAbove && parts.keys.keyOf(floor.key) !== undefined) {
+        held.floor = floor;
+      }
+    },
   };
 }

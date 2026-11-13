@@ -18,11 +18,7 @@ import {
 } from "./plugin-listing.schema.js";
 import type { LockedPlugin } from "./plugin-lock.js";
 import type { CatalogFailure } from "./ports.js";
-import {
-  createRevocationHolder,
-  type RevocationFloor,
-  type RevocationHolder,
-} from "./revocation-holder.js";
+import { createRevocationHolder, type RevocationHolder } from "./revocation-holder.js";
 
 /** Why a plugin's listing did not let it install, turn on or run (decision 0433). */
 export type ListingFailure =
@@ -248,12 +244,10 @@ export function createListingGate(parts: {
   readonly rule: Required;
   readonly clock: Clock;
   readonly logger: Logger;
-  readonly floor?: RevocationFloor;
 }): ListingGate {
   const holder = createRevocationHolder({
     keys: parts.rule.keys,
     clock: parts.clock,
-    ...(parts.floor === undefined ? {} : { floor: parts.floor }),
   });
   const gate: GateParts = { rule: parts.rule, clock: parts.clock, logger: parts.logger, holder };
   return {

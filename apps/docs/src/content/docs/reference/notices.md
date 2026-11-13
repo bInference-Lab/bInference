@@ -511,6 +511,22 @@ Level: critical. Can be muted: no.
 🔴 Plugin fear-index did not start: its files are no longer the ones you added. Remove it with `binference plugin remove fear-index` and add it again.
 ```
 
+## `pluginRevoked`
+
+Level: critical. Can be muted: no.
+
+```text
+🔴 bInference revoked the listing of plugin fear-index 1.2.0, so binference turned this version off. Remove it, or add a version bInference lists.
+```
+
+## `pluginsHeld`
+
+Level: warning. Can be muted: no.
+
+```text
+⚠️ binference cannot check bInference's plugin listings right now, so it stopped your plugins until it can. They start again on their own.
+```
+
 ## `pluginSandboxOff`
 
 Level: critical. Can be muted: no.

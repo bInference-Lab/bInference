@@ -17,6 +17,8 @@
   "pluginStopped": "🔴 插件 {plugin} 在 10 分钟内崩溃了 5 次，binference 已将其停止。运行 `binference plugin enable {plugin}` 可重新启用。",
   "pluginStalled": "⚠️ 插件 {plugin} 不再读取 binference 发给它的内容，binference 已将其结束。它会自行重新启动。",
   "pluginChanged": "🔴 插件 {plugin} 未启动：它的文件已不是你添加时的那些。请用 `binference plugin remove {plugin}` 移除后重新添加。",
+  "pluginRevoked": "🔴 bInference 已撤销插件 {plugin} {version} 的上架条目，binference 已关闭这个版本。请移除它，或添加 bInference 已上架的版本。",
+  "pluginsHeld": "⚠️ binference 当前无法核对 bInference 的插件上架条目，已先停止你的插件。恢复核对后，它们会自动重新启动。",
   "pluginSandboxOff": "🔴 社区插件无法在这台电脑上运行：{reason, select, engineDebugSignal {引擎启动时没有关闭调试信号} probeFailed {沙箱检查未能完成} readOutside {插件可以读取其文件夹之外的文件} writeOutside {插件可以在其数据文件夹之外写入} link {插件可以创建指向其他文件夹的链接} hardLink {插件可以创建指向其他文件夹的链接} fetch {插件可以自行访问网络} connect {插件可以自行访问网络} lookup {插件可以自行访问网络} listen {插件可以自行访问网络} udp {插件可以自行访问网络} childProcess {插件可以启动程序} worker {插件可以启动工作线程} addon {插件可以加载原生扩展} wasi {插件可以运行 WASI 代码} ffi {插件可以调用原生代码} ffiMemory {插件可以调用原生代码} inspector {插件可以打开调试器} sqlite {插件可以打开数据库} binding {插件可以访问 Node 的内部接口} setFlags {插件可以开启 V8 的内部函数} debugSignal {插件可以打开引擎的调试器} signal {插件可以向引擎发送信号} other {沙箱检查未通过}}。运行 `binference check` 查看修复方法。",
   "backupFailed": "⚠️ 昨晚的备份失败：{reason, select, no_owner_key {binference 没有可用来加密备份的所有者密钥} snapshot {无法复制数据库} write {无法写入备份文件，请检查磁盘剩余空间} check {回读时发现内容不一致} copy {无法在 backups.copyTo 中写入第二份副本} other {意外故障中断了备份，可在 `binference logs` 中查看}}",
   "unknownTx": "⚠️ {wallet} 的随机数 {nonce} 被一笔非 binference 签名的交易占用",
