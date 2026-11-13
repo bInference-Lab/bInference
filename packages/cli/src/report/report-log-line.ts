@@ -45,6 +45,9 @@ const fieldRules: Readonly<Record<string, (value: string) => string>> = {
   sourceId: (value) => (sourceName.test(value) ? value : omittedMark),
   errorCode: (value) => (dottedName.test(value) ? value : omittedMark),
   method: (value) => (httpMethod.test(value) ? value : omittedMark),
+  listing: (value) => (plainId.test(value) ? value : omittedMark),
+  state: (value) => (dottedName.test(value) ? value : omittedMark),
+  reason: (value) => (dottedName.test(value) ? value : omittedMark),
   // The bundle hides every host name (decision 0263), so a request's host never passes.
   host: () => omittedMark,
 };

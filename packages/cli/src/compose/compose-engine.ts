@@ -3,6 +3,7 @@ import {
   BinferenceError,
   type Clock,
   createIdSource,
+  type Id,
   type IdSource,
   type Logger,
   type Random,
@@ -120,6 +121,11 @@ export interface ComposeEngineOptions extends EngineChainParts, EngineAgentParts
    * starts marked and auto mode asks. Required, so no composition can leave the mark out.
    */
   readonly communityPluginsOn: () => boolean;
+  /**
+   * Whether an agent has a listed MCP server on now (decision 0428): each of its turns then starts
+   * marked and its auto mode asks. None when absent, as on self-hosted.
+   */
+  readonly listedMcpOn?: (agent: Id<"agt">) => boolean;
   /** Whether live auto orders fill; off when absent (decision 0195). */
   readonly liveOrderFills?: boolean;
   /** Whether a launch feed runs, whose records `market/scan` reads (decision 0256). */
@@ -265,12 +271,14 @@ function custodyPartsOf(parts: EngineParts) {
   };
 }
 
-// The engine's switches: whether it is locked, whether a community plugin is on (decision 0350),
-// whether live auto orders fill and whether a launch feed runs.
+// The engine's switches: whether it is locked, whether a community plugin (decision 0350) or a
+// listed MCP server (decision 0428) is on, whether live auto orders fill and whether a launch
+// feed runs.
 function switchesOf(options: ComposeEngineOptions) {
   return {
     isLocked: options.isLocked ?? (() => false),
     communityPluginsOn: options.communityPluginsOn,
+    ...(options.listedMcpOn === undefined ? {} : { listedMcpOn: options.listedMcpOn }),
     ...(options.liveOrderFills === true ? { liveOrderFills: true } : {}),
     ...(options.launchFeed === true ? { launchFeed: true } : {}),
   };

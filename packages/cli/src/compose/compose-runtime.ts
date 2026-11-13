@@ -3,6 +3,7 @@ import { createRunningTurns, type RunningTurns, type RuntimeChats } from "@binfe
 import type { EngineHandlerTable } from "@binference/engine/surfaces";
 import type {
   AgentModelPicks,
+  ListedMcpServer,
   RuntimeModels,
   RuntimePlugin,
   RuntimeSettings,
@@ -32,16 +33,18 @@ function runtimePicks(picks: AgentPicks): AgentModelPicks {
   };
 }
 
-// The settings with every agent's picks and the enabled plugins' tools in force.
+// The settings with every agent's picks, the enabled plugins' tools and the listings in force.
 function settingsWith(
   settings: RuntimeSettings,
   held: {
     readonly picks: ReadonlyMap<string, AgentModelPicks>;
     readonly plugins: readonly RuntimePlugin[];
+    readonly listedMcp: readonly ListedMcpServer[];
   },
 ): RuntimeSettings {
   const models = { ...settings.models, picked: Object.fromEntries(held.picks) };
-  return { ...settings, models, plugins: held.plugins };
+  const listed = held.listedMcp.length === 0 ? {} : { listedMcp: held.listedMcp };
+  return { ...settings, models, plugins: held.plugins, ...listed };
 }
 
 /** The agent runtime as the engine holds it. */
@@ -67,6 +70,12 @@ export interface ComposedRuntime {
    */
   offerPlugins(plugins: readonly RuntimePlugin[]): Promise<void>;
   /**
+   * Puts the MCP listings in force (decision 0428): the runtime gets them as new settings, its
+   * agents' turns take their tools from the next turn, and a listing left out is revoked at its
+   * next call. A composition root that offers no listed server never calls it.
+   */
+  offerListedMcp(servers: readonly ListedMcpServer[]): Promise<void>;
+  /**
    * Follows a reload of `config.json5` (decision 0230): when a changed key is one the runtime's
    * settings hold, reads them again from the config cell, provider and search keys from their
    * secret sources, and sends them to the runtime, which applies them from its next model call.
@@ -84,6 +93,7 @@ interface HeldSettings {
   readonly pick: ComposedRuntime["pick"];
   readonly models: ComposedRuntime["models"];
   readonly offerPlugins: ComposedRuntime["offerPlugins"];
+  readonly offerListedMcp: ComposedRuntime["offerListedMcp"];
   /** Puts settings read again from the config in force, with the picks kept. */
   readonly follow: (settings: RuntimeSettings) => Promise<void>;
   /** Reads the picks the store kept from before this start and puts them in force; logs a fault. */
@@ -95,12 +105,13 @@ function heldSettingsOf(
   supervisor: Pick<RuntimeSupervisor, "apply">,
 ): HeldSettings {
   const picks = new Map<string, AgentModelPicks>();
-  const state: { config: RuntimeSettings; plugins: readonly RuntimePlugin[] } = {
-    config: opened.runtime,
-    plugins: [],
-  };
+  const state: {
+    config: RuntimeSettings;
+    plugins: readonly RuntimePlugin[];
+    listedMcp: readonly ListedMcpServer[];
+  } = { config: opened.runtime, plugins: [], listedMcp: [] };
   const apply = async (): Promise<void> =>
-    supervisor.apply(settingsWith(state.config, { picks, plugins: state.plugins }));
+    supervisor.apply(settingsWith(state.config, { picks, ...state }));
   const logger = opened.log.logger.child("runtime");
   return {
     async pick(agent, picked) {
@@ -110,6 +121,10 @@ function heldSettingsOf(
     models: () => state.config.models,
     async offerPlugins(plugins) {
       state.plugins = plugins;
+      await apply();
+    },
+    async offerListedMcp(servers) {
+      state.listedMcp = servers;
       await apply();
     },
     async follow(settings) {
@@ -150,16 +165,20 @@ function followReloadOf(opened: Opened, held: HeldSettings): ComposedRuntime["fo
   };
 }
 
-/**
- * The agent runtime of a self-hosted engine (runtime spec, section 2): the process the host
- * starts, the built one when it names none, with a new token at each start, the engine's IPC
- * address, `agent.sqlite`, `workspace/` and the settings read at the engine's start.
- */
-export function composeRuntime(opening: Opening, opened: Opened): ComposedRuntime {
-  const { host, platform, closers } = opening;
-  const turns = createRunningTurns();
-  const ended = { endSessions: (_credential: string): void => undefined };
-  const supervisor = createRuntimeSupervisor({
+// The runtime's supervisor: the process the host starts, the built one when it names none, a new
+// token at each start, and the start line with the engine's IPC address, the agent database,
+// the workspace and the settings read at the engine's start.
+function supervisorOf(
+  opening: Opening,
+  opened: Opened,
+  parts: {
+    readonly turns: RunningTurns;
+    readonly ended: { endSessions: (credential: string) => void };
+  },
+): RuntimeSupervisor {
+  const { host, platform } = opening;
+  const { turns, ended } = parts;
+  return createRuntimeSupervisor({
     start: host.startRuntime ?? builtRuntime(host, { agentDb: platform.stateFolder.agentDatabase }),
     makeToken: async (signal) =>
       makeRuntimeToken(
@@ -179,6 +198,18 @@ export function composeRuntime(opening: Opening, opened: Opened): ComposedRuntim
     clock: host.clock,
     logger: opened.log.logger.child("runtime"),
   });
+}
+
+/**
+ * The agent runtime of a self-hosted engine (runtime spec, section 2): the process the host
+ * starts, the built one when it names none, with a new token at each start, the engine's IPC
+ * address, `agent.sqlite`, `workspace/` and the settings read at the engine's start.
+ */
+export function composeRuntime(opening: Opening, opened: Opened): ComposedRuntime {
+  const { closers } = opening;
+  const turns = createRunningTurns();
+  const ended = { endSessions: (_credential: string): void => undefined };
+  const supervisor = supervisorOf(opening, opened, { turns, ended });
   const held = heldSettingsOf(opened, supervisor);
   return {
     turns,
@@ -196,6 +227,7 @@ export function composeRuntime(opening: Opening, opened: Opened): ComposedRuntim
     pick: held.pick,
     models: held.models,
     offerPlugins: held.offerPlugins,
+    offerListedMcp: held.offerListedMcp,
     followReload: followReloadOf(opened, held),
     begin(server) {
       ended.endSessions = (credential) => server.endSessions(credential, "auth.revoked");

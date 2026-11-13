@@ -9,6 +9,7 @@ import {
   type RuntimeSettings,
   type StartLine,
 } from "@binference/runtime";
+import { createListedStateLog, type ListedStateLog } from "./listed-state-log.js";
 import { restartDelayMs, stableUptimeMs } from "./restart-delay.js";
 import {
   createRouteCalls,
@@ -92,6 +93,8 @@ interface Tracker {
   readonly health: () => RuntimeHealth;
   /** The settings the next start begins with. */
   readonly settings: SettingsNow;
+  /** Hears the listed MCP servers' states of each `health` line, and logs each change. */
+  readonly heard: ListedStateLog;
 }
 
 const ignore = (): void => undefined;
@@ -141,6 +144,7 @@ function createTracker(
         ? { state: "fail", since: counts.downSince }
         : { state: "ok", since: state.readyAtMs },
     settings: { current: options.startLine.settings },
+    heard: createListedStateLog(logger),
   };
 }
 
@@ -160,6 +164,8 @@ async function readOutput(life: Life, tracker: Tracker, logger: Logger): Promise
         tracker.ready(life);
       } else if (line.data.t === "routeReply") {
         life.routes.answer(line.data);
+      } else if (line.data.t === "health") {
+        tracker.heard(line.data.listedMcp ?? []);
       }
     }
   } catch (error) {

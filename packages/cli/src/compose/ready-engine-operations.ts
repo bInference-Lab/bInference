@@ -1,4 +1,4 @@
-import { ok } from "@binference/core";
+import { type Id, ok } from "@binference/core";
 import type { EngineHandlerTable } from "@binference/engine/surfaces";
 import type { EngineParts } from "./compose-engine.js";
 import { createEngineOperations } from "./engine-operations.js";
@@ -10,6 +10,7 @@ import { createEngineOperations } from "./engine-operations.js";
 export function readyEngineOperations(
   stores: Pick<EngineParts["stores"], "agents" | "install">,
   communityPluginsOn: () => boolean = () => false,
+  listedMcpOn?: (agent: Id<"agt">) => boolean,
 ): EngineHandlerTable {
   return createEngineOperations({
     agents: stores.agents,
@@ -20,6 +21,7 @@ export function readyEngineOperations(
     health: () => [],
     nodeOptions: ["--disable-sigusr1"],
     communityPluginsOn,
+    ...(listedMcpOn === undefined ? {} : { listedMcpOn }),
     stop: () => undefined,
     restart: { request: async () => Promise.resolve() },
   });

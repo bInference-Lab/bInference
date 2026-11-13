@@ -26,6 +26,12 @@ export interface LogFields {
   readonly host?: string;
   /** The HTTP status an answer came with. */
   readonly status?: number;
+  /** An MCP listing's id, `mls_…` (decision 0428). */
+  readonly listing?: string;
+  /** A listed MCP server's state for an agent: `resting`, `off` or `ok`. */
+  readonly state?: string;
+  /** Why a listing is refused, rests or has a tool off, as a code such as `changed`. */
+  readonly reason?: string;
 }
 
 /** One record as a logger writes it. */

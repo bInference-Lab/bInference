@@ -15,7 +15,6 @@ import {
   createFakeFamily,
   createFakeSigner,
   createFakeSigningScheme,
-  createFakeTxSimulator,
   createFakeVenue,
 } from "@binference/chain/testing";
 import { bsc } from "@binference/chains";
@@ -33,14 +32,13 @@ import { type PositionStore, sha256Hex } from "@binference/engine";
 import {
   createFakeExecutor,
   createFakePriceSource,
-  createFakeTokenFacts,
   createFakeWalletFacts,
+  createFakeTokenFacts,
   createFakeCeilingEditor,
   createFakeWalletExporter,
   createFakeWalletMaker,
   createMemoryEngineStores,
   createMemoryPositionStore,
-  createMemoryRiskCacheStore,
   type MemoryEngineStores,
   createQuoteSimulator,
   type FakeExecutor,
@@ -62,10 +60,13 @@ import {
   type EngineParts,
 } from "./compose-engine.js";
 import type { TelegramParts } from "./compose-telegram.js";
+import { composeListedMcp, type ListedMcpStep } from "./listed-mcp-offer.js";
 import { type LoopbackServing, serveOnLoopback } from "./loopback-serving.js";
 import { selfHostedMarketReads, selfHostedSources } from "./market-reads.js";
+import type { ProfileParts } from "./profile-parts.js";
 import { readyEngineOperations } from "./ready-engine-operations.js";
 import { selfHostedRiskSources } from "./risk-sources.js";
+import { skeletonRiskOf, skeletonWalletFacts } from "./skeleton-facts.js";
 
 /** The secrets of the CLI token, with every scope, and of the MCP token, with read and propose. */
 export const skeletonSecrets: Readonly<Record<"cli" | "mcp", string>> = {
@@ -94,10 +95,13 @@ function withTestWallet<Stores extends MemoryEngineStores>(stores: Stores): Stor
 }
 const live = (): { readonly signal: AbortSignal } => ({ signal: AbortSignal.timeout(10_000) });
 
+/** The profile parts a skeleton runs on: the engine's, and a catalog of MCP listings or none. */
+export type SkeletonParts = EngineParts & Pick<ProfileParts, "listedMcp">;
+
 /** A composition the skeleton runs on: its name and how its profile parts are made. */
 export interface SkeletonComposition {
   readonly name: string;
-  readonly parts: () => EngineParts;
+  readonly parts: () => SkeletonParts;
 }
 
 /**
@@ -189,7 +193,7 @@ async function seed(parts: EngineParts): Promise<void> {
 
 /** The engine and its server on the profile parts, with what a test reads and drives. */
 export interface ComposedSkeleton {
-  readonly parts: EngineParts;
+  readonly parts: SkeletonParts;
   readonly composed: ComposedEngine;
   readonly clock: ManualClock;
   readonly positions: PositionStore;
@@ -197,18 +201,15 @@ export interface ComposedSkeleton {
   readonly executor: FakeExecutor;
   /** What the engine, its server and the bot logged. */
   readonly logger: MemoryLogger;
+  /**
+   * The profile parts' listed MCP servers, whose switch the engine took: a test that runs a
+   * runtime begins it with the runtime's supervisor, and the skeleton's close stops it.
+   */
+  readonly listedMcp: ListedMcpStep;
 }
 
 /** The engine, its server, an IPC stand-in and a CLI client, in one process. */
 export interface Skeleton extends ComposedSkeleton, LoopbackServing {}
-
-// No risk source answers and no round trip step runs, so a token the registry does not list fails
-// closed.
-const skeletonRisk: ComposeEngineOptions["risk"] = {
-  cache: createMemoryRiskCacheStore(["goplus", "honeypot"]),
-  cacheTtlMs: () => 600_000,
-  simulator: createFakeTxSimulator(new Map()),
-};
 
 /** What a skeleton adds to its profile parts. */
 export interface SkeletonOptions {
@@ -280,25 +281,19 @@ function surfacesOf(
   };
 }
 
-// A launch feed, when the options ask for one.
-// The launch feed when the options ask for one, and whether a community plugin is on.
+// The launch feed when the options ask for one, whether a community plugin is on, and the listed
+// MCP step's switch when the profile parts hold listings.
 function switchesOf(
   options: SkeletonOptions,
-): Pick<ComposeEngineOptions, "launchFeed" | "communityPluginsOn"> {
+  listedMcp: ListedMcpStep,
+): Pick<ComposeEngineOptions, "launchFeed" | "communityPluginsOn" | "listedMcpOn"> {
   const communityPluginsOn = options.communityPluginsOn ?? (() => false);
+  const { listedMcpOn } = listedMcp;
+  const listed = listedMcpOn === undefined ? {} : { listedMcpOn };
   return options.launchFeed === true
-    ? { launchFeed: true, communityPluginsOn }
-    : { communityPluginsOn };
+    ? { launchFeed: true, communityPluginsOn, ...listed }
+    : { communityPluginsOn, ...listed };
 }
-
-// The skeleton wallet's facts: 1 coin, a ceiling of 1 coin a transaction, a 1 gwei fee.
-const facts = {
-  nativeBalanceBase: 10n ** 18n,
-  ceilingPerTxNativeBase: 10n ** 18n,
-  feePerGasNativeBase: 1_000_000_000n,
-  networkFeeCapNativeBase: 1_000_000_000n,
-  recentOutflows: [],
-};
 
 /**
  * Composes the engine on the profile parts with its agent and tokens stored: the fake chain and
@@ -306,7 +301,7 @@ const facts = {
  * listens yet.
  */
 export async function composeSkeleton(
-  parts: EngineParts,
+  parts: SkeletonParts,
   options: SkeletonOptions = {},
 ): Promise<ComposedSkeleton> {
   await seed(parts);
@@ -319,20 +314,26 @@ export async function composeSkeleton(
   const positions = createMemoryPositionStore();
   const executor = createFakeExecutor();
   const logger = createMemoryLogger({ subsystem: "engine" });
-  const ready = readyEngineOperations(parts.stores, options.communityPluginsOn);
+  const listedMcp = composeListedMcp(parts, logger);
+  const ready = readyEngineOperations(
+    parts.stores,
+    options.communityPluginsOn,
+    listedMcp.listedMcpOn,
+  );
   const composed = composeEngine(parts, {
     chains,
     venues: options.venues ?? [createFakeVenue()],
     simulator: createQuoteSimulator(() => undefined),
-    risk: {
-      ...skeletonRisk,
-      ...(options.chainSimulator === undefined ? {} : { simulator: options.chainSimulator }),
-    },
-    wallets: createFakeWalletFacts(new Map([[testAgent, [testWallet]]]), facts, options.held),
+    risk: skeletonRiskOf(options.chainSimulator),
+    wallets: createFakeWalletFacts(
+      new Map([[testAgent, [testWallet]]]),
+      skeletonWalletFacts,
+      options.held,
+    ),
     executor,
     positions,
     canPrice: async () => await Promise.resolve(true),
-    ...switchesOf(options),
+    ...switchesOf(options, listedMcp),
     readTokenFacts: options.tokenFacts ?? createFakeTokenFacts().read,
     workspace: options.workspace ?? createMemoryWorkspaceFiles(clock),
     paperBalances: options.paperBalances ?? [{ asset: testCoin, base: 10n ** 18n }],
@@ -345,7 +346,7 @@ export async function composeSkeleton(
     webhooks: { secretRandom: createSystemRandom() },
     logger,
   });
-  return { parts, composed, clock, positions, executor, logger };
+  return { parts, composed, clock, positions, executor, logger, listedMcp };
 }
 
 /**
@@ -353,7 +354,7 @@ export async function composeSkeleton(
  * in through the access store.
  */
 export async function startSkeleton(
-  parts: EngineParts,
+  parts: SkeletonParts,
   options: SkeletonOptions = {},
 ): Promise<Skeleton> {
   const skeleton = await composeSkeleton(parts, options);
@@ -361,5 +362,9 @@ export async function startSkeleton(
     clock: skeleton.clock,
     cliSecret: skeletonSecrets.cli,
   });
-  return { ...skeleton, ...served };
+  const close = async (): Promise<void> => {
+    skeleton.listedMcp.stop();
+    await served.close();
+  };
+  return { ...skeleton, ...served, close };
 }

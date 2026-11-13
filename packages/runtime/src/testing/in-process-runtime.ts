@@ -23,14 +23,18 @@ import type { ContextSource } from "../engine-chat/ports.js";
 import { createProtocolContextSource } from "../engine-chat/protocol-context-source.js";
 import { createProtocolEngineChat } from "../engine-chat/protocol-engine-chat.js";
 import { createProtocolImageReader } from "../engine-chat/protocol-image-reader.js";
+import { createListedMcpClients, type ListedMcpClients } from "../listed-mcp/listed-mcp-clients.js";
 import type { ListedMcpState } from "../listed-mcp/listed-mcp-state.schema.js";
 import { type TestTool, testToolBox } from "../loop/test-turns.js";
 import { turnLimits } from "../loop/turn-run.js";
 import type { AgentDatabase } from "../process/agent-database.js";
 import { runRuntime } from "../process/run-runtime.js";
 import type { EngineLink, RuntimeHost } from "../process/runtime-host.js";
+import type { TurnLink } from "../process/turn-link.js";
+import type { StreamingHttp } from "../providers/ports.js";
+import type { TurnPlace } from "../sessions/turn-place.js";
 import { agentToolBox, helperToolBox } from "../tools/agent-tools.js";
-import type { ToolClient } from "../tools/tool-client.js";
+import type { AgentToolParts, ToolClient } from "../tools/tool-client.js";
 import { createByteChannel } from "./byte-channel.js";
 import { nthTestId } from "./memory-agent-stores.js";
 import { createMemoryContextSource } from "./memory-context-source.js";
@@ -101,6 +105,11 @@ export interface InProcessRuntimeOptions {
   readonly clock?: Clock;
   /** Each agent's listing that rests or has a tool off, which its health lines name. */
   readonly listedMcpStates?: () => readonly ListedMcpState[];
+  /**
+   * How a linked runtime reaches the listed MCP servers its settings name (decision 0428), such
+   * as a scripted server; it offers no listed tool when absent.
+   */
+  readonly listedMcpHttp?: StreamingHttp;
 }
 
 function memoryDatabase(database: MemoryAgentDatabase): AgentDatabase {
@@ -197,6 +206,30 @@ interface Recorded {
   readonly applied: RuntimeSettings[];
 }
 
+// The parts of a linked runtime's agent tools, with the listed MCP servers' tools over `listed`
+// when the test gives a server to reach them through (decision 0428).
+function linkedParts(
+  context: {
+    readonly place: TurnPlace;
+    readonly settings: RuntimeSettings;
+    readonly link: TurnLink;
+  },
+  listed: ListedMcpClients | undefined,
+): AgentToolParts {
+  const { place, settings, link } = context;
+  const { helpers, goals } = link;
+  return {
+    agent: place.agent,
+    client: link.client,
+    turn: place,
+    ...(helpers === undefined ? {} : { helpers }),
+    ...(goals === undefined ? {} : { goals }),
+    ...(listed === undefined
+      ? {}
+      : { listedMcp: { servers: settings.listedMcp ?? [], clients: listed } }),
+  };
+}
+
 // The agent database, the model and the tools of the runtime's chat, its clock, and the record
 // of the settings it applied.
 function chatHost(
@@ -213,19 +246,16 @@ function chatHost(
   const isLinked = options.signIn !== undefined;
   const clock = options.clock ?? createManualClock(10_000);
   const { models, vision, transports } = testModels(options, clock);
+  const listed =
+    options.listedMcpHttp === undefined
+      ? undefined
+      : createListedMcpClients({ http: options.listedMcpHttp, clock, version: "test" });
   return {
     transports,
     openAgentDatabase: async () => memoryDatabase(database),
-    turnSetup: (place, settings, { client, helpers, goals }) => {
-      const { agent } = place;
-      recorded.setups.push({ agent, settings });
-      const parts = {
-        agent,
-        client,
-        turn: place,
-        ...(helpers === undefined ? {} : { helpers }),
-        ...(goals === undefined ? {} : { goals }),
-      };
+    turnSetup: (place, settings, link) => {
+      recorded.setups.push({ agent: place.agent, settings });
+      const parts = linkedParts({ place, settings, link }, listed);
       const linked = place.helper === undefined ? agentToolBox(parts) : helperToolBox(parts);
       return {
         models,
@@ -237,6 +267,7 @@ function chatHost(
     },
     applySettings: (settings) => {
       recorded.applied.push(settings);
+      listed?.use(settings.listedMcp ?? []);
     },
     clock,
     random: createSeededRandom(7),

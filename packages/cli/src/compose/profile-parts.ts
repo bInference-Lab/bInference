@@ -9,6 +9,7 @@ import type {
 } from "@binference/engine/install";
 import type { MarketReads } from "@binference/engine/market";
 import type { RiskSourceUse } from "@binference/engine/risk";
+import type { ListedMcpSource } from "@binference/runtime";
 
 /**
  * The parts whose adapter depends on the profile (ARCHITECTURE.md section 30). A composition root
@@ -55,4 +56,9 @@ export interface ProfileParts {
    * forbid sharing its API.
    */
   readonly riskSources: readonly RiskSourceUse[];
+  /**
+   * MCP: the reviewed MCP listings each agent has on (decision 0428). Cloud reads the signed
+   * catalog; self-hosted gives none, so no self-hosted agent gets a listed tool.
+   */
+  readonly listedMcp?: ListedMcpSource;
 }

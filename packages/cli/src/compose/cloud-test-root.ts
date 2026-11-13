@@ -22,6 +22,7 @@ import {
   type SharedMarketData,
 } from "@binference/engine/testing";
 import { createSecretVault } from "@binference/platform/testing";
+import { createFakeListedMcpSource, type FakeListedMcpSource } from "@binference/runtime/testing";
 import type { ProfileParts } from "./profile-parts.js";
 
 /** What the Cloud test root starts with; a field left out starts empty. */
@@ -49,6 +50,8 @@ export interface CloudTestRoot extends ProfileParts {
   readonly market: SharedMarketData;
   /** The market data source the service reads once for every owner. */
   readonly marketSource: FakeMarketSource;
+  /** The signed catalog's MCP listings with each agent's switches: `set` puts others in force. */
+  readonly listedMcp: FakeListedMcpSource;
 }
 
 /**
@@ -89,5 +92,6 @@ export function composeCloudTestRoot(options: CloudTestRootOptions = {}): CloudT
     riskSources: [
       { source: createFakeRiskSource({ id: "goplus", reports: new Map() }), isRequired: true },
     ],
+    listedMcp: createFakeListedMcpSource(),
   };
 }

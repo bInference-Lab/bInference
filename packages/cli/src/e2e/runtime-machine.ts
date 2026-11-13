@@ -10,6 +10,7 @@ import {
   fixtureSettings,
   type InProcessRuntime,
   type ScriptedReply,
+  type StreamingHttp,
   startInProcessRuntime,
 } from "@binference/runtime/testing";
 import type { MemoryAgentDatabase } from "@binference/store/testing";
@@ -142,6 +143,8 @@ export interface RuntimeScript {
   readonly visionReplies?: readonly ScriptedReply[];
   /** The agent database each start opens, as `agent.sqlite` outlasts a restart; new when absent. */
   readonly database?: MemoryAgentDatabase;
+  /** How the runtime reaches the listed MCP servers its settings name; none when absent. */
+  readonly listedMcpHttp?: StreamingHttp;
 }
 
 // One source for every runtime token the tests make, so a restart, or a second supervisor on the
@@ -162,7 +165,7 @@ export function superviseRuntime(
   },
 ): RuntimeSupervisor {
   const { access } = engine.stores;
-  const { replies, price, readsImages, visionReplies, database } = parts.script;
+  const { replies, price, readsImages, visionReplies, database, listedMcpHttp } = parts.script;
   const supervisor = createRuntimeSupervisor({
     start: async () => {
       const runtime = startInProcessRuntime({
@@ -171,6 +174,7 @@ export function superviseRuntime(
         ...(readsImages === undefined ? {} : { readsImages }),
         ...(visionReplies === undefined ? {} : { visionReplies }),
         ...(database === undefined ? {} : { database }),
+        ...(listedMcpHttp === undefined ? {} : { listedMcpHttp }),
         signIn: async (start) => engine.connect(start.token, "runtime"),
       });
       parts.started?.push(runtime);
