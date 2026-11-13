@@ -835,6 +835,12 @@ bInference Cloud's breaker freezes every Cloud agent at once ([ARCHITECTURE.md s
   on its own (decisions [0093](../DECISIONS.md#d0093) and [0099](../DECISIONS.md#d0099)). The
   user's way out stays open: a rescue moves every wallet's funds to their rescue address. Lifting
   the breaker ends only its own freeze; each user's own freeze stays.
+- The engine each worker composes follows the row through the `BreakerSource` port, once at its
+  start and each second after, and holds the install by a mark of its own on the `safety` row,
+  apart from the user's freeze; while it holds, the engine refuses an unfreeze and every proposal
+  but a rescue's, and tells the user at the pull and at the lift (decisions
+  [0439](../DECISIONS.md#d0439) to [0441](../DECISIONS.md#d0441);
+  [spec 1, section 7.17](protocol.md#section-7-17)).
 - Refusing everything while it is pulled, a rescue among them, was weighed and rejected: a user
   could then reach their funds only through Privy itself.
 

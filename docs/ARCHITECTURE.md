@@ -680,6 +680,9 @@ for the owner's tap ([decision 0312](DECISIONS.md#d0312)).
 An unfreeze is asked for with `binference unfreeze` in the terminal, and takes effect on the owner's
 tap on its card, from any surface ([rule 11](#rule-11), [decision 0128](DECISIONS.md#d0128)).
 
+On bInference Cloud the breaker freezes every agent the same way, by a mark of its own that a lift
+ends without ending the owner's freeze ([section 30](#section-30)).
+
 **Rescue ([decision 0044](DECISIONS.md#d0044)).** Onboarding asks for a rescue address: the owner's
 own main wallet. `/rescue` in Telegram or `binference rescue` builds one intent that sends every token and the BNB (minus gas) of every agent wallet to that
 address. One tap confirms it. It works at every send level, while frozen and in paper mode
@@ -1150,7 +1153,8 @@ Decided in decisions [0047](DECISIONS.md#d0047), [0048](DECISIONS.md#d0048),
 
 - **One engine per state folder.** An OS file lock in `~/.binference`; a second engine refuses to
   start, because two engines would race on nonces.
-- **Startup order.** Lock, config, migrations (after a backup), integrity check, signer, reconcile
+- **Startup order.** Lock, config, migrations (after a backup), integrity check, the breaker's
+  state on Cloud ([section 30](#section-30)), signer, reconcile
   unfinished transactions by hash and nonce, take the auto orders to re-check after the stop,
   record the positions of recent paper fills a crash left without them, resume orders and
   watchers, then channels and the server. Until then every
@@ -1431,8 +1435,9 @@ the Cloud profile. A port with two adapters runs one contract test suite against
 - The ports: custody `Signer` and market data `PriceSource` (`@binference/chain`); Telegram
   `BotUpdateSource`, models `ModelBilling`, store the store ports, market data `MarketData`,
   quotas `QuotaSource` (`@binference/engine`,
-  [spec 1, section 7.16](specs/protocol.md#section-7-16)); secrets `SecretStore`
-  (`@binference/core`); the plugin listing rule with its catalog `PluginListingCatalog`
+  [spec 1, section 7.16](specs/protocol.md#section-7-16)); the breaker `BreakerSource`
+  (`@binference/engine`, [spec 1, section 7.17](specs/protocol.md#section-7-17)); secrets
+  `SecretStore` (`@binference/core`); the plugin listing rule with its catalog `PluginListingCatalog`
   (`binference`, [spec 1, section 7.8](specs/protocol.md#section-7-8)). The test composition root
   in `cli/src/compose/` fills them with fakes shaped like the Cloud adapters.
 
@@ -1459,3 +1464,11 @@ the Cloud profile. A port with two adapters runs one contract test suite against
   many orders on one token cost one subscription.
 - **Ops.** Per-user rate limits and quotas; alarms to the operators' Telegram; a global breaker that
   freezes every Cloud agent; a status page.
+- **The breaker** is one row only bInference's owner moves. The signer service reads it on every
+  signature and, while it is pulled, signs only a rescue's steps
+  ([spec 5, section 8.6](specs/keys-and-backups.md#section-8-6)). Each install's engine follows it
+  through `BreakerSource`, at its start and each second after, and holds every agent by a mark of
+  its own on the install, apart from the owner's freeze: a freeze's moves at the pull, only a
+  rescue while it holds, and at the lift every agent the owner did not freeze trades again. A read
+  that fails keeps the state applied last (decisions [0439](DECISIONS.md#d0439) to
+  [0441](DECISIONS.md#d0441)).

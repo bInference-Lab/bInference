@@ -449,8 +449,8 @@ new name here first, in the change that uses it.
 - **bInference Cloud**: the hosted profile on binference.io, on the same packages.
 - **profile**: self-hosted or Cloud. Only the composition root knows which.
 - **profile parts**: the parts whose adapter depends on the profile: custody (the `Signer` port),
-  the bot's updates, model billing, secrets, the store, market data, quotas and the plugin listing
-  rule. Each is a port, or holds one.
+  the bot's updates, model billing, secrets, the store, market data, quotas, the breaker and the
+  plugin listing rule. Each is a port, or holds one.
 - **update source**: where the engine reads a bot's inbound updates, by long polling or through a
   webhook relay. The engine stores each update in the inbox before it acknowledges it.
 - **notice**: one owner notification of spec 4, section 4, such as a freeze or low gas. The engine
@@ -553,7 +553,9 @@ check` tries it as `network.proxy`.
   signs it.
 - **breaker**: the switch that freezes every Cloud agent at once and stops every signature of the
   signer service but a rescue's, as a freeze keeps a rescue: one row of `cloud.breaker`, which only
-  bInference's owner moves. Not a user's own freeze.
+  bInference's owner moves. Each install's engine follows it through the `BreakerSource` port and
+  holds the install by a mark of its own, which a lift ends. Not a user's own freeze, which a lift
+  leaves and which cannot end the breaker's.
 - **operations control**: the closed-source console from which bInference's owner pulls and lifts
   the breaker, connecting as the database role `binference_ops`.
 - **quota**: a bound bInference Cloud sets on what one user's install holds or how fast its agents

@@ -142,6 +142,13 @@ steps under a freeze, so a sale's swap follows its approval; one whose later ste
 signed, as its grant ran out or its order ended, resets the approval it left to 0 instead
 ([decision 0211](../DECISIONS.md#d0211)). A freeze never cancels a rescue either (section 5).
 
+bInference Cloud's breaker freezes every agent of the install with the same moves, by a mark of its
+own that a lift ends without ending the owner's freeze
+([decision 0440](../DECISIONS.md#d0440)). While it holds, the signer service signs only a rescue's
+steps, so a later step of an executing intent is refused and ends as one never signed
+([decision 0427](../DECISIONS.md#d0427)), and a speed-up or a cancel it refuses hands its step over
+(section 6).
+
 <a id="section-4"></a>
 
 ## 4. Policy reasons
@@ -150,6 +157,7 @@ The reason stored with `rejected_policy` is one of:
 
 | Reason                 | When                                                                                                                                                                                                            |
 | ---------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `breaker`              | bInference Cloud's breaker holds the install: every intent but a rescue, an approval revoke and a paper intent among them ([decision 0441](../DECISIONS.md#d0441))                                              |
 | `frozen`               | The agent or the install is frozen; an approval revoke passes ([decision 0312](../DECISIONS.md#d0312))                                                                                                          |
 | `paper_only`           | A live-only action (a send, an approval revoke, a bridge, a CEX order, identity, a token launch) while in paper mode. Never a rescue, which runs live in either mode ([decision 0100](../DECISIONS.md#d0100))   |
 | `per_trade_cap`        | USD value above the per-trade cap; a stake counts at its value, an unstake and a claim never ([decision 0296](../DECISIONS.md#d0296))                                                                           |
