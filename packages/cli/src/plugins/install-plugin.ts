@@ -1,4 +1,5 @@
 import { BinferenceError, type Clock, type Random } from "@binference/core";
+import type { QuotaSource } from "@binference/engine/quotas";
 import type { PluginFile } from "@binference/plugin-host";
 import type { PluginReview } from "@binference/protocol";
 import { decideInstall, type InstallAnswers } from "./decide-install.js";
@@ -7,6 +8,7 @@ import type { BundleVerifier } from "./npm-provenance.js";
 import type { NpmRegistry } from "./npm-registry.js";
 import { failed, type Outcome } from "./outcome.js";
 import type { LockedPlugin } from "./plugin-lock.js";
+import { isPluginsFull, pluginsQuotaOf, withinPluginsQuota } from "./plugin-quota.js";
 import { type PluginRecords, withPlugin } from "./plugin-records.js";
 import type { PluginRunner } from "./plugin-runner.js";
 import { type PluginShelf, putPluginInPlace } from "./put-plugin.js";
@@ -24,6 +26,8 @@ export interface InstallParts {
   newPlugin(): string;
   readonly clock: Clock;
   readonly random: Random;
+  /** The install's quotas: how many plugins may be on (decision 0431); none when absent. */
+  readonly quotas?: QuotaSource;
 }
 
 /** Why an install changed nothing: what the fetch refused, a refusal, or the review it waits for. */
@@ -34,7 +38,8 @@ export type InstallFailure =
         | "plugin.id_taken"
         | "plugin.invalid"
         | "plugin.too_many"
-        | "plugin.install_failed";
+        | "plugin.install_failed"
+        | "quota.plugins";
     }
   | { readonly code: "plugin.review_needed"; readonly review: PluginReview };
 
@@ -43,6 +48,8 @@ interface Placing {
   readonly entry: LockedPlugin;
   readonly files: readonly PluginFile[];
   readonly installed: LockedPlugin | undefined;
+  /** The quota of plugins on, which the lock's change counts again. */
+  readonly quota: number | undefined;
 }
 
 // Puts an installed version in place of the running one, records it, and runs it when it is on.
@@ -53,7 +60,7 @@ async function putInPlace(
   placing: Placing,
   signal: AbortSignal,
 ): Promise<Outcome<undefined, { readonly code: "plugin.install_failed" }>> {
-  const { entry, files, installed } = placing;
+  const { entry, files, installed, quota } = placing;
   await parts.runner.stop(entry.id);
   try {
     await parts.makeData(entry.id, signal);
@@ -71,10 +78,14 @@ async function putInPlace(
     }
     return failed({ code: "plugin.install_failed" });
   }
-  const next = await parts.records.change((lock) => withPlugin(lock, entry), signal);
+  const next = await parts.records.change(
+    (lock) => withPlugin(lock, withinPluginsQuota(lock, entry, quota)),
+    signal,
+  );
   const startedAll = await parts.runner.begin(next);
-  if (!startedAll && entry.enabled) {
-    await parts.runner.run(entry);
+  const kept = next.plugins.find(({ id }) => id === entry.id);
+  if (!startedAll && kept?.enabled === true) {
+    await parts.runner.run(kept);
   }
   await parts.runner.offer(next);
   return { ok: true, value: undefined };
@@ -110,8 +121,13 @@ export async function installPlugin(
   }
   if (decided.kind === "install") {
     const installed = lock.plugins.find(({ id }) => id === decided.entry.id);
+    const quota = await pluginsQuotaOf(parts.quotas, signal);
+    if (decided.entry.enabled && isPluginsFull(lock, decided.entry, quota)) {
+      return failed({ code: "quota.plugins" });
+    }
     const files = fetched.value.pkg.files;
-    const put = await putInPlace(parts, { entry: decided.entry, files, installed }, signal);
+    const placing = { entry: decided.entry, files, installed, quota };
+    const put = await putInPlace(parts, placing, signal);
     if (!put.ok) {
       return put;
     }

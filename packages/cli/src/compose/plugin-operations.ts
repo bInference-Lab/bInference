@@ -16,6 +16,7 @@ import {
   installPlugin,
 } from "../plugins/install-plugin.js";
 import type { LockedPlugin } from "../plugins/plugin-lock.js";
+import { isPluginsFull, pluginsQuotaOf } from "../plugins/plugin-quota.js";
 import { pluginViewOf, withPlugin } from "../plugins/plugin-records.js";
 import type { PluginRunner } from "../plugins/plugin-runner.js";
 import { removePluginPackage } from "../plugins/put-plugin.js";
@@ -82,11 +83,13 @@ function switched(entry: LockedPlugin, change: { readonly enabled: boolean }): L
 // Turns a plugin on or off in the lock at once, built from the lock the change reads, so an
 // install under way is never written over; hands the agent the tools of those on, and answers
 // the plugin as the lock holds it once its start settled, turned off again when the host refused.
+// A plugin turned on past the plugins' quota, counted in the same change, is `quota` and changes
+// nothing (decision 0431).
 async function setEnabled(
   options: PluginOperationsOptions,
   change: { readonly plugin: string; readonly enabled: boolean },
   signal: AbortSignal,
-): Promise<LockedPlugin | undefined> {
+): Promise<LockedPlugin | "quota" | undefined> {
   const entry = await entryOf(options, change.plugin, signal);
   if (entry === undefined) {
     return undefined;
@@ -94,10 +97,16 @@ async function setEnabled(
   if (!change.enabled) {
     await options.runner.stop(entry.id);
   }
+  const quota = change.enabled ? await pluginsQuotaOf(options.quotas, signal) : undefined;
+  let isFull = false;
   const lock = await options.records.change((now) => {
     const current = now.plugins.find(({ plugin }) => plugin === change.plugin);
-    return current === undefined ? now : withPlugin(now, switched(current, change));
+    isFull = current !== undefined && change.enabled && isPluginsFull(now, current, quota);
+    return current === undefined || isFull ? now : withPlugin(now, switched(current, change));
   }, signal);
+  if (isFull) {
+    return "quota";
+  }
   const next = lock.plugins.find(({ plugin }) => plugin === change.plugin);
   if (next !== undefined && change.enabled && !(await options.runner.begin(lock))) {
     await options.runner.run(next);
@@ -269,6 +278,9 @@ export function createPluginOperations(options: PluginOperationsOptions): Engine
     signal: AbortSignal,
   ) => {
     const entry = await setEnabled(options, change, signal);
+    if (entry === "quota") {
+      return err("quota.plugins");
+    }
     return entry === undefined ? err("plugin.not_found") : ok(pluginViewOf(entry));
   };
   return {

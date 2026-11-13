@@ -11,6 +11,8 @@ import {
 } from "@binference/core/testing";
 import type { EngineCaller, EnginePush } from "@binference/engine";
 import { createRunningTurns } from "@binference/engine/chat";
+import type { QuotaSource } from "@binference/engine/quotas";
+import { createMemoryQuotaSource } from "@binference/engine/testing";
 import { ensurePrivateFolder, realFilePath, removePath } from "@binference/platform";
 import { createDirectStarter, startDebugDecoy } from "@binference/plugin-host";
 import {
@@ -95,7 +97,7 @@ const diskFull = (): never => {
 
 // The operations over a real plugin host and the fake registry, in a folder of the bundles, which
 // has no link on its way.
-async function operations(name: string, failures: DataFailures = {}) {
+async function operations(name: string, failures: DataFailures = {}, quotas?: QuotaSource) {
   const root = join(bundles.folder, name);
   const probeData = join(root, "probe-data");
   const outside = join(root, "outside");
@@ -185,6 +187,7 @@ async function operations(name: string, failures: DataFailures = {}) {
     clock,
     random,
     logger,
+    ...(quotas === undefined ? {} : { quotas }),
   });
   const nextPush = async () =>
     new Promise<EnginePush>((resolve) => {
@@ -461,6 +464,36 @@ describe("the plugin operations on a real plugin host", { timeout: 120_000 }, ()
 
     expect(kept).toMatchObject({ version: "5.0.0", state: "enabled" });
     expect(answered).toStrictEqual({ ok: true, value: { output: { text: "hi" } } });
+  });
+
+  it("refuses a new plugin and one turned on past the plugins' quota, changing nothing", async () => {
+    const quotas = createMemoryQuotaSource({ enabledPlugins: 0 });
+    const ops = await operations("quota", {}, quotas);
+    const hash = registry.publish({
+      name: "echo-feed",
+      version: "6.0.0",
+      files: [index],
+      manifest,
+    });
+    const source = "npm:echo-feed@6.0.0";
+    const review = reviewOf(await added(ops, { source, hash }));
+    const answers = { source, hash, accepted: review.digest, typedName: "echo-feed" };
+    const refused = jobFailedPushSchema.parse((await added(ops, answers)).data);
+    const afterRefusal = await listed(ops);
+    quotas.set({});
+    await added(ops, answers);
+    const plugin = await onlyPlugin(ops);
+    const args = { args: { plugin }, caller: owner, signal };
+    await handler(ops, "plugin/disable")(args);
+    quotas.set({ enabledPlugins: 0 });
+    const enabled = await handler(ops, "plugin/enable")(args);
+    const [kept] = await listed(ops);
+    ops.life.abort();
+
+    expect(refused.error.code).toBe("quota.plugins");
+    expect(afterRefusal).toStrictEqual([]);
+    expect(enabled).toStrictEqual({ ok: false, error: "quota.plugins" });
+    expect(kept).toMatchObject({ version: "6.0.0", state: "disabled" });
   });
 
   it("refuses a second add asking for another plugin as busy, naming the install under way", async () => {

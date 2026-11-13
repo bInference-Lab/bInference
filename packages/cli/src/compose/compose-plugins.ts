@@ -6,7 +6,7 @@ import {
   type JsonValue,
   type Logger,
 } from "@binference/core";
-import type { PublishPush } from "@binference/engine";
+import { noQuotas, type PublishPush } from "@binference/engine";
 import type { RunningTurns, ViewImageSource } from "@binference/engine/chat";
 import { createPluginNotices } from "@binference/engine/notices";
 import type { EngineShell } from "@binference/engine/shell";
@@ -266,6 +266,7 @@ function composePlugins(opening: Opening, opened: Opened, wiring: PluginWiring):
     closers,
     clock: host.clock,
     random: host.random,
+    quotas: noQuotas,
     logger,
   });
   return {
