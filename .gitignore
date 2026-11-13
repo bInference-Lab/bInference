@@ -17,6 +17,8 @@ CLAUDE.local.md
 .DS_Store
 node_modules/
 dist/
+# Each build's record of the outside code in the files it wrote, which the release reads.
+bundle-record/
 coverage/
 reports/
 # The console smoke test's screenshots.

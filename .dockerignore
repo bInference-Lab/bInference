@@ -1,6 +1,7 @@
 # The image builds from an allow list: the workspace's manifests, the packages, the plugins, the
-# bundled skills and the license files. Nothing else reaches the build, so no `.env` file, key,
-# keystore, state folder, local note or git history can land in a layer.
+# bundled skills, the license files and the bundler config with its plugin. Nothing else reaches
+# the build, so no `.env` file, key, keystore, state folder, local note or git history can land in
+# a layer.
 *
 !.npmrc
 !LICENSE
@@ -11,6 +12,8 @@
 !tsconfig.base.json
 !tsconfig.json
 !turbo.json
+!tsdown.config.ts
+!config/build/
 !packages/
 !plugins/
 !skills/
@@ -21,6 +24,7 @@
 # Built and installed files are made again inside the build.
 **/node_modules
 **/dist
+**/bundle-record
 **/coverage
 **/.turbo
 packages/cli/skills

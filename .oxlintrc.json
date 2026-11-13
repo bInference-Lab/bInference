@@ -266,6 +266,26 @@
       }
     },
     {
+      "files": [
+        "packages/*/tsdown.config.ts",
+        "packages/*/vite.config.ts",
+        "packages/*/vite.*.config.ts"
+      ],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "regex": "^(?:\\.\\./)+(?:packages|plugins)/",
+                "message": "Import another package by its name, not by a path."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
       "files": ["**/*.mjs"],
       "rules": {
         "typescript/no-unsafe-argument": "off",

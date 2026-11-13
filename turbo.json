@@ -10,9 +10,13 @@
         "messages/**",
         "package.json",
         "tsconfig.json",
-        "$TURBO_ROOT$/tsconfig.base.json"
+        "tsdown.config.ts",
+        "vite*.config.ts",
+        "$TURBO_ROOT$/tsconfig.base.json",
+        "$TURBO_ROOT$/tsdown.config.ts",
+        "$TURBO_ROOT$/config/build/**"
       ],
-      "outputs": ["dist/**"]
+      "outputs": ["dist/**", "bundle-record/**"]
     },
     "//#format:check": {
       "outputs": []

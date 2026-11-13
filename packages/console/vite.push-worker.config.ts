@@ -1,12 +1,14 @@
 import { fileURLToPath } from "node:url";
 import { defineConfig, type UserConfig } from "vite";
+import { bundleRecord } from "../../config/build/bundle-record.mjs";
 import { precompress } from "./precompress-plugin";
 
 // The push worker is a classic script at the root, `/push-worker.js`, whose scope is the whole
-// console: one file with nothing to import, built after the page into the same folder.
+// console: one file with nothing to import, built after the page into the same folder, with its
+// own record of the outside modules inside it.
 const config: UserConfig = defineConfig({
   publicDir: false,
-  plugins: [precompress(fileURLToPath(new URL("dist", import.meta.url)))],
+  plugins: [precompress(fileURLToPath(new URL("dist", import.meta.url))), bundleRecord()],
   resolve: {
     conditions: ["@binference/source", "browser", "module", "import", "default"],
   },

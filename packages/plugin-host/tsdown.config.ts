@@ -1,4 +1,5 @@
 import { defineConfig, type UserConfig } from "tsdown";
+import { bundleRecord, bundleRecordFolder } from "../../config/build/bundle-record.mjs";
 
 // Each program runs from one file with every dependency inside: a plugin's process may read only
 // its own folders and the file it is started with, and the image's three programs stand alone. The
@@ -10,14 +11,16 @@ function program(name: string, source: string, outDir = "dist"): UserConfig {
     format: "esm",
     dts: false,
     tsconfig: "tsconfig.json",
-    clean: true,
+    clean: ["dist", bundleRecordFolder],
+    plugins: [bundleRecord()],
     deps: { alwaysBundle: [/./], onlyBundle: false },
     outputOptions: { codeSplitting: false },
   };
 }
 
-// tsdown empties dist once, for every config, before any of them builds: only the first asks,
-// so no build removes another's files and no old chunk is left to ship.
+// tsdown empties dist and the builds' records once, for every config, before any of them builds:
+// only the first asks, so no build removes another's files and no old chunk is left to ship. Each
+// build records the outside modules in the files it writes, for the release's license check.
 const config: UserConfig[] = defineConfig([
   // The testing entry builds with the bundler, so tests read it from its source alone.
   {
@@ -26,6 +29,7 @@ const config: UserConfig[] = defineConfig([
     dts: true,
     tsconfig: "tsconfig.json",
     clean: false,
+    plugins: [bundleRecord()],
   },
   program("plugin-process", "src/process/plugin-process.ts"),
   program("sandbox-probe", "src/probe/sandbox-probe.ts", "dist/probe"),
