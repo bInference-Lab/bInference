@@ -10,6 +10,7 @@ import { repairPaperFills } from "../paper/repair-paper-fills.js";
 import type { ShellPart } from "../shell/engine-shell.js";
 import { repairRuleFills } from "../webhooks/repair-rule-fills.js";
 import type { Engine, EngineOptions } from "./create-engine.js";
+import { breakerWorkOf } from "./engine-breaker.js";
 import { downtimeOf } from "./engine-downtime.js";
 
 /** The startup's repair of paper fills a crash left without positions. */
@@ -68,13 +69,17 @@ export function startupWorkOf(
     readonly fills: OrderFills;
     readonly paper: PaperParts;
     readonly check: DowntimeCheck;
-    readonly relay: Pick<ChatRelay, "reportResume">;
+    readonly relay: Pick<ChatRelay, "reportResume" | "stopHeld">;
     /** The agent's shell, which tells each agent of a command the stop lost (decision 0409). */
     readonly shell: Pick<ShellPart, "tellLost">;
   },
-): Pick<Engine, "repairPaperFills" | "repairOrderFills" | "tellLostShellJobs" | "downtime"> {
+): Pick<
+  Engine,
+  "repairPaperFills" | "repairOrderFills" | "tellLostShellJobs" | "downtime" | "followBreaker"
+> {
   const { stored, fills, paper, check, relay, shell } = parts;
   return {
+    ...breakerWorkOf(options, { stored, relay }),
     tellLostShellJobs: async (call) => shell.tellLost(call),
     repairPaperFills: paperRepairOf(options, { stored, paper }),
     repairOrderFills: orderRepairOf(options, { stored, fills, fence: check }),

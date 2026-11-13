@@ -41,4 +41,12 @@ describe("the shipped build", () => {
 
     expect(setters).toStrictEqual([]);
   });
+
+  it("gives no host a test breaker, so a self-hosted engine follows none", () => {
+    const setters = [...shipped].filter((file) =>
+      /\btestBreaker\s*:/u.test(readFileSync(join(source, file), "utf8")),
+    );
+
+    expect(setters).toStrictEqual([]);
+  });
 });

@@ -1,10 +1,14 @@
+import { noBreaker } from "../breaker/no-breaker.js";
 import type { EngineOptions } from "./create-engine.js";
 import type { TestEngineOptions } from "./test-engine.js";
 
 // The config file a confirmed change writes, the agent's shell, the runtime's side of a chat
-// deletion and the install's quotas, as a test engine's options ask.
-function machineSwitchesOf(options: TestEngineOptions): Partial<EngineOptions> {
+// deletion, the install's quotas and the breaker, as a test engine's options ask.
+function machineSwitchesOf(
+  options: TestEngineOptions,
+): Partial<EngineOptions> & Pick<EngineOptions, "breaker"> {
   return {
+    breaker: options.breaker ?? noBreaker,
     ...(options.configChanges === undefined ? {} : { configChanges: options.configChanges }),
     ...(options.shell === undefined ? {} : { shell: options.shell }),
     ...(options.runtimeChats === undefined ? {} : { runtimeChats: options.runtimeChats }),
@@ -14,9 +18,11 @@ function machineSwitchesOf(options: TestEngineOptions): Partial<EngineOptions> {
 
 /**
  * Whether live orders fill, a launch feed runs and a community plugin is on, the uploads, the
- * bot's photos, quote assets and the agent's shell, as a test engine's options ask.
+ * bot's photos, quote assets, the agent's shell and the breaker, as a test engine's options ask.
  */
-export function switchesOf(options: TestEngineOptions): Partial<EngineOptions> {
+export function switchesOf(
+  options: TestEngineOptions,
+): Partial<EngineOptions> & Pick<EngineOptions, "breaker"> {
   return {
     liveOrderFills: options.liveOrderFills === true,
     ...options.bridging,

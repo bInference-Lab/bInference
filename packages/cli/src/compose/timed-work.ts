@@ -25,6 +25,7 @@ export type TimedWork = Pick<
   | "followBridges"
   | "tellClaimsReady"
   | "pruneRecords"
+  | "followBreaker"
 >;
 
 /** The engine's {@link TimedWork}, for the timers to run. */
@@ -43,5 +44,6 @@ export function timedWorkOf(engine: Engine): TimedWork {
     followBridges: engine.followBridges,
     tellClaimsReady: engine.tellClaimsReady,
     pruneRecords: engine.pruneRecords,
+    followBreaker: engine.followBreaker,
   };
 }

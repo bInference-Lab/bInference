@@ -24,6 +24,7 @@ import {
   createEngine,
   type Engine,
   type EngineOptions,
+  noBreaker,
   type PositionStore,
   type VenueHost,
   type WalletFactsSource,
@@ -302,6 +303,7 @@ export function engineOf(parts: RigParts, walletMaker: WalletMaker): Engine {
   const prices = rigPrices(fork);
   return createEngine({
     ...parts,
+    breaker: noBreaker,
     ceilings: createFakeCeilingEditor({ clock }),
     walletMaker,
     prices: createFakePriceSource(prices),

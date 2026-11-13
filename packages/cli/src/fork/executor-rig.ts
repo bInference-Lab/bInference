@@ -38,6 +38,7 @@ import {
   type Engine,
   type EngineStores,
   type LimitsValues,
+  noBreaker,
   type PositionStore,
   type WalletFactsSource,
 } from "@binference/engine";
@@ -229,6 +230,7 @@ function engineOf(parts: RigParts, executor: RunningExecutor): Engine {
   const { rpc, chain } = fork;
   return createEngine({
     ...parts,
+    breaker: noBreaker,
     ceilings: createFakeCeilingEditor({ clock }),
     walletMaker: createFakeWalletMaker({ clock, chain: chain.ref, family: "evm" }),
     host: createVenueHost({

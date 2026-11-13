@@ -66,8 +66,8 @@ function targetsOf(
   return found.archivedAtMs === undefined ? ok([found]) : err("agent.archived");
 }
 
-// Every intent of the agent that nothing has signed yet, a page at a time.
-async function unsignedOf(
+/** Every intent of the agent that nothing has signed yet, a page at a time. */
+export async function unsignedOf(
   intents: IntentStore,
   agentId: Id<"agt">,
   call: { readonly signal: AbortSignal; readonly after?: IntentRecord },
@@ -86,9 +86,11 @@ async function unsignedOf(
     : [...page, ...(await unsignedOf(intents, agentId, { signal, after: last }))];
 }
 
-// The move of each unsigned intent to `cancelled`. A rescue stays (decision 0099), and so does
-// one another write moved past signing since it was listed.
-async function cancelMoves(
+/**
+ * The move of each unsigned intent to `cancelled` by a freeze. A rescue stays (decision 0099), and
+ * so does one another write moved past signing since it was listed.
+ */
+export async function cancelMoves(
   options: FreezeAgentsOptions,
   records: readonly IntentRecord[],
   call: { readonly by: string; readonly signal: AbortSignal },

@@ -1,6 +1,6 @@
 import type { AssetRef } from "@binference/chain";
 import type { Clock, Http, HttpDownload, Random, SecretStore } from "@binference/core";
-import type { Engine } from "@binference/engine";
+import type { BreakerSource, Engine } from "@binference/engine";
 import type {
   ProgramExit,
   RunWithinOptions,
@@ -164,4 +164,10 @@ export interface CliHost {
    * 7457 (decision 0333). Left out, as the entry file leaves it, the config's port holds.
    */
   readonly webhookPort?: number;
+  /**
+   * Only engines a test starts set it: the breaker the engine follows in place of `noBreaker`, so
+   * a test can pull it while the engine is stopped and watch the start's order (decision 0439).
+   * Left out, as the entry file leaves it, no breaker ever holds a self-hosted install.
+   */
+  readonly testBreaker?: BreakerSource;
 }

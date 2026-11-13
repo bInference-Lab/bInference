@@ -1,7 +1,7 @@
 import type { SignRequest } from "@binference/chain";
 import { createEvmTxSimulator } from "@binference/chain-evm";
 import type { Fork } from "@binference/chain-evm/fork";
-import { createEngine, createVenueHost, type Engine } from "@binference/engine";
+import { createEngine, createVenueHost, type Engine, noBreaker } from "@binference/engine";
 import { createSourceMarketReads } from "@binference/engine/market";
 import {
   createFakeCeilingEditor,
@@ -53,6 +53,7 @@ export async function rescueRigOf(
   const parts = await rescueRigParts(fork, reach);
   const { stores, custody, rescue, asked } = parts;
   const engine = createEngine({
+    breaker: noBreaker,
     stores,
     positions: createMemoryPositionStore(),
     custody,

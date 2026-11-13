@@ -283,6 +283,7 @@ function engineOf(
   return createEngine({
     stores: parts.stores,
     quotas: parts.quotas,
+    breaker: parts.breaker,
     positions: options.positions,
     ...custodyPartsOf(parts),
     prices: parts.prices,

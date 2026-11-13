@@ -72,6 +72,11 @@ export interface ChatRelay {
   /** Wraps `safety/freeze` so a freeze that lands also stops the agents it froze. */
   freezing(freeze: EngineHandler<"safety/freeze">): EngineHandler<"safety/freeze">;
   /**
+   * Stops every agent a freeze of the whole install would, and the commands they left, as the
+   * breaker's pull does (decision 0441).
+   */
+  stopHeld(signal: AbortSignal): Promise<void>;
+  /**
    * Stores the downtime re-check's `inbox/resumeReport` for an agent and pushes it (runtime spec,
    * section 3.3); one the agent's inbox has no room for, or an agent gone, gets none.
    */
@@ -231,6 +236,10 @@ export function createChatRelay(options: ChatRelayOptions): ChatRelay {
       void pushInbox(options, message, new AbortController().signal).catch(() => undefined);
     },
     stopFrozen,
+    stopHeld: async (signal) => {
+      options.onStop?.(undefined, "freeze");
+      await stopFrozen(undefined, signal);
+    },
     reportResume: async (agent, payload, { signal }) =>
       addAndPush(options, { agent, kind: "inbox/resumeReport", payload }, signal),
     freezing: (freeze) => async (call) => {

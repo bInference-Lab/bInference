@@ -10,6 +10,7 @@ import {
   type Engine,
   type EngineCaller,
   type EnginePush,
+  noBreaker,
   type PositionStore,
   type VenueHost,
 } from "@binference/engine";
@@ -150,18 +151,18 @@ function engineOf(
   const { pushes, fixtures, stores, positions } = parts;
   const clock = createSystemClock();
   const chains = selfHostedChains();
-  const native = fork.chain.nativeAsset;
   const { rpc, chain } = fork;
   const host = hostOf(fork, fixtures);
   const account = evmAccountRef(chain, forkWallet(walletKey).address);
   const engine = createEngine({
+    breaker: noBreaker,
     stores,
     positions,
     custody: forkCustody(fillWallet, account, walletKey),
     ceilings: createFakeCeilingEditor({ clock }),
     walletMaker: createFakeWalletMaker({ clock, chain: chain.ref, family: "evm" }),
     prices: createFakePriceSource(
-      new Map([[native, { numerator: 600n, denominator: 10n ** 12n }]]),
+      new Map([[chain.nativeAsset, { numerator: 600n, denominator: 10n ** 12n }]]),
     ),
     wallets: createFakeWalletFacts(new Map([[fillAgent, [fillWallet]]]), walletFacts),
     host,
@@ -175,7 +176,7 @@ function engineOf(
     executor: createFakeExecutor(),
     // The rig trades on a fork; it reads no market data.
     marketReads: createSourceMarketReads({ sources: [], clock, timeoutMs: 5_000 }),
-    paperBalances: [{ asset: native, base: 10n ** 18n }],
+    paperBalances: [{ asset: chain.nativeAsset, base: 10n ** 18n }],
     isLocked: () => false,
     canPrice: async () => await Promise.resolve(true),
     readTokenFacts: forkTokenFacts(fork),

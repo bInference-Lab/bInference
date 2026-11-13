@@ -55,6 +55,10 @@ export type { ModelBillingHarness } from "./contracts/model-billing-contract.js"
 export { quotaSourceContract, type QuotaSourceHarness } from "./contracts/quota-source-contract.js";
 export { createMemoryQuotaSource, type MemoryQuotaSource } from "./fakes/memory-quota-source.js";
 export { breakerSourceContract } from "./contracts/breaker-source-contract.js";
+export {
+  type BreakerFreezeSubject,
+  breakerFreezeProperty,
+} from "./contracts/breaker-freeze-property.js";
 export { createMemoryBreaker, type MemoryBreaker } from "./fakes/memory-breaker.js";
 export { modelUsageStoreContract } from "./contracts/model-usage-store-contract.js";
 export { bridgeStoreContract } from "./contracts/bridge-store-contract.js";

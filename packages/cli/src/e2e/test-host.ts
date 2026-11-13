@@ -146,6 +146,7 @@ export type HostParts = Partial<
     | "mcpStdio"
     | "chatTerminal"
     | "webhookPort"
+    | "testBreaker"
   >
 >;
 

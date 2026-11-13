@@ -45,6 +45,7 @@ import type { OrderFills } from "../orders/fill-orders.js";
 import { type OrderTriggers } from "../orders/order-triggers.js";
 import { createPaperParts, type PaperParts } from "../paper/paper-parts.js";
 import type {
+  BreakerSource,
   Executor,
   PositionStore,
   QuotaSource,
@@ -65,6 +66,7 @@ import type { LaunchHost } from "../venues/launch-host.js";
 import type { VenueHost } from "../venues/venue-host.js";
 import type { WebhookFills } from "../webhooks/webhook-fills.js";
 import { type AnswerCard } from "./answer-card.js";
+import type { BreakerWork } from "./engine-breaker.js";
 import type { EngineHandlers } from "./engine-handlers.js";
 import { intentParts } from "./engine-intents.js";
 import { launchDraftsOf, withSharedParts } from "./engine-launch-drafts.js";
@@ -81,7 +83,7 @@ import { settingsHandlers } from "./settings-handlers.js";
  * change, the freeze, the wallet list and the ledger, built from ports. A looser limit, send level
  * or rescue address waits 24 hours. It holds no I/O of its own; pushes leave through `publish`.
  */
-export interface Engine extends BridgeWork, StakeWork, PruneWork {
+export interface Engine extends BridgeWork, StakeWork, PruneWork, BreakerWork {
   /** The handlers to pass to the protocol server, which checks scopes and keys before each. */
   readonly handlers: EngineHandlers;
   /** Applies a card answer from a surface the engine serves itself, such as a Telegram tap. */
@@ -252,6 +254,11 @@ export interface EngineOptions extends MarketParts, ModelBudgetParts, ChatSource
    * None when absent, so nothing is counted or refused for a quota.
    */
   readonly quotas?: QuotaSource;
+  /**
+   * The breaker, bInference's switch that holds every agent it hosts (decision 0439): `noBreaker`
+   * where none holds the install, which is never pulled.
+   */
+  readonly breaker: BreakerSource;
   /**
    * Whether the price watcher can price a token now; `order/create` refuses a limit, take-profit,
    * stop-loss or trailing order for a token it cannot (`order.unpriced_token`, decision 0194).

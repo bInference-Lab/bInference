@@ -5,6 +5,7 @@ import { restartedNotice } from "@binference/engine/notices";
 import { createShutdown, type ShutdownReport, watchFile } from "@binference/platform";
 import type { LockReason } from "../unlock/unlock-keys.js";
 import { type BotChannel, startBotChannel } from "./bot-channel.js";
+import { breakerFollower, followBreakerAtStart, startBreakerTimer } from "./breaker-timer.js";
 import { startBridgeTimer } from "./bridge-timer.js";
 import { startCardTimer } from "./card-timer.js";
 import { startClaimReadyTimer } from "./claim-ready-timer.js";
@@ -78,6 +79,18 @@ async function startDowntime(opening: Opening, composed: ComposedSelfHosted, log
     logger,
   });
   return pauses.check;
+}
+
+// The breaker's follower, which looks at the breaker once before anything else goes on and then
+// keeps what it last logged for the timer (decision 0439).
+async function followBreakerFirst(
+  composed: ComposedSelfHosted,
+  logger: Logger,
+  signal: AbortSignal,
+): Promise<(call: { readonly signal: AbortSignal }) => Promise<void>> {
+  const follow = breakerFollower({ followBreaker: composed.followBreaker, logger });
+  await followBreakerAtStart(follow, { signal, logger });
+  return follow;
 }
 
 // What a stop left: the positions of paper fills, the rows of order fills, the launches' pins and
@@ -154,11 +167,16 @@ function startReload(opening: Opening, opened: Opened, composed: ComposedSelfHos
 function startTimers(
   opening: Opening,
   opened: Opened,
-  started: { readonly composed: ComposedSelfHosted; readonly isPrivyUnreachable: boolean },
+  started: {
+    readonly composed: ComposedSelfHosted;
+    readonly unlocked: Result<void, LockReason>;
+    readonly followBreaker: (call: { readonly signal: AbortSignal }) => Promise<void>;
+  },
 ): void {
   const { host, closers } = opening;
   const { logger } = opened.log;
   const { composed } = started;
+  startBreakerTimer({ follow: started.followBreaker, clock: host.clock, closers, logger });
   const { lock } = composed.locked;
   const timers = { isLocked: () => lock.isLocked(), clock: host.clock, closers, logger };
   startSettleTimer({ settle: composed.settle, ...timers });
@@ -182,7 +200,7 @@ function startTimers(
   });
   startUpdateChecks(opening, opened, composed.publish);
   startReload(opening, opened, composed);
-  if (started.isPrivyUnreachable) {
+  if (isUnreachable(started.unlocked)) {
     const { clock, random } = host;
     const onGiveUp = (): void => composed.publish(privyUnreachableNotice());
     startUnlockRetry({ lock, clock, random, closers, logger, onGiveUp });
@@ -240,6 +258,9 @@ export async function serveEngine(opening: Opening, opened: Opened): Promise<Sta
   }
   const isLocked = () => locked.lock.isLocked();
   const webhooks = await listenForWebhooks(opening, opened, { publish, isLocked });
+  // Before the keys, the recovery and the repairs: no intent a stop left goes on while the
+  // breaker holds (decision 0439).
+  const followBreaker = await followBreakerFirst(composed, log.logger, signal);
   const unlocked = await locked.lock.unlock({ signal });
   await executor.recover({ signal });
   // Before the repairs and the timers: the re-check counts the skips they record, and no price
@@ -249,7 +270,7 @@ export async function serveEngine(opening: Opening, opened: Opened): Promise<Sta
   if (unlocked.ok) {
     await composed.resume(signal);
   }
-  startTimers(opening, opened, { composed, isPrivyUnreachable: isUnreachable(unlocked) });
+  startTimers(opening, opened, { composed, unlocked, followBreaker });
   const channel = botChannelOf(opening, opened, { composed, unlocked });
   // Started last, so its closer runs first: the runtime stops before every other part.
   composed.runtime.begin(server);

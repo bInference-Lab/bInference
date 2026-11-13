@@ -1,6 +1,7 @@
 import { join } from "node:path";
-import { createIdSource } from "@binference/core";
+import { createIdSource, type Id, type JsonValue, jsonValueSchema } from "@binference/core";
 import { createSeededRandom } from "@binference/core/testing";
+import { intentRequestSchema } from "@binference/protocol";
 import {
   agentWorker,
   createSqliteEngineStores,
@@ -10,13 +11,10 @@ import {
   engineWorker,
   openDatabase,
 } from "@binference/store";
+import { z } from "zod";
 import { storedInstall } from "./init-fixtures.js";
 import { hostOn, type TestMachine } from "./test-host.js";
 
-/**
- * Leaves a live swap of the install's first agent in `executing` in `engine.sqlite`, as an engine
- * that stopped while its transaction was on its way does. The engine must be stopped.
- */
 // The first agent of the install and its first wallet, as `engine.sqlite` holds them.
 async function firstWallet(machine: TestMachine) {
   const { facts, agents } = await storedInstall(machine);
@@ -33,6 +31,42 @@ async function firstWallet(machine: TestMachine) {
  * that stopped while its transaction was on its way does. The engine must be stopped.
  */
 export async function seedSendingTrade(machine: TestMachine): Promise<void> {
+  const request = { kind: "swap", sell: { asset: "eip155:56/slip44:714", base: "1000" } };
+  await seedLiveSwap(machine, { state: "executing", request });
+}
+
+/**
+ * Leaves a live swap of the install's first agent `confirmed` in `engine.sqlite`, as an engine
+ * that stopped after the owner's tap and before its queue took it does, and answers its id. The
+ * engine must be stopped.
+ */
+export async function seedConfirmedTrade(machine: TestMachine): Promise<Id<"int">> {
+  const { agentId, walletId } = await firstWallet(machine);
+  // The request as the protocol carries it, read back through its schema.
+  const swap = intentRequestSchema.parse({
+    kind: "swap",
+    agent: agentId,
+    wallet: walletId,
+    reason: "Rotate into the stablecoin",
+    from: "eip155:56/slip44:714",
+    to: "eip155:56/erc20:0x55d398326f99059ff775485246999027b3197955",
+    amount: { base: "1000" },
+  });
+  const request = jsonValueSchema.parse(z.encode(intentRequestSchema, swap));
+  const cause = { trigger: "propose", proposer: "owner", by: "tok_owner" };
+  return seedLiveSwap(machine, { state: "confirmed", request, cause });
+}
+
+// Stores a live swap of the first agent with `request` and moves it into `state`.
+async function seedLiveSwap(
+  machine: TestMachine,
+  seed: {
+    readonly state: "executing" | "confirmed";
+    readonly request: JsonValue;
+    readonly cause?: { readonly trigger: string; readonly [field: string]: string };
+  },
+): Promise<Id<"int">> {
+  const { state, request, cause = { trigger: "propose" } } = seed;
   const signal = new AbortController().signal;
   const { agentId, walletId } = await firstWallet(machine);
   const database = await openDatabase({
@@ -54,20 +88,21 @@ export async function seedSendingTrade(machine: TestMachine): Promise<void> {
         walletId,
         kind: "swap",
         state: "proposed",
-        request: { kind: "swap", sell: { asset: "eip155:56/slip44:714", base: "1000" } },
+        request,
         hasOutsideContent: false,
         isPaper: false,
         proposer: ids.next("tok"),
         atMs,
-        cause: { trigger: "propose" },
+        cause,
         ledger,
       },
       { signal },
     );
     await intents.transition(
-      { id, expectedVersion: 0, state: "executing", atMs, cause: { trigger: "executing" } },
+      { id, expectedVersion: 0, state, atMs, cause: { trigger: state } },
       { signal },
     );
+    return id;
   } finally {
     await database.close();
   }
