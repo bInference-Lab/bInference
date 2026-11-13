@@ -25,10 +25,11 @@ import {
   testWalletRecord,
 } from "@binference/engine/testing";
 import { keccak256, toHex } from "viem";
-import { type ComposedEngine, composeEngine, type EngineParts } from "../compose/compose-engine.js";
+import { type ComposedEngine, composeEngine } from "../compose/compose-engine.js";
 import type { ComposedTelegram, TelegramParts } from "../compose/compose-telegram.js";
 import { type LoopbackServing, serveOnLoopback } from "../compose/loopback-serving.js";
 import { selfHostedChains } from "../compose/open-engine-parts.js";
+import type { EngineParts } from "../compose/profile-parts.js";
 import { readyEngineOperations } from "../compose/ready-engine-operations.js";
 import { addSkeletonTokens, skeletonSecrets } from "../compose/test-skeleton.js";
 import { createSystemClock } from "../runtime/system-clock.js";

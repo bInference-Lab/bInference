@@ -4,8 +4,9 @@ import { createDevicePairing, createLockoutNotices } from "@binference/engine/ac
 import type { UploadShelf } from "@binference/engine/chat";
 import type { EngineHandlerTable } from "@binference/engine/surfaces";
 import { createProtocolServer, type MiniAppAuth, type ProtocolServer } from "@binference/server";
-import type { ComposeEngineOptions, EngineParts } from "./compose-engine.js";
+import type { ComposeEngineOptions } from "./compose-engine.js";
 import type { TelegramParts } from "./compose-telegram.js";
+import type { EngineParts } from "./profile-parts.js";
 
 /** What the server is built from besides the profile parts and the options. */
 export interface ServerParts {

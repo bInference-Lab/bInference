@@ -9,7 +9,7 @@ import {
   testToken,
   testWallet,
 } from "@binference/engine/testing";
-import type { EngineParts } from "../compose/compose-engine.js";
+import type { EngineParts } from "../compose/profile-parts.js";
 import {
   type Skeleton,
   skeletonCompositions,

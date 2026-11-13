@@ -1,6 +1,6 @@
 import type { ChainRegistry, Signer } from "@binference/chain";
 import { BinferenceError } from "@binference/core";
-import { type Engine, type EnginePush, noQuotas, signerStoppedNotice } from "@binference/engine";
+import { type Engine, type EnginePush, signerStoppedNotice } from "@binference/engine";
 import type { AgentInboxMessage } from "@binference/engine/chat";
 import { type RunningExecutor, signerRefusedNotice } from "@binference/engine/executor";
 import type { EngineHandlerTable } from "@binference/engine/surfaces";
@@ -35,6 +35,7 @@ import {
   selfHostedRatePrices,
 } from "./open-engine-parts.js";
 import { pricingOf } from "./order-pricing.js";
+import { ownPartsOf } from "./own-parts.js";
 import { publishedParts } from "./published-parts.js";
 import { webhookPartsOf } from "./remote-reading.js";
 import { selfHostedRiskSources } from "./risk-sources.js";
@@ -206,13 +207,6 @@ function composeParts(opening: Opening, opened: Opened): Wiring {
     sealKey,
     ...composeRuntimeWithPlugins(opening, opened, { jobs, profile: ownerReviewedPlugins }),
   };
-}
-
-// The parts this machine's owner gives the engine: custody, from the custody cell that the lock
-// opens, and no quota (decision 0431).
-function ownPartsOf(custody: ComposedCustody) {
-  const { signer, ceilings, walletMaker, exporter, revoker } = custody.cell;
-  return { custody: signer, ceilings, walletMaker, exporter, revoker, quotas: noQuotas };
 }
 
 // The operations the composition root answers: the engine's own, and those routed to the runtime.

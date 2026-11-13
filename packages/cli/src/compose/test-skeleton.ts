@@ -53,17 +53,12 @@ import type { OwnerInfo } from "@binference/protocol";
 import { sealTo } from "../export/key-recipient.js";
 import { createSystemRandom } from "../runtime/system-random.js";
 import { composeCloudTestRoot } from "./cloud-test-root.js";
-import {
-  type ComposedEngine,
-  composeEngine,
-  type ComposeEngineOptions,
-  type EngineParts,
-} from "./compose-engine.js";
+import { type ComposedEngine, composeEngine, type ComposeEngineOptions } from "./compose-engine.js";
 import type { TelegramParts } from "./compose-telegram.js";
 import { composeListedMcp, type ListedMcpStep } from "./listed-mcp-offer.js";
 import { type LoopbackServing, serveOnLoopback } from "./loopback-serving.js";
 import { selfHostedMarketReads, selfHostedSources } from "./market-reads.js";
-import type { ProfileParts } from "./profile-parts.js";
+import type { EngineParts, ProfileParts } from "./profile-parts.js";
 import { readyEngineOperations } from "./ready-engine-operations.js";
 import { selfHostedRiskSources } from "./risk-sources.js";
 import { skeletonRiskOf, skeletonWalletFacts } from "./skeleton-facts.js";

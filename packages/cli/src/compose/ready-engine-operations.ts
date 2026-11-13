@@ -1,7 +1,7 @@
 import { type Id, ok } from "@binference/core";
 import type { EngineHandlerTable } from "@binference/engine/surfaces";
-import type { EngineParts } from "./compose-engine.js";
 import { createEngineOperations } from "./engine-operations.js";
+import type { EngineParts } from "./profile-parts.js";
 
 /**
  * `engine/status` and the operations beside it of an engine that is ready, unlocked and healthy,

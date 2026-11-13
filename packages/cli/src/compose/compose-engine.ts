@@ -50,25 +50,7 @@ import { consoleOriginCell } from "./console-origin.js";
 import { agentPartsOf, type EngineAgentParts } from "./engine-agent-parts.js";
 import { chainPartsOf, type EngineChainParts } from "./engine-chain-parts.js";
 import { createNoticeLog, type NoticeLog } from "./notice-log.js";
-import type { ProfileParts } from "./profile-parts.js";
-
-/**
- * The profile parts the engine runs on: custody with its ceilings, wallet maker, exporter and
- * signer revoker, stores, prices, risk sources, market reads and quotas.
- */
-export type EngineParts = Pick<
-  ProfileParts,
-  | "custody"
-  | "ceilings"
-  | "walletMaker"
-  | "exporter"
-  | "revoker"
-  | "stores"
-  | "prices"
-  | "riskSources"
-  | "marketReads"
-  | "quotas"
->;
+import type { EngineParts } from "./profile-parts.js";
 
 /** What the token risk step runs on besides the venue host. */
 interface RiskParts {

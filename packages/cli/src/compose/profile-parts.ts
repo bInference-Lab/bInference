@@ -75,3 +75,21 @@ export interface ProfileParts {
    */
   readonly pluginListing: PluginListingRule;
 }
+
+/**
+ * The profile parts the engine runs on: custody with its ceilings, wallet maker, exporter and
+ * signer revoker, stores, prices, risk sources, market reads and quotas.
+ */
+export type EngineParts = Pick<
+  ProfileParts,
+  | "custody"
+  | "ceilings"
+  | "walletMaker"
+  | "exporter"
+  | "revoker"
+  | "stores"
+  | "prices"
+  | "riskSources"
+  | "marketReads"
+  | "quotas"
+>;
