@@ -1,5 +1,7 @@
+import { setTimeout as delay } from "node:timers/promises";
 import { ok, stableJson } from "@binference/core";
 import { sha256Hex } from "@binference/engine";
+import { createMemoryIdempotencyStore } from "@binference/engine/testing";
 import type { EngineFrame } from "@binference/protocol";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { OperationHandler, OperationHandlers } from "../operation-handlers.js";
@@ -15,6 +17,19 @@ function stalled(gate: Promise<unknown>): OperationHandler<"safety/status"> {
 }
 
 const live = (): { readonly signal: AbortSignal } => ({ signal: AbortSignal.timeout(1_000) });
+
+function ignore(): void {
+  // Replaced before anything calls it.
+}
+
+// A promise and the switch that resolves it.
+function latch(): { readonly opened: Promise<void>; readonly open: () => void } {
+  let open: () => void = ignore;
+  const opened = new Promise<void>((resolve) => {
+    open = resolve;
+  });
+  return { opened, open: () => open() };
+}
 
 function idOf(frame: EngineFrame): string {
   return "id" in frame ? frame.id : frame.t;
@@ -184,11 +199,83 @@ describe("calls over a signed-in connection", () => {
       key: "unlock-1",
       argsHash: sha256Hex(stableJson({})),
     };
-    await expect(server.idempotency.recall(lookup, live())).resolves.toStrictEqual({
+    await expect(server.idempotency.start({ ...lookup, atMs: 1 }, live())).resolves.toStrictEqual({
       kind: "repeat",
       result: {},
     });
     expect(JSON.stringify(server.logger.records())).not.toContain(passphrase);
+  });
+
+  it("answers a write an earlier server left running as unknown, and never runs it again", async () => {
+    const started = gather<true>(1);
+    const cut: OperationHandler<"engine/unlock"> = async () => {
+      started.add(true);
+      return new Promise(() => undefined);
+    };
+    const { server: first, raw: before } = await signedIn({ "engine/unlock": cut });
+    const call = {
+      t: "call",
+      op: "engine/unlock",
+      args: { passphrase: "p" },
+      key: "cut-1",
+    } as const;
+    before.send({ ...call, id: "1" });
+    await started.all;
+    await first.close();
+    const again = vi.fn<OperationHandler<"engine/unlock">>(async () => ok({}));
+    test = await startTestServer({
+      handlers: { "engine/unlock": again },
+      idempotency: first.idempotency,
+    });
+    const after = await openRawSocket(test.ipcUrl);
+    after.send(openFrame({ token: test.cliToken.secret }));
+    await after.next();
+    after.send({ ...call, id: "2" });
+    await expect(after.next()).resolves.toMatchObject({
+      t: "fail",
+      id: "2",
+      error: { code: "protocol.outcome_unknown", retryable: false },
+    });
+    expect(again).not.toHaveBeenCalled();
+  });
+
+  it("closes only once the result of a write that ended as it began to close is stored", async () => {
+    const stored = createMemoryIdempotencyStore();
+    const finishing = gather<true>(1);
+    const held = latch();
+    const idempotency = {
+      ...stored,
+      finish: async (...args: Parameters<typeof stored.finish>) => {
+        finishing.add(true);
+        await held.opened;
+        return stored.finish(...args);
+      },
+    };
+    test = await startTestServer({
+      handlers: { "engine/unlock": async () => ok({}) },
+      idempotency,
+    });
+    const raw = await openRawSocket(test.ipcUrl);
+    raw.send(openFrame({ token: test.cliToken.secret }));
+    await raw.next();
+    raw.send({ t: "call", op: "engine/unlock", args: { passphrase: "p" }, key: "k-1", id: "1" });
+    await finishing.all;
+    let isClosed = false;
+    const closing = test.server.close().then(() => {
+      isClosed = true;
+      return isClosed;
+    });
+    // Its connection and listeners close in real time; only the held store keeps it open after.
+    await raw.closed;
+    await delay(200);
+    expect(isClosed).toBe(false);
+    held.open();
+    await closing;
+    const lookup = { credential: test.cliToken.id, op: "engine/unlock", key: "k-1" };
+    const argsHash = sha256Hex(stableJson({}));
+    await expect(stored.start({ ...lookup, argsHash, atMs: 1 }, live())).resolves.toMatchObject({
+      kind: "repeat",
+    });
   });
 
   it("answers engine starting while the engine starts, except for its status", async () => {

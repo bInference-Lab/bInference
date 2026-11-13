@@ -48,6 +48,7 @@ function setup(options: Setup = {}): {
     writes: createIdempotentWrites({
       store: createMemoryIdempotencyStore(),
       clock,
+      logger,
       maxInFlight: 8,
       signal: stop.signal,
     }),

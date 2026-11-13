@@ -8,8 +8,6 @@ import {
   idempotencyMarkSchema,
   type IdempotencyPrune,
   idempotencyPruneSchema,
-  type IdempotencyRecall,
-  idempotencyRecallSchema,
   type IdempotencyStart,
   idempotencyStartSchema,
 } from "@binference/engine";
@@ -47,49 +45,6 @@ function startOf(row: KeyRow, lookup: IdempotencyLookup): IdempotencyStart {
     ? { kind: "unfinished" }
     : { kind: "repeat", result: readJson(row.result) };
 }
-
-function recall(database: StoreConnection, lookup: IdempotencyLookup): IdempotencyRecall {
-  const row = rowOf(database, lookup);
-  if (row === undefined) {
-    return { kind: "new" };
-  }
-  const held = startOf(row, lookup);
-  return held.kind === "repeat" ? held : { kind: "reused" };
-}
-
-/** Reads what the store holds under a key. */
-export const recallTask: StoreTask<IdempotencyLookup, IdempotencyRecall> = defineTask({
-  name: "idempotency.recall",
-  access: "read",
-  input: idempotencyLookupSchema,
-  output: idempotencyRecallSchema,
-  run: (database, lookup) => recall(database, lookup),
-});
-
-/** Stores a result under a free key; a held key keeps its first result. */
-export const rememberTask: StoreTask<IdempotencyEntry, IdempotencyRecall> = defineTask({
-  name: "idempotency.remember",
-  access: "write",
-  input: idempotencyEntrySchema,
-  output: idempotencyRecallSchema,
-  run(database, entry) {
-    const before = recall(database, entry);
-    if (before.kind === "new") {
-      const { kysely, execute } = createSyncKysely<EngineTables>(database);
-      execute(
-        kysely.insertInto("idempotency").values({
-          credential: entry.credential,
-          op: entry.op,
-          key: entry.key,
-          args_hash: entry.argsHash,
-          result: jsonText(entry.result),
-          at: entry.atMs,
-        }),
-      );
-    }
-    return before;
-  },
-});
 
 /** Marks a free key started, with no result; a held key answers what it holds (decision 0437). */
 export const startTask: StoreTask<IdempotencyMark, IdempotencyStart> = defineTask({
@@ -224,8 +179,6 @@ export const pruneIdempotencyTask: StoreTask<IdempotencyPrune, number> = defineT
 
 /** Every task of the SQLite idempotency store. */
 export const idempotencyTasks: readonly TaskRunner[] = [
-  recallTask,
-  rememberTask,
   startTask,
   finishTask,
   forgetTask,

@@ -6,7 +6,7 @@ import { agentDraftSchema, agentRecordSchema } from "../agents/agent-record.js";
 import { approvalModeChangeSchema } from "../agents/approval-mode-record.js";
 import { limitsValuesSchema } from "../agents/limits-record.js";
 import { configChangeSchema } from "../audit/config-change.js";
-import { idempotencyLookupSchema, idempotencyRecallSchema } from "../ingress/idempotency-entry.js";
+import { idempotencyLookupSchema, idempotencyStartSchema } from "../ingress/idempotency-entry.js";
 import { inboxDraftSchema } from "../ingress/inbox-entry.js";
 import { cardOpeningSchema } from "../intents/card-record.js";
 import { intentChangeSchema, intentQuerySchema } from "../intents/intent-change.js";
@@ -115,7 +115,7 @@ describe("store record schemas", () => {
     expect(ledgerDraftSchema.parse(bare)).toStrictEqual(bare);
     expect(idempotencyLookupSchema.parse(lookup)).toStrictEqual(lookup);
     const repeat = { kind: "repeat", result: [1, "two"] };
-    expect(idempotencyRecallSchema.parse(repeat)).toStrictEqual(repeat);
+    expect(idempotencyStartSchema.parse(repeat)).toStrictEqual(repeat);
     const update = { source: "webhook", sourceKey: "wh:1", payload: {}, receivedAtMs: 1 };
     expect(inboxDraftSchema.parse(update)).toStrictEqual(update);
     expect(tokenRecordSchema.parse(token)).toStrictEqual(token);

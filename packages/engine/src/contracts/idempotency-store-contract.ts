@@ -28,23 +28,6 @@ function mark(overrides: Partial<IdempotencyMark> = {}): IdempotencyMark {
 
 const otherArgs = { argsHash: fixtureHash("args two") };
 
-async function remembersOnce(store: IdempotencyStore): Promise<void> {
-  assert.deepEqual(await store.recall(entry(), live()), { kind: "new" });
-  assert.deepEqual(await store.remember(entry(), live()), { kind: "new" });
-  const repeat = { kind: "repeat", result: entry().result };
-  assert.deepEqual(await store.recall(entry(), live()), repeat);
-  assert.deepEqual(await store.remember(entry({ result: "second", atMs: 2_000 }), live()), repeat);
-  assert.deepEqual(await store.recall(entry(), live()), repeat);
-}
-
-async function refusesOtherArgs(store: IdempotencyStore): Promise<void> {
-  await store.remember(entry(), live());
-  const other = entry({ ...otherArgs, result: "other" });
-  assert.deepEqual(await store.recall(other, live()), { kind: "reused" });
-  assert.deepEqual(await store.remember(other, live()), { kind: "reused" });
-  assert.deepEqual(await store.recall(entry(), live()), { kind: "repeat", result: entry().result });
-}
-
 async function startsOnce(store: IdempotencyStore): Promise<void> {
   assert.deepEqual(await store.start(mark(), live()), { kind: "started" });
   assert.deepEqual(await store.start(mark({ atMs: 2_000 }), live()), { kind: "unfinished" });
@@ -144,8 +127,6 @@ export function idempotencyStoreContract(
 ): readonly ContractCheck[] {
   const create = async (): Promise<IdempotencyStore> => harness.create();
   return [
-    checkOn("remembers a result once and repeats it for the same args", create, remembersOnce),
-    checkOn("answers reused for other args and keeps the first result", create, refusesOtherArgs),
     checkOn("starts a key once and answers unfinished or reused after", create, startsOnce),
     checkOn("fills a started key once and repeats its result", create, finishesTheStartedKey),
     checkOn("refuses a result of other args than its mark's", create, refusesAResultOfOtherArgs),

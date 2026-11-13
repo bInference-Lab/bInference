@@ -86,19 +86,3 @@ export const idempotencyEntrySchema: z.ZodType<IdempotencyEntry> = z.strictObjec
   result: jsonValueSchema,
   atMs: epochMsSchema,
 });
-
-/**
- * What the store holds under a key: nothing yet (`new`), the result of the same write
- * (`repeat`), or a write with other args (`reused`, which fails with `protocol.key_reused`).
- */
-export type IdempotencyRecall =
-  | { readonly kind: "new" }
-  | { readonly kind: "repeat"; readonly result: JsonValue }
-  | { readonly kind: "reused" };
-
-/** Parses what the store holds under a key. */
-export const idempotencyRecallSchema: z.ZodType<IdempotencyRecall> = z.discriminatedUnion("kind", [
-  z.strictObject({ kind: z.literal("new") }),
-  z.strictObject({ kind: z.literal("repeat"), result: jsonValueSchema }),
-  z.strictObject({ kind: z.literal("reused") }),
-]);

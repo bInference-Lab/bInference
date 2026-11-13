@@ -29,6 +29,13 @@ The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
   client is cut with 1013 and resumes its topics.
 - A secret never reaches a log, an error or a stored row: a log line names the connection by its
   id, and idempotency keys are kept per credential id.
+- A write's key is marked started in the store, in a write of its own, before its handler runs, and
+  its result fills the mark before the reply (`idempotent-writes.ts`, decision 0437). A write its
+  handler refuses frees its key; one whose handler throws keeps it, a timeout too, since part of it
+  may have run. A key started with no result that this server is not running answers
+  `protocol.outcome_unknown` and runs nothing. A result is stored, and a key freed, on a 5 s
+  deadline of its own, never the server's stop signal, and `close` waits for them. `pruneKeys`
+  deletes keys a day old, but never the mark of a write running now.
 - The webhook listener (`webhook-listener.ts`, decision 0333) is a server of its own on
   `127.0.0.1`, never the protocol server's: one route, `POST /hook/:ruleId/:secret`, read from the
   target as sent, and the same empty 404 for every other request and upgrade. It answers an alert

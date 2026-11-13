@@ -4,7 +4,6 @@ import type {
   IdempotencyLookup,
   IdempotencyMark,
   IdempotencyPrune,
-  IdempotencyRecall,
   IdempotencyStart,
 } from "./idempotency-entry.js";
 import type { InboxAdmission, InboxDraft, InboxEntry, InboxPage } from "./inbox-entry.js";
@@ -37,13 +36,6 @@ export interface InboxStore {
 
 /** Keeps each write's result under its idempotency key (protocol spec, section 5). */
 export interface IdempotencyStore {
-  /** What the store holds under the key, compared with the args hash. */
-  recall(lookup: IdempotencyLookup, options: StoreCall): Promise<IdempotencyRecall>;
-  /**
-   * Stores a result under its key when the key is free, and answers `new`. A key that holds a
-   * result keeps the first one: `repeat` returns it, `reused` says the args differ.
-   */
-  remember(entry: IdempotencyEntry, options: StoreCall): Promise<IdempotencyRecall>;
   /**
    * Reads a key and, when it is free, marks it started with its args hash and no result, in one
    * write, before the write runs (decision 0437); see {@link IdempotencyStart} for each answer.

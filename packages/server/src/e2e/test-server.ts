@@ -97,6 +97,8 @@ export interface TestServerOptions {
   readonly wrapClock?: (clock: ManualClock) => Clock;
   /** Takes the owner's images at `POST /upload/:ticket`. */
   readonly uploads?: Pick<UploadShelf, "receive">;
+  /** The idempotency store, to start a second server on the store an earlier one left. */
+  readonly idempotency?: IdempotencyStore;
 }
 
 const cliScopes: readonly Scope[] = ["read", "propose", "chat", "confirm", "loosen", "admin"];
@@ -182,7 +184,7 @@ export async function startTestServer(options: TestServerOptions = {}): Promise<
   const clock = createManualClock(1_000_000);
   const logger = createMemoryLogger({ subsystem: "server" });
   const access = createMemoryAccessStore();
-  const idempotency = createMemoryIdempotencyStore();
+  const idempotency = options.idempotency ?? createMemoryIdempotencyStore();
   const random = createSeededRandom(7);
   const { pairing, pairingPushes } = pairingOn({ access, clock, random });
   const lockouts: AuthLockoutReport[] = [];

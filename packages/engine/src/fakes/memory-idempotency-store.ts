@@ -4,7 +4,6 @@ import type {
   IdempotencyLookup,
   IdempotencyMark,
   IdempotencyPrune,
-  IdempotencyRecall,
   IdempotencyStart,
 } from "../ingress/idempotency-entry.js";
 import type { IdempotencyStore } from "../ingress/ports.js";
@@ -29,15 +28,6 @@ function startOf(kept: KeptKey, lookup: IdempotencyLookup): IdempotencyStart {
   return kept.result === undefined
     ? { kind: "unfinished" }
     : { kind: "repeat", result: structuredClone(kept.result) };
-}
-
-function recall(keys: Keys, lookup: IdempotencyLookup): IdempotencyRecall {
-  const kept = keys.get(keyOf(lookup));
-  if (kept === undefined) {
-    return { kind: "new" };
-  }
-  const held = startOf(kept, lookup);
-  return held.kind === "repeat" ? held : { kind: "reused" };
 }
 
 function start(keys: Keys, mark: IdempotencyMark): IdempotencyStart {
@@ -85,15 +75,6 @@ function prune(keys: Keys, cut: IdempotencyPrune): number {
 export function createMemoryIdempotencyStore(): IdempotencyStore {
   const keys: Keys = new Map();
   return {
-    recall: async (lookup, options) => memoryCall(options, () => recall(keys, lookup)),
-    remember: async (entry, options) =>
-      memoryCall(options, () => {
-        const before = recall(keys, entry);
-        if (before.kind === "new") {
-          keys.set(keyOf(entry), structuredClone(entry));
-        }
-        return before;
-      }),
     start: async (mark, options) => memoryCall(options, () => start(keys, mark)),
     finish: async (entry, options) => memoryCall(options, () => finish(keys, entry)),
     forget: async (lookup, options) => memoryCall(options, () => forget(keys, lookup)),

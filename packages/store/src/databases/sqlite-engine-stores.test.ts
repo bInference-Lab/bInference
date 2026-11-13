@@ -82,8 +82,9 @@ describe("the SQLite engine stores", () => {
       key: "k",
       argsHash: token.secretHash,
     };
-    await stores.idempotency.remember({ ...lookup, result: 1, atMs: 4 }, call());
-    await expect(stores.idempotency.recall(lookup, call())).resolves.toStrictEqual({
+    await stores.idempotency.start({ ...lookup, atMs: 4 }, call());
+    await stores.idempotency.finish({ ...lookup, result: 1, atMs: 4 }, call());
+    await expect(stores.idempotency.start({ ...lookup, atMs: 5 }, call())).resolves.toStrictEqual({
       kind: "repeat",
       result: 1,
     });

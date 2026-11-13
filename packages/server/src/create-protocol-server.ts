@@ -21,7 +21,7 @@ import type { ConnectionContext } from "./connection-link.js";
 import type { ConsoleFiles } from "./console-route.js";
 import type { EngineFacts } from "./engine-facts.js";
 import { answerRequest, pathOf, refuseUpgrade, sourceOf } from "./http-routes.js";
-import { createIdempotentWrites } from "./idempotent-writes.js";
+import { createIdempotentWrites, type IdempotentWrites } from "./idempotent-writes.js";
 import { createLockoutAlerts } from "./lockout-alerts.js";
 import type { OperationHandlers, Transport } from "./operation-handlers.js";
 import { closedOriginRules, createOriginRules, type OriginRules } from "./origin-check.js";
@@ -98,9 +98,14 @@ export interface ProtocolServer {
    */
   endSessions(credential: string, code: ErrorCode): void;
   /**
+   * Deletes the idempotency keys started or stored more than 24 hours ago, but the marks of the
+   * writes running now (decision 0437), and answers how many went.
+   */
+  pruneKeys(options: { readonly signal: AbortSignal }): Promise<number>;
+  /**
    * Says `bye` with `engine.stopping` to every connection, waits `closeGraceMs` for them to close,
-   * cuts the rest, aborts every running call and closes the listener. A second call waits for the
-   * first.
+   * cuts the rest, aborts every running call, closes the listener and waits for the results of
+   * the writes that ended to be stored. A second call waits for the first.
    */
   close(): Promise<void>;
 }
@@ -146,6 +151,8 @@ interface ServerState {
   readonly origins: Cell<OriginRules>;
   /** The shutdown once `close` was called. */
   readonly closing: Cell<Promise<void> | undefined>;
+  /** The writes' idempotency keys, whose results the shutdown waits to store. */
+  readonly writes: IdempotentWrites;
 }
 
 // The hard cap leaves room to answer a call up to twice the frame limit with a `fail`.
@@ -167,6 +174,7 @@ function createState(options: ProtocolServerOptions): ServerState {
   const writes = createIdempotentWrites({
     store: options.idempotency,
     clock,
+    logger,
     maxInFlight: limits.maxWritesInFlight,
     signal: lifetime.signal,
   });
@@ -195,6 +203,7 @@ function createState(options: ProtocolServerOptions): ServerState {
     connections: new Set(),
     origins: cell<OriginRules>(closedOriginRules),
     closing: cell<Promise<void> | undefined>(undefined),
+    writes,
   };
 }
 
@@ -272,6 +281,31 @@ async function shutdown(state: ServerState, listeners: Listeners): Promise<void>
   }
   await Promise.all([closeListener(listeners.http), closeListener(listeners.ipc)]);
   state.webSocketServer.close();
+  // A write that ended as the engine stopped stores its result on its own deadline.
+  await state.writes.settled();
+}
+
+// Binds the HTTP listener, when the server has one, and lets its origins in.
+async function startListening(
+  server: {
+    readonly state: ServerState;
+    readonly listeners: Listeners;
+    readonly options: ProtocolServerOptions;
+  },
+  signal: AbortSignal,
+): Promise<ServerAddress | undefined> {
+  const { state, listeners, options } = server;
+  const { http } = options;
+  if (http === undefined) {
+    return undefined;
+  }
+  checkBind({ host: http.host, hasAuth: options.auth !== undefined });
+  const address = await bindListener(listeners.http, http, signal);
+  const extraOrigins = http.extraOrigins ?? (() => []);
+  const publicOrigin = http.publicOrigin === undefined ? {} : { publicOrigin: http.publicOrigin };
+  state.origins.set(createOriginRules({ port: address.port, extraOrigins, ...publicOrigin }));
+  options.logger.info("server.listening");
+  return address;
 }
 
 /**
@@ -294,20 +328,7 @@ export function createProtocolServer(options: ProtocolServerOptions): ProtocolSe
   // Plain HTTP requests, such as health checks, get room beside the WebSocket connections.
   listeners.http.maxConnections = state.limits.maxConnections * 2;
   return {
-    async start(signal) {
-      const { http } = options;
-      if (http === undefined) {
-        return undefined;
-      }
-      checkBind({ host: http.host, hasAuth: options.auth !== undefined });
-      const address = await bindListener(listeners.http, http, signal);
-      const extraOrigins = http.extraOrigins ?? (() => []);
-      const publicOrigin =
-        http.publicOrigin === undefined ? {} : { publicOrigin: http.publicOrigin };
-      state.origins.set(createOriginRules({ port: address.port, extraOrigins, ...publicOrigin }));
-      options.logger.info("server.listening");
-      return address;
-    },
+    start: async (signal) => startListening({ state, listeners, options }, signal),
     acceptIpc(socket) {
       if (state.closing.get() === undefined) {
         listeners.ipc.emit("connection", socket);
@@ -323,6 +344,7 @@ export function createProtocolServer(options: ProtocolServerOptions): ProtocolSe
         }
       }
     },
+    pruneKeys: async (call) => state.writes.prune(call),
     async close() {
       const running = state.closing.get() ?? shutdown(state, listeners);
       state.closing.set(running);
