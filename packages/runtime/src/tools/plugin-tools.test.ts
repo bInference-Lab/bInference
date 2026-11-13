@@ -104,6 +104,18 @@ describe("the tools of community plugins", () => {
     expect(client.calls()).toStrictEqual([]);
   });
 
+  it("refuse a field the manifest's schema does not name, never strip it", () => {
+    const { client, box } = boxWith({});
+    const prepared = box.prepare({
+      id: "c1",
+      name: "fear_index__index",
+      argumentsText: '{"days":7,"note":"x"}',
+    });
+
+    expect(prepared.ready).toBe(false);
+    expect(client.calls()).toStrictEqual([]);
+  });
+
   it("answer the engine's refusal of a plugin turned off as the tool's failure", async () => {
     const off = new BinferenceError({ code: "plugin.disabled", message: "The plugin is off." });
     const { box } = boxWith({ "plugin/call": off });

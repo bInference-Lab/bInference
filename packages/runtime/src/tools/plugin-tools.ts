@@ -1,4 +1,4 @@
-import { type JsonValue, jsonValueSchema } from "@binference/core";
+import { jsonValueSchema } from "@binference/core";
 import { protocolIdSchema } from "@binference/protocol";
 import { z } from "zod";
 import type { RuntimePlugin, RuntimePluginTool } from "../control/runtime-settings.schema.js";
@@ -15,10 +15,11 @@ export function pluginToolName(id: string, tool: string): string {
   return `${id.replaceAll("-", "_")}__${tool}`;
 }
 
-// What the manifest's input schema reads, as zod reads it; one zod cannot read is no tool.
-function argsOf(input: RuntimePluginTool["input"]): z.ZodType<JsonValue> | undefined {
+// What the manifest's input schema reads, as zod reads it; one zod cannot read is no tool. A pipe
+// would let a field the schema refuses through, stripped, so the input is read as JSON in the run.
+function argsOf(input: RuntimePluginTool["input"]): z.ZodType | undefined {
   try {
-    return z.fromJSONSchema(input).pipe(jsonValueSchema);
+    return z.fromJSONSchema(input);
   } catch {
     return undefined;
   }
@@ -47,11 +48,21 @@ function toolOf(
       outside: true,
       description: `From the community plugin ${plugin.id}: ${tool.description}`,
       args,
-      run: async (input, { signal }) =>
-        answerOrFailure(name, async () => {
-          const answer = await parts.client.call("plugin/call", { ...call, input }, { signal });
+      run: async (input, { signal }) => {
+        // The input the schema took, as the JSON the engine's call carries.
+        const json = jsonValueSchema.safeParse(input);
+        if (!json.success) {
+          return { text: `${name} takes JSON input only.`, isError: true };
+        }
+        return answerOrFailure(name, async () => {
+          const answer = await parts.client.call(
+            "plugin/call",
+            { ...call, input: json.data },
+            { signal },
+          );
           return { text: JSON.stringify(answer.output), isError: false };
-        }),
+        });
+      },
     });
   } catch {
     // A schema the tool rules refuse, such as one that lets an object take fields it does not
