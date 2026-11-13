@@ -258,8 +258,9 @@ export function createGoalDesk(options: GoalDeskOptions): GoalDesk {
         await options.client.call("goal/continue", args, { signal });
         return "asked";
       } catch (error) {
-        const isFrozen = error instanceof Error && "code" in error && error.code === "agent.frozen";
-        return isFrozen ? "frozen" : "asked";
+        // The breaker's hold pauses a goal as a freeze does (decision 0441).
+        const code = error instanceof Error && "code" in error ? error.code : undefined;
+        return code === "agent.frozen" || code === "safety.breaker" ? "frozen" : "asked";
       }
     },
     putNote: putNoteOf(options),

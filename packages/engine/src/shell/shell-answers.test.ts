@@ -120,6 +120,14 @@ describe("the owner's answer to a shell request", () => {
     expect(await shell.answer(request.request, "once")).toStrictEqual(err("agent.frozen"));
     expect(shell.runner.started).toStrictEqual([]);
   });
+
+  it("refuses with the breaker's code to run a command while the breaker holds", async () => {
+    const shell = await createTestShell({ settings: { ask: "always" } });
+    const request = await asked(shell, "ls");
+    shell.brake();
+    expect(await shell.answer(request.request, "once")).toStrictEqual(err("safety.breaker"));
+    expect(shell.runner.started).toStrictEqual([]);
+  });
 });
 
 describe("a shell request nobody answers in 10 minutes", () => {

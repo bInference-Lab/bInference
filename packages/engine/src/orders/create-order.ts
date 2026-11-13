@@ -2,6 +2,7 @@ import type { AssetRef } from "@binference/chain";
 import { type BinferenceErrorOptions, err, type Id, ok, type Result } from "@binference/core";
 import type { AssetInfos, OrderRequest, ProtocolErrorCode } from "@binference/protocol";
 import type { AgentSettings } from "../agents/agent-record.js";
+import { heldErrorOf, heldRefusalNow } from "../agents/breaker-hold.js";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import type { Proposer } from "../money-path/create-money-path.js";
 import { unlistedAssetInfos } from "../money-path/token-facts.js";
@@ -66,7 +67,7 @@ export function agentRefusal(settings: AgentSettings | undefined): ProtocolError
   if (settings.agent.archivedAtMs !== undefined) {
     return "agent.archived";
   }
-  return settings.agent.frozenAtMs === undefined ? undefined : "agent.frozen";
+  return heldErrorOf(settings.agent);
 }
 
 // An order that would never fill is not taken: a live one while live fills are off, a price order
@@ -315,7 +316,10 @@ export async function createOrder(
   const within = withQuota(call, quotas.openOrders);
   const created = storedOrder(await parts.orders.create(draft, within), draft);
   if (!created.ok) {
-    return created;
+    const { error } = created;
+    return err(
+      error === "agent.frozen" ? await heldRefusalNow(parts.agents, request.agent, signal) : error,
+    );
   }
   parts.publish(orderPush(created.value, "order/created"));
   const order = { order: created.value, proposer, hasLinkedExits: isLinked, assets };

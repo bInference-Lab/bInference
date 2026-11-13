@@ -60,6 +60,7 @@ const entries: fc.Arbitrary<readonly AddressBookEntry[]> = fc.uniqueArray(
 const factsArbitrary: fc.Arbitrary<PolicyFacts> = fc.record(
   {
     isFrozen: fc.boolean(),
+    isBraked: fc.boolean(),
     limits: fc.record({
       perTradeCapUsdMicros: small,
       rollingDayCapUsdMicros: small,
@@ -80,6 +81,7 @@ const factsArbitrary: fc.Arbitrary<PolicyFacts> = fc.record(
   {
     requiredKeys: [
       "isFrozen",
+      "isBraked",
       "limits",
       "sendLevel",
       "addressBook",
@@ -155,8 +157,9 @@ function capPassViolations({ facts, figures }: PolicyInput): readonly string[] {
 function walletPassViolations({ subject, facts }: PolicyInput): readonly string[] {
   const spent = nativeOut(subject.outflows);
   return [
-    // Only an approval revoke passes a freeze (decision 0312).
+    // Only an approval revoke passes a freeze (decision 0312), and nothing the breaker (0441).
     facts.isFrozen && subject.kind !== "revokeApproval" ? "passed while frozen" : "",
+    facts.isBraked ? "passed while the breaker holds" : "",
     spent > 0n && facts.nativeBalanceBase - spent < facts.limits.gasReserveBase
       ? "passed into the gas reserve"
       : "",
@@ -231,6 +234,7 @@ function capsEarned({ facts, figures }: PolicyInput): Earned {
 function walletEarned({ subject, facts }: PolicyInput): Earned {
   const spent = nativeOut(subject.outflows);
   return {
+    breaker: facts.isBraked,
     frozen: facts.isFrozen && subject.kind !== "revokeApproval",
     paper_only: subject.isPaper && liveOnly.has(subject.kind),
     ceiling: subject.kind !== "send" && spent > facts.ceilingPerTxNativeBase,

@@ -25,6 +25,7 @@
   "chat.needs_runtime": "Your agent is offline, so its chats cannot be deleted now. Start binference with `binference start`, then try again.",
   "agent.not_found": "This agent does not exist. Check the list of agents in the console.",
   "agent.archived": "This agent is archived. Create a new agent, or pick another one.",
+  "safety.breaker": "bInference pulled its breaker, so every agent is frozen and nothing changed. Your funds stay in your wallets, and a rescue still works. You will be told when it lifts; try again then.",
   "agent.frozen": "This agent is frozen. Run `binference unfreeze` in the terminal, then confirm the card it opens.",
   "agent.paper_only": "This agent is in paper mode, and this action needs live. Go live with `binference live`.",
   "agent.disclaimer": "Accept the disclaimer before going live. Run `binference live` and follow the steps.",

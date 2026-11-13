@@ -1,5 +1,6 @@
 import { err, ok, type Result } from "@binference/core";
 import type { LaunchTokenRequest, ProtocolErrorCode } from "@binference/protocol";
+import { heldErrorOf } from "../agents/breaker-hold.js";
 import { activeAgent } from "../operations/active-agent.js";
 import { hasLaunchUnderWay } from "./propose-launch.js";
 import { type LaunchPathOptions, type ResolvedLaunch, resolveLaunch } from "./resolve-launch.js";
@@ -22,8 +23,9 @@ export async function checkLaunchDraft(
     return active;
   }
   const settings = active.value;
-  if (settings.agent.frozenAtMs !== undefined) {
-    return err("agent.frozen");
+  const held = heldErrorOf(settings.agent);
+  if (held !== undefined) {
+    return err(held);
   }
   if (settings.agent.mode !== "live") {
     return err("agent.paper_only");

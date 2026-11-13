@@ -1,5 +1,6 @@
 import { type BinferenceErrorOptions, err, type Id, ok, type Result } from "@binference/core";
 import type { AssetInfos, ProtocolErrorCode, WebhookRuleRequest } from "@binference/protocol";
+import { heldRefusalNow } from "../agents/breaker-hold.js";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import type { Proposer } from "../money-path/create-money-path.js";
 import { unlistedAssetInfos } from "../money-path/token-facts.js";
@@ -201,7 +202,11 @@ export async function createWebhookRule(
   const stored = await parts.rules.create({ ...draft, secretHash }, { signal });
   const created = storedRule(stored, draft.id);
   if (!created.ok) {
-    return created;
+    const { error } = created;
+    const agent = request.agent;
+    return err(
+      error === "agent.frozen" ? await heldRefusalNow(parts.agents, agent, signal) : error,
+    );
   }
   const opening = { rule: created.value, assets: placed.value.assets, proposer };
   const intent = await openRuleCard(parts, opening, signal);

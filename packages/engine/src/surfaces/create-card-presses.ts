@@ -47,7 +47,11 @@ async function standingOf(
       reasonValues: reasonValuesOf(intent.record, intent.history),
     };
   }
-  if (outcome.verdict === "locked" || outcome.verdict === "over_cap") {
+  if (
+    outcome.verdict === "locked" ||
+    outcome.verdict === "braked" ||
+    outcome.verdict === "over_cap"
+  ) {
     return { status: outcome.verdict };
   }
   if (outcome.verdict === "reopened" || outcome.verdict === "card_changed") {

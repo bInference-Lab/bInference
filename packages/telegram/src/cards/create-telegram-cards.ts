@@ -215,6 +215,9 @@ function noticeOf(context: CardsContext, standing: CardStanding): string | undef
   if (standing.status === "over_cap") {
     return context.words("error.limit.daily_cap");
   }
+  if (standing.status === "braked") {
+    return context.words("error.safety.breaker");
+  }
   if (standing.status !== "open" || standing.reason === undefined) {
     return undefined;
   }

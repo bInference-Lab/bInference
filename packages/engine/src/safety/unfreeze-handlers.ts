@@ -80,6 +80,10 @@ export function createUnfreezeHandlers(options: UnfreezeHandlersOptions): Unfree
       if (proposer?.role !== "owner") {
         return err("auth.scope");
       }
+      // An unfreeze changes nothing while the breaker holds; it waits for the lift (decision 0441).
+      if ((await options.install.read({ signal })).breakerAtMs !== undefined) {
+        return err("safety.breaker");
+      }
       const call = { agent: args.agent, proposerRef: proposer.ref, signal };
       const turn = queue.then(async () => unfreeze(options, call));
       queue = turn.then(

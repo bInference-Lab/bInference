@@ -1,4 +1,5 @@
 {
+  "breaker": "bInference 的熔断开关正冻结 bInference Cloud 上的全部 Agent，因此未执行任何操作；解除前只有紧急转出可以执行",
   "frozen": "Agent 已冻结",
   "paper_only": "此操作只能在实盘中执行，而 Agent 处于模拟模式",
   "per_trade_cap": "超过了你的单笔上限",

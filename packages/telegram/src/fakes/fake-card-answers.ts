@@ -24,8 +24,11 @@ export interface FakeCardAnswersOptions {
   readonly ownerId: number;
 }
 
-/** Why the fake leaves a card open: a failed re-quote, a locked engine, or the rolling cap. */
-type Refusal = QuoteFailure | SimulationFailure | "locked" | "over_cap";
+/**
+ * Why the fake leaves a card open: a failed re-quote, a locked engine, the breaker's hold, or the
+ * rolling cap.
+ */
+type Refusal = QuoteFailure | SimulationFailure | "locked" | "braked" | "over_cap";
 
 /** What a reason may name, as the engine gives it: a chain, a name, a wallet, a validator. */
 type ReasonValues = CardLine["values"];
@@ -37,7 +40,7 @@ interface CardState {
 }
 
 function refused(refusal: Refusal, values: ReasonValues | undefined): CardStanding {
-  if (refusal === "locked" || refusal === "over_cap") {
+  if (refusal === "locked" || refusal === "braked" || refusal === "over_cap") {
     return { status: refusal };
   }
   return values === undefined

@@ -59,6 +59,7 @@ export function policyFactsOf(input: PolicyFactsInput): PolicyFacts {
   const limits = policyLimitsOf(settings.limits, input.chain);
   return {
     isFrozen: settings.agent.frozenAtMs !== undefined,
+    isBraked: settings.agent.breakerAtMs !== undefined,
     limits: {
       ...limits,
       allowTokens: canonicalList(chains, limits.allowTokens),

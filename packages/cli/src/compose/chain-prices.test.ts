@@ -173,6 +173,7 @@ const sale: PolicySubject = {
 };
 const facts: PolicyFacts = {
   isFrozen: false,
+  isBraked: false,
   limits: {
     perTradeCapUsdMicros: 1_000_000_000n,
     rollingDayCapUsdMicros: 5_000_000_000n,

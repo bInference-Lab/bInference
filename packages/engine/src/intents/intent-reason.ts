@@ -6,9 +6,11 @@
  * `validator_jailed` is a stake whose validator its staking venue lists as jailed, as the venue's
  * plan refuses it; an unstake or a claim from a jailed validator passes. The policy stores it with
  * `rejected_policy` before the card, and the wallet queue with `failed_check` when the venue,
- * planning the stake again, finds the validator jailed since (decision 0327).
+ * planning the stake again, finds the validator jailed since (decision 0327). `breaker` is every
+ * intent but a rescue while the breaker holds the install (decision 0441).
  */
 export const policyReasons = [
+  "breaker",
   "frozen",
   "paper_only",
   "per_trade_cap",

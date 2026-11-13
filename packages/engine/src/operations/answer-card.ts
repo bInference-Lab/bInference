@@ -7,6 +7,7 @@ import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-int
 import type { IntentKind } from "../intents/intent-kind.js";
 import type { QuoteFailure, SimulationFailure } from "../intents/intent-reason.js";
 import type { ExecuteConfirmed } from "../money-path/execute-confirmed.js";
+import type { InstallStore } from "../ports.js";
 
 /**
  * A Confirm of a live intent while the engine is locked: nothing could sign it, so the answer is
@@ -14,6 +15,14 @@ import type { ExecuteConfirmed } from "../money-path/execute-confirmed.js";
  */
 export interface LockedOutcome {
   readonly verdict: "locked";
+}
+
+/**
+ * A Confirm of an unfreeze while bInference's breaker holds the install (decision 0441): no
+ * unfreeze lifts the breaker's hold, so the answer is not taken and the card stays open.
+ */
+interface BrakedOutcome {
+  readonly verdict: "braked";
 }
 
 /**
@@ -27,7 +36,7 @@ interface OverCapOutcome {
 
 /** An answer's outcome, with the intent as it stands after it. */
 export interface AnsweredCard {
-  readonly outcome: AnswerOutcome | LockedOutcome | OverCapOutcome;
+  readonly outcome: AnswerOutcome | LockedOutcome | BrakedOutcome | OverCapOutcome;
   readonly intent: IntentSnapshot;
 }
 
@@ -36,7 +45,8 @@ export interface AnsweredCard {
  * A confirmed intent then goes on to the execute step: a paper intent fills at its confirmed
  * quote, and the executor takes a live one. While the engine is locked, a Confirm of a live
  * intent waiting for its answer is refused as `locked` and changes nothing; an unfreeze's and an
- * auto order's are taken.
+ * auto order's are taken. While the breaker holds the install, a Confirm of an unfreeze is
+ * refused as `braked` and changes nothing.
  */
 export type AnswerCard = (
   answer: CardAnswer,
@@ -50,6 +60,8 @@ export interface AnswerCardOptions {
   readonly execute: ExecuteConfirmed;
   /** Whether the engine is locked, so a live intent cannot be signed. */
   readonly isLocked: () => boolean;
+  /** The install, whose breaker mark a Confirm of an unfreeze reads (decision 0441). */
+  readonly install: Pick<InstallStore, "read">;
   /** The rolling cap each confirmation is checked against, one agent's at a time. */
   readonly gate: CapGate;
 }
@@ -78,6 +90,24 @@ async function lockedAnswer(
     !snapshot.record.isPaper &&
     !unsignedKinds.has(snapshot.record.kind);
   return isWaitingLive ? { outcome: { verdict: "locked" }, intent: snapshot } : undefined;
+}
+
+// An unfreeze's Confirm reads the breaker's mark before anything is stored: while it holds, the
+// tap lifts nothing, tells no `notice.unfrozen` and leaves the card open.
+async function brakedAnswer(
+  options: AnswerCardOptions,
+  answer: CardAnswer,
+  signal: AbortSignal,
+): Promise<AnsweredCard | undefined> {
+  if (answer.decision !== "confirm") {
+    return undefined;
+  }
+  const snapshot = await options.stored.snapshot(answer.intent, { signal });
+  if (snapshot?.record.kind !== "unfreeze") {
+    return undefined;
+  }
+  const isBraked = (await options.install.read({ signal })).breakerAtMs !== undefined;
+  return isBraked ? { outcome: { verdict: "braked" }, intent: snapshot } : undefined;
 }
 
 // A Confirm runs in the agent's turn at the gate, so the outflows it is checked against are the
@@ -110,9 +140,11 @@ async function answerInTurn(
 /** Creates the {@link AnswerCard} step over the confirmations and the execute step. */
 export function createAnswerCard(options: AnswerCardOptions): AnswerCard {
   return async (answer, { signal }) => {
-    const locked = await lockedAnswer(options, answer, signal);
-    if (locked !== undefined) {
-      return ok(locked);
+    const refused =
+      (await lockedAnswer(options, answer, signal)) ??
+      (await brakedAnswer(options, answer, signal));
+    if (refused !== undefined) {
+      return ok(refused);
     }
     const answered = await answerInTurn(options, answer, signal);
     if (answered === undefined) {
@@ -139,6 +171,7 @@ const verdictErrors: Readonly<
   closed: "intent.wrong_state",
   card_changed: "intent.card_changed",
   locked: "engine.locked",
+  braked: "safety.breaker",
   over_cap: "limit.daily_cap",
 };
 

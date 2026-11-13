@@ -336,6 +336,19 @@ Rules for this package:
   whole-install freeze also marks the install frozen, and the agent store creates every agent
   frozen while it is. Each newly frozen agent is announced with `notice.frozen`. The policy's `frozen` rule keeps every
   later intent and auto order fill of the agent out.
+- The breaker (`src/breaker/`, `src/safety/follow-breaker.ts`, decisions 0439 to 0441) is a
+  profile part, `BreakerSource`, that the engine reads at the start, before the unlock and any
+  recovery, and every second, each read within 2 seconds of the clock (`breaker-read.ts`), one
+  look at a time (`breaker-looks.ts`). A pull or a lift applies once per version, as one write of
+  the intent store's `freeze` with its `breaker` part, planned on the version the install holds:
+  the install's own mark (`breaker_at`) holds every agent apart from the owner's freeze
+  (`frozenAtMs` is the earlier of the two, `ownFreezeOf` the owner's own), every unsigned intent
+  but a rescue is cancelled, orders pause and turns stop. A version is marked told only once it
+  was told (`InstallStore.tellBreaker`), and a look tells one that waits first. A lagging copy or
+  an unread source changes nothing. Only a lift ends the breaker's hold and only the owner's
+  unfreeze ends the owner's; while the breaker holds, an unfreeze, its card's Confirm and a config
+  change are `safety.breaker`, and the policy's `breaker` rule comes first. A change to either
+  freeze changes `breaker-freeze-property.ts`, which runs on the fakes and on SQLite.
 - A rescue (`src/safety/`, `safety/rescue`) is one live intent stored under the first wallet that
   moves something and whose agent is active, whatever the agents' modes, freezes and send levels.
   It plans every wallet of the install on the rescue address's chain: each token the registry

@@ -13,6 +13,8 @@ const refusals: ReadonlyMap<string, Refusal> = new Map([
   ["agent.budget", "budget"],
   ["quota.turns", "quota"],
   ["agent.frozen", "frozen"],
+  // The breaker holds the install as a freeze holds an agent (decision 0441).
+  ["safety.breaker", "frozen"],
   ["agent.archived", "archived"],
   ["agent.not_found", "not_found"],
 ]);

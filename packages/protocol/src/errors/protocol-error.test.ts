@@ -26,6 +26,7 @@ describe("protocolErrorCodes", () => {
       "wallet",
       "address",
       "rescue",
+      "safety",
       "signer",
       "intent",
       "order",

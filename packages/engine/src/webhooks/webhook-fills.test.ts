@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
+import { createMemoryBreaker } from "../fakes/memory-breaker.js";
 import { requestDocument } from "../intents/intent-documents.schema.js";
-import { expectOk, testAgent } from "../intents/test-intents.js";
+import { expectOk, testAgent, testNowMs } from "../intents/test-intents.js";
 import { testCall, type TestEngine } from "../operations/test-engine.js";
 import { fillIntentsOf, noticesOf, startFillEngine } from "../orders/test-fills.js";
 import { freeze, tapCard } from "../orders/test-orders.js";
@@ -190,6 +191,21 @@ describe("a webhook rule's fills", () => {
     expect(await alertsOf(test, created)).toMatchObject([{ outcome: "filled" }]);
     expect(await ruleOf(test, created)).toMatchObject({ state: "deleted", fills: 1 });
     expect(await alertsOf(test, other)).toMatchObject([{ outcome: "skipped", reason: "frozen" }]);
+  });
+
+  it("skips an alert with breaker while the breaker holds the install", async () => {
+    const breaker = createMemoryBreaker();
+    const test = await startFillEngine({ breaker });
+    const created = await activeRule(test, testRuleRequest());
+    await alertTo(test, created.url, "one");
+    breaker.pull(testNowMs);
+    await test.engine.followBreaker(live);
+    await test.engine.fillWebhookAlerts(live);
+
+    expect(await fillIntentsOf(test)).toHaveLength(0);
+    expect(await alertsOf(test, created)).toMatchObject([
+      { outcome: "skipped", reason: "breaker" },
+    ]);
   });
 
   it("tells five fills an hour, then the count it held back with the next hour's first", async () => {

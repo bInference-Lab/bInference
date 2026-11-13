@@ -25,6 +25,7 @@
   "chat.needs_runtime": "你的 Agent 当前离线，现在无法删除对话。请运行 `binference start` 启动 binference，然后再试。",
   "agent.not_found": "此 Agent 不存在。请在控制台查看 Agent 列表。",
   "agent.archived": "此 Agent 已归档。请新建一个 Agent，或选择其他 Agent。",
+  "safety.breaker": "bInference 已拉下熔断开关，全部 Agent 均已冻结，因此未做任何更改。你的资金仍在你的钱包中，紧急转出仍然可用。解除时会通知你，届时请再试。",
   "agent.frozen": "此 Agent 已冻结。请在终端运行 `binference unfreeze`，然后确认它打开的卡片。",
   "agent.paper_only": "此 Agent 处于模拟模式，而此操作需要实盘。请运行 `binference live` 切换到实盘。",
   "agent.disclaimer": "切换到实盘前，请先接受免责声明。请运行 `binference live` 并按提示操作。",

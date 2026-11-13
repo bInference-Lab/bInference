@@ -1,4 +1,5 @@
 {
+  "breaker": "bInference's breaker holds every agent on bInference Cloud, so nothing was done; only a rescue runs until it lifts",
   "frozen": "the agent is frozen",
   "paper_only": "this action works only live, and the agent is in paper mode",
   "per_trade_cap": "it is above your per-trade cap",

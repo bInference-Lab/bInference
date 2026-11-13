@@ -1,6 +1,7 @@
 import { err, type Id, idSchema, ok } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import type { ConfigAuthor } from "../audit/journal-config-change.js";
+import { createMemoryBreaker } from "../fakes/memory-breaker.js";
 import { createMemoryQuotaSource } from "../fakes/memory-quota-source.js";
 import type { IntentState } from "../intents/intent-state.js";
 import { expectOk, testAgent, testAgentDraft } from "../intents/test-intents.js";
@@ -204,6 +205,17 @@ describe("a config change from a chat", () => {
     const intent = await proposed(test, marked);
     expect((await test.stores.intents.get(intent, live))?.hasOutsideContent).toBe(true);
     expect(await propose(test, testCallers.mcp)).toStrictEqual(err("auth.scope"));
+  });
+
+  it("refuses every change while the breaker holds, previewing nothing", async () => {
+    const config = fakeConfig({});
+    const breaker = createMemoryBreaker();
+    const test = await startTestEngine({ configChanges: config, breaker });
+    breaker.pull(1);
+    await test.engine.followBreaker(live);
+    expect(await propose(test)).toStrictEqual(err("safety.breaker"));
+    expect(await propose(test, testCallers.runtime)).toStrictEqual(err("safety.breaker"));
+    expect(config.previewed).toStrictEqual([]);
   });
 
   it("applies a change a stop left confirmed before it proposes the next one", async () => {

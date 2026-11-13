@@ -1,6 +1,7 @@
 import { idSchema } from "@binference/core";
 import type { ScheduleView } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
+import { createMemoryBreaker } from "../fakes/memory-breaker.js";
 import { expectOk, testAgent } from "../intents/test-intents.js";
 import {
   startTestEngine,
@@ -184,6 +185,39 @@ describe("the schedule queue", () => {
     expect(await start(wakeUps.map(({ id }) => id))).toStrictEqual({
       ok: false,
       error: "agent.frozen",
+    });
+    expect(await start(all)).toMatchObject({ ok: true });
+  });
+
+  it("refuses with the breaker's code a turn of wake-ups alone while the breaker holds", async () => {
+    const breaker = createMemoryBreaker();
+    const test = await startTestEngine({ timeZone: newYork, breaker });
+    const { handlers } = test.engine;
+    await setSchedule(test, "0 9 * * *");
+    await runAt(test, "2027-01-15T14:00:00Z");
+    breaker.pull(test.clock.now());
+    await test.engine.followBreaker(testCall({}));
+    expectOk(await handlers["chat/post"](testCall({ agent: testAgent, text: "Still there?" })));
+    const waiting = await test.stores.agentInbox.untaken(
+      { agentId: testAgent, limit: 10 },
+      testCall({}),
+    );
+    const wakeUps = waiting.filter((message) => message.kind === "inbox/scheduleDue");
+    // The pull's stop waits beside them, and the runtime applies it apart from any turn.
+    const turnMessages = waiting.filter((message) => message.kind !== "inbox/stop");
+    const all = turnMessages.map(({ id }) => id);
+    const start = async (messages: readonly (typeof all)[number][]) =>
+      handlers["turn/start"](
+        testCall(
+          { agent: testAgent, session, turn, messages, outsideContent: false },
+          testCallers.runtime,
+        ),
+      );
+
+    expect(all).toHaveLength(2);
+    expect(await start(wakeUps.map(({ id }) => id))).toStrictEqual({
+      ok: false,
+      error: "safety.breaker",
     });
     expect(await start(all)).toMatchObject({ ok: true });
   });

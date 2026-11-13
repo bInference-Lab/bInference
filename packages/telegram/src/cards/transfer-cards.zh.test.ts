@@ -94,6 +94,7 @@ describe("send, revoke and bridge cards in the owner's chat, in Chinese", () => 
 
   it.each<[TransferPress, string]>([
     ["locked", "error.engine.locked"],
+    ["braked", "error.safety.breaker"],
     ["over_cap", "error.limit.daily_cap"],
   ])(
     "answers a %s press of a bridge to a base58 address within 200 characters",

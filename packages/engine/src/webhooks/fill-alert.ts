@@ -55,6 +55,9 @@ function lineSkipOf(
   if (settings === undefined || settings.agent.archivedAtMs !== undefined) {
     return { reason: "order_inactive", tells: false };
   }
+  if (settings.agent.breakerAtMs !== undefined) {
+    return { reason: "breaker", tells: true };
+  }
   return settings.agent.frozenAtMs === undefined ? undefined : { reason: "frozen", tells: true };
 }
 

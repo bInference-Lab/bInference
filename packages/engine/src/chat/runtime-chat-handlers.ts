@@ -1,5 +1,6 @@
 import { err, type Id, idSchema, ok } from "@binference/core";
 import type { ProtocolId } from "@binference/protocol";
+import { heldErrorOf } from "../agents/breaker-hold.js";
 import { activeAgent } from "../operations/active-agent.js";
 import type { EngineCall, EngineHandler } from "../operations/engine-call.js";
 import { noticePush } from "../pushes/notice-push.js";
@@ -63,9 +64,9 @@ async function onlyWakesUp(
 // the turn holds wake-ups alone.
 async function startable(options: ChatRelayOptions, call: EngineCall<"turn/start">) {
   const active = await activeAgent(options.agents, call.args.agent, call);
-  const isFrozen = active.ok && active.value.agent.frozenAtMs !== undefined;
-  return isFrozen && (await onlyWakesUp(options, call.args.messages, call.signal))
-    ? err("agent.frozen")
+  const held = active.ok ? heldErrorOf(active.value.agent) : undefined;
+  return held !== undefined && (await onlyWakesUp(options, call.args.messages, call.signal))
+    ? err(held)
     : active;
 }
 

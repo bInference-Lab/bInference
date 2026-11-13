@@ -3,7 +3,10 @@ import { createManualClock, createSeededRandom } from "@binference/core/testing"
 import { goalPushOf, inboxMessageViewSchema } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
 import { createMemoryAgentInboxStore } from "../fakes/memory-agent-inbox-store.js";
-import { createMemoryAgentStore } from "../fakes/memory-agent-store.js";
+import {
+  createMemoryAgentStore,
+  type MemoryAgentStoreOptions,
+} from "../fakes/memory-agent-store.js";
 import { testAgent, testAgentDraft } from "../intents/test-intents.js";
 import { testCall, testCallers } from "../operations/test-engine.js";
 import type { EnginePush } from "../pushes/engine-push.js";
@@ -14,9 +17,9 @@ import { createRunningTurns } from "./running-turns.js";
 const runtime = testCallers.runtime;
 const other = idSchema("ses").parse("ses_0190f1c2-3a4b-7c5d-8e6f-0000000000aa");
 
-async function setUp() {
+async function setUp(install?: MemoryAgentStoreOptions["install"]) {
   const clock = createManualClock(Date.UTC(2026, 10, 8, 12));
-  const agents = createMemoryAgentStore();
+  const agents = createMemoryAgentStore(install === undefined ? {} : { install });
   await agents.create(testAgentDraft({}), testCall({}));
   const turns = createRunningTurns();
   turns.startRuntime(idSchema("tok").parse(runtime.credential));
@@ -103,6 +106,22 @@ describe("goal turns", () => {
     expect(await test.handlers["goal/continue"](testCall(args, runtime))).toStrictEqual({
       ok: false,
       error: "agent.frozen",
+    });
+    expect(test.pushes).toStrictEqual([]);
+  });
+
+  it("refuses a goal turn with the breaker's code while the breaker holds the install", async () => {
+    const test = await setUp({ frozenAt: () => undefined, breakerMark: { at: () => 1 } });
+    const args = {
+      agent: testAgent,
+      session: test.session,
+      surface: "telegram" as const,
+      text: goalWords,
+      outsideContent: false,
+    };
+    expect(await test.handlers["goal/continue"](testCall(args, runtime))).toStrictEqual({
+      ok: false,
+      error: "safety.breaker",
     });
     expect(test.pushes).toStrictEqual([]);
   });

@@ -317,6 +317,18 @@ describe("the Telegram cards", () => {
     expect(context.botApi.messages()).toMatchObject([{ buttons }]);
   });
 
+  it("keep an unfreeze's card open and name the breaker while it holds", async () => {
+    const context = await setUp();
+    context.engine.open(ref);
+    context.engine.refuseNext(ref, "braked");
+    await context.cards.show(showing(), live);
+    await pressCard(context, confirmData);
+    expect(context.botApi.answers()).toStrictEqual([
+      { callbackId: "press-9001", text: messages.en["error.safety.breaker"] },
+    ]);
+    expect(context.botApi.messages()).toMatchObject([{ buttons }]);
+  });
+
   it("keep the card open and say why when the trade would pass the 24-hour cap", async () => {
     const context = await setUp();
     context.engine.open(ref);

@@ -68,6 +68,7 @@ const randomCases: fc.Arbitrary<Case> = fc.record({
   }),
   facts: fc.record({
     isFrozen: fc.boolean(),
+    isBraked: fc.boolean(),
     limits: fc.record({
       perTradeCapUsdMicros: fc.bigInt({ min: 0n, max: 12_000n }),
       rollingDayCapUsdMicros: fc.bigInt({ min: 0n, max: 24_000n }),

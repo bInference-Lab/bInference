@@ -78,6 +78,16 @@ function pushOf(view: InboxMessageView | { readonly kind: string }, seq: number)
   };
 }
 
+// A client whose engine refuses every turn with the breaker's code, as a held install does.
+function heldOnTurnStart(base: ReturnType<typeof clientOver>): ReturnType<typeof clientOver> {
+  const held = new BinferenceError({ code: "safety.breaker", message: "refused" });
+  return {
+    ...base,
+    call: async (op, args, options) =>
+      op === "turn/start" ? Promise.reject(held) : base.call(op, args, options),
+  };
+}
+
 describe("createProtocolEngineChat", () => {
   it.each(
     engineChatContract({
@@ -141,6 +151,17 @@ describe("createProtocolEngineChat", () => {
       started: false,
       refusal: "quota",
       resumesAt: 5,
+    });
+  });
+
+  it("answers a turn the breaker refuses as one of a frozen agent", async () => {
+    const engine = createMemoryEngineChat([agent]);
+    const chat = createProtocolEngineChat(heldOnTurnStart(clientOver(engine, new Map())));
+    const { session, turn, message } = engine.post(agent, "hi");
+    const start = { agent, session, turn, messages: [message], outsideContent: false };
+    await expect(chat.startTurn(start, new AbortController().signal)).resolves.toStrictEqual({
+      started: false,
+      refusal: "frozen",
     });
   });
 

@@ -81,7 +81,8 @@ export function intentParts(
   const { parts: rules, handlers: ruleHandlers } = webhookRulesOf(options, orders);
   const execute = executeOf(options, { stored, paper, orders, rules });
   const lowGas = createLowGasAlerts({ publish: options.publish });
-  const answer = createAnswerCard({ confirmations, stored, execute, isLocked, gate });
+  const { install } = stores;
+  const answer = createAnswerCard({ confirmations, stored, execute, isLocked, install, gate });
   const showings = createCardShowings({ ...stores, chains, destinations, venues: host, isLocked });
   const moneyPath = moneyPathOf(options, { stored, paper, launches, execute, lowGas, gate });
   const handlers = {

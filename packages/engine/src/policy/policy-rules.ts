@@ -75,6 +75,8 @@ export interface PolicySubject extends Pick<
 export interface PolicyFacts {
   /** The agent or the whole install is frozen. */
   readonly isFrozen: boolean;
+  /** The breaker holds the install (decision 0441): only a rescue passes. */
+  readonly isBraked: boolean;
   readonly limits: PolicyLimits;
   readonly sendLevel: SendLevel;
   readonly addressBook: readonly AddressBookEntry[];
@@ -215,6 +217,8 @@ function asksTooMuchSlippage({ subject, facts }: PolicyInput): boolean {
  * measured only by the risk step's round trip (decision 0113), which refuses with `high_tax`.
  */
 const intentRules: readonly PolicyRule[] = [
+  // While the breaker holds, the signer service signs only a rescue's steps (decision 0441).
+  { reason: "breaker", refuses: ({ facts }) => facts.isBraked },
   {
     // A revoke moves nothing and is what an owner reaches for after a suspected theft, so it
     // passes a freeze, still with its card (decision 0312).

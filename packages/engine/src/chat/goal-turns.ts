@@ -1,6 +1,7 @@
 import { err, jsonValueSchema, ok } from "@binference/core";
 import { operations } from "@binference/protocol";
 import { z } from "zod";
+import { heldErrorOf } from "../agents/breaker-hold.js";
 import { activeAgent } from "../operations/active-agent.js";
 import type { EngineHandler } from "../operations/engine-call.js";
 import { chatTopic, type ChatRelayOptions } from "./chat-relay-parts.js";
@@ -31,8 +32,9 @@ function continueOf(options: GoalTurnOptions): EngineHandler<"goal/continue"> {
       return active;
     }
     // A frozen agent works on no goal: its runtime pauses the goal (decision 0407).
-    if (active.value.agent.frozenAtMs !== undefined) {
-      return err("agent.frozen");
+    const held = heldErrorOf(active.value.agent);
+    if (held !== undefined) {
+      return err(held);
     }
     const open = await options.agentInbox.openSession(agent, call);
     if (open !== session) {

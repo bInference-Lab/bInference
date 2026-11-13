@@ -23,6 +23,7 @@ const prices = new Map<AssetRef, UsdPrice>([
 
 const facts: PolicyFacts = {
   isFrozen: false,
+  isBraked: false,
   limits: {
     perTradeCapUsdMicros: 100_000_000n,
     rollingDayCapUsdMicros: 500_000_000n,
@@ -106,6 +107,8 @@ describe("the policy check", () => {
   it.each([
     ["frozen", buy, { isFrozen: true }],
     ["frozen", send, { isFrozen: true }],
+    ["breaker", buy, { isBraked: true }],
+    ["breaker", send, { isBraked: true }],
     ["paper_only", { ...send, isPaper: true }, {}],
     ["paper_only", { ...buy, kind: "launchToken", isPaper: true }, {}],
     [
@@ -468,6 +471,14 @@ describe("an approval revoke", () => {
     expect(
       reasonsOf(await verdict({ ...untargeted, isPaper: true }, { isFrozen: true })),
     ).toStrictEqual(["paper_only"]);
+  });
+
+  it("is refused while the breaker holds, before the freeze is named", async () => {
+    const revoke = { ...send, kind: "revokeApproval", outflows: [] } as const;
+    const { target: _target, ...untargeted } = revoke;
+    const held = { isBraked: true, isFrozen: true };
+    expect(reasonsOf(await verdict(untargeted, held))).toStrictEqual(["breaker"]);
+    expect(reasonsOf(await verdict(buy, held))).toStrictEqual(["breaker", "frozen"]);
   });
 });
 

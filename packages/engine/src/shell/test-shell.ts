@@ -68,6 +68,8 @@ export interface TestShell {
   change(settings: Partial<ShellSettings>): void;
   /** Freezes the test agent. */
   freeze(): void;
+  /** Holds the install by the breaker's mark from now on (decision 0440). */
+  brake(): void;
   run(args: Omit<ArgsOf<"shell/run">, "agent">): Answer<"shell/run">;
   job(args: Omit<ArgsOf<"shell/job">, "agent">): Answer<"shell/job">;
   answer(request: string, answer: ShellAnswer, caller?: EngineCaller): Answer<"shell/answer">;
@@ -129,7 +131,9 @@ function readsOf(
 /** Creates a {@link TestShell}. */
 export async function createTestShell(options: TestShellOptions = {}): Promise<TestShell> {
   const clock = createManualClock(Date.UTC(2026, 10, 11, 12));
-  const agents = createMemoryAgentStore();
+  const breaker: { atMs?: number } = {};
+  const install = { frozenAt: () => undefined, breakerMark: { at: () => breaker.atMs } };
+  const agents = createMemoryAgentStore({ install });
   await agents.create(testAgentDraft({}), testCall({}));
   const ids = createIdSource({ clock, random: createSeededRandom(5) });
   const { script, missing, dialect } = options;
@@ -155,6 +159,9 @@ export async function createTestShell(options: TestShellOptions = {}): Promise<T
     journal,
     change: (change) => {
       settings.current = { ...settings.current, ...change };
+    },
+    brake: () => {
+      breaker.atMs = clock.now();
     },
     freeze: () => {
       const version = agents.agentNow(testAgent)?.version ?? 0;

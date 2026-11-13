@@ -74,6 +74,7 @@ export const protocolErrorCodes = [
   "address.no_recipient",
   "rescue.no_address",
   "rescue.nothing_to_move",
+  "safety.breaker",
   "signer.not_found",
   "signer.last_signer",
   "signer.own_key",

@@ -1,4 +1,5 @@
 import type { Id } from "@binference/core";
+import type { AgentStore } from "../ports.js";
 import type { AgentRecord } from "./agent-record.js";
 
 /**
@@ -45,4 +46,29 @@ export const noLift: LiftedHolds = { agents: new Set(), isBreakerLifted: false }
 export function staysHeld(agent: AgentRecord, lifted: LiftedHolds): boolean {
   const isOwnFrozen = ownFreezeOf(agent) !== undefined && !lifted.agents.has(agent.id);
   return isOwnFrozen || (agent.breakerAtMs !== undefined && !lifted.isBreakerLifted);
+}
+
+/**
+ * Why an operation refuses a held agent (decision 0441): `safety.breaker` while the breaker holds
+ * the install, whatever the owner froze, since an unfreeze would not help; `agent.frozen` for the
+ * owner's freeze alone; none for an agent nothing holds.
+ */
+export function heldErrorOf(agent: AgentRecord): "safety.breaker" | "agent.frozen" | undefined {
+  if (agent.breakerAtMs !== undefined) {
+    return "safety.breaker";
+  }
+  return agent.frozenAtMs === undefined ? undefined : "agent.frozen";
+}
+
+/**
+ * Why the store refused a write for a frozen agent, read again now: `safety.breaker` while the
+ * breaker holds the install, else `agent.frozen` (decision 0441).
+ */
+export async function heldRefusalNow(
+  agents: Pick<AgentStore, "get">,
+  agent: Id<"agt">,
+  signal: AbortSignal,
+): Promise<"safety.breaker" | "agent.frozen"> {
+  const settings = await agents.get(agent, { signal });
+  return settings?.agent.breakerAtMs === undefined ? "agent.frozen" : "safety.breaker";
 }

@@ -14,6 +14,7 @@ import {
 describe("intent reasons", () => {
   it("lists the policy reasons of spec 6, section 4", () => {
     expect(policyReasons).toStrictEqual([
+      "breaker",
       "frozen",
       "paper_only",
       "per_trade_cap",
@@ -127,7 +128,7 @@ describe("intent reasons", () => {
       ...fillReasons,
     ];
     expect(new Set(intentReasons)).toStrictEqual(new Set(all));
-    expect(intentReasons).toHaveLength(89);
+    expect(intentReasons).toHaveLength(90);
   });
 
   it("keeps an order's skip reasons apart from the reasons an intent stores", () => {

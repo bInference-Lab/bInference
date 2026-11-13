@@ -75,6 +75,18 @@ async function mayRun(
   return active.ok && active.value.agent.frozenAtMs === undefined;
 }
 
+// Why a command of a held agent does not run: the breaker's hold or the owner's freeze.
+async function heldCodeOf(
+  context: ShellContext,
+  agent: string,
+  call: { readonly signal: AbortSignal },
+): Promise<"safety.breaker" | "agent.frozen"> {
+  const active = await activeAgent(context.wakeParts.agents, idSchema("agt").parse(agent), call);
+  return active.ok && active.value.agent.breakerAtMs !== undefined
+    ? "safety.breaker"
+    : "agent.frozen";
+}
+
 async function answered(
   context: ShellContext,
   request: OpenShellRequest,
@@ -86,7 +98,7 @@ async function answered(
 ): Promise<Result<ShellRequestOutcome, ProtocolErrorCode>> {
   if (!(await mayRun(context, request.view.agent, call))) {
     pushClosed(context, request, "stopped");
-    return err("agent.frozen");
+    return err(await heldCodeOf(context, request.view.agent, call));
   }
   if (call.answer === "once") {
     return runAnswered(context, request, "allowed_once");

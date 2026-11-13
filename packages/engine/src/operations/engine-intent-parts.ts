@@ -146,12 +146,13 @@ export function configChangeHandlersOf(
   if (configChanges === undefined) {
     return {};
   }
-  const { intents, agents } = stores;
+  const { intents, agents, install } = stores;
   return createConfigChangeHandlers({
     quotas: installQuotasOf(options),
     stored,
     intents,
     agents,
+    install,
     wallets,
     configChanges,
     isLocked,

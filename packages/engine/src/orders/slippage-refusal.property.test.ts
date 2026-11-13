@@ -23,6 +23,7 @@ const bps = fc.integer({ min: 0, max: 10_000 }).map((value) => value as Bps);
 function factsOf(registry: Bps, other: Bps): PolicyFacts {
   return {
     isFrozen: false,
+    isBraked: false,
     limits: {
       perTradeCapUsdMicros: 10n ** 12n,
       rollingDayCapUsdMicros: 10n ** 12n,

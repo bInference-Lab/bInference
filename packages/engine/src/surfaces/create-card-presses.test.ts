@@ -1,7 +1,9 @@
 import { err, type Id, ok } from "@binference/core";
 import { describe, expect, it } from "vitest";
+import { breakerWrite } from "../contracts/breaker-freeze-checks.js";
 import {
   expectOk,
+  testAgent,
   testCoin,
   testNowMs,
   testSwap,
@@ -17,6 +19,7 @@ import {
   testCallers,
   testChains,
 } from "../operations/test-engine.js";
+import { setUpRescue } from "../safety/test-rescue.js";
 import type { CardPress } from "./card-press.js";
 import { type CardPresses, createCardPresses } from "./create-card-presses.js";
 import { createCardShowings } from "./create-card-showings.js";
@@ -63,6 +66,21 @@ async function pressing(options: TestEngineOptions = {}, owner?: number): Promis
   });
   const [ref = ""] = await refsOf(test, view.intent);
   return { test, presses, intent: view.intent, ref };
+}
+
+// The owner's freeze of the test agent, its wallets in the install, and the callback reference
+// of the unfreeze card it opens.
+async function unfreezeCardRef(test: TestEngine): Promise<string> {
+  await setUpRescue(test);
+  await test.engine.handlers["safety/freeze"](testCall({ agent: testAgent }));
+  const { intent } = expectOk(
+    await test.engine.handlers["safety/unfreeze"](testCall({ agent: testAgent })),
+  );
+  if (intent === undefined) {
+    throw new Error("Expected an unfreeze card.");
+  }
+  const [ref = ""] = await refsOf(test, intent);
+  return ref;
 }
 
 function press(ref: string, decision: CardPress["decision"], presserId = ownerId): CardPress {
@@ -156,6 +174,21 @@ describe("the card presses", () => {
     const standing = await subject.presses.answer(press(subject.ref, "confirm"), live);
     expect(standing).toStrictEqual({ status: "locked" });
     expect(await stateOf(subject)).toBe("awaiting_confirmation");
+  });
+
+  it("keep an unfreeze's card open as braked while the breaker holds", async () => {
+    const test = await startTestEngine();
+    const ref = await unfreezeCardRef(test);
+    const held = breakerWrite(1, { atMs: testNowMs, version: 1, isPulled: true });
+    expectOk(await test.stores.intents.freeze(held, live));
+    const presses = createCardPresses({
+      intents: test.stores.intents,
+      answer: test.engine.answer,
+      ownerId: async () => Promise.resolve(ownerId),
+      showings: showingsOf(test),
+    });
+    const standing = await presses.answer(press(ref, "confirm"), live);
+    expect(standing).toStrictEqual({ status: "braked" });
   });
 
   it("keep the card open on a worse re-quote, and on a Confirm of the older version", async () => {

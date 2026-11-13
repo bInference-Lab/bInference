@@ -18,11 +18,13 @@ const ref = "q3Zr_x9-AbCdEfGh";
 
 /**
  * How the engine answers the owner's Confirm: it takes it, or it leaves the card open and why: a
- * locked engine, the rolling cap, or a failed re-quote's reason with what its words name.
+ * locked engine, the breaker's hold, the rolling cap, or a failed re-quote's reason with what its
+ * words name.
  */
 export type TransferPress =
   | "confirmed"
   | "locked"
+  | "braked"
   | "over_cap"
   | { readonly reason: QuoteFailure; readonly values: CardLine["values"] };
 
