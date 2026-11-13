@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { communityPluginLimits as limits } from "./community-plugin-limits.js";
+import { type PluginListingRef, pluginListingRefSchema } from "./plugin-listing.schema.js";
 
 /** What a community plugin declares, each list sorted: what its permission review shows. */
 interface PluginDeclarations {
@@ -45,9 +46,12 @@ export interface PluginReview extends PluginDeclarations {
   readonly provenance: PluginProvenance;
   readonly digest: string;
   readonly widens?: PluginWidening;
+  /** The listing it installs under, where one is needed; its `digest` does not hash it. */
+  readonly listing?: PluginListingRef;
 }
 
 const sha256Hex = z.string().regex(/^[0-9a-f]{64}$/);
+
 const publisherName = z.string().min(1).max(200);
 
 const declarationFields = {
@@ -81,4 +85,5 @@ export const pluginReviewSchema: z.ZodType<PluginReview> = z.object({
   ...declarationFields,
   digest: sha256Hex,
   widens: wideningSchema.exactOptional(),
+  listing: pluginListingRefSchema.exactOptional(),
 });

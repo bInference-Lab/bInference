@@ -33,7 +33,7 @@ const maxToolName = 64;
 const nothing: Declarations = { kinds: [], hosts: [], tools: [], configKeys: [] };
 
 /** Who signed a version: the publisher the review shows, the issuer and the build workflow. */
-interface Publisher {
+export interface Publisher {
   readonly publisher?: string;
   readonly issuer?: string;
   readonly workflow?: string;
@@ -53,9 +53,12 @@ function toolsFit(lock: PluginLock, fetched: FetchedPlugin): boolean {
   return names.every((name) => name.length <= maxToolName && !held.has(name));
 }
 
-// With provenance, the source repository, issuer and workflow its certificate names; without it,
-// the npm account the registry names.
-function publisherOf(fetched: FetchedPlugin): Publisher {
+/**
+ * Who a fetched version says signed it, as the plugin lock stores it: with provenance, the source
+ * repository, issuer and workflow its certificate names; without it, the npm account the registry
+ * names.
+ */
+export function publisherOf(fetched: FetchedPlugin): Publisher {
   const { provenance, registryPublisher } = fetched;
   if (provenance.provenance === "verified") {
     const { publisher, issuer, workflow } = provenance;

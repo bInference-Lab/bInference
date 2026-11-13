@@ -38,6 +38,21 @@ export interface PluginOperationsOptions extends InstallParts {
 
 const add = "plugin/add";
 
+// The job's end for a listing that kept the plugin out: the field that differs, or why the
+// catalog could not be read, which a later try may get past (decision 0433).
+function listingPush(
+  job: ProtocolId<"longJob">,
+  failure: Extract<InstallFailure, { readonly field: string } | { readonly reason: string }>,
+): JobFailedPush {
+  const message = "The plugin's listing kept it out.";
+  if ("field" in failure) {
+    const details = { field: failure.field };
+    return { job, op: add, error: { code: failure.code, message, retryable: false, details } };
+  }
+  const details = { reason: failure.reason };
+  return { job, op: add, error: { code: failure.code, message, retryable: true, details } };
+}
+
 function failedPush(job: ProtocolId<"longJob">, failure: InstallFailure): JobFailedPush {
   const { code } = failure;
   if (code === "plugin.review_needed") {
@@ -45,6 +60,9 @@ function failedPush(job: ProtocolId<"longJob">, failure: InstallFailure): JobFai
     const details = { review: JSON.stringify(failure.review) };
     const message = "The plugin waits for the owner's review.";
     return { job, op: add, error: { code, message, retryable: false, details } };
+  }
+  if (code === "plugin.listing_mismatch" || code === "plugin.listings_unreachable") {
+    return listingPush(job, failure);
   }
   if (code !== "plugin.fetch_failed") {
     const message = "The plugin was not installed.";
@@ -60,6 +78,11 @@ function failedPush(job: ProtocolId<"longJob">, failure: InstallFailure): JobFai
     details: { reason, ...wait },
   };
   return { job, op: add, error };
+}
+
+// A plugin as surfaces see it, with its listing where the composition root needs one.
+function viewOf(options: PluginOperationsOptions, entry: LockedPlugin) {
+  return pluginViewOf(entry, options.listing === undefined ? undefined : "listed");
 }
 
 // One plugin of the lock by its `plg_` id.
@@ -212,7 +235,7 @@ async function runInstall(
       return;
     }
     const data = outcome.ok
-      ? jsonValueSchema.parse({ job, op: add, result: pluginViewOf(outcome.value) })
+      ? jsonValueSchema.parse({ job, op: add, result: viewOf(options, outcome.value) })
       : jsonValueSchema.parse(failedPush(job, outcome.failure));
     options.publish({ topic: "job", kind: outcome.ok ? "job/done" : "job/failed", data });
   } catch (error) {
@@ -281,12 +304,12 @@ export function createPluginOperations(options: PluginOperationsOptions): Engine
     if (entry === "quota") {
       return err("quota.plugins");
     }
-    return entry === undefined ? err("plugin.not_found") : ok(pluginViewOf(entry));
+    return entry === undefined ? err("plugin.not_found") : ok(viewOf(options, entry));
   };
   return {
     "plugin/list": async ({ signal }) => {
       const lock = await options.records.read(signal);
-      return ok({ items: lock.plugins.map(pluginViewOf) });
+      return ok({ items: lock.plugins.map((entry) => viewOf(options, entry)) });
     },
     "plugin/add": addHandler(options),
     "plugin/enable": async ({ args, signal }) =>

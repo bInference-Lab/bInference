@@ -1,5 +1,6 @@
 {
   "review.title": "Add {plugin} {version} from {source}?",
+  "review.listed": "Reviewed and listed by bInference",
   "review.hash": "Pinned to SHA-256 {hash}",
   "review.publisher": "Publisher {publisher} · npm provenance {provenance, select, verified {checked} other {none}}",
   "review.workflow": "Built by the workflow {workflow}",

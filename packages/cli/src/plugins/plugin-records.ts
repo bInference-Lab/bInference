@@ -68,11 +68,31 @@ export function withPlugin(lock: PluginLock, entry: LockedPlugin): PluginLock {
   return { plugins: [...lock.plugins.filter(({ id }) => id !== entry.id), entry] };
 }
 
+/** Whether a plugin the lock has on runs, under a rule that needs listings: or waits, held. */
+export type ListedStanding = "listed" | "held";
+
+// Where the plugin stands with its listing (decisions 0433 and 0435), under a rule that needs one.
+function listingViewOf(entry: LockedPlugin, standing: ListedStanding): PluginView["listing"] {
+  const { listing } = entry;
+  if (listing === undefined) {
+    return { state: "unlisted" };
+  }
+  const ref = {
+    listing: protocolIdSchema("pluginListing").parse(listing.listing),
+    version: listing.version,
+  };
+  return { ...ref, state: entry.disabledReason === "revoked" ? "revoked" : standing };
+}
+
 /**
  * An installed plugin as `plugin/list` shows it: its permissions as `kind:`, `host:`, `tool:` and
- * `config:` each followed by its name, and its tools by the names the agent calls them.
+ * `config:` each followed by its name, and its tools by the names the agent calls them. Under a
+ * rule that needs listings, `standing` says whether one on is held, and the view names its
+ * listing; a revoked plugin is off with no `disabledReason`, which names three reasons only.
  */
-export function pluginViewOf(entry: LockedPlugin): PluginView {
+export function pluginViewOf(entry: LockedPlugin, standing?: ListedStanding): PluginView {
+  const { disabledReason } = entry;
+  const listing = standing === undefined ? undefined : listingViewOf(entry, standing);
   const declared = declarationsOf(entry.manifest);
   const permissions = [
     ...declared.kinds.map((kind) => `kind:${kind}`),
@@ -92,7 +112,8 @@ export function pluginViewOf(entry: LockedPlugin): PluginView {
     installedAt: entry.installedAt,
     provenance: entry.provenance,
     ...(entry.publisher === undefined ? {} : { publisher: entry.publisher }),
-    ...(entry.disabledReason === undefined ? {} : { disabledReason: entry.disabledReason }),
+    ...(disabledReason === undefined || disabledReason === "revoked" ? {} : { disabledReason }),
     tools: entry.manifest.tools.map(({ name }) => pluginToolName(entry.id, name)),
+    ...(listing === undefined ? {} : { listing }),
   };
 }

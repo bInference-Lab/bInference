@@ -37,6 +37,7 @@ export const idPrefixes = {
   shellRequest: "shq",
   allowedCommand: "sac",
   mcpListing: "mls",
+  pluginListing: "pls",
 } as const;
 
 /** A thing that carries a protocol id, such as `intent` or `connection`. */

@@ -152,6 +152,12 @@ export * from "./views/intent-state.schema.js";
 export * from "./views/intent-view.schema.js";
 export type { JobRef } from "./views/job-ref.schema.js";
 export * from "./views/community-plugin-limits.js";
+export {
+  pluginListingRefSchema,
+  pluginListingViewSchema,
+  type PluginListingRef,
+  type PluginListingView,
+} from "./views/plugin-listing.schema.js";
 export { pluginReviewSchema, type PluginReview } from "./views/plugin-review.schema.js";
 export * from "./views/job-push.schema.js";
 export * from "./views/chat-push.schema.js";

@@ -80,6 +80,7 @@ export function pluginReviewLines(formatter: Formatter, review: PluginReview): r
   const workflow = review.workflow;
   return [
     ...head,
+    ...(review.listing === undefined ? [] : [say("review.listed")]),
     ...wideningLines(say, review),
     say("review.hash", { hash: review.hash }),
     say("review.publisher", { publisher, provenance: review.provenance }),

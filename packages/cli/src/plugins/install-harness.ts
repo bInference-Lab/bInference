@@ -4,6 +4,7 @@ import { createSeededRandom, type ManualClock } from "@binference/core/testing";
 import { ensurePrivateFolder, readTextFile } from "@binference/platform";
 import { noPermissions } from "../e2e/test-host.js";
 import type { InstallParts } from "./install-plugin.js";
+import type { ListingGate } from "./listing-gate.js";
 import { createNpmRegistry } from "./npm-registry.js";
 import { createPluginRecords } from "./plugin-records.js";
 
@@ -24,6 +25,8 @@ export function createInstallHarness(options: {
   readonly http: HttpDownload;
   readonly folder: string;
   readonly clock: ManualClock;
+  /** The listing rule's checks, where the test's composition needs listings. */
+  readonly listing?: ListingGate;
 }): InstallHarness {
   const { folder, clock } = options;
   const random = createSeededRandom(7);
@@ -45,6 +48,7 @@ export function createInstallHarness(options: {
     newPlugin: () => ids.next("plg"),
     clock,
     random,
+    ...(options.listing === undefined ? {} : { listing: options.listing }),
   };
   return {
     parts,

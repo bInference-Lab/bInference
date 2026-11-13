@@ -1,11 +1,21 @@
-import { err, ok, type Result } from "@binference/core";
+import { err, type Id, idSchema, ok, type Result } from "@binference/core";
 import { type FilePermissions, readTextFile, writePrivateFile } from "@binference/platform";
 import { type CommunityManifest, communityManifestSchema } from "@binference/plugin-sdk/community";
 import type { PluginReview } from "@binference/protocol";
 import { z } from "zod";
 
-/** Why an installed plugin is off: the owner turned it off, it crashed, or its files changed. */
-type PluginOffReason = "owner" | "crashes" | "changed";
+/**
+ * Why an installed plugin is off: the owner turned it off, it crashed, its files changed, or
+ * bInference revoked its listing (decision 0435).
+ */
+type PluginOffReason = "owner" | "crashes" | "changed" | "revoked";
+
+/** The plugin listing an installed plugin runs under, on bInference Cloud (decision 0433). */
+export interface LockedListing {
+  readonly listing: Id<"pls">;
+  /** The listing's version the install or an enable last checked; a later check takes no lower. */
+  readonly version: number;
+}
 
 /** One installed community plugin as the plugin lock records it (decision 0348). */
 export interface LockedPlugin {
@@ -35,6 +45,8 @@ export interface LockedPlugin {
   readonly enabled: boolean;
   readonly disabledReason?: PluginOffReason;
   readonly installedAt: number;
+  /** Its plugin listing, where the composition root needs one; self-hosted entries hold none. */
+  readonly listing?: LockedListing;
 }
 
 /** The plugin lock, `plugins/lock.json`: the one record of the installed community plugins. */
@@ -61,8 +73,11 @@ const lockedSchema: z.ZodType<LockedPlugin> = z
     issuer: z.string().max(200).exactOptional(),
     workflow: z.string().max(200).exactOptional(),
     enabled: z.boolean(),
-    disabledReason: z.enum(["owner", "crashes", "changed"]).exactOptional(),
+    disabledReason: z.enum(["owner", "crashes", "changed", "revoked"]).exactOptional(),
     installedAt: z.int().nonnegative(),
+    listing: z
+      .strictObject({ listing: idSchema("pls"), version: z.int().positive() })
+      .exactOptional(),
   })
   .refine((entry) => entry.id === entry.manifest.id, "the id must be its manifest's");
 

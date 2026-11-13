@@ -20,6 +20,7 @@ import {
   removeLauncherData,
 } from "@binference/plugin-host";
 import type { RuntimePlugin } from "@binference/runtime";
+import { listingGateOf } from "../plugins/listing-gate.js";
 import { createNpmRegistry, npmRegistry } from "../plugins/npm-registry.js";
 import type { PluginLock } from "../plugins/plugin-lock.js";
 import { createPluginRecords, type PluginRecords } from "../plugins/plugin-records.js";
@@ -249,6 +250,8 @@ function composePlugins(opening: Opening, opened: Opened, wiring: PluginWiring):
   closers.add("plugins", async () => stop.abort());
   const runner = runnerOf(opening, opened, { places, records, wiring, logger, life: stop.signal });
   const ids = createIdSource({ clock: host.clock, random: host.random });
+  // The owner reviews every plugin here, so no listing is needed (decision 0433).
+  const listing = listingGateOf({ kind: "notRequired" }, { clock: host.clock, logger });
   const handlers = createPluginOperations({
     registry: createNpmRegistry({
       download: host.download ?? noDownload,
@@ -267,6 +270,7 @@ function composePlugins(opening: Opening, opened: Opened, wiring: PluginWiring):
     clock: host.clock,
     random: host.random,
     quotas: noQuotas,
+    ...(listing === undefined ? {} : { listing }),
     logger,
   });
   return {

@@ -3,7 +3,9 @@ import type { QuotaSource } from "@binference/engine/quotas";
 import type { PluginFile } from "@binference/plugin-host";
 import type { PluginReview } from "@binference/protocol";
 import { decideInstall, type InstallAnswers } from "./decide-install.js";
-import { type FetchFailure, fetchPlugin } from "./fetch-plugin.js";
+import type { FetchFailure } from "./fetch-plugin.js";
+import { fetchListed, listedDecision, withinListing } from "./listed-install.js";
+import type { ListingFailure, ListingGate } from "./listing-gate.js";
 import type { BundleVerifier } from "./npm-provenance.js";
 import type { NpmRegistry } from "./npm-registry.js";
 import { failed, type Outcome } from "./outcome.js";
@@ -28,11 +30,17 @@ export interface InstallParts {
   readonly random: Random;
   /** The install's quotas: how many plugins may be on (decision 0431); none when absent. */
   readonly quotas?: QuotaSource;
+  /**
+   * The listing rule's checks, where the composition root requires a listing (decision 0433);
+   * none installs as decision 0348 has it.
+   */
+  readonly listing?: ListingGate;
 }
 
 /** Why an install changed nothing: what the fetch refused, a refusal, or the review it waits for. */
 export type InstallFailure =
   | FetchFailure
+  | ListingFailure
   | {
       readonly code:
         | "plugin.id_taken"
@@ -79,7 +87,8 @@ async function putInPlace(
     return failed({ code: "plugin.install_failed" });
   }
   const next = await parts.records.change(
-    (lock) => withPlugin(lock, withinPluginsQuota(lock, entry, quota)),
+    (lock) =>
+      withPlugin(lock, withinListing(parts.listing, withinPluginsQuota(lock, entry, quota))),
     signal,
   );
   const startedAll = await parts.runner.begin(next);
@@ -92,27 +101,26 @@ async function putInPlace(
 }
 
 /**
- * Installs a community plugin (decision 0348): fetches and checks it, decides with the lock what
- * the owner's answers allow, and, for an install, stops the running version, puts the files in
- * place, makes its data folder, records it in the lock, then runs it when it is on and hands the
- * agent its tools. A review the owner has not given, or a refusal, changes nothing; files that
- * cannot be written end it `plugin.install_failed`, the installed version running on.
+ * Installs a community plugin (decision 0348): fetches and checks it, under its listing where
+ * the composition root needs one (decision 0433), decides with the lock what the owner's answers
+ * allow, and, for an install, stops the running version, puts the files in place, makes its data
+ * folder, records it in the lock, then runs it when it is on and hands the agent its tools. A
+ * review the owner has not given, or a refusal, changes nothing; files that cannot be written end
+ * it `plugin.install_failed`, the installed version running on.
  */
 export async function installPlugin(
   parts: InstallParts,
   answers: InstallAnswers,
   signal: AbortSignal,
 ): Promise<Outcome<LockedPlugin, InstallFailure>> {
-  const fetched = await fetchPlugin(parts, answers.from, signal);
-  if (!fetched.ok) {
-    return fetched;
+  const listed = await fetchListed(parts, answers.from, signal);
+  if (!listed.ok) {
+    return listed;
   }
+  const { fetched, listing } = listed.value;
   const lock = await parts.records.read(signal);
-  const decided = decideInstall(lock, fetched.value, {
-    answers,
-    newPlugin: () => parts.newPlugin(),
-    now: parts.clock.now(),
-  });
+  const made = { answers, newPlugin: () => parts.newPlugin(), now: parts.clock.now() };
+  const decided = listedDecision(decideInstall(lock, fetched, made), listing);
   if (decided.kind === "refused") {
     return failed({ code: decided.code });
   }
@@ -125,7 +133,7 @@ export async function installPlugin(
     if (decided.entry.enabled && isPluginsFull(lock, decided.entry, quota)) {
       return failed({ code: "quota.plugins" });
     }
-    const files = fetched.value.pkg.files;
+    const files = fetched.pkg.files;
     const placing = { entry: decided.entry, files, installed, quota };
     const put = await putInPlace(parts, placing, signal);
     if (!put.ok) {

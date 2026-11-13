@@ -6,6 +6,7 @@ import { epochMsSchema } from "../values/epoch-ms.schema.js";
 import { type Page, pageSchema } from "../values/page.schema.js";
 import { plainIdSchema } from "../values/plain-id.schema.js";
 import { type JobRef, jobRefSchema } from "../views/job-ref.schema.js";
+import { type PluginListingView, pluginListingViewSchema } from "../views/plugin-listing.schema.js";
 import type { PluginProvenance } from "../views/plugin-review.schema.js";
 import { localWriteFlags, readFlags, writeFlags, type OperationTable } from "./operation.schema.js";
 
@@ -65,6 +66,8 @@ interface PluginView {
   readonly disabledReason?: PluginOffReason;
   /** Each tool by the name the agent calls it, `<id>__<tool>`. */
   readonly tools?: readonly string[];
+  /** Its listing and where it stands with it, where the engine needs one. */
+  readonly listing?: PluginListingView;
 }
 
 /** The args of `skill/add`: where to install from and the expected hash. */
@@ -202,6 +205,7 @@ const pluginView = z.object({
   publisher: z.string().exactOptional(),
   disabledReason: z.enum(["owner", "crashes", "changed"]).exactOptional(),
   tools: z.array(z.string()).exactOptional(),
+  listing: pluginListingViewSchema.exactOptional(),
 });
 const pluginArgs = z.strictObject({ plugin: protocolIdSchema("installedPlugin") });
 const skillPlace = z.enum(["bundled", "installed", "workspace"]);
