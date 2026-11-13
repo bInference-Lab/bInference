@@ -2,10 +2,14 @@ import { createMemoryLogger, createManualClock } from "@binference/core/testing"
 import { describe, expect, it } from "vitest";
 import { createListingSigner } from "./fake-listing-signer.js";
 import { createFakePluginCatalog } from "./fake-plugin-catalog.js";
-import { asPayload, listingFixture, listingIdFixture } from "./listing-fixtures.js";
+import {
+  asPayload,
+  listedEntryFixture,
+  listingFixture,
+  listingIdFixture,
+} from "./listing-fixtures.js";
 import { createListingGate } from "./listing-gate.js";
 import { createListingKeys } from "./listing-keys.js";
-import type { LockedPlugin } from "./plugin-lock.js";
 
 const startMs = 1_767_261_600_000;
 const signal = new AbortController().signal;
@@ -25,31 +29,7 @@ function gateOver() {
   return { clock, catalog, gate, logger };
 }
 
-const entry: LockedPlugin = {
-  plugin: "plg_0190f1c2-3a4b-7c5d-8e6f-000000000001",
-  id: listing.plugin,
-  packageName: listing.packageName,
-  version: listing.packageVersion,
-  source: "npm:echo-feed@1.0.0",
-  integrity: listing.integrity,
-  hash: listing.files,
-  manifest: {
-    api: 1,
-    id: "echo-feed",
-    kinds: ["data"],
-    entry: "index.mjs",
-    hosts: ["api.example.com"],
-    tools: [
-      { name: "echo", description: "Echo.", input: { type: "object" }, output: { type: "object" } },
-    ],
-  },
-  accepted: "c".repeat(64),
-  provenance: "none",
-  publisher: "fake-publisher",
-  enabled: true,
-  installedAt: 1,
-  listing: { listing: listing.listing, version: 1 },
-};
+const entry = listedEntryFixture();
 
 describe("the listing gate before an add", () => {
   it("answers the newest version of the one listing a package version has", async () => {

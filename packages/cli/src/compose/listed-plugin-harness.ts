@@ -7,16 +7,19 @@ import {
 } from "@binference/core/testing";
 import type { EnginePush } from "@binference/engine";
 import { createRunningTurns } from "@binference/engine/chat";
+import type { QuotaSource } from "@binference/engine/quotas";
+import type { EngineHandlerTable } from "@binference/engine/surfaces";
 import { ensurePrivateFolder, removePath } from "@binference/platform";
 import type { CommunityManifest } from "@binference/plugin-sdk/community";
 import { type JobFailedPush, jobFailedPushSchema } from "@binference/protocol";
 import { noPermissions } from "../e2e/test-host.js";
 import { createListingSigner } from "../plugins/fake-listing-signer.js";
 import type { FakeNpmRegistry } from "../plugins/fake-npm-registry.js";
+import { createListedRunner, type ListedRunner } from "../plugins/listed-runner.js";
 import { asPayload, listingFixture } from "../plugins/listing-fixtures.js";
 import { listingGateOf } from "../plugins/listing-gate.js";
 import { createNpmRegistry } from "../plugins/npm-registry.js";
-import { createPluginRecords } from "../plugins/plugin-records.js";
+import { createPluginRecords, type PluginRecords } from "../plugins/plugin-records.js";
 import type { PluginRunner } from "../plugins/plugin-runner.js";
 import { createClosers } from "./closers.js";
 import { type CloudTestRoot, composeCloudTestRoot } from "./cloud-test-root.js";
@@ -57,26 +60,52 @@ export interface ListedPluginPlace {
 /** The Cloud composition's plugin operations, and how a test adds a plugin through them. */
 export interface CloudPluginOperations {
   readonly root: CloudTestRoot;
+  readonly handlers: EngineHandlerTable;
+  readonly records: PluginRecords;
+  /** The runner under the listing rule, over one that starts nothing. */
+  readonly runner: ListedRunner;
+  /** The caller every operation runs as: the owner at a terminal. */
+  readonly owner: typeof owner;
   /** Starts `plugin/add` and answers the error its job ended with. */
   add(args: { readonly source: string; readonly hash: string }): Promise<JobFailedPush["error"]>;
 }
 
-/** The plugin operations as the Cloud composition wires them: the Cloud test root's listing rule. */
-export function cloudPluginOperations(place: ListedPluginPlace): CloudPluginOperations {
+// The parts the operations stand on: the Cloud root's clock and rule, a listed runner over one
+// that starts nothing, and the plugin lock in the test's folder.
+function cloudParts(place: ListedPluginPlace) {
   const clock = createManualClock(startMs);
   const root = composeCloudTestRoot({ clock });
   const logger = createMemoryLogger({ subsystem: "plugins" });
+  const listing = listingGateOf(root.pluginListing, { clock, logger });
+  if (listing === undefined) {
+    throw new Error("Expected the Cloud test root to require listings.");
+  }
+  const life = new AbortController().signal;
+  const runner = createListedRunner({ runner: idleRunner, gate: listing, logger, life });
+  const records = createPluginRecords({
+    file: join(place.folder, "lock.json"),
+    permissions: noPermissions,
+  });
+  return { clock, root, logger, listing, runner, records };
+}
+
+/** The plugin operations as the Cloud composition wires them: the Cloud test root's listing rule. */
+export function cloudPluginOperations(
+  place: ListedPluginPlace,
+  extra: { readonly quotas?: QuotaSource } = {},
+): CloudPluginOperations {
+  const { clock, root, logger, listing, runner, records } = cloudParts(place);
   const random = createSeededRandom(3);
   const ids = createIdSource({ clock, random });
   const ends: ((push: EnginePush) => void)[] = [];
-  const listing = listingGateOf(root.pluginListing, { clock, logger });
   const { folder } = place;
   const handlers = createPluginOperations({
     registry: createNpmRegistry({ download: place.http, base: place.registry.base }),
     verify: async () => Promise.resolve({ ok: false, error: "unverified" }),
-    records: createPluginRecords({ file: join(folder, "lock.json"), permissions: noPermissions }),
+    records,
     shelf: { packages: join(folder, "packages"), work: join(folder, "work") },
-    runner: idleRunner,
+    runner,
+    isHeld: (id) => runner.isHeld(id),
     makeData: async (id, signal) =>
       ensurePrivateFolder(join(folder, "data", id), { permissions: noPermissions, signal }),
     removeData: async (id, signal) => removePath(join(folder, "data", id), signal),
@@ -87,16 +116,15 @@ export function cloudPluginOperations(place: ListedPluginPlace): CloudPluginOper
     clock,
     random,
     logger,
-    ...(listing === undefined ? {} : { listing }),
+    listing,
+    ...(extra.quotas === undefined ? {} : { quotas: extra.quotas }),
   });
-  return {
-    root,
-    add: async (args) => {
-      const ended = new Promise<EnginePush>((resolve) => ends.push(resolve));
-      await handlers["plugin/add"]?.({ args, caller: owner, signal: new AbortController().signal });
-      return jobFailedPushSchema.parse((await ended).data).error;
-    },
+  const add: CloudPluginOperations["add"] = async (args) => {
+    const ended = new Promise<EnginePush>((resolve) => ends.push(resolve));
+    await handlers["plugin/add"]?.({ args, caller: owner, signal: new AbortController().signal });
+    return jobFailedPushSchema.parse((await ended).data).error;
   };
+  return { root, handlers, records, runner, owner, add };
 }
 
 /** A version of the test's plugin on the fake registry: its source, integrity and version. */

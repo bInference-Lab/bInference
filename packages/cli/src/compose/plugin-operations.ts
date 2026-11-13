@@ -15,12 +15,16 @@ import {
   type InstallParts,
   installPlugin,
 } from "../plugins/install-plugin.js";
+import type { ListingFailure } from "../plugins/listing-gate.js";
+import type { Outcome } from "../plugins/outcome.js";
+import type { PluginListing } from "../plugins/plugin-listing.schema.js";
 import type { LockedPlugin } from "../plugins/plugin-lock.js";
 import { isPluginsFull, pluginsQuotaOf } from "../plugins/plugin-quota.js";
 import { pluginViewOf, withPlugin } from "../plugins/plugin-records.js";
 import type { PluginRunner } from "../plugins/plugin-runner.js";
 import { removePluginPackage } from "../plugins/put-plugin.js";
 import type { Closers } from "./closers.js";
+import { enableListing, refusedEnable, withListingVersion } from "./listed-enable.js";
 import { createSingleJob } from "./single-job.js";
 
 /** What the plugin operations read, write and announce. */
@@ -34,6 +38,8 @@ export interface PluginOperationsOptions extends InstallParts {
   readonly publish: PublishPush;
   readonly closers: Closers;
   readonly logger: Logger;
+  /** Whether a plugin the lock has on is held by the listing rule; none without one. */
+  isHeld?(id: string): boolean;
 }
 
 const add = "plugin/add";
@@ -82,7 +88,10 @@ function failedPush(job: ProtocolId<"longJob">, failure: InstallFailure): JobFai
 
 // A plugin as surfaces see it, with its listing where the composition root needs one.
 function viewOf(options: PluginOperationsOptions, entry: LockedPlugin) {
-  return pluginViewOf(entry, options.listing === undefined ? undefined : "listed");
+  if (options.listing === undefined) {
+    return pluginViewOf(entry);
+  }
+  return pluginViewOf(entry, options.isHeld?.(entry.id) === true ? "held" : "listed");
 }
 
 // One plugin of the lock by its `plg_` id.
@@ -103,29 +112,47 @@ function switched(entry: LockedPlugin, change: { readonly enabled: boolean }): L
     : { ...rest, enabled: false, disabledReason: "owner" };
 }
 
+// What a switch does before it writes: stops a plugin turned off, and checks the listing of one
+// turned on where the composition root needs one.
+async function beforeSwitch(
+  options: PluginOperationsOptions,
+  change: { readonly entry: LockedPlugin; readonly enabled: boolean },
+  signal: AbortSignal,
+): Promise<Outcome<PluginListing | undefined, ListingFailure>> {
+  if (change.enabled) {
+    return enableListing(options.listing, change.entry, signal);
+  }
+  await options.runner.stop(change.entry.id);
+  return { ok: true, value: undefined };
+}
+
 // Turns a plugin on or off in the lock at once, built from the lock the change reads, so an
 // install under way is never written over; hands the agent the tools of those on, and answers
 // the plugin as the lock holds it once its start settled, turned off again when the host refused.
 // A plugin turned on past the plugins' quota, counted in the same change, is `quota` and changes
-// nothing (decision 0431).
+// nothing (decision 0431); before the quota, one whose listing does not pass changes nothing
+// either, and one whose does takes the listing version its check read (decision 0433).
 async function setEnabled(
   options: PluginOperationsOptions,
   change: { readonly plugin: string; readonly enabled: boolean },
   signal: AbortSignal,
-): Promise<LockedPlugin | "quota" | undefined> {
+): Promise<LockedPlugin | ListingFailure | "quota" | undefined> {
   const entry = await entryOf(options, change.plugin, signal);
   if (entry === undefined) {
     return undefined;
   }
-  if (!change.enabled) {
-    await options.runner.stop(entry.id);
+  const listed = await beforeSwitch(options, { entry, enabled: change.enabled }, signal);
+  if (!listed.ok) {
+    return listed.failure;
   }
   const quota = change.enabled ? await pluginsQuotaOf(options.quotas, signal) : undefined;
   let isFull = false;
   const lock = await options.records.change((now) => {
     const current = now.plugins.find(({ plugin }) => plugin === change.plugin);
     isFull = current !== undefined && change.enabled && isPluginsFull(now, current, quota);
-    return current === undefined || isFull ? now : withPlugin(now, switched(current, change));
+    return current === undefined || isFull
+      ? now
+      : withPlugin(now, withListingVersion(switched(current, change), listed.value));
   }, signal);
   if (isFull) {
     return "quota";
@@ -303,6 +330,9 @@ export function createPluginOperations(options: PluginOperationsOptions): Engine
     const entry = await setEnabled(options, change, signal);
     if (entry === "quota") {
       return err("quota.plugins");
+    }
+    if (entry !== undefined && "code" in entry) {
+      return refusedEnable(entry);
     }
     return entry === undefined ? err("plugin.not_found") : ok(viewOf(options, entry));
   };
