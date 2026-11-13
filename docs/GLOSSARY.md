@@ -556,6 +556,12 @@ check` tries it as `network.proxy`.
 - **operations control**: the closed-source console from which bInference's owner pulls and lifts
   the breaker, connecting as the database role `binference_ops`.
 - **listing catalog**: the Cloud service that writes the reviewed plugin and MCP server listings.
+- **MCP listing**: the listing catalog's entry for one outside MCP server (`mls_…`): its endpoint,
+  the MCP revision its review tested, its time and size caps, and up to 8 read tools, each pinned
+  to the schemas and the server's definition the review read.
+- **listed MCP server**: an outside MCP server an MCP listing names, which a Cloud owner turns on
+  per agent. The agent runtime calls its tools as reads named `mcp-<name>-<tool>`; every answer is
+  outside content, and while one is on every turn of the agent starts marked.
 - **store ports**: the engine's ports for the state it keeps: intents with their cards and
   confirmations, the ledger, the inbox, idempotency keys, access, agents, the install with its
   wallets, and the config journal. `store` holds their SQLite adapters; each port has one contract
@@ -892,6 +898,8 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | breaker (on Cloud)                          | 熔断开关                 | Freezes every Cloud agent      |
 | operations control                          | 运维控制台               | Moves the breaker              |
 | listing catalog                             | 上架目录服务             | Writes the listings            |
+| MCP listing                                 | MCP 上架条目             | One server's listing           |
+| listed MCP server                           | 上架 MCP 服务器          | Answers are outside content    |
 
 ### Trading
 

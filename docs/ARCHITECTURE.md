@@ -176,7 +176,8 @@ binference/                         MIT, pnpm + Turborepo, Node 26.1+, TypeScrip
                                          dialect; one contract test suite per port
     telegram/     @binference/telegram   grammY: ingress, throttler, cards, fast commands, owner pairing
     runtime/      @binference/runtime    the agent runtime: loop, queues, sessions, context, compaction,
-                                         skills loader, tool registry and policy, hooks, memory, providers
+                                         skills loader, tool registry and policy, hooks, memory, providers,
+                                         the client of listed MCP servers (Cloud)
     console/      @binference/console    the OSS web console (React, Vite, shadcn), served by the engine;
                                          also the Telegram Mini App (section 25)
     tui/          @binference/tui        terminal chat (section 25)
@@ -342,6 +343,7 @@ or waits for the turn to end (`after`). Cancelling a turn never cancels a confir
 | `tx_status`, `orders`                 | A transaction's state; the agent's auto orders                                                    |
 | `cex_*` (plugin)                      | Binance balances, positions, tickers and open orders through Agent OS                             |
 | `search_web`, `search_x`, `read_page` | Outside content; marks the turn                                                                   |
+| `mcp-<name>-<tool>` (Cloud)           | A listed MCP server's read ([decision 0428](DECISIONS.md#d0428)); marks every turn                |
 | `notes_search`                        | Labelled memory                                                                                   |
 | `open_skill`                          | Reads one installed skill's `SKILL.md` and its files, when the model needs the playbook           |
 
@@ -875,6 +877,13 @@ Installs (`binference plugin add`, `list`, `enable`, `disable`, `remove`) are pr
 **MCP server.** `binference mcp` is a stdio MCP server that connects to the engine with a `read` and
 `propose` token. Claude Code, Codex, Cursor or any MCP client can then quote, check risk and
 propose. Every proposal waits for the owner's tap in binference's Telegram or console.
+
+**Listed MCP servers (Cloud).** The agent runtime is also an MCP client, on bInference Cloud only:
+it calls the read tools of the outside MCP servers the listing catalog reviewed and signed, which
+the owner turns on per agent ([decisions 0428](DECISIONS.md#d0428) to
+[0430](DECISIONS.md#d0430)). Each tool runs as its listing pins it, its answers are outside
+content, and while one is on every turn of the agent starts marked and auto mode asks. Requests
+go only to the listed endpoint, by `POST`, through the outbound route, within the listing's caps.
 
 **Own vocabulary ([decision 0074](DECISIONS.md#d0074)).** binference uses its own names for every
 file, command, config key, protocol name, tool and term ([GLOSSARY.md](GLOSSARY.md)). Users of other
@@ -1420,7 +1429,8 @@ the Cloud profile. A port with two adapters runs one contract test suite against
   a row per agent (install, agent, worker, fence, expiry), taken and renewed every few seconds
   together, since one engine and one runtime serve an install. Every write carries the fence, so
   a worker that lost its lease cannot write ([spec 3, section 6.5](specs/database.md#section-6-5)).
-  Cloud agents get no shell, file or browser tools.
+  Cloud agents get no shell, file or browser tools; they get the read tools of the listed MCP
+  servers their owner turns on ([decision 0428](DECISIONS.md#d0428)).
 - **Signer service.** The only holder of our Privy authorization key, in KMS. It runs the same hard
   rules as the self-hosted signer and signs with `eth_signTransaction`; the worker broadcasts through
   private relays. Owners can export their key or remove the bInference signer at any time. As

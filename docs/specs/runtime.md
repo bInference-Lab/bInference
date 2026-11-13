@@ -6,7 +6,8 @@ proposal rule is [decision 0167](../DECISIONS.md#d0167), accepted on 2026-10-10.
 [decision 0207](../DECISIONS.md#d0207) (where skills live, how they are read and installed) and
 [decision 0221](../DECISIONS.md#d0221) (the model check) and
 [decision 0247](../DECISIONS.md#d0247) (the alert and schedule tools) and
-[decision 0415](../DECISIONS.md#d0415) (deleting chats).
+[decision 0415](../DECISIONS.md#d0415) (deleting chats) and decisions
+[0428](../DECISIONS.md#d0428) to [0430](../DECISIONS.md#d0430) (listed MCP servers).
 
 The agent runtime is the process that runs each agent's model loop: sessions, context, tools,
 compaction and model calls ([ARCHITECTURE.md section 4](../ARCHITECTURE.md#section-4)). It is a
@@ -72,14 +73,19 @@ message, zod-checked on both sides. Everything else goes over the protocol.
 | `stop`       | engine  | none: the shutdown order has begun                                                                        |
 | `ready`      | runtime | `version`, `schemaVersion`                                                                                |
 | `routeReply` | runtime | `id`, then `result` or `error` (a spec 1 error)                                                           |
-| `health`     | runtime | `runningTurns`, `waitingMessages`, `lastModelError?`; every 10 seconds                                    |
+| `health`     | runtime | `runningTurns`, `waitingMessages`, `lastModelError?`, `listedMcp?`; every 10 seconds                      |
 
 `settings` holds what the runtime needs and nothing more: `models` (spec 2, section 6.3) with each
 provider's key already resolved from its secret source, `chats.newMessageMode`, the search
 providers and their keys, the owner's locale and timezone, and `network`: the owner's proxy as the
 engine read it from its secret source (its URL, or `unread`, which holds every request it would
 carry) and `network.noProxy`, by which the runtime sends its outbound requests as the engine does.
-A reload applies to the next model call; a running call keeps its settings.
+On Cloud it also holds `listedMcp`: the MCP listings in force, each with the agents that have it
+on (section 5.5); the self-hosted engine sends none. A reload applies to the next model call; a
+running call keeps its settings.
+
+`health` carries `listedMcp` while an agent's listing rests or has a tool off: the agent, the
+listing, its state and the reason, at most 64 entries (section 5.5).
 
 <a id="section-2-3"></a>
 
@@ -338,7 +344,7 @@ Each tool has one kind, which the loop reads; nothing else in the loop depends o
 
 | Kind      | Tools ([ARCHITECTURE.md section 6](../ARCHITECTURE.md#section-6))                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `read`    | `token_search`, `addresses`, `wallets`, `portfolio`, `token_info`, `token_risk`, `quote`, `market_scan`, `chart`, `wallet_activity`, `staking_options`, `bridge_quote`, `tx_status`, `orders`, `schedule_list`, `cex_*`, `search_web`, `search_x`, `read_page`, `settings_read` ([decision 0393](../DECISIONS.md#d0393)), `look_at_image` ([decision 0385](../DECISIONS.md#d0385)), `look_at_screen` ([decision 0406](../DECISIONS.md#d0406), only when the owner asks; never for helpers), `read_pdf` ([decision 0402](../DECISIONS.md#d0402)), `file_read` ([decision 0386](../DECISIONS.md#d0386)), `notes_search`, `notes_get`, `open_skill`, `launchpads`, `helper_list`, `helper_read` ([decision 0403](../DECISIONS.md#d0403)), `goal_read` ([decision 0407](../DECISIONS.md#d0407)), `agent_status` ([decision 0404](../DECISIONS.md#d0404), in the agent's own turns it also sets the chat's model)                                                                                                                                                                                                                                                                                                                                                           |
+| `read`    | `token_search`, `addresses`, `wallets`, `portfolio`, `token_info`, `token_risk`, `quote`, `market_scan`, `chart`, `wallet_activity`, `staking_options`, `bridge_quote`, `tx_status`, `orders`, `schedule_list`, `cex_*`, `search_web`, `search_x`, `read_page`, `settings_read` ([decision 0393](../DECISIONS.md#d0393)), `look_at_image` ([decision 0385](../DECISIONS.md#d0385)), `look_at_screen` ([decision 0406](../DECISIONS.md#d0406), only when the owner asks; never for helpers), `read_pdf` ([decision 0402](../DECISIONS.md#d0402)), `file_read` ([decision 0386](../DECISIONS.md#d0386)), `notes_search`, `notes_get`, `open_skill`, `launchpads`, `helper_list`, `helper_read` ([decision 0403](../DECISIONS.md#d0403)), `goal_read` ([decision 0407](../DECISIONS.md#d0407)), `agent_status` ([decision 0404](../DECISIONS.md#d0404), in the agent's own turns it also sets the chat's model), on Cloud the tools of listed MCP servers, `mcp-<name>-<tool>` ([decision 0428](../DECISIONS.md#d0428), section 5.5)                                                                                                                                                                                                                                      |
 | `propose` | `swap`, `buy`, `sell`, `send`, `approval_revoke`, `order_create`, `stake`, `unstake`, `claim`, `bridge`, `settings_change` ([decision 0393](../DECISIONS.md#d0393)), `cex_order`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | `control` | `order_cancel` (braking), `alert_create`, `schedule_create`, `schedule_cancel`, `notes_write`, `notes_forget` ([decision 0384](../DECISIONS.md#d0384)), `ask_owner`, `workspace_write`, `first_chat_end` ([decision 0242](../DECISIONS.md#d0242)), `launch_draft` ([decision 0285](../DECISIONS.md#d0285)), `deposit_address` ([decision 0380](../DECISIONS.md#d0380)), `show_chart` ([decision 0387](../DECISIONS.md#d0387)), `make_image` ([decision 0392](../DECISIONS.md#d0392), its images arrive in a later turn), `make_video` ([decision 0405](../DECISIONS.md#d0405), its video arrives in a later turn), `speak` ([decision 0405](../DECISIONS.md#d0405), only when the owner asks for voice), `show_images` ([decision 0399](../DECISIONS.md#d0399), images already on the machine), `send_files` ([decision 0400](../DECISIONS.md#d0400), files as documents), `credentials` ([decision 0388](../DECISIONS.md#d0388), its request ends the turn), `helper_start`, `helper_send`, `helper_stop` ([decision 0403](../DECISIONS.md#d0403), a helper's result arrives in a later turn), `goal_set`, `goal_update`, `progress_note` ([decision 0407](../DECISIONS.md#d0407)), `skill_proposal` ([decision 0408](../DECISIONS.md#d0408), never in a marked turn) |
 | `machine` | `shell`, `shell_job` ([decision 0378](../DECISIONS.md#d0378)), `browse` ([decision 0401](../DECISIONS.md#d0401), binference's own browser), `file_write`, `file_edit`, `file_patch` ([decision 0386](../DECISIONS.md#d0386)), `http_request` ([decision 0411](../DECISIONS.md#d0411), an API call with the owner's stored credentials; never for helpers)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
@@ -353,6 +359,9 @@ with its hyphens as underscores. The settings name them (`plugins`), and the eng
 settings whenever a plugin is added, updated, turned on or off, or removed, so a turn takes the
 tools of the plugins on as it starts. Each calls `plugin/call`, and the engine refuses a call to a
 plugin turned off since ([decision 0349](../DECISIONS.md#d0349)).
+
+The tools of the listed MCP servers an agent has on are reads too, named `mcp-<name>-<tool>`; the
+runtime calls their servers itself, and the engine never does (section 5.5).
 
 `addresses` reads the agent's address book (`address/list`), so a `send` or a `bridge` names a
 saved address by its entry id. The owner saved each address and wrote each label with the owner
@@ -494,14 +503,16 @@ content, so the tool's text tells the model to end its turn instead of polling i
   ([decision 0401](../DECISIONS.md#d0401)), `read_pdf` always
   ([decision 0402](../DECISIONS.md#d0402)), `look_at_screen` always
   ([decision 0406](../DECISIONS.md#d0406)), `http_request` whenever the site answered
-  ([decision 0411](../DECISIONS.md#d0411)), and `helper_read` when any run of the helper read
+  ([decision 0411](../DECISIONS.md#d0411)), a listed MCP server's tool always
+  ([decision 0428](../DECISIONS.md#d0428)), and `helper_read` when any run of the helper read
   outside content ([decision 0403](../DECISIONS.md#d0403)). Every
   other tool shows an unlisted token by its address and the words "unlisted token", so its result
   stays clean.
 - **The turn's mark** is set when the model's context holds outside content: at `turn/start`, when
   any event in the kept history or the summary is marked, a message the turn takes has images or
   carries `outsideContent`, or the turn offers a community plugin's tools, whose words may reach it
-  at any call ([decision 0350](../DECISIONS.md#d0350)); during the turn, when a tool result or a joining message is outside
+  at any call ([decision 0350](../DECISIONS.md#d0350)), or a listed MCP server's tools
+  ([decision 0428](../DECISIONS.md#d0428)); during the turn, when a tool result or a joining message is outside
   content. Each such transcript event is stored with `outside` set, and a summary made from a
   marked event is marked.
 - So the mark lasts as long as the session holds the content: until the owner clears the session
@@ -509,6 +520,69 @@ content, so the tool's text tells the model to end its turn instead of polling i
 - A note written in a marked turn is stored `untrusted`, the label the engine sets, and no propose
   tool takes an address that only a note holds ([rule 10](../ARCHITECTURE.md#rule-10),
   [decision 0206](../DECISIONS.md#d0206)).
+
+<a id="section-5-5"></a>
+
+### 5.5 Listed MCP servers
+
+On bInference Cloud an agent may call outside MCP servers that bInference reviewed and lists
+(decisions [0428](../DECISIONS.md#d0428), [0429](../DECISIONS.md#d0429) and
+[0430](../DECISIONS.md#d0430)). The self-hosted composition root passes no listing, so a
+self-hosted agent gets none of these tools.
+
+- **Listings.** The composition root reads them from `ListedMcpSource`, a port of this package
+  with an in-memory fake in `@binference/runtime/testing`. It checks each with the listing schema,
+  leaves out one that fails (`runtime.listing_refused`), and sends the rest as the settings'
+  `listedMcp`, each with the agents that have it on, each agent once: at most 64 listings, 4 per
+  agent, each at most 64 KiB as JSON and all of them at most 512 KiB, those past it left out in
+  listing id order. It reads the set with the runtime's own schema before it sends it. A listing
+  holds its id (`mls_`), version, name, title, endpoint, the MCP revision the review tested, its
+  time and size caps, and 1 to 8 read tools. Each tool has its name on the server, the name
+  binference gives it, the reviewed description, the input and output schemas binference checks,
+  and the digest of the definition the review read from the server.
+- **Tools.** Each reaches the model as a `read` that may run beside other reads, named
+  `mcp-<name>-<tool>`, which no built-in or plugin tool's name can be, with the listing's input
+  schema and its description led by "From the listed MCP server <title>:". A listing that names a
+  tool like a built-in tool is refused whole. Helpers get their agent's listed tools too.
+- **The mark.** Every result is outside content. While an agent has a listed server on, every turn
+  and every helper run of it starts marked, and the engine marks the turn at `turn/start` itself
+  (`listedMcpOn`), so auto mode asks for every proposal; the approval views say so with
+  `listedMcpOn: true` beside `autoAsks`.
+- **Arguments.** Exactly what the listing's input schema takes, every string and list in it
+  bounded, at most 8 KiB as JSON. Arguments that hold, in any string or a list's strings read
+  together, a recovery phrase of the BIP-39 list, a private key block, a binference key, a bot
+  token or an owner key code are refused unsent. The runtime adds nothing of the agent's.
+- **The connection.** The official SDK's client in `src/listed-mcp/`, over Streamable HTTP, with
+  no capability advertised: one connection per agent and listing, opened at the first call, closed
+  after 5 minutes without one, at a new version of the listing, at its revocation and at stop. Its
+  fetch is the runtime's outbound HTTP: public addresses only, by the proxy route in force, to the
+  listing's URL alone, `POST` only, no redirect followed, no cookie. A `GET` is answered `405`
+  without a request, a `POST` that names no method, a reply to the server, `202` without one, and a
+  `DELETE` ends a session. Each answer is read whole within the listing's size cap, at most 1 MiB,
+  and refused before the SDK parses it past 64 levels of nesting or when it carries a request of
+  the server's. A connection has 10 seconds, a call the listing's time, at most 20 seconds, and
+  each request a deadline of its own; at most 8 requests of a connection are in flight. The
+  handshake offers the listing's revision alone, and the SDK refuses every request the server's
+  capabilities do not offer, so a server that settles on another revision or offers no tools
+  answers `bad_answer`. The runtime's entry sends every console method that writes to standard
+  output to standard error first, so no library writes to the control pipe.
+- **The live list.** At each connection the client reads `tools/list` a page at a time by its
+  cursor, at most 4 pages, and never from a cache; a listed tool not seen in them is missing. A tool whose definition's digest changed, that went missing, or that the server
+  says writes is off until the listing's version changes. A live tool the listing does not name is
+  never offered.
+- **Answers.** The `structuredContent`, checked with the listing's output schema, when the listing
+  has one; else the text blocks. Other blocks are left out with a line naming their type, and no
+  link is opened. `isError` gives the server's text as the tool's error. The result is cut at
+  12,000 characters (section 5.2).
+- **Failures.** A call that gets no good answer answers its reason, `unreachable`, `timed_out`,
+  `too_large`, `bad_answer`, `refused`, `rate_limited`, `busy`, `resting`, `revoked`,
+  `listing_changed` or `tool_off`, and the turn goes on. Three failures in a row the server caused,
+  one for each try at a connection and each request, rest the agent's listing for 30 seconds, the
+  wait doubling up to 10 minutes, and a `429` for its `Retry-After`; its tools answer `resting`
+  meanwhile without a request, and a good answer ends the rest. A call the turn's own stop ended
+  counts nothing. A listing the settings in force no longer name answers `revoked`; a call from a
+  turn that started on another version of its listing answers `listing_changed`. Each change of state goes to the `health` line, and the engine logs it with ids only;
+  no argument, answer or word of a server reaches a log.
 
 <a id="section-6"></a>
 
@@ -624,6 +698,7 @@ nothing after the history carries one.
 | The skills index      | 100 skills, then a line with the number left out                                              |
 | One tool result       | 12,000 characters (section 5.2); `read_page` reads at most 2 MiB of a page                    |
 | Images in one message | 4, each at most 5 MiB ([spec 1, section 7.7](protocol.md#section-7-7))                        |
+| One listed MCP answer | The listing's cap, at most 1 MiB, read whole ([decision 0430](../DECISIONS.md#d0430))         |
 
 <a id="section-7-3"></a>
 
@@ -774,6 +849,7 @@ Orders, watchers and alerts never wait for the budget: they are code.
 | Untaken messages per agent (engine)  | 200                                                                            | `chat/post` fails `protocol.busy`                                                                              |
 | Waiting messages per agent (runtime) | 200                                                                            | The runtime stops taking                                                                                       |
 | Routed operations at once            | 8, then 64 waiting in the engine                                               | `protocol.busy`                                                                                                |
+| Listed MCP calls at once             | 4 per agent and listing                                                        | The fifth answers `busy` ([decision 0428](../DECISIONS.md#d0428))                                              |
 
 The loop guard compares a call's tool name, the SHA-256 of its arguments as JSON with sorted keys,
 and the SHA-256 of its result. Three equal triples anywhere in one turn trip it; the third call's
@@ -858,6 +934,14 @@ Made later, accepted by the owner on 2026-10-12:
   ([section 8.2](cards-and-messages.md#section-8-2)); and the first chat
   ([section 8.3](cards-and-messages.md#section-8-3)).
 
+Made with decisions [0428](../DECISIONS.md#d0428) to [0430](../DECISIONS.md#d0430), accepted by the
+tech lead on 2026-11-13:
+
+- **Spec 1.** `listedMcpOn: true` beside `autoAsks`, which keeps its one value `plugin`, in
+  `approval/get`, `approval/set` and `engine/status`.
+- **Spec 4.** `autoAsks.listedMcp` and the progress line `turn.tool.listedMcp`, in both languages.
+- **Spec 6, section 5.** The auto test names `listedMcp` after `plugin` and before `outside`.
+
 <a id="section-13"></a>
 
 ## 13. Invariants
@@ -891,3 +975,5 @@ Property and scripted-model tests hold these for every generated run:
 - A deployer's token name reaches the model only through a tool that marks the turn.
 - No proposal is retried, after a failure or a restart.
 - Prompts and tool results never reach a log.
+- A listed MCP server reaches the agent only through the answers to its calls, each outside
+  content; while one is on, every turn of its agent starts marked, and no listed tool proposes.
