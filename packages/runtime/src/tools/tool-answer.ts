@@ -11,13 +11,15 @@ import type { z } from "zod";
 import type { ToolOutcome } from "../loop/turn-records.js";
 
 // Codes that may reach a call without the engine having answered it: a `bye` that closed the
-// connection with the call in flight, or an engine fault after the write began. Its outcome is
-// not known, so a proposal that ends with one is never taken as refused.
+// connection with the call in flight, an engine fault after the write began, or a key whose write
+// an engine that stopped left unfinished (decision 0437). Its outcome is not known, so a proposal
+// that ends with one is never taken as refused.
 const uncertainAreas: ReadonlySet<string> = new Set(["auth", "engine", "internal", "runtime"]);
 const uncertainCodes: ReadonlySet<string> = new Set<ProtocolErrorCode>([
   "protocol.version",
   "protocol.bad_frame",
   "protocol.not_open",
+  "protocol.outcome_unknown",
 ]);
 
 const engineCodes: ReadonlySet<string> = new Set(protocolErrorCodes);

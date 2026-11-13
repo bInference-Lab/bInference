@@ -81,6 +81,7 @@ describe("a propose tool", () => {
     "engine.stopping",
     "auth.revoked",
     "internal.error",
+    "protocol.outcome_unknown",
   ] as const)("throws %s, whose outcome is unknown, so the loop never resends", async (code) => {
     const run = callTool({ "intent/propose": engineError(code) }, swap);
     await expect(run.outcome).rejects.toMatchObject({ code });

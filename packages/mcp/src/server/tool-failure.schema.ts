@@ -46,6 +46,8 @@ const nextSteps: Readonly<Partial<Record<KnownCode, string>>> = {
   "engine.starting": "The engine is starting. Try again in a few seconds.",
   "engine.stopping": engineStep,
   "protocol.bad_args": "Check the input against the tool's input schema.",
+  "protocol.outcome_unknown":
+    "The engine that ran the first call with this requestId stopped before it answered, so whether it took effect is unknown. Never send it again blindly: read binference_orders, binference_portfolio and binference_ledger first, and send it again with a new requestId only if it did not happen.",
   "order.expiry_limit":
     "The order ends later than the agent's order expiry limit, orderExpiryDays, allows. Name an earlier expiresAt, or leave it out to end the order at the limit; only the owner raises the limit, with `binference limit set orders.expiryDays=DAYS`.",
 };

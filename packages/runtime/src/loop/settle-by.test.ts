@@ -108,7 +108,10 @@ describe("calls that ignore their signal", () => {
     await clock.advance(30_000);
     await expect(report).resolves.toMatchObject({ outcome: "failed" });
     expect(resultsOf(recorder.steps)).toStrictEqual([
-      ["swap", "outcome unknown: the engine did not answer, and this proposal is never sent again"],
+      [
+        "swap",
+        "outcome unknown: the engine did not answer, or cannot tell whether this proposal took effect, and it is never sent again. Before you propose the same thing anew, read what happened: the owner's cards, your orders and your portfolio",
+      ],
     ]);
   });
 

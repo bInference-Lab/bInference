@@ -8,6 +8,7 @@
   "protocol.key_reused": "此请求与之前的一个请求重复，但内容不同。请重新开始此操作。",
   "protocol.key_required": "此客户端发送的更改没有请求编号，binference 无法区分重试和新的更改。请更新客户端后再试。",
   "protocol.version": "此客户端与 binference 使用的协议版本不同。请更新较旧的一方。",
+  "protocol.outcome_unknown": "binference 无法确定此更改是否已生效：它已开始，但结果没有保存下来。请先查看你的卡片、自动订单和持仓，确认没有生效后再重试。",
   "auth.required": "此客户端尚未登录。请登录后再试。",
   "auth.invalid": "登录失败。请运行 `binference console` 重新配对此设备。",
   "auth.expired": "你的访问已过期。请重新打开控制台或 Mini App。",

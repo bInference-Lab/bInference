@@ -1266,6 +1266,15 @@ section 4; spec 1, section 10):
 | `error.remote.not_operator`      | Tailscale refused binference's change because this account may not change its settings, so nothing changed. On Linux, run `sudo tailscale set --operator=$USER` once; on Windows, run binference as the account signed in to Tailscale. Then run `binference expose` again.                                | Tailscale 拒绝了 binference 的更改，因为此账户无权更改其设置，因此未做任何更改。在 Linux 上，请运行一次 `sudo tailscale set --operator=$USER`；在 Windows 上，请用已登录 Tailscale 的账户运行 binference。然后再次运行 `binference expose`。   |
 | `error.remote.not_applied`       | Tailscale did not take binference's change, so binference took back what it set. Run `tailscale serve status` to see what Tailscale holds, then `binference expose` again.                                                                                                                                 | Tailscale 没有接受 binference 的更改，因此 binference 已撤回它设置的内容。请运行 `tailscale serve status` 查看 Tailscale 当前的设置，然后再次运行 `binference expose`。                                                                        |
 
+The error of a write key whose write never stored its answer, because its engine stopped or the
+write failed, which the CLI, the console, the terminal chat and the Mini App show; the agent runtime and MCP clients get their own
+English line telling the model to read the state before it proposes again (spec 1, section 5;
+[decision 0437](../DECISIONS.md#d0437)):
+
+| Key                              | English                                                                                                                                                                                          | 中文                                                                                                                        |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------- |
+| `error.protocol.outcome_unknown` | binference cannot tell whether this change took effect: it started, and its result was never stored. Check your cards, auto orders and positions first, and try again only if it did not happen. | binference 无法确定此更改是否已生效：它已开始，但结果没有保存下来。请先查看你的卡片、自动订单和持仓，确认没有生效后再重试。 |
+
 Errors of quotas, which only bInference Cloud sends (spec 1, section 7.16;
 [decision 0431](../DECISIONS.md#d0431)):
 

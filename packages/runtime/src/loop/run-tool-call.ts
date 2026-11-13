@@ -19,7 +19,7 @@ export interface NumberedCall {
 
 /** The result of a proposal whose outcome is unknown. */
 export const unknownProposal =
-  "outcome unknown: the engine did not answer, and this proposal is never sent again";
+  "outcome unknown: the engine did not answer, or cannot tell whether this proposal took effect, and it is never sent again. Before you propose the same thing anew, read what happened: the owner's cards, your orders and your portfolio";
 
 // Names a call within the runtime: its turn and its number in the turn, unique across turns. The
 // engine keeps a write's key per credential, and the runtime's token changes at each start, so

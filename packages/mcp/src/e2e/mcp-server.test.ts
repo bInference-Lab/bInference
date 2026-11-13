@@ -173,6 +173,18 @@ describe("createMcpServer", () => {
     });
   });
 
+  it("tells a client whose first call's outcome is unknown to read the state before it retries", async () => {
+    const unknown = codedError("protocol.outcome_unknown", "The first call never answered.");
+    await withSession({ "intent/propose": unknown }, async ({ mcp }) => {
+      const retried = { ...swapArgs, requestId: "0190f1c2-cut" };
+      const answer = await mcp.callTool({ name: "binference_propose", arguments: retried });
+      expect(answer.isError).toBe(true);
+      expect(textsOf(answer)).toStrictEqual([
+        "binference_propose failed with protocol.outcome_unknown: The first call never answered. The engine that ran the first call with this requestId stopped before it answered, so whether it took effect is unknown. Never send it again blindly: read binference_orders, binference_portfolio and binference_ledger first, and send it again with a new requestId only if it did not happen.",
+      ]);
+    });
+  });
+
   it("answers a result that breaks its schema as a bad reply", async () => {
     const broken = { balances: "none" } as unknown as ResultOf<"portfolio/get">;
     await withSession({ "portfolio/get": broken }, async ({ mcp }) => {

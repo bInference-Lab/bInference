@@ -12,6 +12,7 @@ export const protocolErrorCodes = [
   "protocol.key_reused",
   "protocol.key_required",
   "protocol.version",
+  "protocol.outcome_unknown",
   "auth.required",
   "auth.invalid",
   "auth.expired",

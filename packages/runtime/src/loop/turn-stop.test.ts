@@ -161,7 +161,10 @@ describe("stopping a turn", () => {
     await clock.advance(5_000);
     await expect(report).resolves.toMatchObject({ outcome: "stopped", committed: true });
     expect(resultsOf(recorder.steps)).toStrictEqual([
-      ["swap", "outcome unknown: the engine did not answer, and this proposal is never sent again"],
+      [
+        "swap",
+        "outcome unknown: the engine did not answer, or cannot tell whether this proposal took effect, and it is never sent again. Before you propose the same thing anew, read what happened: the owner's cards, your orders and your portfolio",
+      ],
     ]);
     expect(recorder.steps.filter((step) => step.kind === "proposal")).toStrictEqual([
       { kind: "proposal", id: "swap", key: `${testTurnId}.1` },
