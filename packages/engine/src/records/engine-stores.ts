@@ -5,7 +5,7 @@ import type { AgentInboxStore, QuestionStore } from "../chat/ports.js";
 import type { CredentialStore } from "../credentials/ports.js";
 import type { AliveStore } from "../downtime/ports.js";
 import type { IdentityStore } from "../identity/ports.js";
-import type { InboxStore } from "../ingress/ports.js";
+import type { IdempotencyStore, InboxStore } from "../ingress/ports.js";
 import type { LaunchStore } from "../launches/ports.js";
 import type { TrackedWalletStore } from "../leaders/ports.js";
 import type { OrderStore } from "../orders/ports.js";
@@ -13,7 +13,6 @@ import type {
   AccessStore,
   AgentStore,
   ConfigJournal,
-  IdempotencyStore,
   InstallStore,
   IntentStore,
   LedgerStore,

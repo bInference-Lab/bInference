@@ -21,11 +21,6 @@ import type { ConfigChange, ConfigJournalEntry } from "./audit/config-change.js"
 import type { ModelCharge } from "./billing/model-charge.js";
 import type { BuiltQuote, IntentWrite, StoredIntent } from "./confirmations/stored-intent.js";
 import type { BotUpdate } from "./ingress/bot-update.js";
-import type {
-  IdempotencyEntry,
-  IdempotencyLookup,
-  IdempotencyRecall,
-} from "./ingress/idempotency-entry.js";
 import type { DisclaimerStore } from "./install/disclaimer-record.js";
 import type {
   CeilingUpdate,
@@ -391,19 +386,6 @@ export interface TransactionStore {
    * forgets its receipt. Each record method throws `store.constraint` for an unknown id.
    */
   recordReorg(mark: TransactionMark, options: StoreCall): Promise<TransactionMoved>;
-}
-
-/** Keeps each write's result under its idempotency key (protocol spec, section 5). */
-export interface IdempotencyStore {
-  /** What the store holds under the key, compared with the args hash. */
-  recall(lookup: IdempotencyLookup, options: StoreCall): Promise<IdempotencyRecall>;
-  /**
-   * Stores a result under its key when the key is free, and answers `new`. A key that holds a
-   * result keeps the first one: `repeat` returns it, `reused` says the args differ.
-   */
-  remember(entry: IdempotencyEntry, options: StoreCall): Promise<IdempotencyRecall>;
-  /** Deletes results stored before `beforeMs` and returns how many. */
-  prune(beforeMs: number, options: StoreCall): Promise<number>;
 }
 
 /**

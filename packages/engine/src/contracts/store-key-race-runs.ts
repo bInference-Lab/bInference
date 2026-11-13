@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import type { Id } from "@binference/core";
 import type { BridgeStore } from "../bridges/ports.js";
-import type { InboxStore } from "../ingress/ports.js";
-import type { AccessStore, AgentStore, IdempotencyStore, InstallStore } from "../ports.js";
+import type { IdempotencyStore, InboxStore } from "../ingress/ports.js";
+import type { AccessStore, AgentStore, InstallStore } from "../ports.js";
 import type { DailySummaryStore } from "../summaries/ports.js";
 import type { WebhookAlertStore, WebhookRuleStore } from "../webhooks/ports.js";
 import type { WebhookRuleKey } from "../webhooks/webhook-alert.js";

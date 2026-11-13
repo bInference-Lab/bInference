@@ -3,7 +3,7 @@ import type {
   IdempotencyLookup,
   IdempotencyRecall,
 } from "../ingress/idempotency-entry.js";
-import type { IdempotencyStore } from "../ports.js";
+import type { IdempotencyStore } from "../ingress/ports.js";
 import { memoryCall } from "./memory-call.js";
 
 function keyOf(lookup: IdempotencyLookup): string {

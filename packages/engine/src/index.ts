@@ -70,20 +70,11 @@ export type {
 export { configChangeSchema, configJournalEntrySchema } from "./audit/config-change.js";
 export type { ConfigChange, ConfigJournalEntry } from "./audit/config-change.js";
 export type { ModelCharge } from "./billing/model-charge.js";
-export {
-  idempotencyEntrySchema,
-  idempotencyLookupSchema,
-  idempotencyRecallSchema,
-} from "./ingress/idempotency-entry.js";
-export type {
-  IdempotencyEntry,
-  IdempotencyLookup,
-  IdempotencyRecall,
-} from "./ingress/idempotency-entry.js";
+export * from "./ingress/idempotency-entry.js";
 export type { BotUpdate } from "./ingress/bot-update.js";
 export { inboxAdmissionSchema, inboxDraftSchema, inboxEntrySchema } from "./ingress/inbox-entry.js";
 export type { InboxAdmission, InboxDraft, InboxEntry, InboxSource } from "./ingress/inbox-entry.js";
-export type { InboxStore } from "./ingress/ports.js";
+export type { IdempotencyStore, InboxStore } from "./ingress/ports.js";
 export { isFillAuthorization } from "./intents/authorization.js";
 export type {
   Authorization,
@@ -274,7 +265,6 @@ export type {
   ConfigJournal,
   ConfirmationStore,
   Executor,
-  IdempotencyStore,
   IntentStore,
   LedgerStore,
   MarketData,

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import type { ContractCheck } from "@binference/core/testing";
 import type { IdempotencyEntry } from "../ingress/idempotency-entry.js";
-import type { IdempotencyStore } from "../ports.js";
+import type { IdempotencyStore } from "../ingress/ports.js";
 import { assertRefusesAborted, checkOn, fixtureHash, fixtureId, live } from "./store-fixtures.js";
 
 /** Makes a fresh, empty idempotency store for each check. */
