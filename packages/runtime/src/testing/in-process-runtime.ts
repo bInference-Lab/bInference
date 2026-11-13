@@ -23,6 +23,7 @@ import type { ContextSource } from "../engine-chat/ports.js";
 import { createProtocolContextSource } from "../engine-chat/protocol-context-source.js";
 import { createProtocolEngineChat } from "../engine-chat/protocol-engine-chat.js";
 import { createProtocolImageReader } from "../engine-chat/protocol-image-reader.js";
+import type { ListedMcpState } from "../listed-mcp/listed-mcp-state.schema.js";
 import { type TestTool, testToolBox } from "../loop/test-turns.js";
 import { turnLimits } from "../loop/turn-run.js";
 import type { AgentDatabase } from "../process/agent-database.js";
@@ -98,6 +99,8 @@ export interface InProcessRuntimeOptions {
   readonly tools?: readonly TestTool[];
   /** A manual clock by default. */
   readonly clock?: Clock;
+  /** Each agent's listing that rests or has a tool off, which its health lines name. */
+  readonly listedMcpStates?: () => readonly ListedMcpState[];
 }
 
 function memoryDatabase(database: MemoryAgentDatabase): AgentDatabase {
@@ -254,12 +257,30 @@ function settleExit(
   void killed.exited.then(() => output.end());
 }
 
+// A tick that does nothing, before the runtime set its health tick and after it stopped.
+const idleTick = async (): Promise<void> => Promise.resolve();
+
+// The runtime's ten-second hook, and the `tick` a test calls in place of its timer.
+function tickHook(): {
+  readonly hook: RuntimeHost["everyTenSeconds"];
+  readonly tick: () => Promise<void>;
+} {
+  let onTick = idleTick;
+  return {
+    hook: (next, signal) => {
+      onTick = next;
+      signal.addEventListener("abort", () => (onTick = idleTick), { once: true });
+    },
+    tick: async () => onTick(),
+  };
+}
+
 /** Starts the runtime's main loop in this process, on channels in place of pipes. */
 export function startInProcessRuntime(options: InProcessRuntimeOptions = {}): InProcessRuntime {
   const engine = options.engine ?? createMemoryEngineChat([nthTestId("agt", 1)]);
   const database = options.database ?? createMemoryAgentDatabase();
   const [input, output] = [createByteChannel(), createByteChannel()];
-  const timer = { onTick: async (): Promise<void> => Promise.resolve() };
+  const ticks = tickHook();
   const [starts, setups]: [StartLine[], { agent: string; settings: RuntimeSettings }[]] = [[], []];
   const state = { hasStarted: false };
   const applied: RuntimeSettings[] = [];
@@ -273,12 +294,8 @@ export function startInProcessRuntime(options: InProcessRuntimeOptions = {}): In
       return signIn({ ...options, engine }, start, signal);
     },
     ...host,
-    everyTenSeconds: (onTick, signal) => {
-      timer.onTick = onTick;
-      signal.addEventListener("abort", () => (timer.onTick = async () => Promise.resolve()), {
-        once: true,
-      });
-    },
+    ...(options.listedMcpStates === undefined ? {} : { listedMcpStates: options.listedMcpStates }),
+    everyTenSeconds: ticks.hook,
     version: "test",
   });
   settleExit(running, killed, output);
@@ -296,7 +313,7 @@ export function startInProcessRuntime(options: InProcessRuntimeOptions = {}): In
       input.end();
       killed.exit(undefined);
     },
-    tick: async () => timer.onTick(),
+    tick: ticks.tick,
     engine,
     database,
     starts,

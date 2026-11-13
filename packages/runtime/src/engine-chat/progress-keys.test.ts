@@ -25,4 +25,12 @@ describe("progressKeyOf", () => {
     expect(progressKeyOf("made_up")).toBeUndefined();
     expect(progressKeyOf("Bad__tool")).toBeUndefined();
   });
+
+  it("names a listed MCP tool by its server's name in the listing", () => {
+    expect(progressKeyOf("mcp-ratesdemo-rate")).toStrictEqual({
+      key: "turn.tool.listedMcp",
+      values: { server: "ratesdemo" },
+    });
+    expect(progressKeyOf("mcp-Rates-rate")).toBeUndefined();
+  });
 });

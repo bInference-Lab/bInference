@@ -15,6 +15,7 @@ import {
   startInProcessRuntime,
   type InProcessRuntimeOptions,
 } from "../testing/in-process-runtime.js";
+import { listedServerFixture } from "../testing/listing-fixture.js";
 import { createMemoryAgentStores, nthTestId } from "../testing/memory-agent-stores.js";
 import { createMemoryEngineChat, type MemoryEngineChat } from "../testing/memory-engine-chat.js";
 import { callsReply, textReply } from "../testing/scripted-transport.js";
@@ -189,6 +190,52 @@ describe("the runtime's chat", () => {
     await expect(endedTurn(engine, posted.turn)).resolves.toBe("ok");
 
     expect(seen).toStrictEqual([true]);
+  });
+
+  it.each([
+    ["on for the agent", [agent], [true]],
+    ["on for another agent only", [nthTestId("agt", 9)], [false]],
+  ])(
+    "starts a turn marked while a listed MCP server is %s, and clean otherwise",
+    async (_name, agents, marks) => {
+      const engine = createMemoryEngineChat([agent]);
+      const seen: (boolean | undefined)[] = [];
+      const look: TestTool = {
+        name: "look",
+        kind: "read",
+        run: async () => {
+          seen.push(engine.running(agent)?.marked);
+          return Promise.resolve({ text: "looked", isError: false });
+        },
+      };
+      const replies = [callsReply([{ id: "c1", name: "look" }]), textReply("Done.")];
+      const runtime = await ready({ engine, replies, tools: [look] });
+      const { settings } = fixtureStartLine();
+      const listedMcp = [listedServerFixture(agents)];
+      await runtime.write(
+        `${JSON.stringify(engineLineSchema.encode({ t: "settings", settings: { ...settings, listedMcp } }))}\n`,
+      );
+      const posted = engine.post(agent, "hi");
+      await expect(endedTurn(engine, posted.turn)).resolves.toBe("ok");
+
+      expect(seen).toStrictEqual(marks);
+    },
+  );
+
+  it("names in its health line each agent's listing that rests or has a tool off", async () => {
+    const listing = nthTestId("mls", 1);
+    const states = [{ agent, listing, state: "off" as const, reason: "changed", tool: "rate" }];
+    const runtime = startInProcessRuntime({ listedMcpStates: () => states });
+    const lines = readControlLines(runtime.output)[Symbol.asyncIterator]();
+    await runtime.write(`${JSON.stringify(engineLineSchema.encode(fixtureStartLine()))}\n`);
+    await lines.next();
+    await runtime.tick();
+    const health = await lines.next();
+
+    expect(runtimeLineSchema.parse(JSON.parse(String(health.value)))).toMatchObject({
+      t: "health",
+      listedMcp: states,
+    });
   });
 
   it("sets up the turn after a settings line with the model the owner picked", async () => {

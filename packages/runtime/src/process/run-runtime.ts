@@ -11,6 +11,7 @@ import type { RuntimeSettings } from "../control/runtime-settings.schema.js";
 import { createGoalDesk, type GoalDesk } from "../goals/goal-desk.js";
 import { type BudgetMemory, createBudgetMemory } from "../helpers/budget-memory.js";
 import { createHelperDesk, type HelperRunner } from "../helpers/helper-desk.js";
+import { offersListedTools } from "../listed-mcp/listed-mcp-tools.js";
 import { createChatStatusSources } from "../sessions/chat-status-sources.js";
 import type { TurnPlace } from "../sessions/turn-place.js";
 import type { HelperToolParts } from "../tools/helper-tools.js";
@@ -26,6 +27,9 @@ import type { EngineLink, RuntimeHost } from "./runtime-host.js";
 export type RuntimeExit = "stopped" | "bad_start" | "bad_line" | "not_connected" | "no_database";
 
 const connectTimeoutMs = 20_000;
+
+// The listed servers' states one health line names at most.
+const maxHealthStates = 64;
 
 function encode(line: RuntimeLine): string {
   return JSON.stringify(line);
@@ -46,7 +50,10 @@ async function writeHealth(
   signal: AbortSignal,
 ): Promise<void> {
   const counts = await chat.runner.counts(signal);
-  await host.write(encode({ t: "health", ...counts }));
+  const listedMcp = (host.listedMcpStates?.() ?? []).slice(0, maxHealthStates);
+  await host.write(
+    encode({ t: "health", ...counts, ...(listedMcp.length === 0 ? {} : { listedMcp }) }),
+  );
 }
 
 type NextLine = IteratorResult<string, undefined>;
@@ -189,7 +196,9 @@ function turnsOf(host: RuntimeHost, connected: Connected, settings: () => Runtim
     };
     return {
       ...host.turnSetup(place, current, turnLink),
-      hasOutsideTools: (current.plugins ?? []).some(({ tools }) => tools.length > 0),
+      hasOutsideTools:
+        (current.plugins ?? []).some(({ tools }) => tools.length > 0) ||
+        offersListedTools(current.listedMcp ?? [], place.agent),
     };
   };
   const helpers = createHelperDesk({

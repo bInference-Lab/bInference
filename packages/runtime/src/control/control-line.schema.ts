@@ -9,6 +9,10 @@ import {
 } from "@binference/protocol";
 import { z } from "zod";
 import {
+  type ListedMcpState,
+  listedMcpStateSchema,
+} from "../listed-mcp/listed-mcp-state.schema.js";
+import {
   type RuntimeSettings,
   type RuntimeSettingsWire,
   runtimeSettingsSchema,
@@ -81,6 +85,8 @@ export interface HealthLine {
   readonly waitingMessages: number;
   /** The failure class of the latest model call that failed, such as `transient`. */
   readonly lastModelError?: string;
+  /** Each agent's listing that rests or has a tool off (decision 0428), at most 64. */
+  readonly listedMcp?: readonly ListedMcpState[];
 }
 
 /** A line the runtime writes to its standard output. */
@@ -146,5 +152,6 @@ export const runtimeLineSchema: z.ZodType<RuntimeLine> = z.union([
     runningTurns: countSchema,
     waitingMessages: countSchema,
     lastModelError: z.string().min(1).max(32).exactOptional(),
+    listedMcp: z.array(listedMcpStateSchema).max(64).exactOptional(),
   }),
 ]);

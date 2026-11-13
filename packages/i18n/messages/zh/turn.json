@@ -69,6 +69,7 @@
   "tool.launchpads": "正在读取发射台…",
   "tool.launchDraft": "正在起草发射…",
   "tool.plugin": "正在询问插件 {plugin}…",
+  "tool.listedMcp": "正在询问 MCP 服务器 {server}…",
   "tool.shell": "正在运行命令…",
   "tool.shellJob": "正在查看命令…",
   "tool.browse": "正在使用浏览器…",

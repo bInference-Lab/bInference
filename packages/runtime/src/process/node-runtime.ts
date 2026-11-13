@@ -8,6 +8,7 @@ import { helperInstructions } from "../context/helper-instructions.js";
 import type { SettingsFacts } from "../context/live-facts-text.js";
 import type { RuntimeSettings } from "../control/runtime-settings.schema.js";
 import { createImageJobs, type ImageJobs } from "../images/image-jobs.js";
+import { createListedMcpClients, type ListedMcpClients } from "../listed-mcp/listed-mcp-clients.js";
 import { turnLimits } from "../loop/turn-run.js";
 import { imageMakerFor } from "../providers/image-making.js";
 import { type ChainParts, modelChainFor } from "../providers/model-transport-for.js";
@@ -121,9 +122,10 @@ function helperSetupOf(agentSetup: TurnSetup, context: HelperSetupContext): Turn
 // alone (decision 0204), whose providers' rests every turn shares, the agent's tools over the
 // runtime's connection to the engine and its web tools on the settings' search keys, and
 // compaction on the fast model, or on the main model when no fast model is set (decision 0202),
-// and the tools of the community plugins the settings in force name (decision 0349); a helper's
-// turn gets a helper's setup (decision 0403).
-function builtTurnSetup(parts: ChainParts): RuntimeHost["turnSetup"] {
+// and the tools of the community plugins the settings in force name (decision 0349) and of the
+// listed MCP servers the agent has on, over the process's connections to them (decision 0428); a
+// helper's turn gets a helper's setup (decision 0403).
+function builtTurnSetup(parts: ChainParts, listed: ListedMcpClients): RuntimeHost["turnSetup"] {
   // The agents' image jobs outlive the turns that start them.
   const jobs = createImageJobs();
   const videoJobs = createImageJobs<RunningVideoJob>();
@@ -136,6 +138,7 @@ function builtTurnSetup(parts: ChainParts): RuntimeHost["turnSetup"] {
       turn: place,
       web: { http: parts.http, lookup, clock: parts.clock, search: settings.search },
       plugins: settings.plugins ?? [],
+      listedMcp: { servers: settings.listedMcp ?? [], clients: listed },
       imageMaking: imageMakingOf(parts, settings, jobs),
       ...mediaMakingOf(parts, settings, videoJobs),
       status: { chats: link.chats, settings, version: manifest.version, clock: parts.clock },
@@ -176,6 +179,11 @@ export async function runNodeRuntime(
   parts: { readonly turnSetup?: RuntimeHost["turnSetup"] } = {},
 ): Promise<void> {
   const http = createNodeStreamingHttp({ version: manifest.version });
+  const listed = createListedMcpClients({
+    http,
+    clock: processPorts.clock,
+    version: manifest.version,
+  });
   const exit = await runRuntime({
     input: process.stdin,
     write: writeLine,
@@ -184,9 +192,14 @@ export async function runNodeRuntime(
     openAgentDatabase: async (file, signal) =>
       openSqliteAgentDatabase(file, { signal, execArgv: workerExecArgv }),
     turnSetup:
-      parts.turnSetup ?? builtTurnSetup({ http, clock: processPorts.clock, rests: new Map() }),
+      parts.turnSetup ??
+      builtTurnSetup({ http, clock: processPorts.clock, rests: new Map() }, listed),
     random: processPorts.random,
-    applySettings: (settings) => http.use(networkRouteOf(settings.network)),
+    applySettings: (settings) => {
+      http.use(networkRouteOf(settings.network));
+      listed.use(settings.listedMcp ?? []);
+    },
+    listedMcpStates: () => listed.states(),
     clock: processPorts.clock,
     logger: processPorts.logger,
     everyTenSeconds: (onTick, signal) => {
@@ -196,6 +209,7 @@ export async function runNodeRuntime(
     },
     version: manifest.version,
   });
+  await listed.close();
   await http.close();
   process.exitCode = exit === "stopped" ? 0 : 1;
   // The input may still hold a read open, which would keep the process alive.

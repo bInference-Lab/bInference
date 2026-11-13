@@ -62,6 +62,9 @@ export interface AgentTool {
 export const maxResultChars = 12_000;
 
 const toolName = /^[a-z][a-z0-9_]{0,63}$/;
+// A listed MCP server's tool, `mcp-<name>-<as>` (decision 0429): the one form that holds a hyphen,
+// so it can never be a built-in tool's name or a plugin's.
+const listedToolName = /^mcp-[a-z][a-z0-9]{1,15}-[a-z][a-z0-9_]{0,39}$/;
 
 function invalidTool(name: string, reason: string): BinferenceError {
   return new BinferenceError({
@@ -148,7 +151,7 @@ function checked<Args>(
  * and may correct them. A result longer than 12,000 characters is cut.
  */
 export function defineTool<Args>(spec: ToolSpec<Args>): AgentTool {
-  if (!toolName.test(spec.name)) {
+  if (!toolName.test(spec.name) && !listedToolName.test(spec.name)) {
     throw invalidTool(spec.name, "its name is not lowercase words joined by underscores");
   }
   const declaration = {

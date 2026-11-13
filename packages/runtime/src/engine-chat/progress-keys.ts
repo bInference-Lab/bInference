@@ -87,6 +87,8 @@ const toolKeys: Readonly<Record<AgentToolName, string | undefined>> = {
 
 // A plugin's tool is named `<id>__<tool>`, its id with `_` for `-`.
 const pluginTool = /^([a-z0-9_]{1,64})__[A-Za-z0-9_]+$/u;
+// A listed MCP server's tool is named `mcp-<name>-<as>` (decision 0429).
+const listedTool = /^mcp-([a-z][a-z0-9]{1,15})-[a-z][a-z0-9_]{0,39}$/u;
 
 function isAgentTool(name: string): name is AgentToolName {
   return Object.hasOwn(toolKeys, name);
@@ -94,13 +96,17 @@ function isAgentTool(name: string): name is AgentToolName {
 
 /**
  * The progress line of spec 4, section 8.1, that a tool's run shows: one per agent tool, the
- * plugin's line for a plugin's tool, and none for a tool that shows nothing or a name no tool
- * has.
+ * plugin's line for a plugin's tool, the listed server's line for a listed MCP tool, and none for
+ * a tool that shows nothing or a name no tool has.
  */
 export function progressKeyOf(tool: string): ProgressKey | undefined {
   if (isAgentTool(tool)) {
     const key = toolKeys[tool];
     return key === undefined ? undefined : { key };
+  }
+  const server = listedTool.exec(tool)?.[1];
+  if (server !== undefined) {
+    return { key: "turn.tool.listedMcp", values: { server } };
   }
   const plugin = pluginTool.exec(tool)?.[1];
   return plugin === undefined ? undefined : { key: "turn.tool.plugin", values: { plugin } };

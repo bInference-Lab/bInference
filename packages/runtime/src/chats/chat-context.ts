@@ -23,8 +23,8 @@ export interface TurnSetup {
   /** What compacts the session's history when it grows too long; without it, nothing does. */
   readonly compaction?: TurnCompaction;
   /**
-   * The tools hold a community plugin's, whose words are a third party's: the turn starts marked
-   * as outside content (decision 0350).
+   * The tools hold a community plugin's or a listed MCP server's, whose words are a third
+   * party's: the turn starts marked as outside content (decisions 0350 and 0428).
    */
   readonly hasOutsideTools?: boolean;
   /** The settings in force, which each model call's live facts name (decision 0395). */

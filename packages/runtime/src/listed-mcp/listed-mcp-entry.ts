@@ -9,6 +9,7 @@ import {
   type ToolOffReason,
 } from "./listed-mcp-connection.js";
 import { createListedRests, type ListedRests } from "./listed-mcp-rests.js";
+import type { ListedMcpState } from "./listed-mcp-state.schema.js";
 import type { ListedMcpTool, McpListing } from "./listing.schema.js";
 
 /** Why a listed tool's call got no answer from its server (decision 0428). */
@@ -22,16 +23,6 @@ type ListedCallFailure =
 
 /** What a listed tool's call answers: the server's answer, or why there is none. */
 export type ListedCallOutcome = ListedAnswer | ListedCallFailure;
-
-/** An agent's listing that rests or has a tool off, as the `health` line names it. */
-export interface ListedMcpState {
-  readonly agent: Id<"agt">;
-  readonly listing: McpListing["listing"];
-  readonly state: "resting" | "off";
-  readonly reason: string;
-  /** The tool that is off, by its `as`. */
-  readonly tool?: string;
-}
 
 /** What an agent's connections are opened with. */
 export interface ListedEntryParts {

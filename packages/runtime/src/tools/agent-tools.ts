@@ -1,3 +1,4 @@
+import { listedMcpTools } from "../listed-mcp/listed-mcp-tools.js";
 import type { ToolBox } from "../loop/ports.js";
 import { agentStatusTool } from "./agent-status-tool.js";
 import { alertCreateTool } from "./alert-create-tool.js";
@@ -52,7 +53,7 @@ export const hiddenToolArgs: ReadonlyMap<string, readonly string[]> = new Map([
  * `order_cancel`, which brakes; and the control tools `alert_create`, `schedule_create` and `schedule_cancel` (decision 0247). Each
  * maps onto the engine's operations and names the given agent; no tool takes an agent or a wallet
  * from the model. With web parts, the web tools come after the reads; `look_at_image` (decision 0385), `look_at_screen` (decision 0406) and `read_pdf` (decision 0402) follow, then the tools of the
- * enabled community plugins (decision 0349); `notes_search`, `notes_get`, `settings_read`, with
+ * enabled community plugins (decision 0349) and of the listed MCP servers the agent has on (decision 0428); `notes_search`, `notes_get`, `settings_read`, with
  * status parts `agent_status` (decision 0404), and `open_skill` follow them, then `notes_write` and `notes_forget` (decision 0384), and last `workspace_write` and `first_chat_end`, which write
  * the owner's strategy and persona and end the first chat (decision 0242), then `launchpads` and
  * `launch_draft`, which drafts a token launch the owner starts (decision 0285),
@@ -79,6 +80,9 @@ export function agentTools(parts: AgentToolParts): readonly AgentTool[] {
     lookAtScreenTool(parts),
     readPdfTool(parts),
     ...pluginTools(parts, parts.plugins ?? []),
+    ...(parts.listedMcp === undefined
+      ? []
+      : listedMcpTools({ ...parts.listedMcp, agent: parts.agent })),
     notes.search,
     notes.get,
     settingsReadTool(parts),

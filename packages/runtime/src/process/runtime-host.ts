@@ -3,6 +3,7 @@ import type { TurnSetup } from "../chats/chat-context.js";
 import type { StartLine } from "../control/control-line.schema.js";
 import type { RuntimeSettings } from "../control/runtime-settings.schema.js";
 import type { ContextSource, EngineChat, OwnerImageReader } from "../engine-chat/ports.js";
+import type { ListedMcpState } from "../listed-mcp/listed-mcp-state.schema.js";
 import type { TurnPlace } from "../sessions/turn-place.js";
 import type { ToolClient } from "../tools/tool-client.js";
 import type { AgentDatabase } from "./agent-database.js";
@@ -43,6 +44,11 @@ export interface RuntimeHost {
    * outbound requests: with the start line's settings, then with each settings line.
    */
   readonly applySettings?: (settings: RuntimeSettings) => void;
+  /**
+   * Each agent's listing that rests or has a tool off (decision 0428), which every `health` line
+   * names; none when absent.
+   */
+  readonly listedMcpStates?: () => readonly ListedMcpState[];
   /** Random bytes for the ids of the agents' helpers and their turns. */
   readonly random: Random;
   readonly clock: Clock;

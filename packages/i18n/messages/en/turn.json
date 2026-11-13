@@ -69,6 +69,7 @@
   "tool.launchpads": "Reading the launchpads…",
   "tool.launchDraft": "Drafting a launch…",
   "tool.plugin": "Asking the plugin {plugin}…",
+  "tool.listedMcp": "Asking the MCP server {server}…",
   "tool.shell": "Running a command…",
   "tool.shellJob": "Checking a command…",
   "tool.browse": "Using the browser…",

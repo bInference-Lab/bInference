@@ -5,8 +5,8 @@ import {
   type ListedCallOutcome,
   type ListedEntry,
   type ListedEntryParts,
-  type ListedMcpState,
 } from "./listed-mcp-entry.js";
+import type { ListedMcpState } from "./listed-mcp-state.schema.js";
 import type { ListedMcpServer } from "./listing.schema.js";
 
 /** One call of a listed tool: the agent, the listing and the tool's name in it. */

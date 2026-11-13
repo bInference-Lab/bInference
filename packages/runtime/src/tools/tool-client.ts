@@ -1,6 +1,7 @@
 import type { ProtocolClient } from "@binference/client";
 import type { Id } from "@binference/core";
 import type { RuntimePlugin } from "../control/runtime-settings.schema.js";
+import type { ListedToolParts } from "../listed-mcp/listed-mcp-tools.js";
 import type { TurnPlace } from "../sessions/turn-place.js";
 import type { AgentStatusParts } from "./agent-status-tool.js";
 import type { GoalToolParts } from "./goal-tools.js";
@@ -31,6 +32,11 @@ export interface AgentToolParts {
   readonly web?: WebToolParts;
   /** The enabled community plugins whose tools the agent may call; none when absent. */
   readonly plugins?: readonly RuntimePlugin[];
+  /**
+   * The listed MCP servers in force and the agent's connections to them (decision 0428); without
+   * them, the agent has no listed tools.
+   */
+  readonly listedMcp?: Omit<ListedToolParts, "agent">;
   /** What `make_image` runs on (decision 0392); without it, the agent has no image tool. */
   readonly imageMaking?: ImageMakingToolParts;
   /** What `make_video` runs on (decision 0405); without it, the agent has no video tool. */
