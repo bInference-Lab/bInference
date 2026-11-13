@@ -120,12 +120,14 @@
         "openai",
         "@anthropic-ai/sdk",
         "partial-json",
-        "yaml"
+        "yaml",
+        "@modelcontextprotocol/client"
       ],
       "only": {
         "@binference/platform": "src/process",
         "openai": "src/providers",
-        "@anthropic-ai/sdk": "src/providers"
+        "@anthropic-ai/sdk": "src/providers",
+        "@modelcontextprotocol/client": "src/listed-mcp"
       }
     },
     "tui": {

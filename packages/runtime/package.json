@@ -36,6 +36,7 @@
     "@binference/platform": "workspace:*",
     "@binference/protocol": "workspace:*",
     "@binference/store": "workspace:*",
+    "@modelcontextprotocol/client": "catalog:",
     "openai": "catalog:",
     "ws": "catalog:",
     "zod": "catalog:"

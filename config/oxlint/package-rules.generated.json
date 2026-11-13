@@ -7171,8 +7171,6 @@
                   "@hpke/chacha20poly1305/*",
                   "@hpke/core",
                   "@hpke/core/*",
-                  "@modelcontextprotocol/client",
-                  "@modelcontextprotocol/client/*",
                   "@modelcontextprotocol/server",
                   "@modelcontextprotocol/server/*",
                   "@napi-rs/canvas",
@@ -7244,7 +7242,9 @@
                   "openai",
                   "openai/*",
                   "@anthropic-ai/sdk",
-                  "@anthropic-ai/sdk/*"
+                  "@anthropic-ai/sdk/*",
+                  "@modelcontextprotocol/client",
+                  "@modelcontextprotocol/client/*"
                 ],
                 "message": "See the runtime row of config/package-graph.json for what it may import."
               },
@@ -7322,8 +7322,6 @@
                   "@hpke/chacha20poly1305/*",
                   "@hpke/core",
                   "@hpke/core/*",
-                  "@modelcontextprotocol/client",
-                  "@modelcontextprotocol/client/*",
                   "@modelcontextprotocol/server",
                   "@modelcontextprotocol/server/*",
                   "@napi-rs/canvas",
@@ -7395,7 +7393,9 @@
                   "openai",
                   "openai/*",
                   "@anthropic-ai/sdk",
-                  "@anthropic-ai/sdk/*"
+                  "@anthropic-ai/sdk/*",
+                  "@modelcontextprotocol/client",
+                  "@modelcontextprotocol/client/*"
                 ],
                 "message": "See the runtime row of config/package-graph.json for what it may import."
               },
@@ -7493,8 +7493,6 @@
                   "@hpke/chacha20poly1305/*",
                   "@hpke/core",
                   "@hpke/core/*",
-                  "@modelcontextprotocol/client",
-                  "@modelcontextprotocol/client/*",
                   "@modelcontextprotocol/server",
                   "@modelcontextprotocol/server/*",
                   "@napi-rs/canvas",
@@ -7564,7 +7562,9 @@
                   "openai",
                   "openai/*",
                   "@anthropic-ai/sdk",
-                  "@anthropic-ai/sdk/*"
+                  "@anthropic-ai/sdk/*",
+                  "@modelcontextprotocol/client",
+                  "@modelcontextprotocol/client/*"
                 ],
                 "message": "See the runtime row of config/package-graph.json for what it may import."
               },
@@ -7641,8 +7641,6 @@
                   "@hpke/chacha20poly1305/*",
                   "@hpke/core",
                   "@hpke/core/*",
-                  "@modelcontextprotocol/client",
-                  "@modelcontextprotocol/client/*",
                   "@modelcontextprotocol/server",
                   "@modelcontextprotocol/server/*",
                   "@napi-rs/canvas",
@@ -7712,7 +7710,9 @@
                   "openai",
                   "openai/*",
                   "@anthropic-ai/sdk",
-                  "@anthropic-ai/sdk/*"
+                  "@anthropic-ai/sdk/*",
+                  "@modelcontextprotocol/client",
+                  "@modelcontextprotocol/client/*"
                 ],
                 "message": "See the runtime row of config/package-graph.json for what it may import."
               },
@@ -7810,8 +7810,6 @@
                   "@hpke/chacha20poly1305/*",
                   "@hpke/core",
                   "@hpke/core/*",
-                  "@modelcontextprotocol/client",
-                  "@modelcontextprotocol/client/*",
                   "@modelcontextprotocol/server",
                   "@modelcontextprotocol/server/*",
                   "@napi-rs/canvas",
@@ -7879,7 +7877,9 @@
                   "which-command",
                   "which-command/*",
                   "@binference/platform",
-                  "@binference/platform/*"
+                  "@binference/platform/*",
+                  "@modelcontextprotocol/client",
+                  "@modelcontextprotocol/client/*"
                 ],
                 "message": "See the runtime row of config/package-graph.json for what it may import."
               },
@@ -7956,8 +7956,6 @@
                   "@hpke/chacha20poly1305/*",
                   "@hpke/core",
                   "@hpke/core/*",
-                  "@modelcontextprotocol/client",
-                  "@modelcontextprotocol/client/*",
                   "@modelcontextprotocol/server",
                   "@modelcontextprotocol/server/*",
                   "@napi-rs/canvas",
@@ -8025,7 +8023,326 @@
                   "which-command",
                   "which-command/*",
                   "@binference/platform",
-                  "@binference/platform/*"
+                  "@binference/platform/*",
+                  "@modelcontextprotocol/client",
+                  "@modelcontextprotocol/client/*"
+                ],
+                "message": "See the runtime row of config/package-graph.json for what it may import."
+              },
+              {
+                "regex": "^@binference/[^/]+/src/",
+                "message": "Import a package through its exports."
+              },
+              {
+                "regex": "^(?:\\.\\./){2,}",
+                "message": "Import another package by its name, not by a path."
+              }
+            ]
+          }
+        ],
+        "eslint/no-restricted-globals": [
+          "error",
+          {"name": "fetch", "message": "Outbound HTTP goes through the Http port."},
+          {"name": "Intl", "message": "Format for people in i18n, the one formatter."},
+          {
+            "name": "setTimeout",
+            "message": "Unit tests use a fake Clock: no real timers, sleeps or polling."
+          },
+          {
+            "name": "setInterval",
+            "message": "Unit tests use a fake Clock: no real timers, sleeps or polling."
+          }
+        ],
+        "eslint/no-restricted-properties": [
+          "error",
+          {"object": "process", "property": "argv", "message": "Only the CLI reads arguments."},
+          {
+            "object": "process",
+            "property": "platform",
+            "message": "Only platform branches on the OS."
+          },
+          {"property": "toFixed", "message": "Format for people in i18n, the one formatter."},
+          {"property": "toLocaleString", "message": "Format for people in i18n, the one formatter."},
+          {
+            "object": "expect",
+            "property": "poll",
+            "message": "Unit tests use a fake Clock: no real timers, sleeps or polling."
+          }
+        ],
+        "vitest/no-restricted-vi-methods": [
+          "error",
+          {
+            "useRealTimers": "Unit tests use a fake Clock: no real timers, sleeps or polling.",
+            "waitFor": "Unit tests use a fake Clock: no real timers, sleeps or polling.",
+            "waitUntil": "Unit tests use a fake Clock: no real timers, sleeps or polling."
+          }
+        ]
+      }
+    },
+    {
+      "files": ["packages/runtime/src/listed-mcp/**"],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {"name": "node:vm", "message": "No node:vm outside the plugin sandbox."},
+              {
+                "name": "node:child_process",
+                "message": "Run child processes through execa with an argument array."
+              },
+              {
+                "name": "execa",
+                "importNames": ["execaCommand", "execaCommandSync", "$"],
+                "message": "Pass an argument array; no command strings."
+              },
+              {"name": "node:https", "message": "Outbound HTTP goes through the Http port."},
+              {"name": "undici", "message": "Outbound HTTP goes through the Http port."},
+              {"name": "node:http", "message": "Outbound HTTP goes through the Http port."},
+              {"name": "node:fs", "message": "Open files through the platform package."},
+              {"name": "node:fs/promises", "message": "Open files through the platform package."},
+              {
+                "name": "node:os",
+                "importNames": ["platform", "type"],
+                "message": "Only the platform package branches on the OS."
+              },
+              {"name": "tslog", "message": "Log through the Logger port."}
+            ],
+            "patterns": [
+              {
+                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/browser|@binference\\/pdf)(?:/|$)",
+                "message": "See the runtime row of config/package-graph.json for what it may import."
+              },
+              {
+                "group": [
+                  "@base-ui/react",
+                  "@base-ui/react/*",
+                  "@fontsource-variable/hanken-grotesk",
+                  "@fontsource-variable/hanken-grotesk/*",
+                  "@hpke/chacha20poly1305",
+                  "@hpke/chacha20poly1305/*",
+                  "@hpke/core",
+                  "@hpke/core/*",
+                  "@modelcontextprotocol/server",
+                  "@modelcontextprotocol/server/*",
+                  "@napi-rs/canvas",
+                  "@napi-rs/canvas/*",
+                  "@napi-rs/keyring",
+                  "@napi-rs/keyring/*",
+                  "@noble/curves",
+                  "@noble/curves/*",
+                  "@playwright/test",
+                  "@playwright/test/*",
+                  "@privy-io/node",
+                  "@privy-io/node/*",
+                  "@solana/kit",
+                  "@solana/kit/*",
+                  "@tailwindcss/vite",
+                  "@tailwindcss/vite/*",
+                  "@tanstack/react-query",
+                  "@tanstack/react-query/*",
+                  "@tanstack/react-router",
+                  "@tanstack/react-router/*",
+                  "@testing-library/dom",
+                  "@testing-library/dom/*",
+                  "@testing-library/react",
+                  "@testing-library/react/*",
+                  "@vitejs/plugin-react",
+                  "@vitejs/plugin-react/*",
+                  "class-variance-authority",
+                  "class-variance-authority/*",
+                  "cn",
+                  "cn/*",
+                  "execa",
+                  "execa/*",
+                  "fake-indexeddb",
+                  "fake-indexeddb/*",
+                  "grammy",
+                  "grammy/*",
+                  "intl-messageformat",
+                  "intl-messageformat/*",
+                  "jsdom",
+                  "jsdom/*",
+                  "kysely",
+                  "kysely/*",
+                  "lucide-react",
+                  "lucide-react/*",
+                  "pdfjs-dist",
+                  "pdfjs-dist/*",
+                  "pg",
+                  "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
+                  "react",
+                  "react/*",
+                  "react-dom",
+                  "react-dom/*",
+                  "string-width",
+                  "string-width/*",
+                  "tailwindcss",
+                  "tailwindcss/*",
+                  "undici",
+                  "undici/*",
+                  "viem",
+                  "viem/*",
+                  "vite",
+                  "vite/*",
+                  "which-command",
+                  "which-command/*",
+                  "@binference/platform",
+                  "@binference/platform/*",
+                  "openai",
+                  "openai/*",
+                  "@anthropic-ai/sdk",
+                  "@anthropic-ai/sdk/*"
+                ],
+                "message": "See the runtime row of config/package-graph.json for what it may import."
+              },
+              {
+                "regex": "^@binference/[^/]+/src/",
+                "message": "Import a package through its exports."
+              },
+              {
+                "regex": "^(?:\\.\\./){2,}",
+                "message": "Import another package by its name, not by a path."
+              }
+            ]
+          }
+        ],
+        "eslint/no-restricted-globals": [
+          "error",
+          {"name": "fetch", "message": "Outbound HTTP goes through the Http port."},
+          {"name": "Intl", "message": "Format for people in i18n, the one formatter."}
+        ],
+        "eslint/no-restricted-properties": [
+          "error",
+          {"object": "process", "property": "argv", "message": "Only the CLI reads arguments."},
+          {
+            "object": "process",
+            "property": "platform",
+            "message": "Only platform branches on the OS."
+          },
+          {"property": "toFixed", "message": "Format for people in i18n, the one formatter."},
+          {"property": "toLocaleString", "message": "Format for people in i18n, the one formatter."}
+        ]
+      }
+    },
+    {
+      "files": ["packages/runtime/src/listed-mcp/**/*.test.ts"],
+      "rules": {
+        "eslint/no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {"name": "node:vm", "message": "No node:vm outside the plugin sandbox."},
+              {
+                "name": "node:child_process",
+                "message": "Run child processes through execa with an argument array."
+              },
+              {
+                "name": "execa",
+                "importNames": ["execaCommand", "execaCommandSync", "$"],
+                "message": "Pass an argument array; no command strings."
+              },
+              {"name": "node:https", "message": "Outbound HTTP goes through the Http port."},
+              {"name": "undici", "message": "Outbound HTTP goes through the Http port."},
+              {"name": "node:http", "message": "Outbound HTTP goes through the Http port."},
+              {"name": "node:fs", "message": "Open files through the platform package."},
+              {"name": "node:fs/promises", "message": "Open files through the platform package."},
+              {
+                "name": "node:os",
+                "importNames": ["platform", "type"],
+                "message": "Only the platform package branches on the OS."
+              },
+              {"name": "tslog", "message": "Log through the Logger port."}
+            ],
+            "patterns": [
+              {
+                "regex": "^(?:@binference\\/chain|@binference\\/chain-evm|@binference\\/chains|@binference\\/engine|@binference\\/signer|@binference\\/custody-privy|@binference\\/server|@binference\\/telegram|@binference\\/tui|@binference\\/console|@binference\\/mcp|@binference\\/plugin-sdk|binference|@binference\\/chain-solana|@binference\\/plugin-host|@binference\\/qr|@binference\\/rich-text|@binference\\/browser|@binference\\/pdf)(?:/|$)",
+                "message": "See the runtime row of config/package-graph.json for what it may import."
+              },
+              {
+                "group": [
+                  "@base-ui/react",
+                  "@base-ui/react/*",
+                  "@fontsource-variable/hanken-grotesk",
+                  "@fontsource-variable/hanken-grotesk/*",
+                  "@hpke/chacha20poly1305",
+                  "@hpke/chacha20poly1305/*",
+                  "@hpke/core",
+                  "@hpke/core/*",
+                  "@modelcontextprotocol/server",
+                  "@modelcontextprotocol/server/*",
+                  "@napi-rs/canvas",
+                  "@napi-rs/canvas/*",
+                  "@napi-rs/keyring",
+                  "@napi-rs/keyring/*",
+                  "@noble/curves",
+                  "@noble/curves/*",
+                  "@playwright/test",
+                  "@playwright/test/*",
+                  "@privy-io/node",
+                  "@privy-io/node/*",
+                  "@solana/kit",
+                  "@solana/kit/*",
+                  "@tailwindcss/vite",
+                  "@tailwindcss/vite/*",
+                  "@tanstack/react-query",
+                  "@tanstack/react-query/*",
+                  "@tanstack/react-router",
+                  "@tanstack/react-router/*",
+                  "@testing-library/dom",
+                  "@testing-library/dom/*",
+                  "@testing-library/react",
+                  "@testing-library/react/*",
+                  "@vitejs/plugin-react",
+                  "@vitejs/plugin-react/*",
+                  "class-variance-authority",
+                  "class-variance-authority/*",
+                  "cn",
+                  "cn/*",
+                  "execa",
+                  "execa/*",
+                  "fake-indexeddb",
+                  "fake-indexeddb/*",
+                  "grammy",
+                  "grammy/*",
+                  "intl-messageformat",
+                  "intl-messageformat/*",
+                  "jsdom",
+                  "jsdom/*",
+                  "kysely",
+                  "kysely/*",
+                  "lucide-react",
+                  "lucide-react/*",
+                  "pdfjs-dist",
+                  "pdfjs-dist/*",
+                  "pg",
+                  "pg/*",
+                  "playwright-core",
+                  "playwright-core/*",
+                  "react",
+                  "react/*",
+                  "react-dom",
+                  "react-dom/*",
+                  "string-width",
+                  "string-width/*",
+                  "tailwindcss",
+                  "tailwindcss/*",
+                  "undici",
+                  "undici/*",
+                  "viem",
+                  "viem/*",
+                  "vite",
+                  "vite/*",
+                  "which-command",
+                  "which-command/*",
+                  "@binference/platform",
+                  "@binference/platform/*",
+                  "openai",
+                  "openai/*",
+                  "@anthropic-ai/sdk",
+                  "@anthropic-ai/sdk/*"
                 ],
                 "message": "See the runtime row of config/package-graph.json for what it may import."
               },

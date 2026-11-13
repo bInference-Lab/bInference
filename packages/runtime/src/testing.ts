@@ -119,3 +119,9 @@ export type {
   ListedMcpSourceHarness,
   ListedMcpSourceSubject,
 } from "./contracts/listed-mcp-source-contract.js";
+export { createScriptedMcpServer } from "./testing/scripted-mcp-server.js";
+export type {
+  McpServerScript,
+  ScriptedHttpAnswer,
+  ScriptedMcpServer,
+} from "./testing/scripted-mcp-server.js";

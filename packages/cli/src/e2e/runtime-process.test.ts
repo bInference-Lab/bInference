@@ -25,6 +25,20 @@ afterEach(async () => {
 
 const probeSchema = z.object({ env: z.array(z.string()) });
 
+// Calls every console method that writes to standard output as the runtime's process ends, then
+// writes one line there itself.
+const consoleProbe = [
+  "process.once('beforeExit', () => {",
+  "  console.log('console.log'); console.info('console.info'); console.debug('console.debug');",
+  "  console.dir({ by: 'console.dir' }); console.dirxml('console.dirxml');",
+  "  console.table([{ by: 'console.table' }]); console.trace('console.trace');",
+  "  console.group('console.group'); console.groupEnd(); console.count('console.count');",
+  "  console.time('console.time'); console.timeLog('console.time'); console.timeEnd('console.time');",
+  "  process.stdout.write('the probe ran\\n');",
+  "});",
+  "",
+].join("\n");
+
 // "The owner likes stablecoins", "stablecoin" and "stable", from their code points: only zh files
 // spell them out.
 const likesStablecoins = String.fromCodePoint(
@@ -230,5 +244,29 @@ describe("the agent runtime as a process of its own", () => {
       stop.abort();
       await program.exited;
     }
+  });
+
+  it("writes nothing to its control pipe through console, whatever calls it", slow, async () => {
+    const folder = await createTempFolder("bnf-rt-");
+    folders.push(folder);
+    const probe = join(folder.path, "console-probe.mjs");
+    // Runs in the runtime's process before its entry; once the runtime is done, it calls every
+    // console method that writes to standard output, then writes a line of its own there.
+    await writePrivateFile(probe, consoleProbe, { permissions: noPermissions, signal: signal() });
+    const loader = ["--conditions=@binference/source", "--import", "tsx"];
+    const start = builtRuntime(
+      { env: noisyEnv, workerExecArgv: ["--import", probe, ...loader] },
+      { agentDb: join(folder.path, "agent.sqlite") },
+    );
+    const program = await start(signal());
+    // No start line: the runtime ends at once, and the probe runs as it goes.
+    await program.end();
+    const decoder = new TextDecoder();
+    let written = "";
+    for await (const piece of program.output) {
+      written += decoder.decode(piece, { stream: true });
+    }
+    expect(await program.exited).toBe(1);
+    expect(written + decoder.decode()).toBe("the probe ran\n");
   });
 });
