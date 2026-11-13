@@ -5,7 +5,7 @@ import process from "node:process";
 import { text } from "node:stream/consumers";
 import { accountRefSchema } from "@binference/chain";
 import type { JsonValue } from "@binference/core";
-import { createMemoryLogger } from "@binference/core/testing";
+import { createMemoryLogger, type ManualClock } from "@binference/core/testing";
 import { createRunningTurns } from "@binference/engine/chat";
 import {
   testAgent as agent,
@@ -19,6 +19,7 @@ import { callsReply, textReply } from "@binference/runtime/testing";
 import { openConsoleFiles } from "../compose/console-files.js";
 import { type Skeleton, skeletonCompositions, startSkeleton } from "../compose/test-skeleton.js";
 import { superviseRuntime } from "../e2e/runtime-machine.js";
+import { createSystemClock } from "../runtime/system-clock.js";
 import { type SmokeAlerts, startSmokeAlerts } from "./smoke-alerts.js";
 import { smokeAlertSchema, smokeEnvSchema } from "./smoke-engine.schema.js";
 
@@ -26,8 +27,9 @@ import { smokeAlertSchema, smokeEnvSchema } from "./smoke-engine.schema.js";
 // the fake chain, serving the built console on loopback, with the agent runtime on a scripted
 // model that reads images and proposes a paper swap when the owner chats, the owner's rescue
 // address in effect, its webhook listener on a free port, and a control listener beside it that
-// makes pairing links and paper swaps and sends alerts for the browser test. Like `src/main.ts`,
-// it alone reads `process`. Nothing here reaches the network.
+// makes pairing links and paper swaps and sends alerts for the browser test. The engine's clock
+// starts at the test's time and moves with the wall clock. Like `src/main.ts`, it alone reads
+// `process`. Nothing here reaches the network.
 const env = smokeEnvSchema.parse(process.env);
 const live = (): { readonly signal: AbortSignal } => ({ signal: AbortSignal.timeout(10_000) });
 // The owner's rescue address on the fake chain, in effect since two days before the engine's time.
@@ -62,6 +64,24 @@ const script = {
   readsImages: true,
 };
 
+const clockStepMs = 100;
+
+// The browser and the runtime call the engine in real time, and the server gives a connection
+// more calls only as the engine's clock moves: on a clock that stood still, each connection had
+// 60 calls for the whole run.
+async function followWallClock(clock: ManualClock, stop: AbortSignal): Promise<void> {
+  const wall = createSystemClock();
+  let wallMs = wall.now();
+  while (!stop.aborted) {
+    // oxlint-disable-next-line eslint/no-await-in-loop -- each step waits, then catches up
+    await wall.sleep(clockStepMs, stop).catch(() => undefined);
+    const nowMs = wall.now();
+    // oxlint-disable-next-line eslint/no-await-in-loop -- the clock wakes what is due in order
+    await clock.advance(nowMs - wallMs);
+    wallMs = nowMs;
+  }
+}
+
 async function startEngine(): Promise<Skeleton> {
   const logger = createMemoryLogger({ subsystem: "smoke" });
   const consoleFiles = await openConsoleFiles(env.SMOKE_CONSOLE, { logger, ...live() });
@@ -72,6 +92,8 @@ async function startEngine(): Promise<Skeleton> {
   const turns = createRunningTurns();
   const browser = { http, consoleFiles };
   const skeleton = await startSkeleton(selfHosted.parts(), { browser, turns, owner });
+  const stopClock = new AbortController();
+  const clockFollows = followWallClock(skeleton.clock, stopClock.signal);
   await skeleton.parts.stores.install.changeRescue(rescue, live());
   await skeleton.composed.server.start(live().signal);
   await skeleton.client.call("approval/set", { agent, mode: "manual" }, live());
@@ -83,6 +105,8 @@ async function startEngine(): Promise<Skeleton> {
     close: async () => {
       await runtime.stop(live().signal);
       await skeleton.close();
+      stopClock.abort();
+      await clockFollows;
     },
   };
 }
