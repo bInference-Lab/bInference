@@ -449,7 +449,8 @@ new name here first, in the change that uses it.
 - **bInference Cloud**: the hosted profile on binference.io, on the same packages.
 - **profile**: self-hosted or Cloud. Only the composition root knows which.
 - **profile parts**: the parts whose adapter depends on the profile: custody (the `Signer` port),
-  the bot's updates, model billing, secrets, the store, market data and quotas. Each is a port.
+  the bot's updates, model billing, secrets, the store, market data, quotas and the plugin listing
+  rule. Each is a port, or holds one.
 - **update source**: where the engine reads a bot's inbound updates, by long polling or through a
   webhook relay. The engine stores each update in the inbox before it acknowledges it.
 - **notice**: one owner notification of spec 4, section 4, such as a freeze or low gas. The engine
@@ -566,6 +567,20 @@ check` tries it as `network.proxy`.
 - **listed MCP server**: an outside MCP server an MCP listing names, which a Cloud owner turns on
   per agent. The agent runtime calls its tools as reads named `mcp-<name>-<tool>`; every answer is
   outside content, and while one is on every turn of the agent starts marked.
+- **plugin listing**: the listing catalog's entry for one npm package at one exact version
+  (`pls_…`): its integrity, its files' pin, its manifest's id and declarations, its provenance and
+  publisher, signed with a listing key. On bInference Cloud a plugin installs, turns on and runs
+  only under one, which the engine verifies itself. A **listed plugin** has one.
+- **plugin listing rule**: the profile part that says whether a plugin needs a plugin listing:
+  self-hosted needs none; Cloud needs one at every install, enable, update and start.
+- **listing key**: an Ed25519 key in KMS that the listing catalog signs plugin listings and the
+  revocation list with. A Cloud worker holds the public halves of the keys in force.
+- **revocation list**: the listing catalog's signed list of every plugin listing it revoked, with
+  a sequence that only rises and a life of at most an hour. A listing on it stops its plugin and
+  turns it off for good.
+- **held (a listed plugin)**: not run, its tools not offered, while the engine cannot check its
+  listing, such as when no fresh revocation list arrived for an hour. It starts again by itself;
+  its owner did not turn it off.
 - **store ports**: the engine's ports for the state it keeps: intents with their cards and
   confirmations, the ledger, the inbox, idempotency keys, access, agents, the install with its
   wallets, and the config journal. `store` holds their SQLite adapters; each port has one contract
@@ -912,6 +927,10 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | listing catalog                             | 上架目录服务             | Writes the listings            |
 | MCP listing                                 | MCP 上架条目             | One server's listing           |
 | listed MCP server                           | 上架 MCP 服务器          | Answers are outside content    |
+| plugin listing, listed plugin               | 插件上架条目, 上架插件   | One package version            |
+| plugin listing rule                         | 插件上架规则             | A profile part                 |
+| listing key                                 | 上架签名密钥             | In KMS; signs listings         |
+| revocation list                             | 撤销列表                 | Revoked listings               |
 
 ### Trading
 
