@@ -184,7 +184,7 @@ describe("the runtime's chat", () => {
       },
     ];
     await runtime.write(
-      `${JSON.stringify(engineLineSchema.encode({ t: "settings", settings: { ...settings, plugins } }))}\n`,
+      `${JSON.stringify(engineLineSchema.encode({ t: "settings", seq: 2, settings: { ...settings, plugins } }))}\n`,
     );
     const posted = engine.post(agent, "hi");
     await expect(endedTurn(engine, posted.turn)).resolves.toBe("ok");
@@ -213,7 +213,7 @@ describe("the runtime's chat", () => {
       const { settings } = fixtureStartLine();
       const listedMcp = [listedServerFixture(agents)];
       await runtime.write(
-        `${JSON.stringify(engineLineSchema.encode({ t: "settings", settings: { ...settings, listedMcp } }))}\n`,
+        `${JSON.stringify(engineLineSchema.encode({ t: "settings", seq: 2, settings: { ...settings, listedMcp } }))}\n`,
       );
       const posted = engine.post(agent, "hi");
       await expect(endedTurn(engine, posted.turn)).resolves.toBe("ok");
@@ -249,7 +249,7 @@ describe("the runtime's chat", () => {
       models: { ...settings.models, picked: { [agent]: { main: "router/picked" } } },
     };
     await runtime.write(
-      `${JSON.stringify(engineLineSchema.encode({ t: "settings", settings: picked }))}\n`,
+      `${JSON.stringify(engineLineSchema.encode({ t: "settings", seq: 2, settings: picked }))}\n`,
     );
     const second = engine.post(agent, "again");
     await expect(endedTurn(engine, second.turn)).resolves.toBe("ok");

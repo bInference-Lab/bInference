@@ -65,15 +65,21 @@ agent's workspace files from the engine with `agent/readFile` ([decision 0200](.
 The engine and the runtime also talk over the child's standard input and output, one JSON line per
 message, zod-checked on both sides. Everything else goes over the protocol.
 
-| Line         | From    | Fields                                                                                                    |
-| ------------ | ------- | --------------------------------------------------------------------------------------------------------- |
-| `start`      | engine  | `token`, `endpoint` (the IPC address), `paths` (`agentDb`, `workspace`), `settings`                       |
-| `settings`   | engine  | `settings`, sent again whole after a reload changes a key the runtime uses                                |
-| `route`      | engine  | `id`, `op`, `args`, `origin` (`owner`, `agent`, `untrusted` or `system`): a routed operation (section 10) |
-| `stop`       | engine  | none: the shutdown order has begun                                                                        |
-| `ready`      | runtime | `version`, `schemaVersion`                                                                                |
-| `routeReply` | runtime | `id`, then `result` or `error` (a spec 1 error)                                                           |
-| `health`     | runtime | `runningTurns`, `waitingMessages`, `lastModelError?`, `listedMcp?`; every 10 seconds                      |
+| Line            | From    | Fields                                                                                                    |
+| --------------- | ------- | --------------------------------------------------------------------------------------------------------- |
+| `start`         | engine  | `token`, `endpoint` (the IPC address), `paths` (`agentDb`, `workspace`), `settings`                       |
+| `settings`      | engine  | `seq`, `settings`, sent again whole after a reload changes a key the runtime uses                         |
+| `route`         | engine  | `id`, `op`, `args`, `origin` (`owner`, `agent`, `untrusted` or `system`): a routed operation (section 10) |
+| `stop`          | engine  | none: the shutdown order has begun                                                                        |
+| `ready`         | runtime | `version`, `schemaVersion`                                                                                |
+| `settingsTaken` | runtime | `seq`: the runtime applied the `settings` line of that number                                             |
+| `routeReply`    | runtime | `id`, then `result` or `error` (a spec 1 error)                                                           |
+| `health`        | runtime | `runningTurns`, `waitingMessages`, `lastModelError?`, `listedMcp?`; every 10 seconds                      |
+
+Each `settings` line carries a `seq` that rises with each line, and the runtime answers it with
+`settingsTaken` once it applied the settings; a start's `ready` says the same of its start line's
+settings. The engine's switch of listed MCP servers (section 5.5) turns an agent off only on that
+answer.
 
 `settings` holds what the runtime needs and nothing more: `models` (spec 2, section 6.3) with each
 provider's key already resolved from its secret source, `chats.newMessageMode`, the search

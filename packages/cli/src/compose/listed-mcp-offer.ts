@@ -11,10 +11,12 @@ import {
 import { z } from "zod";
 import type { ProfileParts } from "./profile-parts.js";
 
-/** What the listings in force are handed to: the runtime's settings. */
+/** What the listings in force are handed to: the runtime's settings, and its word it took them. */
 interface ListedMcpRuntime {
-  /** Puts the listings in the runtime's settings, and settles once it was handed them. */
+  /** Puts the listings in the runtime's settings, and settles once the settings line is out. */
   readonly offerListedMcp: (servers: readonly ListedMcpServer[]) => Promise<void>;
+  /** Settles once the runtime said it took the settings in force now. */
+  readonly settingsTaken: () => Promise<void>;
 }
 
 /** The listed MCP servers of a composition root (decision 0428), and the engine's switch. */
@@ -22,8 +24,8 @@ export interface ListedMcpStep {
   /**
    * Whether an agent may hold a listed server's tools now, which the engine takes as
    * `listedMcpOn` before the runtime starts: on before the runtime is handed settings with a
-   * listing for the agent, off only once it was handed settings with none. Absent for a root that
-   * offers no listed server.
+   * listing for the agent, off only once the runtime said it took settings with none. Absent for a
+   * root that offers no listed server.
    */
   readonly listedMcpOn?: (agent: Id<"agt">) => boolean;
   /** Hands the runtime the listings in force now, and again at each change of the source. */
@@ -139,6 +141,7 @@ function offerOf(source: ListedMcpSource, logger: Logger): ListedMcpStep {
         const next = agentsOn(servers);
         on = new Set([...on, ...next]);
         await runtime.offerListedMcp(servers);
+        await runtime.settingsTaken();
         on = next;
       };
       const follow = async (): Promise<void> => {

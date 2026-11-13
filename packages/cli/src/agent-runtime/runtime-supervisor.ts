@@ -18,6 +18,7 @@ import {
   type RouteRequest,
 } from "./route-calls.js";
 import type { RuntimeToken } from "./runtime-token.js";
+import { createSettingsAcks, type SettingsAcks } from "./settings-acks.js";
 import type { StartRuntime } from "./start-runtime.js";
 
 /** The `runtime` health signal: `ok` after `ready`, else `fail` since the runtime went down. */
@@ -39,6 +40,11 @@ export interface RuntimeSupervisor {
    * line is out, applied from its next turn, and every later start begins with them.
    */
   apply(settings: RuntimeSettings): Promise<void>;
+  /**
+   * Settles once the runtime took the settings in force now: it answered their settings line, or a
+   * start that began with them wrote `ready`. Settles too once the supervisor stopped.
+   */
+  taken(): Promise<void>;
   /**
    * Tells the runtime to stop and waits for its exit, at most 10 seconds, then ends it; ends it at
    * once when the signal aborts. No start follows.
@@ -69,6 +75,8 @@ interface Life {
   readonly write: (line: EngineLine) => Promise<void>;
   /** Settles once the start line is written, or failed to be. */
   readonly opened: Promise<void>;
+  /** The number of the settings its start line carried, which its `ready` says it took. */
+  readonly startSeq: number;
 }
 
 /** The settings each start begins with: the start line's, then each that `apply` put in force. */
@@ -93,6 +101,8 @@ interface Tracker {
   readonly health: () => RuntimeHealth;
   /** The settings the next start begins with. */
   readonly settings: SettingsNow;
+  /** The runtime's word that it took the settings in force. */
+  readonly acks: SettingsAcks;
   /** Hears the listed MCP servers' states of each `health` line, and logs each change. */
   readonly heard: ListedStateLog;
 }
@@ -104,6 +114,7 @@ function createTracker(
 ): Tracker {
   const { clock, logger } = options;
   const state: { life?: Life; readyAtMs?: number } = {};
+  const acks = createSettingsAcks();
   const counts = { failures: 0, hasExited: false, downSince: clock.now() };
   return {
     current: () => state.life,
@@ -115,6 +126,7 @@ function createTracker(
     ready(life) {
       if (state.life === life && state.readyAtMs === undefined) {
         state.readyAtMs = clock.now();
+        acks.took(life.startSeq);
         // The first `ready` is routine; one after an exit ends a gap the owner may ask about.
         const level = counts.hasExited ? "info" : "debug";
         logger[level]("runtime.ready", { durationMs: clock.now() - counts.downSince });
@@ -144,6 +156,7 @@ function createTracker(
         ? { state: "fail", since: counts.downSince }
         : { state: "ok", since: state.readyAtMs },
     settings: { current: options.startLine.settings },
+    acks,
     heard: createListedStateLog(logger),
   };
 }
@@ -162,6 +175,8 @@ async function readOutput(life: Life, tracker: Tracker, logger: Logger): Promise
       }
       if (line.data.t === "ready") {
         tracker.ready(life);
+      } else if (line.data.t === "settingsTaken") {
+        tracker.acks.took(line.data.seq);
       } else if (line.data.t === "routeReply") {
         life.routes.answer(line.data);
       } else if (line.data.t === "health") {
@@ -208,11 +223,12 @@ async function live(options: RuntimeSupervisorOptions, tracker: Tracker, stop: A
   const write = async (line: EngineLine): Promise<void> =>
     program.write(`${JSON.stringify(engineLineSchema.encode(line))}\n`);
   const start = { t: "start", token: token.token, ...options.startLine } as const;
+  const startSeq = tracker.acks.latest();
   const opening = write({ ...start, settings: tracker.settings.current }).catch(() => {
     program.kill();
   });
   const routes = createRouteCalls({ write, clock: options.clock });
-  const life: Life = { program, write, routes, opened: opening };
+  const life: Life = { program, write, routes, opened: opening, startSeq };
   tracker.began(life);
   const reading = readOutput(life, tracker, options.logger);
   const waiting = new AbortController();
@@ -314,13 +330,15 @@ export function createRuntimeSupervisor(options: RuntimeSupervisorOptions): Runt
     health: () => tracker.health(),
     async apply(settings) {
       tracker.settings.current = settings;
+      const seq = tracker.acks.next();
       const life = tracker.current();
       if (life !== undefined) {
         await life.opened;
         // A runtime that went down meanwhile starts again with these settings.
-        await life.write({ t: "settings", settings }).catch(ignore);
+        await life.write({ t: "settings", seq, settings }).catch(ignore);
       }
     },
+    taken: async () => tracker.acks.taken(),
     async stop(signal) {
       stopping.abort();
       const life = tracker.current();
@@ -333,6 +351,7 @@ export function createRuntimeSupervisor(options: RuntimeSupervisorOptions): Runt
         signal.addEventListener("abort", () => resolve(), { once: true });
       });
       await Promise.race([loop.running, outOfTime]);
+      tracker.acks.release();
     },
   };
 }

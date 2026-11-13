@@ -136,6 +136,46 @@ describe("createRuntimeSupervisor", () => {
     expect(second.starts[0]?.settings.models.picked).toStrictEqual(picked);
   });
 
+  it("says the settings are taken once the running runtime answers their line", async () => {
+    const test = started();
+    test.supervisor.begin();
+    const first = await test.nth(0);
+    await first.ready;
+    await test.supervisor.taken();
+    const { settings } = fixtureStartLine();
+    await test.supervisor.apply({ ...settings, chats: { newMessageMode: "after" } });
+
+    await test.supervisor.taken();
+
+    const lines = first.written.map((line) => JSON.parse(line) as { readonly seq?: number });
+    expect(lines.map((line) => line.seq)).toStrictEqual([undefined, 2]);
+    expect(first.applied.at(-1)?.chats.newMessageMode).toBe("after");
+  });
+
+  it("waits for a runtime that never answers, until a start that began with the settings is ready", async () => {
+    const test = started(firstOnly({ isStuck: true }));
+    test.supervisor.begin();
+    const first = await test.nth(0);
+    await first.ready;
+    const { settings } = fixtureStartLine();
+    await test.supervisor.apply({ ...settings, chats: { newMessageMode: "after" } });
+    const seen = { taken: false };
+    const taken = (async () => {
+      await test.supervisor.taken();
+      seen.taken = true;
+    })();
+    await test.clock.advance(0);
+    expect(seen.taken).toBe(false);
+
+    first.kill();
+    await first.exited;
+    const second = await test.nth(1);
+    await second.ready;
+    await taken;
+
+    expect(second.starts[0]?.settings.chats.newMessageMode).toBe("after");
+  });
+
   it("starts a killed runtime again at once with a new token, failing since the kill", async () => {
     const gate = { open: (): void => undefined };
     const opened = new Promise<void>((resolve) => {

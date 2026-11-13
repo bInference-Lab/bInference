@@ -112,6 +112,7 @@ async function startMachine(
   stops.unshift(async () => supervisor.stop(AbortSignal.timeout(10_000)));
   await skeleton.listedMcp.begin({
     offerListedMcp: async (servers) => supervisor.apply({ ...fixtureSettings, listedMcp: servers }),
+    settingsTaken: async () => supervisor.taken(),
   });
   const { telegram: composed } = skeleton.composed;
   if (composed === undefined) {

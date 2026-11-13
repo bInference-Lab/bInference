@@ -78,6 +78,8 @@ async function answer(
   }
   if (line.t === "settings") {
     context.apply(line.settings);
+    // The engine's switch of listed servers waits for this before it turns an agent off.
+    await host.write(encode({ t: "settingsTaken", seq: line.seq }));
   } else {
     await host.write(encode(await answerRoute(line, context)));
   }

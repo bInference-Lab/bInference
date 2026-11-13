@@ -38,7 +38,9 @@ async function runtimeRunsWith(servers: readonly ListedMcpServer[]): Promise<str
   const start = fixtureStartLine();
   await runtime.write(`${JSON.stringify(engineLineSchema.encode(start))}\n`);
   const settings = { ...start.settings, listedMcp: servers };
-  await runtime.write(`${JSON.stringify(engineLineSchema.encode({ t: "settings", settings }))}\n`);
+  await runtime.write(
+    `${JSON.stringify(engineLineSchema.encode({ t: "settings", seq: 2, settings }))}\n`,
+  );
   const posted = runtime.engine.post(agentOf(1), "hi");
   const ended = await runtime.engine.waitForPush(
     (push) => push.kind === "chat/turnEnded" && push.turn === posted.turn,
@@ -109,7 +111,40 @@ describe("listingsInForce", () => {
   });
 });
 
+// The runtime's word that it took the settings, at once.
+const taken = async (): Promise<void> => Promise.resolve();
+
+// The runtime's word, at once for the first settings and only on `took` for each one after.
+function heldWord(): { readonly settingsTaken: () => Promise<void>; readonly took: () => void } {
+  const word = { waits: 0, took: (): void => undefined };
+  return {
+    settingsTaken: async () => {
+      word.waits += 1;
+      return word.waits === 1
+        ? Promise.resolve()
+        : new Promise((resolve) => {
+            word.took = resolve;
+          });
+    },
+    took: () => word.took(),
+  };
+}
+
 describe("composeListedMcp", () => {
+  it("keeps an agent on once the settings without its listing are out, until the runtime took them", async () => {
+    const listedMcp = createFakeListedMcpSource([listing("ratesdemo", 1)]);
+    const step = composeListedMcp({ listedMcp }, logger());
+    const word = heldWord();
+    await step.begin({ offerListedMcp: async () => Promise.resolve(), ...word });
+    listedMcp.set([]);
+    await vi.advanceTimersByTimeAsync(1);
+
+    expect(step.listedMcpOn?.(testAgent)).toBe(true);
+    word.took();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(step.listedMcpOn?.(testAgent)).toBe(false);
+  });
+
   it("turns an agent on before the runtime is handed its listing, and off only once it took none", async () => {
     const listedMcp = createFakeListedMcpSource([listing("ratesdemo", 1)]);
     const step = composeListedMcp({ listedMcp }, logger());
@@ -122,6 +157,7 @@ describe("composeListedMcp", () => {
         handed.push(servers);
         return Promise.resolve();
       },
+      settingsTaken: taken,
     });
     expect(step.listedMcpOn?.(testAgent)).toBe(true);
     listedMcp.set([]);
@@ -135,7 +171,7 @@ describe("composeListedMcp", () => {
   it("keeps one agent on and another off by their own listings", async () => {
     const listedMcp = createFakeListedMcpSource([listing("ratesdemo", 1, [other])]);
     const step = composeListedMcp({ listedMcp }, logger());
-    await step.begin({ offerListedMcp: async () => Promise.resolve() });
+    await step.begin({ offerListedMcp: async () => Promise.resolve(), settingsTaken: taken });
     expect([step.listedMcpOn?.(testAgent), step.listedMcpOn?.(other)]).toStrictEqual([false, true]);
   });
 
@@ -148,6 +184,7 @@ describe("composeListedMcp", () => {
         handed.push(servers);
         return Promise.resolve();
       },
+      settingsTaken: taken,
     });
     step.stop();
     listedMcp.set([listing("ratesdemo", 1)]);
@@ -163,6 +200,7 @@ describe("composeListedMcp", () => {
         handed.push(servers);
         return Promise.resolve();
       },
+      settingsTaken: taken,
     });
     expect(step.listedMcpOn).toBeUndefined();
     expect(handed).toStrictEqual([]);

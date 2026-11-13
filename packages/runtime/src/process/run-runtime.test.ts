@@ -81,9 +81,10 @@ describe("runRuntime", () => {
     const runtime = started();
     await send(runtime, fixtureStartLine());
     await runtime.next();
-    await send(runtime, { t: "settings", settings: fixtureStartLine().settings });
+    await send(runtime, { t: "settings", seq: 2, settings: fixtureStartLine().settings });
     await send(runtime, { t: "stop" });
     await expect(runtime.exited).resolves.toBe(0);
+    await expect(runtime.next()).resolves.toStrictEqual({ t: "settingsTaken", seq: 2 });
     await expect(runtime.next()).resolves.toBe("ended");
   });
 
@@ -95,13 +96,24 @@ describe("runRuntime", () => {
       ...fixtureStartLine().settings,
       network: { proxy: { url: "http://proxy.owner.test:3128" }, noProxy: [] },
     };
-    await send(runtime, { t: "settings", settings: proxied });
+    await send(runtime, { t: "settings", seq: 2, settings: proxied });
     await send(runtime, { t: "stop" });
     await runtime.exited;
     expect(runtime.applied.map((settings) => settings.network)).toStrictEqual([
       fixtureStartLine().settings.network,
       proxied.network,
     ]);
+  });
+
+  it("answers each settings line with its number once it applied the settings", async () => {
+    const runtime = started();
+    await send(runtime, fixtureStartLine());
+    await runtime.next();
+    const merged = { ...fixtureStartLine().settings, chats: { newMessageMode: "after" as const } };
+    await send(runtime, { t: "settings", seq: 7, settings: merged });
+
+    await expect(runtime.next()).resolves.toStrictEqual({ t: "settingsTaken", seq: 7 });
+    expect(runtime.applied.at(-1)?.chats.newMessageMode).toBe("after");
   });
 
   it("ends without a fault when its input ends", async () => {
@@ -149,7 +161,7 @@ describe("runRuntime", () => {
   it("answers the settings that came while it signed in once it is ready", async () => {
     const runtime = started();
     await send(runtime, fixtureStartLine());
-    await send(runtime, { t: "settings", settings: fixtureStartLine().settings });
+    await send(runtime, { t: "settings", seq: 2, settings: fixtureStartLine().settings });
     await expect(runtime.next()).resolves.toMatchObject({ t: "ready" });
     await send(runtime, { t: "stop" });
     await expect(runtime.exited).resolves.toBe(0);

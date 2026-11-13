@@ -11,7 +11,7 @@ model loop, sessions and tools. It is a client of the engine with the scopes `re
 | Export                                     | What it does                                                                                                                                                |
 | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `EngineLine`, `engineLineSchema`           | The lines the engine writes: `start`, `settings`, `route`, `stop`                                                                                           |
-| `RuntimeLine`, `runtimeLineSchema`         | The lines the runtime writes: `ready`, `routeReply`, `health`                                                                                               |
+| `RuntimeLine`, `runtimeLineSchema`         | The lines the runtime writes: `ready`, `settingsTaken`, `routeReply`, `health`                                                                              |
 | `RuntimeSettings`, `runtimeSettingsSchema` | The models with their keys, the chat mode, search and the owner                                                                                             |
 | `isRoutedOperation`                        | Whether the runtime answers an operation through the engine                                                                                                 |
 | `readControlLines`                         | Cuts a pipe's bytes into lines, refusing one over `maxControlLineBytes`                                                                                     |

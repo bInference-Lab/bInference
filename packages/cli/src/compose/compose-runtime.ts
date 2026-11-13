@@ -75,6 +75,8 @@ export interface ComposedRuntime {
    * next call. A composition root that offers no listed server never calls it.
    */
   offerListedMcp(servers: readonly ListedMcpServer[]): Promise<void>;
+  /** Settles once the runtime took the settings in force now, or the runtime stopped for good. */
+  settingsTaken(): Promise<void>;
   /**
    * Follows a reload of `config.json5` (decision 0230): when a changed key is one the runtime's
    * settings hold, reads them again from the config cell, provider and search keys from their
@@ -228,6 +230,7 @@ export function composeRuntime(opening: Opening, opened: Opened): ComposedRuntim
     models: held.models,
     offerPlugins: held.offerPlugins,
     offerListedMcp: held.offerListedMcp,
+    settingsTaken: async () => supervisor.taken(),
     followReload: followReloadOf(opened, held),
     begin(server) {
       ended.endSessions = (credential) => server.endSessions(credential, "auth.revoked");

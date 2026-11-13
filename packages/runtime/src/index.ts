@@ -14,6 +14,7 @@ export type {
   RuntimeLine,
   RuntimePaths,
   SettingsLine,
+  SettingsTakenLine,
   StartLine,
   StopLine,
 } from "./control/control-line.schema.js";

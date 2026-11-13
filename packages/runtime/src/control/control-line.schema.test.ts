@@ -23,7 +23,11 @@ describe("the control pipe's lines", () => {
     const input = { type: "object", properties: {}, additionalProperties: false };
     const tool = { name: "index", description: "Reads the index.", input };
     const plugins = [{ plugin: "plg_1", id: "fear-index", tools: [tool] }];
-    const line = { t: "settings", settings: { ...fixtureStartLine().settings, plugins } } as const;
+    const line = {
+      t: "settings",
+      seq: 2,
+      settings: { ...fixtureStartLine().settings, plugins },
+    } as const;
     const wire = JSON.stringify(engineLineSchema.encode(line));
 
     expect(engineLineSchema.parse(JSON.parse(wire))).toEqual(line);
@@ -33,6 +37,7 @@ describe("the control pipe's lines", () => {
     const listedMcp = [listedServerFixture([nthTestId("agt", 1)])];
     const line = {
       t: "settings",
+      seq: 2,
       settings: { ...fixtureStartLine().settings, listedMcp },
     } as const;
     const wire = JSON.stringify(engineLineSchema.encode(line));

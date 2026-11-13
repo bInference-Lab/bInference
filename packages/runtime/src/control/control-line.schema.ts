@@ -46,6 +46,8 @@ export interface StartLine {
 /** The settings again, whole, after a reload changed a key the runtime uses. */
 export interface SettingsLine {
   readonly t: "settings";
+  /** Rises with each settings line the engine writes; the runtime answers it once it applied them. */
+  readonly seq: number;
   readonly settings: RuntimeSettings;
 }
 
@@ -73,6 +75,12 @@ export interface ReadyLine {
   readonly schemaVersion: number;
 }
 
+/** The runtime applied the settings line of `seq`: its next turn and model call take them. */
+export interface SettingsTakenLine {
+  readonly t: "settingsTaken";
+  readonly seq: number;
+}
+
 /** The answer to one `route` line: its result as the operation's schema encodes it, or an error. */
 export type RouteReplyLine =
   | { readonly t: "routeReply"; readonly id: string; readonly result: JsonValue }
@@ -90,7 +98,7 @@ export interface HealthLine {
 }
 
 /** A line the runtime writes to its standard output. */
-export type RuntimeLine = ReadyLine | RouteReplyLine | HealthLine;
+export type RuntimeLine = ReadyLine | SettingsTakenLine | RouteReplyLine | HealthLine;
 
 type Wire<Line> = Line extends { readonly settings: RuntimeSettings }
   ? Omit<Line, "settings"> & { readonly settings: RuntimeSettingsWire }
@@ -115,6 +123,7 @@ function isRouteOp(op: string): op is OperationName {
 }
 
 const pathSchema = z.string().min(1).max(4_096);
+const settingsSeqSchema = z.int().positive();
 
 /** Decodes an {@link EngineLine} from JSON, and encodes one back. */
 export const engineLineSchema: z.ZodType<EngineLine, EngineLineWire> = z.discriminatedUnion("t", [
@@ -125,7 +134,11 @@ export const engineLineSchema: z.ZodType<EngineLine, EngineLineWire> = z.discrim
     paths: z.strictObject({ agentDb: pathSchema, workspace: pathSchema }),
     settings: runtimeSettingsSchema,
   }),
-  z.strictObject({ t: z.literal("settings"), settings: runtimeSettingsSchema }),
+  z.strictObject({
+    t: z.literal("settings"),
+    seq: settingsSeqSchema,
+    settings: runtimeSettingsSchema,
+  }),
   z.strictObject({
     t: z.literal("route"),
     id: routeIdSchema,
@@ -145,6 +158,7 @@ export const runtimeLineSchema: z.ZodType<RuntimeLine> = z.union([
     version: z.string().min(1).max(64),
     schemaVersion: z.int().nonnegative(),
   }),
+  z.strictObject({ t: z.literal("settingsTaken"), seq: settingsSeqSchema }),
   z.strictObject({ t: z.literal("routeReply"), id: routeIdSchema, result: jsonValueSchema }),
   z.strictObject({ t: z.literal("routeReply"), id: routeIdSchema, error: protocolErrorSchema }),
   z.strictObject({
