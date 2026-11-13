@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
-import { readFileSync, statSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { z } from "zod";
+import { bundledLicensesFile } from "../../packages/cli/src/packed/bundled-licenses.js";
 import { runCommand } from "../run-command.mjs";
 import { type ReleaseBuild, stagePackage } from "./stage-package.mjs";
 
@@ -23,7 +24,8 @@ const packOutputSchema = z.array(
   }),
 );
 
-// Every tarball carries the license and the notices (vet-release section 3).
+// Every tarball carries the license and the notices (vet-release section 3), and one that bundles
+// outside code the licenses of that code.
 const requiredFiles = ["package.json", "LICENSE", "NOTICES.md", "README.md"];
 
 function sha256Of(file: string): string {
@@ -36,8 +38,9 @@ const maxTarballBytes = 8 * mebibyte;
 
 /**
  * Stages one published package in `<out>/stage/<name>` and packs it into `out` with npm, its
- * own lifecycle scripts off. Throws when npm fails, the tarball lacks a required file, or it is
- * larger than the 8 MiB the CLI reads of a tarball, so no install could update to it.
+ * own lifecycle scripts off. Throws when staging refuses a bundled package's license, npm fails,
+ * the tarball lacks a required file, or it is larger than the 8 MiB the CLI reads of a tarball,
+ * so no install could update to it.
  */
 export function packPackage(build: ReleaseBuild, name: string, out: string): PackedFile {
   const staged = join(out, "stage", name);
@@ -54,7 +57,10 @@ export function packPackage(build: ReleaseBuild, name: string, out: string): Pac
     throw new Error(`npm pack wrote no tarball for ${name}.`);
   }
   const paths = new Set(packed.files.map((entry) => entry.path));
-  const missing = requiredFiles.filter((file) => !paths.has(file));
+  const required = existsSync(join(staged, bundledLicensesFile))
+    ? [...requiredFiles, bundledLicensesFile]
+    : requiredFiles;
+  const missing = required.filter((file) => !paths.has(file));
   if (missing.length > 0) {
     throw new Error(`${packed.filename} lacks ${missing.join(", ")}.`);
   }

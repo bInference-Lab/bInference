@@ -92,6 +92,11 @@ Rules for this package:
   (`smoke-certificate.ts`) and `NODE_EXTRA_CA_CERTS` trusts; the model is a scripted Chat
   Completions stand-in on the loopback. A new entry point, process file or plugin is checked
   there. It never runs in `pnpm check`; its certificate's test does.
+- The release's license check of bundled code lives in `src/packed/` too, as functions of data the
+  dry run reads: `bundled-packages.ts` finds the outside packages inside a tarball's files from
+  their builds' bundle records, and `bundled-licenses.ts` checks their licenses against
+  `config/release/allowed-licenses.txt` and writes the tarball's `BUNDLED-LICENSES.md`.
+  `scripts/release/bundled-licenses.mts` does the reading and writing.
 - `composeEngine` is the one place that joins the engine to its protocol server, and to the
   owner's bot through `composeTelegram`. The server and the bot's fast commands run the same
   handlers: the engine's and the root's own, such as `engine/status`. The bot alone also gets

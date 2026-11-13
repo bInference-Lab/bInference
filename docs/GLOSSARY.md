@@ -684,6 +684,13 @@ check` tries it as `network.proxy`.
   paper trade by chat on the synthetic Bot API with a scripted model, and stops it. Each night it
   runs on a **nightly pack**, `pnpm release:dry --pack-only YYYY.M.PATCH-nightly.N`: private
   manifests on the `nightly` channel, which the release workflow's **publish check** refuses.
+- **bundle record**: `bundle-record/<first entry>.json` in a package's folder, which
+  `config/build/bundle-record.mjs` writes at each build: every file the build wrote, with the
+  outside modules and copied files inside it. The dry run reads the records to write a tarball's
+  **bundled licenses**, `BUNDLED-LICENSES.md`: the license and notice files of each outside
+  package its files carry, each license on the **allowed licenses** list,
+  `config/release/allowed-licenses.txt`. A package that ships no license file has its **kept
+  license** from its own repository in `config/release/licenses/`.
 - **crash suite**: the tests in each package's `src/crash/`, run by `pnpm test:crash` and nightly
   in CI on Linux, macOS and Windows. Each run kills an engine process at a **kill point** of the
   money path (after signing, after storing, after a relay passed the bytes on, after the send was

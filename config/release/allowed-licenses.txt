@@ -1,0 +1,17 @@
+# The licenses a package may carry when a published tarball bundles a copy of its code. Each is
+# permissive: it asks only that its notice ship with each copy, which BUNDLED-LICENSES.md does. A
+# copyleft license never goes here. One SPDX id per line, as the package's package.json names it.
+
+0BSD
+Apache-2.0
+BSD-2-Clause
+BSD-3-Clause
+ISC
+MIT
+
+# A public-domain dedication: it asks for nothing at all (fast-sha256).
+Unlicense
+
+# The font license of the console's typeface. It binds only the font files, which may ship with
+# any software, so long as they are not sold alone (@fontsource-variable/hanken-grotesk).
+OFL-1.1

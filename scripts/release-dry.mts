@@ -26,7 +26,7 @@ import {
   type ReleaseManifest,
 } from "./release/release-plan.mjs";
 import { nightlyVersionProblem, parseReleaseTag, type ReleaseTag } from "./release/release-tag.mjs";
-import { publishProblems } from "./release/stage-package.mjs";
+import { publishProblems, type ReleaseBuild } from "./release/stage-package.mjs";
 import { readWorkspace, type Workspace } from "./release/workspace-manifests.mjs";
 import { runCommand, runCommandShown } from "./run-command.mjs";
 
@@ -86,6 +86,16 @@ function readyWorkspace(root: string, published: readonly string[]): Workspace {
   return problems.length === 0 ? workspace : fail(problems.join("\n"));
 }
 
+// A refusal while packing, such as a bundled package's license, ends the run with its message,
+// which names the package.
+function packEach(each: ReleaseBuild, published: readonly string[], out: string): PackedFile[] {
+  try {
+    return published.map((name) => packPackage(each, name, out));
+  } catch (error) {
+    return fail(error instanceof Error ? error.message : String(error));
+  }
+}
+
 /** What a dry run wrote: its folder, the packed tarballs and the install scripts beside them. */
 interface PackedOut {
   readonly out: string;
@@ -110,7 +120,7 @@ function packAll(
   const out = join(root, "reports", "release", pack.version);
   rmSync(out, { recursive: true, force: true });
   mkdirSync(out, { recursive: true });
-  const files = published.map((name) => packPackage({ workspace, ...pack }, name, out));
+  const files = packEach({ workspace, ...pack }, published, out);
   const readmeFindings = packedReadmeFindings(root, out, files);
   if (readmeFindings.length > 0) {
     return fail(`a packed README breaks the style guard:\n${readmeFindings.join("\n")}`);

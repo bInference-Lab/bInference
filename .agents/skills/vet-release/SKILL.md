@@ -47,6 +47,12 @@ npm view @binference/plugin-sdk@<version> version
 - In a scratch project that installs the version, `npm audit signatures` passes: the packages
   carry registry signatures and provenance from the release workflow, never from a laptop.
 - The tarball holds `NOTICES.md` and `LICENSE` (`npm pack binference@<version> --dry-run`).
+- A tarball whose files carry outside code, `binference` today, also holds `BUNDLED-LICENSES.md`.
+  Read it from the published tarball: every outside package inlined into its files is there once,
+  with its license and notice files in full, and each license is on
+  `config/release/allowed-licenses.txt` at the tag, where no copyleft license may stand. A section
+  with no license text, or a package you find inside a file of the tarball and not in the list,
+  means no.
 - The release on GitHub has a signed tag (`git tag -v <tag>`) and a CycloneDX SBOM attached
   (`gh release view <tag> --json assets`).
 

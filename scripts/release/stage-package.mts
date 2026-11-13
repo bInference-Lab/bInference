@@ -2,6 +2,8 @@ import { cpSync, existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import type { ReleaseNotes } from "@binference/protocol";
 import { z } from "zod";
+import { bundledLicensesFile } from "../../packages/cli/src/packed/bundled-licenses.js";
+import { writeBundledLicenses } from "./bundled-licenses.mjs";
 import {
   outsideDependencies,
   runtimeClosure,
@@ -156,8 +158,10 @@ function stageBundled(build: ReleaseBuild, name: string, into: string): void {
  * Lays out a published package for `npm pack` in `into` (decision 0352): its own files, every
  * workspace package it needs at run time copied under `node_modules` and named in
  * `bundleDependencies`, and every outside package any of them needs as a dependency at the
- * catalog's exact version, so npm fetches those and nothing else. The `binference` package's
- * manifest also carries the release's notes for owners, when the build has them.
+ * catalog's exact version, so npm fetches those and nothing else. A package whose files carry
+ * outside code also gets `BUNDLED-LICENSES.md` in its `files`, and staging throws
+ * when one of those licenses may not ship. The `binference` package's manifest also carries the
+ * release's notes for owners, when the build has them.
  */
 export function stagePackage(build: ReleaseBuild, name: string, into: string): void {
   const entry = entryOf(build, name);
@@ -169,9 +173,11 @@ export function stagePackage(build: ReleaseBuild, name: string, into: string): v
   copyFiles(build, entry, into);
   cpSync(join(build.workspace.root, "LICENSE"), join(into, "LICENSE"));
   cpSync(sourceOf(build, entry, "README.md"), join(into, "README.md"));
+  const licensed = writeBundledLicenses(build.workspace, name, into);
+  const files = entry.manifest.files ?? [];
   const manifest = {
     ...manifestFor(entry.manifest, build.version, dependenciesOf(build, [name, ...bundled])),
-    files: entry.manifest.files,
+    files: licensed ? [...files, bundledLicensesFile] : files,
     ...(bundled.length === 0 ? {} : { bundleDependencies: bundled }),
     ...(build.isNightly === true ? { private: true } : {}),
     ...(name === notesPackage && build.releaseNotes !== undefined

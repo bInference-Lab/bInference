@@ -1253,6 +1253,12 @@ commander tree for `--json` and `--yes`, and exit code tests; an image smoke tes
   nightly and before each publish on Linux, macOS and Windows: the installed `binference` sets
   up, starts, trades on paper by chat and stops ([decision 0354](DECISIONS.md#d0354)). A new
   entry point, process file or plugin is checked there.
+- A tarball whose files carry an outside package's code ships that package's license and notice
+  files in `BUNDLED-LICENSES.md`, and each such license is on `config/release/allowed-licenses.txt`,
+  which holds permissive licenses only ([decision 0432](DECISIONS.md#d0432)). Enforcer:
+  `pnpm release:dry` (every file of code a tarball holds is in its build's bundle record, and a
+  file in no record, a bundled package whose license the list does not allow, or one with no
+  license text stops the pack, naming the tarball and the package).
 - All published packages share one calver version. `plugin-sdk` also declares a semver API version
   that plugins state in their manifest. Enforcer: `check:package-graph` (versions equal); a manifest
   test.

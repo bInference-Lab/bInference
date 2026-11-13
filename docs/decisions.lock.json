@@ -1723,6 +1723,10 @@
     "0431": {
       "status": "Accepted",
       "sha256": "3d38e7c5955f75145cccb97a47a31a40461e892b1ff90e14bc2135c8d9f7205d"
+    },
+    "0432": {
+      "status": "Accepted",
+      "sha256": "408f8271815b94d37416065a9d412231ca5a37887f4be1ca703d3fde1080a0b8"
     }
   }
 }
