@@ -2,7 +2,10 @@ import type { Result } from "@binference/core";
 import type {
   IdempotencyEntry,
   IdempotencyLookup,
+  IdempotencyMark,
+  IdempotencyPrune,
   IdempotencyRecall,
+  IdempotencyStart,
 } from "./idempotency-entry.js";
 import type { InboxAdmission, InboxDraft, InboxEntry, InboxPage } from "./inbox-entry.js";
 
@@ -41,6 +44,25 @@ export interface IdempotencyStore {
    * result keeps the first one: `repeat` returns it, `reused` says the args differ.
    */
   remember(entry: IdempotencyEntry, options: StoreCall): Promise<IdempotencyRecall>;
-  /** Deletes results stored before `beforeMs` and returns how many. */
-  prune(beforeMs: number, options: StoreCall): Promise<number>;
+  /**
+   * Reads a key and, when it is free, marks it started with its args hash and no result, in one
+   * write, before the write runs (decision 0437); see {@link IdempotencyStart} for each answer.
+   */
+  start(mark: IdempotencyMark, options: StoreCall): Promise<IdempotencyStart>;
+  /**
+   * Stores a write's result in its key's started row, with the result's time, or again as a new
+   * row when a prune took the mark. The same result again is done; a key with other args or one
+   * that holds another result throws `store.constraint` and changes nothing.
+   */
+  finish(entry: IdempotencyEntry, options: StoreCall): Promise<void>;
+  /**
+   * Removes a started key with no result and the same args hash, so the key may run again; a key
+   * that holds a result, other args or nothing is left as it is.
+   */
+  forget(lookup: IdempotencyLookup, options: StoreCall): Promise<void>;
+  /**
+   * Deletes the keys started or stored before the prune's time, but the marks of the writes it
+   * names as running, and returns how many went.
+   */
+  prune(prune: IdempotencyPrune, options: StoreCall): Promise<number>;
 }

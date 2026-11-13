@@ -270,7 +270,8 @@ interface IdempotencyTable {
   op: string;
   key: string;
   args_hash: string;
-  result: string;
+  /** Empty while the key's write runs (decision 0437). */
+  result: string | null;
   at: number;
 }
 

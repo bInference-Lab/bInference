@@ -112,7 +112,10 @@ async function claimsOneLaunch(subject: KeyRaceSubject): Promise<void> {
   );
 }
 
-/** Writers that remember one key, or admit one source key, keep the first; the others repeat it. */
+/**
+ * Writers that remember one key, start one key, or admit one source key keep the first; the others
+ * repeat it, or find the key unfinished.
+ */
 async function keepsOneIngressKey(subject: KeyRaceSubject): Promise<void> {
   const remembered = await race(subject, async ({ idempotency }, index) => {
     const entry = {
@@ -129,6 +132,21 @@ async function keepsOneIngressKey(subject: KeyRaceSubject): Promise<void> {
   assertOneWon(
     remembered.map((kind) => (kind === "new" ? "ok" : kind)),
     "repeat",
+  );
+  const started = await race(subject, async ({ idempotency }, index) => {
+    const mark = {
+      credential: fixtureId("tok", 1),
+      op: "intent/propose",
+      key: "0190f1c2-3a4b-7c5d-8e6f-000000000002",
+      argsHash: fixtureHash("args"),
+      atMs: 1_000 + index,
+    };
+    const start = await settled(idempotency.start(mark, live()));
+    return start === conflict ? conflict : start.kind;
+  });
+  assertOneWon(
+    started.map((kind) => (kind === "started" ? "ok" : kind)),
+    "unfinished",
   );
   const admitted = await race(subject, async ({ inbox }, index) => {
     const draft = {
@@ -154,7 +172,7 @@ export function storeKeyRaces(harness: KeyRaceHarness): readonly ContractCheck[]
     checkOn("saves an address book entry and an account once", create, savesOneAddress),
     checkOn("adds a token, a device and a pairing code once", create, addsOneAccessKey),
     checkOn("claims a Mini App launch once", create, claimsOneLaunch),
-    checkOn("remembers a call and admits an event once", create, keepsOneIngressKey),
+    checkOn("remembers and starts a call and admits an event once", create, keepsOneIngressKey),
     ...installAndWebhookKeyRaces(create),
   ];
 }
