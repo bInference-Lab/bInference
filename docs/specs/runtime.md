@@ -125,7 +125,10 @@ Before `ready`, the runtime repairs each turn with no `ended_at`:
 1. Every tool call without a result gets one. A propose call whose committed mark is stored gets
    "the outcome of this proposal is unknown after a restart; it was not sent again". Any other
    call gets "not run: the agent restarted".
-2. The turn ends `failed`, and its `turn/end` is sent once the runtime is connected.
+2. The turn ends `failed`, and its `turn/end` is sent once the runtime is connected, after the
+   status line `turn.failed.proposalUnknown` when a propose call's outcome is unknown, else
+   `turn.failed.engine`. The engine shows neither for a turn it ended itself when the runtime
+   exited, which already showed `turn.failed.lapsed` (decision 0442).
 3. Nothing is proposed again. The new start has a new token, so the engine's idempotency store,
    kept per credential, could not catch a second send. If the proposal reached the engine, its
    settle message arrives as usual and starts a turn (section 3.3).
@@ -299,7 +302,28 @@ The operations are in [spec 1, section 7.7](protocol.md#section-7-7).
 6. `usage/record` after each model call (section 8.3).
 7. `turn/end` `{ agent, turn, outcome, failedTool? }`: the engine clears the running turn and
    pushes `chat/turnEnded`. `failedTool` names the tool whose last call ran and failed, with no
-   later success of it ([decision 0394](../DECISIONS.md#d0394)). The runtime's exit clears every running turn as `failed`.
+   later success of it ([decision 0394](../DECISIONS.md#d0394)). The engine also ends a running
+   turn `failed` when the runtime exits, when the agent's next `turn/start` arrives, before that
+   turn's `chat/turnStarted`, and one minute past the turn's limit of 10 minutes after its
+   `turn/start`: it pushes the status line `turn.failed.lapsed`, then `chat/turnEnded`. Both sides
+   read the limit, `maxTurnMs` of `@binference/protocol` ([decision 0442](../DECISIONS.md#d0442)).
+
+**A call the engine refused.** A call refused `protocol.busy` or `engine.starting` never ran: the
+runtime sends it again, at most 5 attempts, with waits under 250 ms doubling to 2 seconds, at most
+3.75 seconds of waits in all. A call the runtime's own client refused `client.busy`, with 60 calls
+waiting for an answer, never ran either: it waits for one of the link's calls to settle and goes
+again, for as long as its own time allows, such as an end write's 10 seconds, and no such wait
+counts as an attempt. This holds for `turn/start`, `turn/mark`, `turn/say` with `final: true`,
+`turn/status`, `usage/record`, `turn/end`, `inbox/list`, `inbox/take`, the wake-ups
+`helper/ended`, `goal/continue`, `image/made` and `media/made`, `goal/show`, `inbox/readImage`,
+and every read of a tool or of a turn's context, an operation of the `read` scope that is no
+write. At most 40 of those reads run at once on the link, and the rest wait their turn in the
+runtime, so the turns' own calls, usage records and wake-ups always find room among the client's 60. A write keeps one key across its attempts: `<turn>.say` for the final text, `<turn>.end` for
+the end and `<turn>.usage.<n>` for each usage record, so a resend after one of these refusals never
+runs a call twice. Drafts, progress lines, reasoning, proposals and a tool's calls other than reads
+are not sent again, and no call is sent again after any other failure. The usage record of a model
+call a halt cut, such as the turn's 10 minutes, waits at most an end write's 10 seconds, so the
+turn ends before the engine's minute is up ([decision 0442](../DECISIONS.md#d0442)).
 
 **The mark in the engine.** A proposal from the agent runtime takes the mark of its agent's
 running turn: `intent/propose`, `order/create`, `alert/create` and `schedule/create` called with the

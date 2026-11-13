@@ -1,6 +1,6 @@
 # 0174. A restarted runtime repairs its turns, and chat waits in one queue per agent
 
-Status: Accepted
+Status: Amended by 0442
 
 Accepted by the owner on 2026-10-12.
 
