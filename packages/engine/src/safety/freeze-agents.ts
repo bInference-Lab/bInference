@@ -12,6 +12,7 @@ import type { AgentRecord } from "../agents/agent-record.js";
 import { ownFreezeOf } from "../agents/breaker-hold.js";
 import type { ConfigAuthor } from "../audit/journal-config-change.js";
 import type { StoredFreeze, StoredIntents } from "../intents/create-stored-intents.js";
+import { everyIntentOf } from "../intents/every-intent.js";
 import type { IntentMove } from "../intents/intent-change-of.js";
 import type { IntentRecord } from "../intents/intent-record.js";
 import { createIntentStateMachine } from "../intents/state-machine.js";
@@ -70,20 +71,10 @@ function targetsOf(
 export async function unsignedOf(
   intents: IntentStore,
   agentId: Id<"agt">,
-  call: { readonly signal: AbortSignal; readonly after?: IntentRecord },
+  call: { readonly signal: AbortSignal },
 ): Promise<readonly IntentRecord[]> {
-  const { signal, after } = call;
-  const query = {
-    states: statesBeforeSigning,
-    agentId,
-    limit: pageSize,
-    ...(after === undefined ? {} : { after: { changedAtMs: after.changedAtMs, id: after.id } }),
-  };
-  const page = await intents.list(query, { signal });
-  const last = page.at(-1);
-  return page.length < pageSize || last === undefined
-    ? page
-    : [...page, ...(await unsignedOf(intents, agentId, { signal, after: last }))];
+  const query = { states: statesBeforeSigning, agentId, limit: pageSize };
+  return everyIntentOf(intents, query, call);
 }
 
 /**
