@@ -19,6 +19,7 @@ import type { LimitsChange, LimitsRecord } from "./agents/limits-record.js";
 import type { SendLevelChange, SendLevelRecord } from "./agents/send-level-record.js";
 import type { ConfigChange, ConfigJournalEntry } from "./audit/config-change.js";
 import type { ModelCharge } from "./billing/model-charge.js";
+import type { BreakerState } from "./breaker/breaker-state.js";
 import type { BuiltQuote, IntentWrite, StoredIntent } from "./confirmations/stored-intent.js";
 import type { BotUpdate } from "./ingress/bot-update.js";
 import type { DisclaimerStore } from "./install/disclaimer-record.js";
@@ -653,6 +654,23 @@ export interface QuotaSource {
    * when they cannot be read; the call that asked then stores nothing.
    */
   read(options: { readonly signal: AbortSignal }): Promise<Quotas>;
+}
+
+/**
+ * The breaker, bInference's switch that holds every agent of every install it hosts, as each
+ * install's engine reads it (ARCHITECTURE.md section 30, decision 0439). Adapters: `noBreaker`,
+ * which is never pulled, and a reader of the worker's copy of the breaker's row on bInference's
+ * hosted service. The engine reads it at its start and each second after, so a read should answer
+ * from memory.
+ */
+export interface BreakerSource {
+  /**
+   * The breaker now: pulled or not, with a version that rises with every move and never goes
+   * down. Rejects with the signal's reason once it aborts, and with a fault when the breaker
+   * cannot be read; an adapter that answers from a copy rejects once its copy is older than 10
+   * seconds. The engine then keeps the state the install applied last.
+   */
+  read(options: { readonly signal: AbortSignal }): Promise<BreakerState>;
 }
 
 /**

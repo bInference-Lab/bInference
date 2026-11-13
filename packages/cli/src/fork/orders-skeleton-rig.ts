@@ -8,7 +8,7 @@ import {
   createSeededRandom,
   type MemoryLogger,
 } from "@binference/core/testing";
-import { noQuotas } from "@binference/engine";
+import { noBreaker, noQuotas } from "@binference/engine";
 import { createRunningTurns, type RunningTurns } from "@binference/engine/chat";
 import { createSourceMarketReads } from "@binference/engine/market";
 import { createSimulationCheck } from "@binference/engine/simulation";
@@ -95,6 +95,7 @@ function partsOn(fork: Fork, stores: MemoryEngineStores): EngineParts {
     ],
     marketReads: createSourceMarketReads({ sources: [], clock, timeoutMs: 5_000 }),
     quotas: noQuotas,
+    breaker: noBreaker,
   };
 }
 

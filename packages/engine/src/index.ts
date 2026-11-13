@@ -262,6 +262,7 @@ export type {
   AccessStore,
   AgentStore,
   BotUpdateSource,
+  BreakerSource,
   ConfigJournal,
   ConfirmationStore,
   Executor,
@@ -278,6 +279,8 @@ export type {
 } from "./ports.js";
 export type { SimulatedSteps } from "./simulation/simulated-steps.js";
 export { noQuotas } from "./quotas/no-quotas.js";
+export { noBreaker } from "./breaker/no-breaker.js";
+export { breakerStateSchema, type BreakerState } from "./breaker/breaker-state.js";
 export type { EngineStores } from "./records/engine-stores.js";
 export { rowPageSchema, type RowPage } from "./records/row-page.js";
 export { isSha256Hex, sha256Hex, sha256HexSchema, type Sha256Hex } from "./records/sha256-hex.js";

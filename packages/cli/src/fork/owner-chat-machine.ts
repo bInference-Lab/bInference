@@ -10,7 +10,7 @@ import {
   createSeededRandom,
   type MemoryLogger,
 } from "@binference/core/testing";
-import { type EnginePush, noQuotas, type PositionStore } from "@binference/engine";
+import { type EnginePush, noBreaker, noQuotas, type PositionStore } from "@binference/engine";
 import {
   type AgentInboxMessage,
   createRunningTurns,
@@ -98,6 +98,7 @@ function partsOf(fork: Fork, rig: RescueRigParts) {
     riskSources: [{ source, isRequired: true }],
     marketReads: createSourceMarketReads({ sources: [], clock, timeoutMs: 5_000 }),
     quotas: noQuotas,
+    breaker: noBreaker,
   };
 }
 

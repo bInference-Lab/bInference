@@ -28,7 +28,7 @@ import {
   type ManualClock,
   type MemoryLogger,
 } from "@binference/core/testing";
-import { noQuotas, type PositionStore, sha256Hex } from "@binference/engine";
+import { noBreaker, noQuotas, type PositionStore, sha256Hex } from "@binference/engine";
 import {
   createFakeExecutor,
   createFakePriceSource,
@@ -141,6 +141,7 @@ export const skeletonCompositions: readonly SkeletonComposition[] = [
           clock,
         ),
         quotas: noQuotas,
+        breaker: noBreaker,
       };
     },
   },

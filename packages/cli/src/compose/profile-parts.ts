@@ -1,6 +1,12 @@
 import type { PriceSource, Signer } from "@binference/chain";
 import type { SecretStore } from "@binference/core";
-import type { BotUpdateSource, EngineStores, MarketData, ModelBilling } from "@binference/engine";
+import type {
+  BotUpdateSource,
+  BreakerSource,
+  EngineStores,
+  MarketData,
+  ModelBilling,
+} from "@binference/engine";
 import type {
   CeilingEditor,
   SignerRevoker,
@@ -69,6 +75,12 @@ export interface ProfileParts {
    */
   readonly quotas: QuotaSource;
   /**
+   * The breaker: bInference's switch that holds every agent it hosts (decision 0439). Self-hosted
+   * has none (`noBreaker`); Cloud reads the worker's copy of the breaker's row. The field is
+   * required, so no composition root leaves an install out of its breaker by leaving it out.
+   */
+  readonly breaker: BreakerSource;
+  /**
    * Plugins: whether a plugin needs a listing bInference signed (decision 0433). Self-hosted needs
    * none (`notRequired`); Cloud holds the listing keys and reads the catalog. The field is
    * required, so no composition root leaves installs open by leaving it out.
@@ -78,7 +90,7 @@ export interface ProfileParts {
 
 /**
  * The profile parts the engine runs on: custody with its ceilings, wallet maker, exporter and
- * signer revoker, stores, prices, risk sources, market reads and quotas.
+ * signer revoker, stores, prices, risk sources, market reads, quotas and the breaker.
  */
 export type EngineParts = Pick<
   ProfileParts,
@@ -92,4 +104,5 @@ export type EngineParts = Pick<
   | "riskSources"
   | "marketReads"
   | "quotas"
+  | "breaker"
 >;

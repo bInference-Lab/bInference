@@ -15,9 +15,11 @@ import {
   createCreditBilling,
   createFakeCeilingEditor,
   createFakeWalletMaker,
+  createMemoryBreaker,
   createMemoryEngineStores,
   createMemoryQuotaSource,
   createRelayUpdateSource,
+  type MemoryBreaker,
   type MemoryEngineStores,
   type MemoryQuotaSource,
   type RelayUpdateSource,
@@ -75,6 +77,8 @@ export interface CloudTestRoot extends ProfileParts {
   readonly listedMcp: FakeListedMcpSource;
   /** Each user's quotas, the beta's by default: `set` puts others in force. */
   readonly quotas: MemoryQuotaSource;
+  /** The breaker's row as the worker reads it: `pull` and `lift` move it for every install. */
+  readonly breaker: MemoryBreaker;
   /** Plugins need a listing the catalog's own key signed, which the listing keys hold. */
   readonly pluginListing: {
     readonly kind: "required";
@@ -124,6 +128,7 @@ export function composeCloudTestRoot(options: CloudTestRootOptions = {}): CloudT
     ],
     listedMcp: createFakeListedMcpSource(),
     quotas: createMemoryQuotaSource(cloudBetaQuotas),
+    breaker: createMemoryBreaker(),
     pluginListing: {
       kind: "required",
       keys: createListingKeys([catalog.signer.spki]),
