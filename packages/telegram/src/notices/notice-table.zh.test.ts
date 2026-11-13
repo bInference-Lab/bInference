@@ -25,7 +25,7 @@ const expected: Readonly<Record<string, string>> = {
     "1 张卡片等你回复",
     "跳过 1 次：钱包中这种代币不足",
   ].join("\n"),
-  "notice.frozen": `${red} 已从 Telegram 冻结 main。请在终端运行 \`binference unfreeze\` 解除冻结。`,
+  "notice.frozen": `${red} 已从 Telegram 冻结 main。请在控制台或 Mini App 的「安全」页面解除冻结，或在终端运行 \`binference unfreeze\`。`,
   "notice.unfrozen": `${green} 已从 控制台 对 main 解除冻结。`,
   "notice.breakerPulled": `${red} bInference 已拉下熔断开关，其运行的全部 Agent 均已冻结：等待中的卡片已取消，自动订单已暂停。你的资金仍在你的钱包中，紧急转出到你的紧急转出地址仍然可用。解除时会通知你。`,
   "notice.breakerLifted": `${green} bInference 已解除熔断开关：你的 Agent 可以重新交易，但你自己的冻结仍作用于 main、second。需要它们交易时请解除冻结。`,

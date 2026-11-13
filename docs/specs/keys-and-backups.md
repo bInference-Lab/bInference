@@ -248,7 +248,7 @@ call carries only a function its venue declares, so no rule allows `setApprovalF
 contract, and the signer's hard rules (section 5.2) refuse it too.
 
 **Under the ceiling,** the engine's limits (per-trade and daily caps, send levels, allow and deny
-lists) can be loosened from the terminal
+lists) can be loosened from the terminal, the console or the Mini App
 ([decision 0089](../DECISIONS.md#d0089)), never past the ceiling. Raising the ceiling, adding a
 venue to it, or saving a send address is an owner-key action in the CLI:
 `binference ceiling set` and `binference address add`, each asking for the owner key code. The owner

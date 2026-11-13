@@ -39,7 +39,7 @@ Telegram 中的 `/orders` 列出生效中的订单及其触发条件和成交次
 - **最差价格。** 限价单和止盈默认以触发价格或更好的价格成交。止损和追踪止损没有最差价格，会在订单的滑点范围内按市价卖出。
 - **成交次数。** 价格订单只成交一次，除非卡片写明更多次数。一次成交后，要等条件不再满足，它才能再次成交。
 - **平仓订单一起结束。** 当一个平仓订单（止盈、止损、追踪止损或限价卖出）卖完整个持仓时，该持仓的其他平仓订单会结束，你会收到 [`ordersEnded`](/zh-cn/reference/notices/#ordersended) 通知。
-- **到期。** 订单在 Agent 的订单有效期后结束，默认 30 天（`defaults.orders.expiryDays`），除非卡片写明更早的结束时间；要求更晚结束的订单会被拒绝。可用 `binference limit set orders.expiryDays=7` 修改。到期前一天你会收到 [`orderExpiring`](/zh-cn/reference/notices/#orderexpiring) 通知。
+- **到期。** 订单在 Agent 的订单有效期后结束，默认 30 天（`defaults.orders.expiryDays`），除非卡片写明更早的结束时间；要求更晚结束的订单会被拒绝。可在控制台的「交易限额」页面或用 `binference limit set orders.expiryDays=7` 修改。到期前一天你会收到 [`orderExpiring`](/zh-cn/reference/notices/#orderexpiring) 通知。
 - **失败。** 连续 5 次成交失败后，订单会被取消，并发送 [`fillsFailing`](/zh-cn/reference/notices/#fillsfailing) 通知。
 
 每次成交会发送 [`fill`](/zh-cn/reference/notices/#fill) 通知，每次跳过会发送带原因的 [`skipped`](/zh-cn/reference/notices/#skipped) 通知。两者都可以通过 `defaults.notifications.muted` 按 Agent 静音。

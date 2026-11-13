@@ -1,6 +1,6 @@
 {
   "approvalMode": "{agent} 已切换为{mode, select, auto {自动} other {手动}}模式，来自 {surface, select, telegram {Telegram} console {控制台} mini {Mini App} cli {命令行} other {binference}}",
-  "frozen": "🔴 已从 {surface, select, telegram {Telegram} console {控制台} mini {Mini App} cli {命令行} other {binference}} 冻结 {agent}。请在终端运行 `binference unfreeze` 解除冻结。",
+  "frozen": "🔴 已从 {surface, select, telegram {Telegram} console {控制台} mini {Mini App} cli {命令行} other {binference}} 冻结 {agent}。请在控制台或 Mini App 的「安全」页面解除冻结，或在终端运行 `binference unfreeze`。",
   "unfrozen": "🟢 已从 {surface, select, telegram {Telegram} console {控制台} mini {Mini App} cli {命令行} other {binference}} {scope, select, install {对全部 Agent 解除冻结} other {对 {agent} 解除冻结}}。",
   "breakerPulled": "🔴 bInference 已拉下熔断开关，其运行的全部 Agent 均已冻结：等待中的卡片已取消，自动订单已暂停。你的资金仍在你的钱包中，紧急转出到你的紧急转出地址仍然可用。解除时会通知你。",
   "breakerLifted": "🟢 bInference 已解除熔断开关：你的 Agent 可以重新交易{frozen, select, none {，自动订单已恢复。} other {，但你自己的冻结仍作用于 {agents}。需要它们交易时请解除冻结。}}",

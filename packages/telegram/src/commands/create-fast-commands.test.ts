@@ -200,7 +200,7 @@ describe("the fast commands", () => {
     const bot = await startCommandBot(served);
     await bot.send("/freeze");
     await bot.send("/freeze");
-    const done = `${icons.live} Every agent is frozen since Oct 10, 2026, 09:30:00, and every agent made until an unfreeze starts frozen. Their open cards and unsigned actions are cancelled; a transaction already sent finishes. Unfreeze with \`binference unfreeze\` in the terminal.`;
+    const done = `${icons.live} Every agent is frozen since Oct 10, 2026, 09:30:00, and every agent made until an unfreeze starts frozen. Their open cards and unsigned actions are cancelled; a transaction already sent finishes. Unfreeze on the Safety screen of the console or the Mini App, or with \`binference unfreeze\` in the terminal.`;
     expect(bot.texts()).toStrictEqual([done, done]);
   });
 
@@ -497,7 +497,7 @@ describe("the fast commands' replies", () => {
         `Limits of ${agent} in effect now:`,
         "Per-trade cap: $100.00",
         "How long an auto order lasts: 30 days",
-        "These looser limits apply at Oct 11, 2026, 09:30:00. Not you? Run `binference limit cancel` on the machine.",
+        "These looser limits apply at Oct 11, 2026, 09:30:00. Not you? Cancel them on the Limits screen of the console or the Mini App, or run `binference limit cancel` on the machine.",
         "Per-trade cap: $500.00",
         "Each button halves its limit at once; a second tap halves it again. Nothing here loosens a limit.",
       ].join("\n"),

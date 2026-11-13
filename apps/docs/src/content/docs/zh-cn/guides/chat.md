@@ -90,7 +90,7 @@ Agent 读取网页、X、代币数据或图片后，binference 会把这个对�
 
 新的 Agent 会先进行初次对话。它的文件 `FIRST-CHAT.md` 中有 8 个关于你交易方式的问题：Agent 可以交易多少资金、你通常持有多久、你对哪些代币感兴趣、什么时候卖出、哪些要避开、什么时候先问你，以及多久汇报一次。Agent 会先完成你第一条消息的请求，再逐个提问。第 2 题和第 3 题附带回答按钮；你随时可以输入其他回答。回答“跳过”可提前结束提问。
 
-Agent 根据你的回答写入 `STRATEGY.md` 和 `PERSONA.md`，然后删除 `FIRST-CHAT.md`。它只会在没有读过外部内容的对话中保存这些文件；如果对话已被标记，请发送 `/clear` 后重新回答。任何回答都不会设置限额：限额只能用 `binference limit set` 修改。Agent 处于实盘时会跳过初次对话。
+Agent 根据你的回答写入 `STRATEGY.md` 和 `PERSONA.md`，然后删除 `FIRST-CHAT.md`。它只会在没有读过外部内容的对话中保存这些文件；如果对话已被标记，请发送 `/clear` 后重新回答。任何回答都不会设置限额：限额只能用 `binference limit set` 或在控制台或 Mini App 的「交易限额」页面修改。Agent 处于实盘时会跳过初次对话。
 
 ## 工作区文件
 
@@ -98,7 +98,7 @@ Agent 根据你的回答写入 `STRATEGY.md` 和 `PERSONA.md`，然后删除 `FI
 
 ## 模型预算
 
-每个 Agent 都有每日模型调用预算 `defaults.modelBudgetUsdPerDay`，默认 $3。预算用完后，对话会暂停到第二天，你会收到 [`budget`](/zh-cn/reference/notices/#budget) 通知；自动订单继续运行。`/spend` 显示花费。`binference limit set modelBudgetUsdPerDay=5` 修改预算：调低立即生效，调高在 24 小时后生效。
+每个 Agent 都有每日模型调用预算 `defaults.modelBudgetUsdPerDay`，默认 $3。预算用完后，对话会暂停到第二天，你会收到 [`budget`](/zh-cn/reference/notices/#budget) 通知；自动订单继续运行。`/spend` 显示花费。`binference limit set modelBudgetUsdPerDay=5` 或控制台「交易限额」页面上的模型预算修改预算：调低立即生效，调高在 24 小时后生效。
 
 ## 定时任务
 

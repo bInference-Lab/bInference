@@ -71,6 +71,8 @@ binference limit set limits.perTradeUsd=50 limits.rollingDayUsd=300
 
 更严格的限额立即生效。更宽松的限额要等 24 小时，你会收到 [`limitChange`](/zh-cn/reference/notices/#limitchange) 通知，以便阻止不是你做的修改：`binference limit cancel` 会撤销等待中的宽松限额。在 Telegram 中，`/limits` 显示限额，其按钮只能让限额更严格。
 
+控制台和 Mini App 的「交易限额」页面显示每个 Agent 的限额，每次修改一项：选择限额，按它显示的单位输入新值，例如 `50` 美元或 `0.5` 百分比。更严格的限额立即生效；更宽松的限额会显示其 24 小时何时结束，「取消更宽松的限额」会撤销等待中的限额。被拒绝的修改会说明原因。网络费预留只能在终端修改。
+
 ## 代币检查
 
 买入注册表未列出的代币之前，binference 会先检查它：查询 GoPlus，然后在链的当前状态上试运行一次买入、转账和卖出。貔貅盘、无法卖出的代币、隐藏的所有者、黑名单、超过你限额的交易税，或低于你下限的流动性，在任何模式下都会被拒绝。卖出不做这项检查，由它的模拟结果决定。
@@ -109,16 +111,17 @@ binference limit set limits.perTradeUsd=50 limits.rollingDayUsd=300
 
 - `binference freeze` 冻结所有 Agent 和本安装，之后创建的 Agent 也处于冻结状态。`binference freeze --agent <id>` 只冻结一个 Agent。
 - Telegram 中的 `/freeze` 冻结全部。
+- 控制台或 Mini App 的「安全」页面在再次确认后冻结所有 Agent 或其中一个。
 
 冻结期间，Agent 不能提议任何操作，撤销授权除外，它仍需要卡片。
 
-要解除冻结，运行 `binference unfreeze`（加 `--agent <id>` 只针对一个 Agent）。它会打开一张卡片，在任何界面确认它即可解除冻结。自动模式从不确认它。`binference safety status` 显示冻结情况、进行中的紧急转出和紧急转出地址。
+要解除冻结，运行 `binference unfreeze`（加 `--agent <id>` 只针对一个 Agent），或在控制台或 Mini App 的「安全」页面点按「解除冻结」。它会打开一张卡片，在任何界面确认它即可解除冻结。自动模式从不确认它。`binference safety status` 和「安全」页面显示冻结情况、进行中的紧急转出和紧急转出地址。
 
 ## 紧急转出
 
 紧急转出会把每个 Agent 钱包中的全部资产转到你的紧急转出地址：每个注册表代币、钱包持有仓位的每个代币，最后是网络费预留之外的 BNB。它不卖出任何资产。冻结期间和模拟模式下它同样可用，在模拟模式下它转出的是真实资金。
 
-用 `binference rescue` 或 Telegram 中的 `/rescue` 打开它，然后确认卡片。模拟失败的转账会被跳过，每一步最多重试 3 次。[`rescue`](/zh-cn/reference/notices/#rescue) 通知会告诉你它已开始。
+用 `binference rescue`、Telegram 中的 `/rescue`，或控制台或 Mini App「安全」页面上的「打开紧急转出卡片」打开它，然后确认卡片。模拟失败的转账会被跳过，每一步最多重试 3 次。[`rescue`](/zh-cn/reference/notices/#rescue) 通知会告诉你它已开始。
 
 紧急转出地址在 `binference init` 时设置。要修改它，用你的所有者密钥运行 `binference rescue set <address>`：新地址在 24 小时后生效，在此之前旧地址仍然有效。你会收到 [`rescueAddress`](/zh-cn/reference/notices/#rescueaddress) 通知；如果不是你要求的，运行 `binference rescue cancel`。
 

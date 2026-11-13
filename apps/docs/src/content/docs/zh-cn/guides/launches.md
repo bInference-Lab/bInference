@@ -19,7 +19,7 @@ binference wallet create --launch --label launch
 
 发射钱包也负责 Agent 在发射代币自己的联合曲线上的实盘交易，例如 Genius.fun 代币。
 
-发射台必须在 Agent 的平台列表中。Flap 默认就在；要添加 Genius.fun 或 Brew，运行 `binference limit set limits.venues=<已有的平台>,geniusfun`，它在 24 小时后生效。`binference limit` 显示 Agent 已有的平台。
+发射台必须在 Agent 的平台列表中。Flap 默认就在；要添加 Genius.fun 或 Brew，运行 `binference limit set limits.venues=<已有的平台>,geniusfun`，或在控制台的「交易限额」页面添加，它在 24 小时后生效。`binference limit` 和该页面显示 Agent 已有的平台。
 
 ## 在 Telegram 中起草发射
 

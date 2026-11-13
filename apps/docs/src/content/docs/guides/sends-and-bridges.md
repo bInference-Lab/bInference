@@ -97,7 +97,7 @@ binference wallet create --bridge --label bridge
 
 Its ceiling allows only Relay deposits and sends to your rescue address and saved addresses. No
 other wallet of the agent can pay it, so fund it from a wallet of your own. Then add `relay` to the
-agent's venues with `binference limit set`.
+agent's venues with `binference limit set` or on the console's Limits screen.
 
 ### Bridge
 

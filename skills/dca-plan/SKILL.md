@@ -36,8 +36,8 @@ Read the live facts before you propose:
 - When the plan passes a limit, propose nothing. Tell the owner which limit, and the largest
   plan that fits, such as "$100 a day fits your $100 per-trade limit". Let the owner choose.
   Never shrink or split the plan on your own: a buy over a limit is skipped at every period.
-- Only the owner changes a limit, with `binference limit set` in the terminal; /limits in Telegram
-  lowers one.
+- Only the owner changes a limit, on the Limits screen of the console or the Mini App, or with
+  `binference limit set` in the terminal; /limits in Telegram lowers one.
 
 ## 3. Fit the balance
 

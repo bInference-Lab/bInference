@@ -101,7 +101,7 @@ Agent 随 bInference 一起成长：bInference 路线图上的每项能力都会
 - 点了确认也照样有效的限额：单笔上限和 24 小时上限、滑点和交易税上限，以及决定资金可以转往何处的转账级别。
 - 资金只能转往你的紧急转出地址或你保存过的地址。即使密钥被盗，这台机器也只能调用你启用的交易合约，通过它们造成的损失不会超过 24 小时上限。
 - 每个新 Agent 都从模拟模式开始，使用虚拟资金和真实报价。
-- `/freeze` 立即停止一切。`/rescue` 把全部资金转回你自己的钱包。
+- Telegram 中的 `/freeze` 或控制台中的「冻结」立即停止一切。`/rescue` 或控制台中的紧急转出卡片把全部资金转回你自己的钱包。
 
 ## 安装 <img src=".github/assets/logos/apple.png" width="20" height="20" alt="macOS">&nbsp;<img src=".github/assets/logos/windows.png" width="20" height="20" alt="Windows">&nbsp;<img src=".github/assets/logos/linux.png" width="20" height="20" alt="Linux">&nbsp;<img src=".github/assets/logos/docker.png" width="20" height="20" alt="Docker">
 

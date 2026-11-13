@@ -77,7 +77,7 @@ binference limit set limits.venues=<它列出的平台>,across
 binference wallet create --bridge --label bridge
 ```
 
-它的上限只允许存入 Relay，以及转账到你的紧急转出地址和已保存的地址。Agent 的其他钱包都不能给它转账，所以请从你自己的钱包充值。然后用 `binference limit set` 把 `relay` 加入 Agent 的平台列表。
+它的上限只允许存入 Relay，以及转账到你的紧急转出地址和已保存的地址。Agent 的其他钱包都不能给它转账，所以请从你自己的钱包充值。然后用 `binference limit set` 或在控制台的「交易限额」页面把 `relay` 加入 Agent 的平台列表。
 
 ### 发起跨链
 

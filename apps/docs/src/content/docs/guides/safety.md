@@ -90,6 +90,12 @@ A stricter limit applies at once. A looser one waits 24 hours, and you get the
 stopped: `binference limit cancel` drops the looser limits that wait. In Telegram, `/limits` shows
 the limits, and its buttons can only make them stricter.
 
+The Limits screen of the console and the Mini App shows each agent's limits and changes one at a
+time: pick the limit and type its new value in the unit it shows, such as `50` dollars or `0.5`
+percent. A stricter one applies at once; a looser one shows when its 24 hours end, and Cancel the
+looser limits drops what waits. A refused change says why. The gas reserve changes in the terminal
+only.
+
 ## Token checks
 
 A token the registry does not list is checked before a buy: binference asks GoPlus, then runs a test
@@ -152,12 +158,15 @@ running answer and pauses its auto orders. Transactions already sent finish.
 - `binference freeze` freezes every agent and the install, so an agent made later starts frozen.
   `binference freeze --agent <id>` freezes one agent.
 - `/freeze` in Telegram freezes everything.
+- The Safety screen of the console or the Mini App freezes every agent, or one, after asking once
+  more.
 
 While frozen, an agent proposes nothing, except an approval revoke, which still needs its card.
 
-To unfreeze, run `binference unfreeze` (with `--agent <id>` for one agent). It opens a card;
-confirming it from any surface unfreezes. Auto mode never confirms it. `binference safety status`
-shows what is frozen, the rescue under way and the rescue address.
+To unfreeze, run `binference unfreeze` (with `--agent <id>` for one agent), or press Unfreeze on
+the Safety screen of the console or the Mini App. It opens a card; confirming it from any surface
+unfreezes. Auto mode never confirms it. `binference safety status` and the Safety screen show what
+is frozen, the rescue under way and the rescue address.
 
 ## Rescue
 
@@ -165,7 +174,8 @@ A rescue moves everything out of every agent wallet to your rescue address: each
 each token a wallet holds a position in, then the BNB above the gas reserve. It sells nothing. It
 works while frozen and in paper mode too, where it moves the real funds.
 
-Open it with `binference rescue` or `/rescue` in Telegram, then confirm its card. A transfer whose
+Open it with `binference rescue`, `/rescue` in Telegram or Open the rescue card on the Safety
+screen of the console or the Mini App, then confirm its card. A transfer whose
 simulation fails is left out, and each step is retried up to 3 times. The
 [`rescue`](/reference/notices/#rescue) notice tells you it started.
 

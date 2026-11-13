@@ -165,12 +165,12 @@ new name here first, in the change that uses it.
   resolve step to the departure.
 - **send level**: from 0 (Open) to 3 (Locked), where sends may go among the saved addresses.
 - **freeze**: stops an agent or the whole install at once; an agent created while the install is
-  frozen starts frozen. Unfreezing is asked for with `binference unfreeze` in the terminal, and
-  takes the owner's tap on its card.
+  frozen starts frozen. Unfreezing is asked for on the Safety screen of the console or the Mini
+  App, or with `binference unfreeze` in the terminal, and takes the owner's tap on its card.
 - **rescue**: one intent that moves every token and the BNB of every agent wallet to the rescue
   address, even while frozen.
 - **braking** and **loosening**: a change that makes the agent safer works at once; one that makes
-  it less safe needs the terminal.
+  it less safe needs the terminal, the console or the Mini App.
 - **hard rules**: the checks the signer runs itself before it signs.
 - **wallet queue**: the queue per wallet, one transaction at a time, that owns the nonce, signs and
   sends.

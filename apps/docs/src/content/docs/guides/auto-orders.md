@@ -58,7 +58,8 @@ trigger is met, binference sizes the fill and checks it against the order's boun
   [`ordersEnded`](/reference/notices/#ordersended) notice.
 - **Expiry.** An order ends after the agent's order expiry, 30 days by default
   (`defaults.orders.expiryDays`), unless its card names an earlier end; an order that asks to end
-  later is refused. Change it with `binference limit set orders.expiryDays=7`. You get the
+  later is refused. Change it on the console's Limits screen or with
+  `binference limit set orders.expiryDays=7`. You get the
   [`orderExpiring`](/reference/notices/#orderexpiring) notice a day before.
 - **Failures.** After 5 fills in a row fail, the order is cancelled with the
   [`fillsFailing`](/reference/notices/#fillsfailing) notice.

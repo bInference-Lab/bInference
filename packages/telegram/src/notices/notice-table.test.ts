@@ -25,7 +25,7 @@ const expected: Readonly<Record<string, string>> = {
     "1 card waits for your answer",
     "1 skip: the wallet holds too little of this token",
   ].join("\n"),
-  "notice.frozen": `${red} main is frozen from Telegram. Unfreeze with \`binference unfreeze\` in the terminal.`,
+  "notice.frozen": `${red} main is frozen from Telegram. Unfreeze on the Safety screen of the console or the Mini App, or with \`binference unfreeze\` in the terminal.`,
   "notice.unfrozen": `${green} main is unfrozen from the console.`,
   "notice.breakerPulled": `${red} bInference pulled its breaker, so every agent it runs is frozen: the cards that waited were cancelled and auto orders paused. Your funds stay in your wallets, and a rescue to your rescue address still works. You will be told when it lifts.`,
   "notice.breakerLifted": `${green} bInference lifted its breaker: your agents can trade again, but your own freeze still holds main, second. Unfreeze them when you want them to trade.`,

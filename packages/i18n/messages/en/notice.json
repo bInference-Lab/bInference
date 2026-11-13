@@ -1,6 +1,6 @@
 {
   "approvalMode": "{agent} is now in {mode, select, auto {auto} other {manual}} mode, from {surface, select, telegram {Telegram} console {the console} mini {the Mini App} cli {the CLI} other {binference}}",
-  "frozen": "🔴 {agent} is frozen from {surface, select, telegram {Telegram} console {the console} mini {the Mini App} cli {the CLI} other {binference}}. Unfreeze with `binference unfreeze` in the terminal.",
+  "frozen": "🔴 {agent} is frozen from {surface, select, telegram {Telegram} console {the console} mini {the Mini App} cli {the CLI} other {binference}}. Unfreeze on the Safety screen of the console or the Mini App, or with `binference unfreeze` in the terminal.",
   "unfrozen": "🟢 {scope, select, install {Every agent is unfrozen} other {{agent} is unfrozen}} from {surface, select, telegram {Telegram} console {the console} mini {the Mini App} cli {the CLI} other {binference}}.",
   "breakerPulled": "🔴 bInference pulled its breaker, so every agent it runs is frozen: the cards that waited were cancelled and auto orders paused. Your funds stay in your wallets, and a rescue to your rescue address still works. You will be told when it lifts.",
   "breakerLifted": "🟢 bInference lifted its breaker: your agents can trade again{frozen, select, none {, and their auto orders resume.} other {, but your own freeze still holds {agents}. Unfreeze them when you want them to trade.}}",

@@ -55,7 +55,7 @@ const nextSteps: Readonly<Partial<Record<KnownCode, string>>> = {
   "protocol.outcome_unknown":
     "The engine that ran the first call with this requestId stopped before it answered, so whether it took effect is unknown. Never send it with a new requestId blindly: list the agent's intents changed since you first sent it with binference_intents, and send it again with a new requestId only if none matches.",
   "order.expiry_limit":
-    "The order ends later than the agent's order expiry limit, orderExpiryDays, allows. Name an earlier expiresAt, or leave it out to end the order at the limit; only the owner raises the limit, with `binference limit set orders.expiryDays=DAYS`.",
+    "The order ends later than the agent's order expiry limit, orderExpiryDays, allows. Name an earlier expiresAt, or leave it out to end the order at the limit; only the owner raises the limit, on the console's Limits screen or with `binference limit set orders.expiryDays=DAYS`.",
 };
 
 // A proposal whose answer never came may have run: the same request id answers its first result,

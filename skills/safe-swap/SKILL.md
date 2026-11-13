@@ -52,8 +52,8 @@ what they asked.
 - A trade over the per-trade limit, or over what is left of today's limit, fails the engine's
   check. Propose nothing: tell the owner which limit it passes and the largest amount that fits,
   and let them choose. Never split a trade or shrink it on your own to get past a limit.
-- Only the owner changes a limit, with `binference limit set` in the terminal; /limits in Telegram
-  lowers one.
+- Only the owner changes a limit, on the Limits screen of the console or the Mini App, or with
+  `binference limit set` in the terminal; /limits in Telegram lowers one.
 - The chain's coin keeps a reserve for network fees: never propose spending all of it.
 - Leave `maxSlippageBps` out unless the owner names a slippage. The agent's own limit applies.
 

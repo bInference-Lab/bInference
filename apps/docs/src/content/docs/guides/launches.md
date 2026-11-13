@@ -28,8 +28,9 @@ The launch wallet also runs the agent's live trades on a launch's own curve, suc
 token's.
 
 The launchpad must be one of the agent's venues. Flap is by default; add Genius.fun or Brew with
-`binference limit set limits.venues=<the venues it has>,geniusfun`, which applies after 24 hours.
-`binference limit` shows the venues the agent has.
+`binference limit set limits.venues=<the venues it has>,geniusfun`, or on the console's Limits
+screen, which applies after 24 hours. `binference limit` and that screen show the venues the agent
+has.
 
 ## Draft a launch in Telegram
 

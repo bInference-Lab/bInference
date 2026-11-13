@@ -16,7 +16,8 @@ the owner on 2026-10-12.
 - **The engine database** holds what changes while trading: each agent's limits, send level, address
   book, mode (paper or live), rescue address, notification choices and models. Those change through
   protocol operations (spec 1, section 7.6), so every change is journaled; tighter values work from
-  Telegram and the terminal, and looser ones from the terminal
+  Telegram, the terminal, the console and the Mini App, and looser ones from the terminal, the
+  console and the Mini App
   ([decision 0089](../DECISIONS.md#d0089)).
 - **Only self-hosted installs read this file.** Cloud agents are configured by their worker's entry
   and the Cloud database ([ARCHITECTURE.md section 30](../ARCHITECTURE.md#section-30)); no key here

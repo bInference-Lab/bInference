@@ -127,8 +127,8 @@ always write another answer. Answer "Skip" to end the questions early.
 
 From your answers the agent writes `STRATEGY.md` and `PERSONA.md`, then removes `FIRST-CHAT.md`. It
 saves them only in a chat that read no outside content; after a marked chat, send `/clear` and
-answer again. No answer sets a limit: limits change only with `binference limit set`. The first chat
-is skipped while the agent is live.
+answer again. No answer sets a limit: limits change only with `binference limit set` or on the
+Limits screen of the console or the Mini App. The first chat is skipped while the agent is live.
 
 ## Workspace files
 
@@ -142,8 +142,8 @@ answer. The agent itself may write only `STRATEGY.md` and `PERSONA.md`.
 Each agent has a daily budget for its model calls, `defaults.modelBudgetUsdPerDay`, $3 by default.
 Once it is spent, the chat pauses until the next day and you get the
 [`budget`](/reference/notices/#budget) notice; auto orders keep running. `/spend` shows the spend.
-`binference limit set modelBudgetUsdPerDay=5` changes the budget: a lower one applies at once, a
-higher one after 24 hours.
+`binference limit set modelBudgetUsdPerDay=5`, or the model budget on the console's Limits screen,
+changes the budget: a lower one applies at once, a higher one after 24 hours.
 
 ## Schedules
 

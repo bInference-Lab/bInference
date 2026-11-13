@@ -101,7 +101,7 @@ Run one agent or several, each with its own wallets and limits, in English or Ch
 - Limits hold even after a tap: per-trade and 24-hour caps, slippage and tax limits, and send levels that decide where funds may go.
 - Sends go only to your rescue address or addresses you saved. Even with its keys stolen, a machine can only call the trading contracts you enabled, and can lose at most a 24-hour cap through them.
 - Every new agent starts in paper mode, with virtual money and real quotes.
-- `/freeze` stops everything. `/rescue` moves all funds to your own wallet.
+- `/freeze` in Telegram, or Freeze in the console, stops everything. `/rescue`, or the console's rescue card, moves all funds to your own wallet.
 
 ## Install <img src=".github/assets/logos/apple.png" width="20" height="20" alt="macOS">&nbsp;<img src=".github/assets/logos/windows.png" width="20" height="20" alt="Windows">&nbsp;<img src=".github/assets/logos/linux.png" width="20" height="20" alt="Linux">&nbsp;<img src=".github/assets/logos/docker.png" width="20" height="20" alt="Docker">
 

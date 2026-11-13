@@ -71,7 +71,7 @@
   "bot.rejected": "Telegram 没有接受此机器人 Token。请从 @BotFather 重新复制。",
   "bot.malformed": "这不是机器人 Token。@BotFather 给出的机器人 Token 由数字、冒号以及字母和数字组成。",
   "limits.title": "你的 Agent 的上限",
-  "limits.explain": "每笔交易都会保持在这些上限之内。你可以随时用 `binference limit set` 或 Telegram 中的 /limits 调低它们，并用 `binference limit set` 调高。",
+  "limits.explain": "每笔交易都会保持在这些上限之内。你可以随时用 `binference limit set` 或在控制台或 Mini App 的「交易限额」页面调高或调低它们，也可以用 Telegram 中的 /limits 调低。",
   "limits.perTradeUsd": "单笔上限（美元）",
   "limits.rollingDayUsd": "24 小时上限（美元）",
   "limits.invalid": "请输入以美元计的金额，例如 100 或 0.5。",

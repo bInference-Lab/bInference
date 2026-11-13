@@ -146,7 +146,7 @@ Model spend: $1.20, against a daily model budget of $3.00
 Level: critical. Can be muted: no.
 
 ```text
-🔴 main is frozen from Telegram. Unfreeze with `binference unfreeze` in the terminal.
+🔴 main is frozen from Telegram. Unfreeze on the Safety screen of the console or the Mini App, or with `binference unfreeze` in the terminal.
 ```
 
 ## `unfrozen`

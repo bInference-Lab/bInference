@@ -223,7 +223,7 @@ describe("the owner's fast commands on the engine", () => {
     expect(frozen?.agent.frozenAtMs).toBe(testNowMs);
     expect(test.botApi.sent().map((sent) => sent.text)).toStrictEqual([
       expect.stringMatching(new RegExp(`^${alarm} Every agent is frozen`)),
-      `${alarm} main is frozen from Telegram. Unfreeze with \`binference unfreeze\` in the terminal.`,
+      `${alarm} main is frozen from Telegram. Unfreeze on the Safety screen of the console or the Mini App, or with \`binference unfreeze\` in the terminal.`,
     ]);
   });
 

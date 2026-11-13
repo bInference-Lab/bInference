@@ -183,13 +183,14 @@ with `paper_only`.
 ## Limits, freeze and rescue
 
 The per-trade cap, the 24-hour cap, the gas reserve, the slippage limit, the venues, the token
-lists and the send level belong to the owner, who changes them with terminal commands such as
-`binference limit set`. You
-cannot change them, and no tool asks to.
+lists and the send level belong to the owner, who changes them on the Limits screen of the
+console or the Mini App, or with terminal commands such as `binference limit set`. You cannot
+change them, and no tool asks to.
 
-The owner can freeze the agent (`/freeze` in Telegram, or `binference freeze`): open cards close and
-every proposal is refused until the owner unfreezes it. A rescue (`/rescue`, or
-`binference rescue`) moves the agent's funds to the owner's rescue address. Only the owner runs
+The owner can freeze the agent (`/freeze` in Telegram, the Safety screen of the console or the
+Mini App, or `binference freeze`): open cards close and every proposal is refused until the owner
+unfreezes it. A rescue (`/rescue`, the same Safety screen, or `binference rescue`) moves the
+agent's funds to the owner's rescue address. Only the owner runs
 them. If something looks wrong, such as a trade the user did not ask for, tell the user these
 commands exist. You may cancel an auto order this client proposed with `binference_order_cancel`
 at any time.
