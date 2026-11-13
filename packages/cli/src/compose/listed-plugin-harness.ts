@@ -9,6 +9,7 @@ import {
 } from "@binference/core/testing";
 import type { EnginePush } from "@binference/engine";
 import { createRunningTurns } from "@binference/engine/chat";
+import type { PluginNotice } from "@binference/engine/notices";
 import type { QuotaSource } from "@binference/engine/quotas";
 import type { EngineHandlerTable } from "@binference/engine/surfaces";
 import { ensurePrivateFolder, removePath } from "@binference/platform";
@@ -17,15 +18,16 @@ import { type JobFailedPush, jobFailedPushSchema } from "@binference/protocol";
 import { noPermissions } from "../e2e/test-host.js";
 import { createListingSigner } from "../plugins/fake-listing-signer.js";
 import type { FakeNpmRegistry } from "../plugins/fake-npm-registry.js";
-import { createListedRunner, type ListedRunner } from "../plugins/listed-runner.js";
 import { asPayload, listingFixture } from "../plugins/listing-fixtures.js";
-import { type ListingGate, listingGateOf } from "../plugins/listing-gate.js";
+import type { ListingGate } from "../plugins/listing-gate.js";
+import type { ListingWatch } from "../plugins/listing-watch.js";
 import { createNpmRegistry } from "../plugins/npm-registry.js";
 import type { PluginLock } from "../plugins/plugin-lock.js";
 import { createPluginRecords, type PluginRecords } from "../plugins/plugin-records.js";
 import type { PluginRunner } from "../plugins/plugin-runner.js";
 import { createClosers } from "./closers.js";
 import { type CloudTestRoot, composeCloudTestRoot } from "./cloud-test-root.js";
+import { composeListedPlugins } from "./listed-plugins.js";
 import { createPluginOperations } from "./plugin-operations.js";
 
 const startMs = 1_767_261_600_000;
@@ -86,23 +88,33 @@ export interface CloudPluginOperations {
   readonly root: CloudTestRoot;
   readonly clock: ManualClock;
   readonly logger: MemoryLogger;
-  /** The listing gate the operations and the runner share. */
+  /** The listing gate the operations, the runner and the watch share. */
   readonly listing: ListingGate;
+  /** The revocation list's watch. */
+  readonly watch: ListingWatch;
   readonly handlers: EngineHandlerTable;
   readonly records: PluginRecords;
   /** The runner under the listing rule, over one that starts nothing. */
-  readonly runner: ListedRunner;
+  readonly runner: PluginRunner;
+  /** Whether a plugin the lock has on is held. */
+  isHeld(id: string): boolean;
+  /** Starts the installed plugins as the composition root does. */
+  start(signal: AbortSignal): Promise<void>;
+  /** The host turning a plugin off, as it does after 5 crashes or for changed files. */
+  turnOff(id: string, reason: "crashes" | "changed"): void;
   /** What the runner under it was asked, in order: `begin`, `run`, `stop` and `offer` lines. */
   readonly asked: readonly string[];
+  /** Every notice told, in order. */
+  readonly told: readonly PluginNotice[];
   /** The caller every operation runs as: the owner at a terminal. */
   readonly owner: typeof owner;
   /** Starts `plugin/add` and answers the error its job ended with. */
   add(args: { readonly source: string; readonly hash: string }): Promise<JobFailedPush["error"]>;
 }
 
-// The parts the operations stand on: the Cloud root's clock and rule, a listed runner over one
-// that starts nothing, and the plugin lock in the test's folder. A restart keeps the root, its
-// clock and the lock, and makes every other part again.
+// The parts the operations stand on, as the Cloud root's listing rule composes them: a runner
+// that starts nothing under the listed runner, the watch, and the plugin lock in the test's
+// folder. A restart keeps the root, its clock and the lock, and makes every other part again.
 function cloudParts(place: ListedPluginPlace, before: CloudPluginOperations | undefined) {
   const clock = before?.clock ?? createManualClock(startMs);
   const root = before?.root ?? composeCloudTestRoot({ clock });
@@ -112,19 +124,31 @@ function cloudParts(place: ListedPluginPlace, before: CloudPluginOperations | un
     permissions: noPermissions,
     form: "required",
   });
-  const listing = listingGateOf(root.pluginListing, { clock, logger, records });
-  if (listing === undefined) {
+  const asked: string[] = [];
+  const told: PluginNotice[] = [];
+  const turnOffs: ((id: string, reason: "crashes" | "changed") => void)[] = [];
+  const plugins = composeListedPlugins({
+    rule: root.pluginListing,
+    records,
+    runnerOf: (onTurnedOff) => {
+      turnOffs.push(onTurnedOff);
+      return recordingRunner(asked);
+    },
+    clock,
+    logger,
+    tell: (notice) => told.push(notice),
+    life: new AbortController().signal,
+  });
+  const { listing, watch, isHeld } = plugins;
+  if (listing === undefined || watch === undefined || isHeld === undefined) {
     throw new Error("Expected the Cloud test root to require listings.");
   }
-  const life = new AbortController().signal;
-  const asked: string[] = [];
-  const runner = createListedRunner({
-    runner: recordingRunner(asked),
-    gate: listing,
-    logger,
-    life,
-  });
-  return { clock, root, logger, listing, runner, records, asked };
+  const turnOff = (id: string, reason: "crashes" | "changed"): void =>
+    turnOffs.forEach((off) => off(id, reason));
+  const { runner } = plugins;
+  const start = async (signal: AbortSignal) => plugins.start(signal);
+  const exposed = { root, clock, logger, listing, watch, records, runner, isHeld, start, turnOff };
+  return { exposed: { ...exposed, asked, told }, told };
 }
 
 /** The plugin operations as the Cloud composition wires them: the Cloud test root's listing rule. */
@@ -139,7 +163,7 @@ export function cloudPluginOperations(
   } = {},
 ): CloudPluginOperations {
   const parts = cloudParts(place, extra.restartOf);
-  const { clock, root, logger, listing, runner, records, asked } = parts;
+  const { clock, logger, listing, records, runner, isHeld } = parts.exposed;
   const random = createSeededRandom(3);
   const ids = createIdSource({ clock, random });
   const ends: ((push: EnginePush) => void)[] = [];
@@ -150,7 +174,7 @@ export function cloudPluginOperations(
     records,
     shelf: { packages: join(folder, "packages"), work: join(folder, "work") },
     runner,
-    isHeld: (id) => runner.isHeld(id),
+    isHeld,
     makeData: async (id, signal) =>
       ensurePrivateFolder(join(folder, "data", id), { permissions: noPermissions, signal }),
     removeData:
@@ -163,6 +187,7 @@ export function cloudPluginOperations(
     random,
     logger,
     listing,
+    tell: (notice) => parts.told.push(notice),
     ...(extra.quotas === undefined ? {} : { quotas: extra.quotas }),
   });
   const add: CloudPluginOperations["add"] = async (args) => {
@@ -170,7 +195,7 @@ export function cloudPluginOperations(
     await handlers["plugin/add"]?.({ args, caller: owner, signal: new AbortController().signal });
     return jobFailedPushSchema.parse((await ended).data).error;
   };
-  return { root, clock, logger, listing, handlers, records, runner, asked, owner, add };
+  return { ...parts.exposed, handlers, owner, add };
 }
 
 /** A version of the test's plugin on the fake registry: its source, integrity and version. */

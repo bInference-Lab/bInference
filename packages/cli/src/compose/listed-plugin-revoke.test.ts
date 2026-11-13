@@ -27,16 +27,14 @@ import { type FakeNpmRegistry, startFakeNpmRegistry } from "../plugins/fake-npm-
 import { readPluginSource } from "../plugins/fetch-plugin.js";
 import { createInstallHarness } from "../plugins/install-harness.js";
 import { installPlugin } from "../plugins/install-plugin.js";
-import { createListedRunner } from "../plugins/listed-runner.js";
 import { listingFixture } from "../plugins/listing-fixtures.js";
-import { listingGateOf } from "../plugins/listing-gate.js";
-import { createListingWatch } from "../plugins/listing-watch.js";
 import { createNpmRegistry } from "../plugins/npm-registry.js";
 import { createPluginRecords } from "../plugins/plugin-records.js";
 import { createPluginRunner } from "../plugins/plugin-runner.js";
 import { createSystemHttp, type SystemHttp } from "../runtime/system-http.js";
 import { createClosers } from "./closers.js";
 import { composeCloudTestRoot } from "./cloud-test-root.js";
+import { composeListedPlugins } from "./listed-plugins.js";
 import { createPluginOperations } from "./plugin-operations.js";
 
 let bundles: PluginBundles;
@@ -132,47 +130,56 @@ async function cloudOnRealHost(root: string) {
     permissions: noPermissions,
     form: "required",
   });
-  const gate = listingGateOf(cloud.pluginListing, { clock, logger, records });
-  if (gate === undefined) {
-    throw new Error("Expected the Cloud root to require listings.");
-  }
   const life = new AbortController();
   const turns = createRunningTurns();
   turns.startRuntime(runtimeToken);
   const data = (id: string) => join(root, "data", id);
-  const host = createPluginRunner({
-    life: life.signal,
-    hostParts: async () => ({
-      starter: createDirectStarter({
-        program: bundles.program,
-        parentEnv: process.env,
-        memory: testMemoryWatch(clock),
-      }),
-      folders: {
-        packageFolder: bundles.probeFolder,
-        dataFolder: await realFilePath(join(root, "probe-data"), signal),
-      },
-      outside: { file: join(root, "outside", "secret.txt"), folder: join(root, "outside") },
-      http: createScriptedHttp([]),
-      clock,
-      logger,
-      engineArgs: ["--disable-sigusr1"],
-      startDecoy: async (decoySignal) =>
-        startDebugDecoy({ parentEnv: process.env, signal: decoySignal }),
-    }),
-    tell: () => undefined,
-    onTurnedOff: () => undefined,
-    foldersOf: async (id) => ({
-      packageFolder: await realFilePath(join(root, "packages", id), signal),
-      dataFolder: await realFilePath(data(id), signal),
-    }),
-    configOf: () => ({}),
-    offer: async () => Promise.resolve(),
-    logger,
-  });
-  const runner = createListedRunner({ runner: host, gate, logger, life: life.signal });
-  const ids = createIdSource({ clock, random: createSeededRandom(5) });
   const told: PluginNotice[] = [];
+  const runnerOf = (onTurnedOff: (id: string, reason: "crashes" | "changed") => void) =>
+    createPluginRunner({
+      life: life.signal,
+      hostParts: async () => ({
+        starter: createDirectStarter({
+          program: bundles.program,
+          parentEnv: process.env,
+          memory: testMemoryWatch(clock),
+        }),
+        folders: {
+          packageFolder: bundles.probeFolder,
+          dataFolder: await realFilePath(join(root, "probe-data"), signal),
+        },
+        outside: { file: join(root, "outside", "secret.txt"), folder: join(root, "outside") },
+        http: createScriptedHttp([]),
+        clock,
+        logger,
+        engineArgs: ["--disable-sigusr1"],
+        startDecoy: async (decoySignal) =>
+          startDebugDecoy({ parentEnv: process.env, signal: decoySignal }),
+      }),
+      tell: () => undefined,
+      onTurnedOff,
+      foldersOf: async (id) => ({
+        packageFolder: await realFilePath(join(root, "packages", id), signal),
+        dataFolder: await realFilePath(data(id), signal),
+      }),
+      configOf: () => ({}),
+      offer: async () => Promise.resolve(),
+      logger,
+    });
+  const plugins = composeListedPlugins({
+    rule: cloud.pluginListing,
+    records,
+    runnerOf,
+    clock,
+    logger,
+    tell: (notice) => told.push(notice),
+    life: life.signal,
+  });
+  const { runner, listing: gate, watch, isHeld } = plugins;
+  if (gate === undefined || watch === undefined || isHeld === undefined) {
+    throw new Error("Expected the Cloud root to require listings.");
+  }
+  const ids = createIdSource({ clock, random: createSeededRandom(5) });
   const ends: ((push: EnginePush) => void)[] = [];
   const handlers = createPluginOperations({
     registry: createNpmRegistry({ download: http, base: registry.base }),
@@ -180,7 +187,7 @@ async function cloudOnRealHost(root: string) {
     records,
     shelf: { packages: join(root, "packages"), work: join(root, "work") },
     runner,
-    isHeld: (id) => runner.isHeld(id),
+    isHeld,
     makeData: async (id, makeSignal) =>
       ensurePrivateFolder(data(id), { permissions: noPermissions, signal: makeSignal }),
     removeData: async (id, removeSignal) => removePath(data(id), removeSignal),
@@ -192,15 +199,6 @@ async function cloudOnRealHost(root: string) {
     random: createSeededRandom(6),
     logger,
     listing: gate,
-  });
-  const watch = createListingWatch({
-    gate,
-    records,
-    runner,
-    clock,
-    logger,
-    tell: (notice) => told.push(notice),
-    life: life.signal,
   });
   const nextPush = async () => new Promise<EnginePush>((resolve) => ends.push(resolve));
   return { cloud, handlers, records, watch, turns, told, life, nextPush };

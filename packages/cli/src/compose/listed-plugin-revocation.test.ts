@@ -1,5 +1,4 @@
 import { join } from "node:path";
-import type { PluginNotice } from "@binference/engine/notices";
 import type { QuotaSource } from "@binference/engine/quotas";
 import { createMemoryQuotaSource } from "@binference/engine/testing";
 import { ensurePrivateFolder } from "@binference/platform";
@@ -14,7 +13,6 @@ import {
   listingFixture,
   revocationListFixture,
 } from "../plugins/listing-fixtures.js";
-import { createListingWatch } from "../plugins/listing-watch.js";
 import type { LockedPlugin } from "../plugins/plugin-lock.js";
 import { createSystemHttp, type SystemHttp } from "../runtime/system-http.js";
 import { type CloudPluginOperations, cloudPluginOperations } from "./listed-plugin-harness.js";
@@ -49,28 +47,12 @@ async function seeded(name: string, entry: LockedPlugin, extra: { quotas?: Quota
   return { ops, place };
 }
 
-// The revocation list's watch over the same gate, lock and runner as the operations.
-function watchOf(ops: CloudPluginOperations) {
-  const told: PluginNotice[] = [];
-  const watch = createListingWatch({
-    gate: ops.listing,
-    records: ops.records,
-    runner: ops.runner,
-    clock: ops.clock,
-    logger: ops.logger,
-    tell: (notice) => told.push(notice),
-    life: new AbortController().signal,
-  });
-  return { watch, told };
-}
-
 const enable = async (ops: CloudPluginOperations) =>
   ops.handlers["plugin/enable"]?.({ args: { plugin }, caller: ops.owner, signal });
 
 describe("a revocation that lands while the owner turns the plugin on", () => {
   it("refuses the enable whose check read the list before it, and keeps the plugin off", async () => {
     const { ops } = await seeded("enable-race", off);
-    const { watch, told } = watchOf(ops);
     const catalog = ops.root.pluginListing.catalog;
     catalog.list(listing);
     await ops.listing.refresh(signal);
@@ -78,7 +60,7 @@ describe("a revocation that lands while the owner turns the plugin on", () => {
     const enabling = enable(ops);
     await held.arrived;
     catalog.revoke(listing.listing);
-    await watch.check(signal);
+    await ops.watch.check(signal);
     held.release();
 
     await expect(enabling).resolves.toStrictEqual({
@@ -88,7 +70,7 @@ describe("a revocation that lands while the owner turns the plugin on", () => {
     const [entry] = (await ops.records.read(signal)).plugins;
     expect(entry).toMatchObject({ enabled: false, disabledReason: "owner" });
     expect(entry?.listing).toMatchObject({ revoked: true });
-    expect(told).toStrictEqual([{ kind: "revoked", plugin: "echo-feed", version: "1.0.0" }]);
+    expect(ops.told).toStrictEqual([{ kind: "revoked", plugin: "echo-feed", version: "1.0.0" }]);
   });
 });
 
@@ -117,12 +99,11 @@ describe("a revocation that lands after the enable's check, before its lock chan
   it("refuses the enable in its lock change, changing nothing", async () => {
     const quotas = heldQuotas();
     const { ops } = await seeded("change-race", off, { quotas: quotas.source });
-    const { watch } = watchOf(ops);
     ops.root.pluginListing.catalog.list(listing);
     const enabling = enable(ops);
     await quotas.arrived;
     ops.root.pluginListing.catalog.revoke(listing.listing);
-    await watch.check(signal);
+    await ops.watch.check(signal);
     quotas.release();
 
     await expect(enabling).resolves.toStrictEqual({
@@ -141,7 +122,7 @@ describe("a revoked listing after a restart", () => {
     const catalog = ops.root.pluginListing.catalog;
     catalog.list(listing);
     const revoked = catalog.revoke(listing.listing);
-    await watchOf(ops).watch.check(signal);
+    await ops.watch.check(signal);
     const later = revocationListFixture({
       sequence: revoked.sequence + 1,
       issuedAt: ops.clock.now(),

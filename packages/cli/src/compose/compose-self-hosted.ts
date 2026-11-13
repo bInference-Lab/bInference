@@ -24,6 +24,7 @@ import { chatConfigPartsOf } from "./config-proposals.js";
 import { engineHandlers } from "./engine-handlers.js";
 import { createEngineStopper, type EngineStopper } from "./engine-restart.js";
 import { chainIdentityRegistries } from "./identity-registries.js";
+import { ownerReviewedPlugins } from "./listed-plugins.js";
 import { selfHostedMarketReads } from "./market-reads.js";
 import { chainNameResolvers } from "./name-resolvers.js";
 import { botParts } from "./open-bot.js";
@@ -165,13 +166,12 @@ function composeParts(opening: Opening, opened: Opened): Wiring {
   const signerStopped = { run: (): void => undefined };
   const signerRefused = { run: (_notice: SignerRefusalNotice): void => undefined };
   const sealKey = sealKeyOf(opened);
-  const bridges = parts.bridging.executor.bridges;
   const custody = composeCustody(opening, opened, {
     chains,
     venues: selfHostedCeilingVenues({
       venues: [...opened.venues, ...chainIdentityRegistries(parts.reads)],
       reads: parts.reads,
-      bridges,
+      bridges: parts.bridging.executor.bridges,
     }),
     onStopped: () => signerStopped.run(),
     onRefusal: (notice) => signerRefused.run(notice),
@@ -204,7 +204,7 @@ function composeParts(opening: Opening, opened: Opened): Wiring {
     signerStopped,
     signerRefused,
     sealKey,
-    ...composeRuntimeWithPlugins(opening, opened, jobs),
+    ...composeRuntimeWithPlugins(opening, opened, { jobs, profile: ownerReviewedPlugins }),
   };
 }
 

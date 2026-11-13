@@ -7,7 +7,6 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { noPermissions } from "../e2e/test-host.js";
 import { type FakeNpmRegistry, startFakeNpmRegistry } from "../plugins/fake-npm-registry.js";
 import { listedEntryFixture, listingFixture } from "../plugins/listing-fixtures.js";
-import { createListingWatch } from "../plugins/listing-watch.js";
 import type { LockedPlugin } from "../plugins/plugin-lock.js";
 import { createSystemHttp, type SystemHttp } from "../runtime/system-http.js";
 import { type CloudPluginOperations, cloudPluginOperations } from "./listed-plugin-harness.js";
@@ -46,17 +45,6 @@ async function seeded(
   return { ops, place };
 }
 
-const watchOf = (ops: CloudPluginOperations) =>
-  createListingWatch({
-    gate: ops.listing,
-    records: ops.records,
-    runner: ops.runner,
-    clock: ops.clock,
-    logger: ops.logger,
-    tell: () => undefined,
-    life: new AbortController().signal,
-  });
-
 // Starts the operations' engine with the catalog down, so the plugin on is held.
 async function startedHeld(ops: CloudPluginOperations): Promise<void> {
   ops.root.pluginListing.catalog.list(listing);
@@ -76,7 +64,7 @@ describe("a held plugin under the listing rule", () => {
     const { ops } = await seeded("off-during-check", on);
     await startedHeld(ops);
     const held = ops.root.pluginListing.catalog.holdReads("get");
-    const checking = watchOf(ops).check(signal);
+    const checking = ops.watch.check(signal);
     await held.arrived;
     const disabled = await ops.handlers["plugin/disable"]?.(call(ops));
     held.release();
@@ -97,7 +85,7 @@ describe("a held plugin under the listing rule", () => {
       code: "plugin.data_not_removed",
     });
     expect(ops.asked).not.toContain("run echo-feed");
-    expect(ops.runner.isHeld("echo-feed")).toBe(true);
+    expect(ops.isHeld("echo-feed")).toBe(true);
   });
 });
 
@@ -108,7 +96,7 @@ describe("the revocation floor after a restart, through the operations", () => {
     const catalog = ops.root.pluginListing.catalog;
     catalog.list(listing);
     catalog.renew();
-    await watchOf(ops).check(signal);
+    await ops.watch.check(signal);
     const [older] = catalog.signedLists();
     catalog.serveRevocations(String(older));
 

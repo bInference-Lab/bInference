@@ -8,7 +8,7 @@ import {
 } from "@binference/core";
 import { noQuotas, type PublishPush } from "@binference/engine";
 import type { RunningTurns, ViewImageSource } from "@binference/engine/chat";
-import { createPluginNotices } from "@binference/engine/notices";
+import { createPluginNotices, type PluginNotice } from "@binference/engine/notices";
 import type { EngineShell } from "@binference/engine/shell";
 import type { EngineHandlerTable } from "@binference/engine/surfaces";
 import { ensurePrivateFolder, realFilePath, removePath } from "@binference/platform";
@@ -20,16 +20,16 @@ import {
   removeLauncherData,
 } from "@binference/plugin-host";
 import type { RuntimePlugin } from "@binference/runtime";
-import { listingGateOf } from "../plugins/listing-gate.js";
 import { createNpmRegistry, npmRegistry } from "../plugins/npm-registry.js";
-import type { PluginLock } from "../plugins/plugin-lock.js";
-import { createPluginRecords, type PluginRecords, withPlugins } from "../plugins/plugin-records.js";
+import type { PluginListingRule } from "../plugins/plugin-listing-rule.js";
+import { createPluginRecords, type PluginRecords } from "../plugins/plugin-records.js";
 import { createPluginRunner, type PluginRunner } from "../plugins/plugin-runner.js";
 import type { PluginShelf } from "../plugins/put-plugin.js";
 import { sigstoreVerifier } from "../plugins/sigstore-verifier.js";
 import { type ComposedRuntime, composeRuntime } from "./compose-runtime.js";
 import { agentFilesOf, shellOf } from "./compose-shell.js";
 import { viewImagesOf } from "./compose-view-images.js";
+import { composeListedPlugins, type ListedPlugins } from "./listed-plugins.js";
 import type { Opened, Opening } from "./open-engine-parts.js";
 import { createPluginOperations } from "./plugin-operations.js";
 import {
@@ -39,6 +39,7 @@ import {
   probeSettingOf,
 } from "./plugin-sandbox.js";
 import { createPluginSwitch } from "./plugin-switch.js";
+import type { ProfileParts } from "./profile-parts.js";
 
 /** The community plugins as the engine holds them. */
 interface ComposedPlugins {
@@ -127,32 +128,8 @@ interface PluginWiring {
   readonly publish: () => PublishPush;
   /** Hands the agent runtime the tools of the plugins on. */
   offer(plugins: readonly RuntimePlugin[]): Promise<void>;
-}
-
-// Records a plugin the host turned off, and takes its tools from the agent; a lock it cannot
-// write is logged, and the plugin stays off until the next start.
-function turnOff(
-  parts: {
-    readonly records: PluginRecords;
-    readonly logger: Logger;
-    readonly offer: (lock: PluginLock) => Promise<void>;
-  },
-  off: { readonly id: string; readonly reason: "crashes" | "changed" },
-): void {
-  const { id, reason } = off;
-  void parts.records
-    .change(
-      (lock) =>
-        withPlugins(
-          lock,
-          lock.plugins.map((entry) =>
-            entry.id === id ? { ...entry, enabled: false, disabledReason: reason } : entry,
-          ),
-        ),
-      AbortSignal.timeout(30_000),
-    )
-    .then(async (lock) => parts.offer(lock))
-    .catch(() => parts.logger.warn("plugin.lock_unwritten", { sourceId: id }));
+  /** Whether a plugin needs a listing bInference signed: the composition root's rule. */
+  readonly pluginListing: PluginListingRule;
 }
 
 function runnerOf(
@@ -160,20 +137,17 @@ function runnerOf(
   opened: Opened,
   parts: {
     readonly places: PluginPlaces;
-    readonly records: PluginRecords;
+    readonly tell: (notice: PluginNotice) => void;
     readonly wiring: PluginWiring;
     readonly logger: Logger;
     readonly life: AbortSignal;
+    readonly onTurnedOff: (id: string, reason: "crashes" | "changed") => void;
   },
 ): PluginRunner {
   const { host, platform } = opening;
-  const { places, records, wiring, logger, life } = parts;
+  const { places, tell, wiring, logger, life } = parts;
   const programs: { built: PluginPrograms | undefined } = { built: undefined };
-  const tell = createPluginNotices({
-    clock: host.clock,
-    publish: (push) => wiring.publish()(push),
-  });
-  const runner: PluginRunner = createPluginRunner({
+  return createPluginRunner({
     hostParts: async (signal) => {
       programs.built = host.pluginPrograms ?? (await builtPluginPrograms(signal));
       if (programs.built === undefined) {
@@ -191,9 +165,7 @@ function runnerOf(
       };
     },
     tell,
-    onTurnedOff: (id, reason) => {
-      turnOff({ records, logger, offer: async (lock) => runner.offer(lock) }, { id, reason });
-    },
+    onTurnedOff: parts.onTurnedOff,
     foldersOf: async (id, signal) => {
       const built = programs.built ?? { program: "", probeFolder: "" };
       return places.foldersOf(id, built, signal);
@@ -203,34 +175,46 @@ function runnerOf(
     logger,
     life,
   });
-  return runner;
 }
 
-// Runs the sandbox check and the installed plugins, and hands the agent the tools of those on;
-// with none installed it does nothing, and the runtime's settings keep holding no plugin. A start
-// the engine's stop cut short is no failure; any other is logged, an unreadable lock among them,
-// which runs no plugin and which every plugin operation names (`plugin.lock_unreadable`).
-async function startPlugins(
+// The plugin operations over this engine's places, lock and plugins.
+function operationsOf(
+  opening: Opening,
   parts: {
+    readonly places: PluginPlaces;
     readonly records: PluginRecords;
-    readonly runner: PluginRunner;
+    readonly plugins: ListedPlugins;
+    readonly wiring: PluginWiring;
+    readonly tell: (notice: PluginNotice) => void;
     readonly logger: Logger;
   },
-  signal: AbortSignal,
-): Promise<void> {
-  try {
-    const lock = await parts.records.read(signal);
-    if (lock.plugins.length === 0) {
-      return;
-    }
-    await parts.runner.begin(lock);
-    await parts.runner.offer(lock);
-  } catch (error) {
-    if (!signal.aborted) {
-      const errorCode = error instanceof BinferenceError ? error.code : "unexpected";
-      parts.logger.warn("plugin.begin_failed", { errorCode });
-    }
-  }
+): EngineHandlerTable {
+  const { host, closers } = opening;
+  const { places, plugins, wiring } = parts;
+  const ids = createIdSource({ clock: host.clock, random: host.random });
+  return createPluginOperations({
+    registry: createNpmRegistry({
+      download: host.download ?? noDownload,
+      base: host.npmRegistry ?? npmRegistry,
+    }),
+    verify: sigstoreVerifier(),
+    records: parts.records,
+    shelf: places.shelf,
+    runner: plugins.runner,
+    ...(plugins.isHeld === undefined ? {} : { isHeld: plugins.isHeld }),
+    makeData: async (id, signal) => places.makeData(id, signal),
+    removeData: async (id, signal) => places.removeData(id, signal),
+    newPlugin: () => ids.next("plg"),
+    turns: wiring.turns,
+    publish: (push) => wiring.publish()(push),
+    closers,
+    clock: host.clock,
+    random: host.random,
+    quotas: noQuotas,
+    ...(plugins.listing === undefined ? {} : { listing: plugins.listing }),
+    tell: parts.tell,
+    logger: parts.logger,
+  });
 }
 
 /**
@@ -244,41 +228,34 @@ function composePlugins(opening: Opening, opened: Opened, wiring: PluginWiring):
   const { host, platform, closers } = opening;
   const logger = opened.log.logger.child("plugins");
   const places = placesOf(opening);
+  const rule = wiring.pluginListing;
   const records = createPluginRecords({
     file: join(platform.stateFolder.root, "plugins", "lock.json"),
     permissions: platform.permissions,
+    form: rule.kind,
   });
   const stop = new AbortController();
   closers.add("plugins", async () => stop.abort());
-  const runner = runnerOf(opening, opened, { places, records, wiring, logger, life: stop.signal });
-  const ids = createIdSource({ clock: host.clock, random: host.random });
-  // The owner reviews every plugin here, so no listing is needed (decision 0433).
-  const listing = listingGateOf({ kind: "notRequired" }, { clock: host.clock, logger, records });
-  const handlers = createPluginOperations({
-    registry: createNpmRegistry({
-      download: host.download ?? noDownload,
-      base: host.npmRegistry ?? npmRegistry,
-    }),
-    verify: sigstoreVerifier(),
-    records,
-    shelf: places.shelf,
-    runner,
-    makeData: async (id, signal) => places.makeData(id, signal),
-    removeData: async (id, signal) => places.removeData(id, signal),
-    newPlugin: () => ids.next("plg"),
-    turns: wiring.turns,
-    publish: (push) => wiring.publish()(push),
-    closers,
+  const life = stop.signal;
+  const tell = createPluginNotices({
     clock: host.clock,
-    random: host.random,
-    quotas: noQuotas,
-    ...(listing === undefined ? {} : { listing }),
-    logger,
+    publish: (push) => wiring.publish()(push),
   });
+  const plugins = composeListedPlugins({
+    rule,
+    records,
+    runnerOf: (onTurnedOff) =>
+      runnerOf(opening, opened, { places, tell, wiring, logger, life, onTurnedOff }),
+    clock: host.clock,
+    logger,
+    tell,
+    life,
+  });
+  const handlers = operationsOf(opening, { places, records, plugins, wiring, tell, logger });
   return {
     handlers,
     begin: () => {
-      void startPlugins({ records, runner, logger }, stop.signal);
+      void plugins.start(life);
     },
   };
 }
@@ -292,14 +269,19 @@ function composePlugins(opening: Opening, opened: Opened, wiring: PluginWiring):
 export function composeRuntimeWithPlugins(
   opening: Opening,
   opened: Opened,
-  jobs: { readonly publish: PublishPush },
+  parts: {
+    /** Where a long job's end goes, once the server can say so. */
+    readonly jobs: { readonly publish: PublishPush };
+    readonly profile: Pick<ProfileParts, "pluginListing">;
+  },
 ): RuntimeWithPlugins {
   const runtime = composeRuntime(opening, opened);
   const offered = createPluginSwitch(async (plugins) => runtime.offerPlugins(plugins));
   const composed = composePlugins(opening, opened, {
     turns: runtime.turns,
-    publish: () => jobs.publish,
+    publish: () => parts.jobs.publish,
     offer: async (plugins) => offered.offer(plugins),
+    pluginListing: parts.profile.pluginListing,
   });
   const begin = (server: Parameters<ComposedRuntime["begin"]>[0]): void => {
     runtime.begin(server);
