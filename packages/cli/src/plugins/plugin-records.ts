@@ -63,9 +63,14 @@ export function createPluginRecords(parts: {
   };
 }
 
+/** The lock with these plugins in place of its own; every other part of it kept. */
+export function withPlugins(lock: PluginLock, plugins: readonly LockedPlugin[]): PluginLock {
+  return { ...lock, plugins };
+}
+
 /** One plugin of the lock replaced by `entry`, or added when the lock has none of its id. */
 export function withPlugin(lock: PluginLock, entry: LockedPlugin): PluginLock {
-  return { plugins: [...lock.plugins.filter(({ id }) => id !== entry.id), entry] };
+  return withPlugins(lock, [...lock.plugins.filter(({ id }) => id !== entry.id), entry]);
 }
 
 /** Whether a plugin the lock has on runs, under a rule that needs listings: or waits, held. */

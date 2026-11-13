@@ -20,7 +20,7 @@ import type { Outcome } from "../plugins/outcome.js";
 import type { PluginListing } from "../plugins/plugin-listing.schema.js";
 import type { LockedPlugin } from "../plugins/plugin-lock.js";
 import { isPluginsFull, pluginsQuotaOf } from "../plugins/plugin-quota.js";
-import { pluginViewOf, withPlugin } from "../plugins/plugin-records.js";
+import { pluginViewOf, withPlugin, withPlugins } from "../plugins/plugin-records.js";
 import type { PluginRunner } from "../plugins/plugin-runner.js";
 import { removePluginPackage } from "../plugins/put-plugin.js";
 import type { Closers } from "./closers.js";
@@ -240,7 +240,11 @@ function removeHandler(options: PluginOperationsOptions): EngineHandler<"plugin/
     await options.runner.stop(entry.id);
     await removeData(options, entry, signal);
     const lock = await options.records.change(
-      (now) => ({ plugins: now.plugins.filter(({ id }) => id !== entry.id) }),
+      (now) =>
+        withPlugins(
+          now,
+          now.plugins.filter(({ id }) => id !== entry.id),
+        ),
       signal,
     );
     await options.runner.offer(lock);

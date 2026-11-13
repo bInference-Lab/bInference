@@ -23,7 +23,7 @@ import type { RuntimePlugin } from "@binference/runtime";
 import { listingGateOf } from "../plugins/listing-gate.js";
 import { createNpmRegistry, npmRegistry } from "../plugins/npm-registry.js";
 import type { PluginLock } from "../plugins/plugin-lock.js";
-import { createPluginRecords, type PluginRecords } from "../plugins/plugin-records.js";
+import { createPluginRecords, type PluginRecords, withPlugins } from "../plugins/plugin-records.js";
 import { createPluginRunner, type PluginRunner } from "../plugins/plugin-runner.js";
 import type { PluginShelf } from "../plugins/put-plugin.js";
 import { sigstoreVerifier } from "../plugins/sigstore-verifier.js";
@@ -142,11 +142,13 @@ function turnOff(
   const { id, reason } = off;
   void parts.records
     .change(
-      (lock) => ({
-        plugins: lock.plugins.map((entry) =>
-          entry.id === id ? { ...entry, enabled: false, disabledReason: reason } : entry,
+      (lock) =>
+        withPlugins(
+          lock,
+          lock.plugins.map((entry) =>
+            entry.id === id ? { ...entry, enabled: false, disabledReason: reason } : entry,
+          ),
         ),
-      }),
       AbortSignal.timeout(30_000),
     )
     .then(async (lock) => parts.offer(lock))
