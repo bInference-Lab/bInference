@@ -2,17 +2,10 @@ import { expect, test } from "@playwright/test";
 import { heldElsewhere } from "./held-elsewhere";
 import { rewriteReplies } from "./rewrite-replies";
 import { openDraft } from "./smoke-draft";
-import { control, openPaired, shootThemes } from "./smoke-page";
+import { control, openPaired, ownerReadsChinese, shootThemes } from "./smoke-page";
 
-// Runs after console.spec.ts, whose last test made and confirmed the rule this one shows. The
-// console speaks the owner's language once signed in, so the owner reads Chinese for this test.
-test.beforeEach(async ({ request }) => {
-  await request.post(`${control}/locale?locale=zh`);
-});
-
-test.afterEach(async ({ request }) => {
-  await request.post(`${control}/locale?locale=en`);
-});
+// Runs after console.spec.ts, whose last test made and confirmed the rule this one shows.
+ownerReadsChinese();
 
 test("shows stakes and a bridge in transit in Chinese, in light and in dark", async ({
   page,

@@ -3,12 +3,14 @@ import { once } from "node:events";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import process from "node:process";
 import { text } from "node:stream/consumers";
+import { accountRefSchema } from "@binference/chain";
 import type { JsonValue } from "@binference/core";
 import { createMemoryLogger } from "@binference/core/testing";
 import { createRunningTurns } from "@binference/engine/chat";
 import {
   testAgent as agent,
   testCoin as coin,
+  testNowMs,
   testToken as token,
   testWallet as wallet,
 } from "@binference/engine/testing";
@@ -22,12 +24,17 @@ import { smokeAlertSchema, smokeEnvSchema } from "./smoke-engine.schema.js";
 
 // The console's smoke engine (`pnpm test:console`): the skeleton's engine on in-memory stores and
 // the fake chain, serving the built console on loopback, with the agent runtime on a scripted
-// model that reads images and proposes a paper swap when the owner chats, its webhook listener on a
-// free port, and a control listener beside it that makes pairing links and paper swaps and sends
-// alerts for the browser test. Like `src/main.ts`, it alone reads `process`. Nothing here reaches
-// the network.
+// model that reads images and proposes a paper swap when the owner chats, the owner's rescue
+// address in effect, its webhook listener on a free port, and a control listener beside it that
+// makes pairing links and paper swaps and sends alerts for the browser test. Like `src/main.ts`,
+// it alone reads `process`. Nothing here reaches the network.
 const env = smokeEnvSchema.parse(process.env);
 const live = (): { readonly signal: AbortSignal } => ({ signal: AbortSignal.timeout(10_000) });
+// The owner's rescue address on the fake chain, in effect since two days before the engine's time.
+const rescue = {
+  address: accountRefSchema.parse("fake:1:0x000000a1"),
+  atMs: testNowMs - 2 * 86_400_000,
+};
 const [selfHosted] = skeletonCompositions;
 // The owner's language, which each connection's `ready` names and the console then speaks.
 const ownerLocale: { current: "en" | "zh" } = { current: "en" };
@@ -65,6 +72,7 @@ async function startEngine(): Promise<Skeleton> {
   const turns = createRunningTurns();
   const browser = { http, consoleFiles };
   const skeleton = await startSkeleton(selfHosted.parts(), { browser, turns, owner });
+  await skeleton.parts.stores.install.changeRescue(rescue, live());
   await skeleton.composed.server.start(live().signal);
   await skeleton.client.call("approval/set", { agent, mode: "manual" }, live());
   await skeleton.client.call("portfolio/resetPaper", { agent }, live());

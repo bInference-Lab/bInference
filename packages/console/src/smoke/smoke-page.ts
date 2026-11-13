@@ -1,8 +1,21 @@
-import type { APIRequestContext, Page, TestInfo } from "@playwright/test";
+import { type APIRequestContext, type Page, test, type TestInfo } from "@playwright/test";
 import { readAlert, readPairing } from "./smoke-answers.schema";
 
 /** The smoke engine's control listener, which the browser tests drive it through. */
 export const control = "http://127.0.0.1:7492";
+
+/**
+ * Makes the owner read Chinese in each test of the file that calls it, and English again after
+ * each: the console speaks the owner's language once signed in.
+ */
+export function ownerReadsChinese(): void {
+  test.beforeEach(async ({ request }) => {
+    await request.post(`${control}/locale?locale=zh`);
+  });
+  test.afterEach(async ({ request }) => {
+    await request.post(`${control}/locale?locale=en`);
+  });
+}
 
 /** Pairs the page with the engine through a fresh link, and gathers every error or warning it logs. */
 export async function openPaired(

@@ -59,7 +59,9 @@ The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
   only, one worker, never a window, against the skeleton's engine on loopback
   (`packages/cli/src/console-smoke/smoke-engine.ts`), which serves the built console and a
   control listener the test drives. It pairs a browser, confirms a paper card, makes an alert rule
-  whose alert the engine's webhook listener takes and fills on paper, and fails on any error or
-  warning the page logs. The control listener sets the owner's language, which the signed-in
+  whose alert the engine's webhook listener takes and fills on paper, freezes and unfreezes on the
+  safety screen, changes limits, and fails on any error or warning the page logs. The safety
+  tests (`safety.spec.ts`, `safety.zh.spec.ts`) run last, since a freeze cancels the cards that
+  wait and a lower limit stays. The control listener sets the owner's language, which the signed-in
   console speaks, for the Chinese screenshots. It is not part of `pnpm test`; its screenshots go to
   `smoke-results/`, which git leaves out.
