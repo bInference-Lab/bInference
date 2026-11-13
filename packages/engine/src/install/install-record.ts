@@ -222,6 +222,20 @@ export interface InstallFacts extends RescueState {
   readonly custody?: CustodyRecord;
   /** When the whole install was frozen; every agent created since starts frozen. */
   readonly frozenAtMs?: number;
+  /** When the breaker took hold of the install; absent while it does not (decision 0440). */
+  readonly breakerAtMs?: number;
+  /** The last version of the breaker the install applied; absent before the first. */
+  readonly breakerVersion?: number;
+  /**
+   * The last version of the breaker the owner was told of; behind `breakerVersion` while a pull
+   * or a lift waits to be told (decision 0440). Absent before the first.
+   */
+  readonly breakerToldVersion?: number;
+  /**
+   * When the breaker's row turned to pulled for the hold that holds, or held last, as its source
+   * said; it outlasts the lift, which looks back from it. Absent before the first pull.
+   */
+  readonly breakerPulledAtMs?: number;
   /** The ceiling changes kept for the new rescue address that waits. */
   readonly rescueCeiling?: RescueCeiling;
   /**
@@ -239,6 +253,10 @@ export interface InstallFacts extends RescueState {
 export const installFactsSchema: z.ZodType<InstallFacts> = z.strictObject({
   custody: custodyRecordSchema.exactOptional(),
   frozenAtMs: epochMsSchema.exactOptional(),
+  breakerAtMs: epochMsSchema.exactOptional(),
+  breakerVersion: z.int().positive().exactOptional(),
+  breakerToldVersion: z.int().positive().exactOptional(),
+  breakerPulledAtMs: epochMsSchema.exactOptional(),
   rescueAddress: accountRefSchema.exactOptional(),
   pendingRescue: pendingRescueSchema.exactOptional(),
   rescueCeiling: rescueCeilingSchema.exactOptional(),

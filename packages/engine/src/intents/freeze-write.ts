@@ -34,6 +34,36 @@ export const agentFreezeSchema: z.ZodType<AgentFreeze> = z.strictObject({
 });
 
 /**
+ * The breaker's own part of a write (decision 0440): its pull, or its lift without `isPulled`, at
+ * the breaker's `version`. The write is `stale` unless the install still holds `fromVersion`, the
+ * version its plan read, and `version` is above it.
+ */
+export interface BreakerWrite {
+  readonly version: number;
+  readonly fromVersion: number;
+  readonly isPulled: boolean;
+  /**
+   * When the breaker's row turned to pulled, as its source said; a pull that takes hold keeps it,
+   * else the write's own time, for the lift to look back from.
+   */
+  readonly changedAtMs?: number;
+  /**
+   * Whether the write leaves nothing to tell: a version alone, which neither takes hold nor lets
+   * go, is told with its write. A pull or a lift is told after it (`InstallStore.tellBreaker`).
+   */
+  readonly isTold: boolean;
+}
+
+// Parses the breaker's part of a write.
+const breakerWriteSchema: z.ZodType<BreakerWrite> = z.strictObject({
+  version: z.int().positive(),
+  fromVersion: z.int().nonnegative(),
+  isPulled: z.boolean(),
+  changedAtMs: epochMsSchema.exactOptional(),
+  isTold: z.boolean(),
+});
+
+/**
  * One freeze or unfreeze, written all or nothing (ARCHITECTURE.md section 11, decisions 0128 and
  * 0189): each agent marked frozen at `atMs`, or unfrozen, the install too when the write covers the
  * whole install, each intent's move with its event, ledger entry and card writes, each auto order's
@@ -64,6 +94,11 @@ export interface FreezeWrite {
   readonly orders: readonly OrderMove[];
   /** One `freeze` or `unfreeze` entry for each agent it marks, and one for the install. */
   readonly ledger: readonly LedgerDraft[];
+  /**
+   * The breaker's pull or lift, which marks or clears the install's breaker mark and never an
+   * owner's freeze; such a write names no agent and leaves `isWholeInstall` false.
+   */
+  readonly breaker?: BreakerWrite;
 }
 
 /** Parses a freeze write. */
@@ -75,6 +110,7 @@ export const freezeWriteSchema: z.ZodType<FreezeWrite> = z.strictObject({
   moves: z.array(intentChangeSchema),
   orders: z.array(orderMoveSchema),
   ledger: z.array(ledgerDraftSchema),
+  breaker: breakerWriteSchema.exactOptional(),
 });
 
 /**

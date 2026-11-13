@@ -121,17 +121,43 @@ export function readRescueReach(
   return text === null ? undefined : rescueReachSchema.parse(readJson(text));
 }
 
+// The install's own freeze and the breaker's mark of it (decision 0440), none before the first.
+function readHolds(
+  database: StoreConnection,
+): Pick<
+  InstallFacts,
+  "frozenAtMs" | "breakerAtMs" | "breakerVersion" | "breakerToldVersion" | "breakerPulledAtMs"
+> {
+  const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
+  const safety = takeFirst(
+    kysely
+      .selectFrom("safety")
+      .select(["frozen_at", "breaker_at", "breaker_version", "breaker_told", "breaker_pulled_at"])
+      .where("id", "=", 1),
+  );
+  if (safety === undefined) {
+    return {};
+  }
+  const { breaker_version: breakerVersion, breaker_told: breakerToldVersion } = safety;
+  return {
+    ...field("frozenAtMs", safety.frozen_at),
+    ...field("breakerAtMs", safety.breaker_at),
+    ...(breakerVersion === 0 ? {} : { breakerVersion }),
+    ...(breakerToldVersion === 0 ? {} : { breakerToldVersion }),
+    ...field("breakerPulledAtMs", safety.breaker_pulled_at),
+  };
+}
+
 /**
- * Reads the install's custody, freeze, rescue address, accepted disclaimer and wallets with
- * their ceilings, oldest first.
+ * Reads the install's custody, freeze, the breaker's mark, rescue address, accepted disclaimer and
+ * wallets with their ceilings, oldest first.
  */
 export function readInstall(database: StoreConnection): InstallFacts {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
   const custody = takeFirst(kysely.selectFrom("custody").selectAll().where("id", "=", 1));
-  const safety = takeFirst(kysely.selectFrom("safety").select("frozen_at").where("id", "=", 1));
   return {
     ...(custody === undefined ? {} : { custody: toCustody(custody) }),
-    ...field("frozenAtMs", safety?.frozen_at ?? null),
+    ...readHolds(database),
     ...readRescue(database),
     ...field("rescueCeiling", readRescueCeiling(database) ?? null),
     ...field("rescueReach", readRescueReach(database) ?? null),

@@ -9,6 +9,7 @@ import {
 } from "@binference/core";
 import type { ProtocolErrorCode, UnfreezeRequest } from "@binference/protocol";
 import type { AgentRecord } from "../agents/agent-record.js";
+import { ownFreezeOf } from "../agents/breaker-hold.js";
 import type { InstallFacts } from "../install/install-record.js";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
 import type { IntentProposerRef } from "../intents/intent-record.js";
@@ -36,7 +37,7 @@ interface UnfreezePlan {
 }
 
 const isActive = (agent: AgentRecord): boolean => agent.archivedAtMs === undefined;
-const isFrozen = (agent: AgentRecord): boolean => agent.frozenAtMs !== undefined;
+const isFrozen = (agent: AgentRecord): boolean => ownFreezeOf(agent) !== undefined;
 
 // The agents an unfreeze names: the one asked for while it is frozen, or every frozen agent not
 // archived; `undefined` when nothing it covers is frozen.

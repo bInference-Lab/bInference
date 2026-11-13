@@ -1,4 +1,9 @@
-import type { AccessRows, AgentGuards, GuardsCarry } from "@binference/engine/backups";
+import type {
+  AccessRows,
+  AgentGuards,
+  GuardsCarry,
+  SafetyGuards,
+} from "@binference/engine/backups";
 import { limitsColumns, pendingColumns } from "../agents/limits-rows.js";
 import type { EngineTables } from "../databases/engine-tables.js";
 import type { StoreConnection } from "../dialect/store-connection.js";
@@ -28,6 +33,16 @@ function writeAccess(database: StoreConnection, access: AccessRows): void {
   }
 }
 
+// The running install's breaker mark, as the carry keeps it (decision 0440); none before one.
+function breakerColumns(breaker: SafetyGuards["breaker"]) {
+  return {
+    breaker_at: breaker?.atMs ?? null,
+    breaker_version: breaker?.version ?? 0,
+    breaker_told: breaker?.toldVersion ?? 0,
+    breaker_pulled_at: breaker?.pulledAtMs ?? null,
+  };
+}
+
 function writeSafety(database: StoreConnection, carry: GuardsCarry): void {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
   const { safety, telegramOwner } = carry;
@@ -41,6 +56,7 @@ function writeSafety(database: StoreConnection, carry: GuardsCarry): void {
         pending_rescue_at: safety.pendingRescue?.atMs ?? null,
         rescue_ceiling: safety.rescueCeiling ?? null,
         rescue_reach: safety.rescueReach ?? null,
+        ...breakerColumns(safety.breaker),
         version: row("version", "+", 1),
       }))
       .where("id", "=", 1),

@@ -37,13 +37,37 @@ export function readOrder(database: StoreConnection, id: Id<"ord">): OrderRecord
   return row === undefined ? undefined : toOrderRecord(row);
 }
 
-/** Whether an agent is frozen now; `undefined` for an agent the database does not hold. */
-export function isAgentFrozen(database: StoreConnection, agentId: string): boolean | undefined {
+/**
+ * What one write lifts as its orders move back to `active`: the owner's freeze of these agents,
+ * and the breaker's hold of the install (decision 0440).
+ */
+export interface Lifted {
+  readonly agents: ReadonlySet<string>;
+  readonly isBreakerLifted: boolean;
+}
+
+const noLift: Lifted = { agents: new Set(), isBreakerLifted: false };
+
+/**
+ * Whether an agent is held now, by its owner's freeze or the breaker's hold of the install, once
+ * what the write lifts is lifted; `undefined` for an agent the database does not hold.
+ */
+export function isAgentFrozen(
+  database: StoreConnection,
+  agentId: string,
+  lifted: Lifted = noLift,
+): boolean | undefined {
   const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
   const agent = takeFirst(
     kysely.selectFrom("agents").select("frozen_at").where("id", "=", agentId),
   );
-  return agent === undefined ? undefined : agent.frozen_at !== null;
+  if (agent === undefined) {
+    return undefined;
+  }
+  const safety = takeFirst(kysely.selectFrom("safety").select("breaker_at").where("id", "=", 1));
+  const isOwnFrozen = agent.frozen_at !== null && !lifted.agents.has(agentId);
+  const isBraked = (safety?.breaker_at ?? null) !== null && !lifted.isBreakerLifted;
+  return isOwnFrozen || isBraked;
 }
 
 // The row of a new order awaiting its card.
@@ -155,16 +179,16 @@ function requireRow(database: StoreConnection, id: string): Selectable<OrdersTab
 }
 
 // A move into `active` needs the confirmation of the order's card on its `autoOrder` intent, and
-// an agent that is not frozen, or one the same write unfreezes.
+// an agent that is not held once the same write's lifts land.
 function activeRefusal(
   database: StoreConnection,
   check: {
     readonly row: Selectable<OrdersTable>;
     readonly move: OrderMove;
-    readonly unfrozen: ReadonlySet<string>;
+    readonly lifted: Lifted;
   },
 ): OrderMoveRefusal | undefined {
-  const { row, move, unfrozen } = check;
+  const { row, move, lifted } = check;
   if (move.state !== "active") {
     return undefined;
   }
@@ -176,8 +200,7 @@ function activeRefusal(
   if (card === null || confirmation?.card_id !== card) {
     return "not_confirmed";
   }
-  const isFrozen = isAgentFrozen(database, row.agent_id) === true && !unfrozen.has(row.agent_id);
-  return isFrozen ? "frozen" : undefined;
+  return isAgentFrozen(database, row.agent_id, lifted) === true ? "frozen" : undefined;
 }
 
 function checkRules(row: Selectable<OrdersTable>, move: OrderMove): void {
@@ -194,14 +217,14 @@ function checkRules(row: Selectable<OrdersTable>, move: OrderMove): void {
 /**
  * Checks order moves before anything is written: an unknown order is `not_found`, one at another
  * version `stale`, and a move into `active` without the confirmation of its card `not_confirmed`,
- * or of a frozen agent's order `frozen`. An agent in `unfrozen`, which the same write unfreezes,
- * counts as not frozen. A move out of an ended state, an end reason on another state, or two moves
- * of one order throw.
+ * or of a held agent's order `frozen`. What the same write lifts, an owner's freeze or the
+ * breaker's hold, counts as lifted. A move out of an ended state, an end reason on another state,
+ * or two moves of one order throw.
  */
 export function checkOrderMoves(
   database: StoreConnection,
   moves: readonly OrderMove[],
-  unfrozen: ReadonlySet<string> = new Set(),
+  lifted: Lifted = noLift,
 ): Result<readonly OrderMove[], OrderMoveRefusal> {
   if (new Set(moves.map(({ id }) => id)).size !== moves.length) {
     throw refused("One write moves an order twice.", {});
@@ -215,7 +238,7 @@ export function checkOrderMoves(
       return err("stale");
     }
     checkRules(row, move);
-    const refusal = activeRefusal(database, { row, move, unfrozen });
+    const refusal = activeRefusal(database, { row, move, lifted });
     if (refusal !== undefined) {
       return err(refusal);
     }

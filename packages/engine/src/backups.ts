@@ -17,6 +17,7 @@ export {
 export type {
   AccessRows,
   AgentGuards,
+  BreakerGuards,
   CarriedRow,
   CarriedValue,
   CountedOutflow,

@@ -9,6 +9,7 @@ import {
 } from "@binference/core";
 import type { ProtocolErrorCode } from "@binference/protocol";
 import type { AgentRecord } from "../agents/agent-record.js";
+import { ownFreezeOf } from "../agents/breaker-hold.js";
 import type { ConfigAuthor } from "../audit/journal-config-change.js";
 import type { StoredFreeze, StoredIntents } from "../intents/create-stored-intents.js";
 import type { IntentMove } from "../intents/intent-change-of.js";
@@ -137,10 +138,10 @@ function frozenAtOf(
   targets: readonly AgentRecord[],
   marked: { readonly agents: readonly AgentRecord[]; readonly installAtMs: number | undefined },
 ): number {
-  const times = targets.map(
-    (target) =>
-      marked.agents.find((agent) => agent.id === target.id)?.frozenAtMs ?? target.frozenAtMs ?? 0,
-  );
+  const times = targets.map((target) => {
+    const agent = marked.agents.find(({ id }) => id === target.id);
+    return (agent === undefined ? undefined : ownFreezeOf(agent)) ?? ownFreezeOf(target) ?? 0;
+  });
   return Math.max(...times, marked.installAtMs ?? 0);
 }
 
@@ -224,7 +225,8 @@ async function freezeOnce(
     return plan;
   }
   const { targets, moves, orders, isWholeInstall, installAtMs } = plan.value;
-  const unfrozen = targets.filter((agent) => agent.frozenAtMs === undefined);
+  // The owner's own freeze, whatever the breaker holds: it stays after the breaker's lift.
+  const unfrozen = targets.filter((agent) => ownFreezeOf(agent) === undefined);
   const isMarked = !isWholeInstall || installAtMs !== undefined;
   if (unfrozen.length === 0 && moves.length + orders.length === 0 && isMarked) {
     return ok(frozenAtOf(targets, { agents: [], installAtMs }));

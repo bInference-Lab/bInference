@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import type { ContractCheck } from "@binference/core/testing";
 import type { FreezeWrite } from "../intents/freeze-write.js";
+import { breakerWrite } from "./breaker-freeze-checks.js";
 import { intentDraft, intentMove } from "./intent-fixtures.js";
 import {
   agentVersion,
@@ -105,6 +106,31 @@ async function freezesAndUnfreezesOrders(subject: OrderStoreSubject): Promise<vo
   assert.equal(agents.find(({ id }) => id === subject.agentId)?.frozenAtMs, undefined);
 }
 
+// While the breaker holds (decision 0440), no order activates or resumes, an owner's unfreeze
+// included, and no order is made; the breaker's lift resumes it in its own write.
+async function holdsOrdersWhileBraked(subject: OrderStoreSubject): Promise<void> {
+  const { store, intents } = subject;
+  await activeOrder(subject);
+  const pull = breakerWrite(1, { atMs: 2_000, version: 1, isPulled: true });
+  const paused = await intents.freeze({ ...pull, orders: [orderMove(1, 1, "paused")] }, live());
+  assert.ok(paused.ok);
+  assert.deepEqual(await store.create(orderDraft(subject, 2), live()), {
+    ok: false,
+    error: "frozen",
+  });
+  const resume = { ...orderMove(1, 2, "active"), atMs: 3_000 };
+  const unfreeze = await freezeOf(subject, { atMs: 3_000, isFrozen: false, orders: [resume] });
+  assert.deepEqual(await intents.freeze(unfreeze, live()), { ok: false, error: "stale" });
+  assert.equal((await store.get(fixtureId("ord", 1), live()))?.state, "paused");
+  // An owner's freeze planned before the lift, on the paused orders it read, is stale after it.
+  const before = await freezeOf(subject, { atMs: 3_000, isFrozen: true, orders: [] });
+  const lift = breakerWrite(2, { atMs: 3_000, version: 2, isPulled: false });
+  const resumed = await intents.freeze({ ...lift, orders: [resume] }, live());
+  assert.ok(resumed.ok);
+  assert.equal((await store.get(fixtureId("ord", 1), live()))?.state, "active");
+  assert.deepEqual(await intents.freeze(before, live()), { ok: false, error: "stale" });
+}
+
 /**
  * Checks that a freeze writes the skip row of a fill it cancels with the cancel itself (decision
  * 0197), beside the pause of the fill's order.
@@ -150,6 +176,11 @@ export function orderFreezeChecks(
       "pauses and resumes orders in the freeze's own write",
       create,
       freezesAndUnfreezesOrders,
+    ),
+    checkOn(
+      "holds orders while the breaker holds and resumes them at its lift",
+      create,
+      holdsOrdersWhileBraked,
     ),
   ];
 }

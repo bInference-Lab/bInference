@@ -21,6 +21,7 @@ import {
 import { cancelRescue, changeRescue, type RescueState, rescueAt } from "../policy/rescue-change.js";
 import type { InstallStore } from "../ports.js";
 import type { FreezeChange } from "./memory-agent-store.js";
+import { createMemoryBreakerMark, type MemoryBreakerMark } from "./memory-breaker-mark.js";
 import { byCreation, constraintFault, memoryCall } from "./memory-call.js";
 
 /** What the fake holds: the install's facts and its id. */
@@ -248,13 +249,25 @@ export interface MemoryInstallStore extends InstallStore {
   freezeNow(change: FreezeChange): void;
   /** When the whole install was frozen, or `undefined` while it is not. */
   frozenAt(): number | undefined;
+  /** The install's breaker mark, which the in-memory intent store's freeze writes. */
+  readonly breakerMark: MemoryBreakerMark;
   /** A stored wallet, for another in-memory store's write, or `undefined`. */
   walletNow(id: Id<"wal">): WalletRecord | undefined;
+}
+
+// The install's breaker mark, and the write that marks a version of it told (decision 0440).
+function breakerParts(breakerMark: MemoryBreakerMark) {
+  return {
+    breakerMark,
+    tellBreaker: async (version: number, call: Parameters<InstallStore["tellBreaker"]>[1]) =>
+      memoryCall(call, () => breakerMark.tell(version)),
+  };
 }
 
 /** Creates an empty in-memory {@link InstallStore} for tests. */
 export function createMemoryInstallStore(): MemoryInstallStore {
   const held: { state: InstallState } = { state: { wallets: [] } };
+  const breakerMark = createMemoryBreakerMark();
   const update = (change: (state: InstallState) => InstallState): void => {
     held.state = change(held.state);
   };
@@ -273,8 +286,10 @@ export function createMemoryInstallStore(): MemoryInstallStore {
       }),
     freezeNow: (change) => update((state) => withFreeze(state, change)),
     frozenAt: () => held.state.frozenAtMs,
+    ...breakerParts(breakerMark),
     walletNow: (id) => structuredClone(held.state.wallets.find((wallet) => wallet.id === id)),
-    read: async (call) => memoryCall(call, () => structuredClone(factsOf(held.state))),
+    read: async (call) =>
+      memoryCall(call, () => structuredClone({ ...factsOf(held.state), ...breakerMark.facts() })),
     setUp: async (setup, call) =>
       memoryCall(call, () => written(setUp(held.state, structuredClone(setup)), update)),
     changeRescue: async (change, call) => memoryCall(call, () => rescueChange(write, change)),

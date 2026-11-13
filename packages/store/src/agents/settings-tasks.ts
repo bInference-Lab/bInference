@@ -29,7 +29,7 @@ import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { jsonText } from "../rows/column-values.js";
 import { resultSchema } from "../tasks/result-schema.js";
 import { defineTask, type StoreTask } from "../tasks/store-task.js";
-import { toAgentRecord, toApprovalMode, toSendLevel } from "./agent-rows.js";
+import { readBreakerAt, toAgentRecord, toApprovalMode, toSendLevel } from "./agent-rows.js";
 import { limitsColumns, pendingColumns, toLimitsRecord } from "./limits-rows.js";
 
 // A change names the row version it read: a missing row is `not_found`, another version `stale`.
@@ -128,7 +128,7 @@ export function setAgentRow(
     version: change.expectedVersion + 1,
   };
   execute(kysely.updateTable("agents").set(row).where("id", "=", change.agentId));
-  return ok(toAgentRecord(row));
+  return ok(toAgentRecord(row, readBreakerAt(database)));
 }
 
 /** Sets an agent's notice settings under the agent row's version the changer read. */

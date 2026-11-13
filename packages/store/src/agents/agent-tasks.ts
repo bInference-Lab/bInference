@@ -8,6 +8,7 @@ import {
   agentSettingsOf,
   agentSettingsSchema,
 } from "@binference/engine";
+import { withBreakerHold } from "@binference/engine/safety";
 import { z } from "zod";
 import type { EngineTables } from "../databases/engine-tables.js";
 import type { StoreConnection } from "../dialect/store-connection.js";
@@ -16,7 +17,7 @@ import { jsonText } from "../rows/column-values.js";
 import { type QuotaWrite, quotaWriteSchema } from "../tasks/quota-write.js";
 import { resultSchema } from "../tasks/result-schema.js";
 import { defineTask, type StoreTask } from "../tasks/store-task.js";
-import { readSettings, toAgentRecord } from "./agent-rows.js";
+import { readBreakerAt, readSettings, toAgentRecord } from "./agent-rows.js";
 import { limitsColumns } from "./limits-rows.js";
 
 function takenBy(
@@ -129,7 +130,8 @@ export const createAgentTask: StoreTask<
     const frozenAt = isInstallFrozen(database) ? draft.atMs : null;
     insertAgent(database, draft, frozenAt);
     const settings = agentSettingsOf(draft);
-    const agent = frozenAt === null ? settings.agent : { ...settings.agent, frozenAtMs: frozenAt };
+    const own = frozenAt === null ? settings.agent : { ...settings.agent, frozenAtMs: frozenAt };
+    const agent = withBreakerHold(own, readBreakerAt(database) ?? undefined);
     return ok({ ...settings, agent });
   },
 });
@@ -152,6 +154,7 @@ export const listAgentsTask: StoreTask<null, readonly AgentRecord[]> = defineTas
   run(database) {
     const { kysely, execute } = createSyncKysely<EngineTables>(database);
     const agents = kysely.selectFrom("agents").selectAll().orderBy("created_at").orderBy("id");
-    return execute(agents).rows.map(toAgentRecord);
+    const breakerAt = readBreakerAt(database);
+    return execute(agents).rows.map((row) => toAgentRecord(row, breakerAt));
   },
 });

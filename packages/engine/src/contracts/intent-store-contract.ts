@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { assetRefSchema } from "@binference/chain";
 import type { ContractCheck } from "@binference/core/testing";
 import { genesisLedgerHash } from "../ledger/ledger-hash.js";
+import { breakerFreezeChecks } from "./breaker-freeze-checks.js";
 import {
   closesWithMoves,
   confirmsAgain,
@@ -273,6 +274,7 @@ export function intentStoreContract(harness: IntentStoreHarness): readonly Contr
     checkOn("refuses to close a card version that is not open", create, refusesClosedCard),
     checkOn("refuses a card version the intent already has", create, refusesTakenVersion),
     ...freezeChecks(create),
+    ...breakerFreezeChecks(create),
     checkOn("refuses every call on an aborted signal and writes nothing", create, refusesAborted),
   ];
 }

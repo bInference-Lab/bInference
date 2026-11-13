@@ -3,6 +3,7 @@ import { type Id, idSchema } from "@binference/core";
 import { z } from "zod";
 import type { AgentMode, AgentSettings } from "../agents/agent-record.js";
 import { approvalModeSchema } from "../agents/approval-mode-record.js";
+import { ownFreezeOf } from "../agents/breaker-hold.js";
 import { limitsValuesOf, limitsValuesSchema } from "../agents/limits-record.js";
 import { sendLevelSchema, type SendLevelState } from "../agents/send-level-record.js";
 import type { ApprovalMode } from "../intents/auto-mode.js";
@@ -44,6 +45,19 @@ export interface SafetyGuards {
    * it travels with the rescue addresses it belongs to.
    */
   readonly rescueReach?: string;
+  /**
+   * The breaker's mark of the install (decision 0440): when it took hold, the versions applied
+   * and told, and when its row turned to pulled. A restore keeps the running install's.
+   */
+  readonly breaker?: BreakerGuards;
+}
+
+/** The breaker's mark of an install, as `safety` holds it beside the owner's freeze. */
+export interface BreakerGuards {
+  readonly atMs?: number;
+  readonly version: number;
+  readonly toldVersion: number;
+  readonly pulledAtMs?: number;
 }
 
 /** What guards one agent's funds. */
@@ -138,6 +152,14 @@ const safetySchema: z.ZodType<SafetyGuards> = z.strictObject({
     .exactOptional(),
   rescueCeiling: z.string().min(1).exactOptional(),
   rescueReach: z.string().min(1).exactOptional(),
+  breaker: z
+    .strictObject({
+      atMs: epochMsSchema.exactOptional(),
+      version: z.int().nonnegative(),
+      toldVersion: z.int().nonnegative(),
+      pulledAtMs: epochMsSchema.exactOptional(),
+    })
+    .exactOptional(),
 });
 
 const agentGuardsSchema: z.ZodType<AgentGuards> = z.strictObject({
@@ -255,7 +277,9 @@ export function agentGuardsOf(
   removedAddresses: AgentGuards["removedAddresses"],
 ): AgentGuards {
   const { agent, limits, approvalMode, sendLevel } = settings;
-  const { frozenAtMs, archivedAtMs } = agent;
+  // Only the owner's own freeze is a guard; the breaker's hold stays the install's (0440).
+  const frozenAtMs = ownFreezeOf(agent);
+  const { archivedAtMs } = agent;
   const values = limitsValuesOf(limits);
   return {
     agentId: agent.id,

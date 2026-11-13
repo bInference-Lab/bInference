@@ -1,5 +1,6 @@
 import type { AccountRef } from "@binference/chain";
 import { err, type Id, ok, type Result } from "@binference/core";
+import { type LiftedHolds, noLift, staysHeld } from "../agents/breaker-hold.js";
 import type { StoredConfirmation } from "../intents/confirmation-record.js";
 import type { IntentRecord } from "../intents/intent-record.js";
 import { copyLeaderOf, trackingOrderStates } from "../orders/copy-leader.js";
@@ -26,12 +27,12 @@ import { createMemoryTracking, type MemoryTracking } from "./memory-tracking.js"
 export interface MemoryOrderStore extends OrderStore, MemoryOrderFills {
   /**
    * Checks every move inside another in-memory store's write, such as a freeze, and answers the
-   * orders after them without writing. An agent in `unfrozen`, which the same write unfreezes,
-   * counts as not frozen. A broken rule throws.
+   * orders after them without writing. What the same write lifts, an owner's freeze or the
+   * breaker's hold, counts as lifted. A broken rule throws.
    */
   checkNow(
     moves: readonly OrderMove[],
-    unfrozen: ReadonlySet<Id<"agt">>,
+    lifted: LiftedHolds,
   ): Result<readonly OrderRecord[], OrderMoveRefusal>;
   /** Writes orders `checkNow` answered, once the rest of the write has passed its checks. */
   saveNow(orders: readonly OrderRecord[]): void;
@@ -108,7 +109,7 @@ function checkRules(order: OrderRecord, move: OrderMove): void {
 function activeRefusal(
   options: MemoryOrderStoreOptions,
   order: OrderRecord,
-  move: OrderMove & { readonly unfrozen: ReadonlySet<Id<"agt">> },
+  move: OrderMove & { readonly lifted: LiftedHolds },
 ): OrderMoveRefusal | undefined {
   if (move.state !== "active") {
     return undefined;
@@ -118,10 +119,8 @@ function activeRefusal(
   if (card === undefined || confirmation?.cardId !== card) {
     return "not_confirmed";
   }
-  const isFrozen =
-    options.agents.agentNow(order.agentId)?.frozenAtMs !== undefined &&
-    !move.unfrozen.has(order.agentId);
-  return isFrozen ? "frozen" : undefined;
+  const agent = options.agents.agentNow(order.agentId);
+  return agent !== undefined && staysHeld(agent, move.lifted) ? "frozen" : undefined;
 }
 
 function movedOf(order: OrderRecord, move: OrderMove): OrderRecord {
@@ -142,7 +141,7 @@ function movedOf(order: OrderRecord, move: OrderMove): OrderRecord {
 function checkOne(
   orders: Orders,
   options: MemoryOrderStoreOptions,
-  move: OrderMove & { readonly unfrozen: ReadonlySet<Id<"agt">> },
+  move: OrderMove & { readonly lifted: LiftedHolds },
 ): Result<OrderRecord, OrderMoveRefusal> {
   const order = orders.get(move.id);
   if (order === undefined) {
@@ -159,15 +158,15 @@ function checkOne(
 function checkNow(
   orders: Orders,
   options: MemoryOrderStoreOptions,
-  check: { readonly moves: readonly OrderMove[]; readonly unfrozen: ReadonlySet<Id<"agt">> },
+  check: { readonly moves: readonly OrderMove[]; readonly lifted: LiftedHolds },
 ): Result<readonly OrderRecord[], OrderMoveRefusal> {
-  const { moves, unfrozen } = check;
+  const { moves, lifted } = check;
   if (new Set(moves.map(({ id }) => id)).size !== moves.length) {
     throw constraintFault("one write moves an order twice");
   }
   const moved: OrderRecord[] = [];
   for (const move of moves) {
-    const checked = checkOne(orders, options, { ...move, unfrozen });
+    const checked = checkOne(orders, options, { ...move, lifted });
     if (!checked.ok) {
       return checked;
     }
@@ -187,7 +186,7 @@ function moveAll(
   options: MemoryOrderStoreOptions,
   moves: readonly OrderMove[],
 ): Result<readonly OrderRecord[], OrderMoveRefusal> {
-  const checked = checkNow(orders, options, { moves, unfrozen: new Set() });
+  const checked = checkNow(orders, options, { moves, lifted: noLift });
   if (checked.ok) {
     saveNow(orders, checked.value);
   }
@@ -210,7 +209,7 @@ function checkFillWrite(
   fills.checkFillNow(write.fill);
   const checked = checkNow(orders, options, {
     moves: structuredClone(write.moves),
-    unfrozen: new Set(),
+    lifted: noLift,
   });
   if (!checked.ok) {
     return err("stale");
@@ -320,8 +319,8 @@ export function createMemoryOrderStore(options: MemoryOrderStoreOptions): Memory
     ...fills,
     ...rowReadsOf({ orders, rowsNow: () => fills.rowsNow(), intentNow: options.intentNow }),
     checkWriteNow: (write) => checkFillWrite({ orders, options, fills }, write),
-    checkNow: (moves, unfrozen) =>
-      checkNow(orders, options, { moves: structuredClone(moves), unfrozen }),
+    checkNow: (moves, lifted) =>
+      checkNow(orders, options, { moves: structuredClone(moves), lifted }),
     saveNow: (moved) => {
       saveNow(orders, moved);
     },

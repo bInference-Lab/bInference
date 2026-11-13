@@ -64,6 +64,7 @@ import { migration as agentInboxSeq } from "./0062_agent_inbox_seq.js";
 import { migration as credentials } from "./0063_credentials.js";
 import { migration as shellRows } from "./0064_shell_rows.js";
 import { migration as idempotencyStarted } from "./0065_idempotency_started.js";
+import { migration as breakerMark } from "./0066_breaker_mark.js";
 
 /** The engine schema's Postgres migrations, oldest first. Released files never change. */
 export const enginePostgresMigrations: readonly PostgresMigration[] = [
@@ -132,4 +133,5 @@ export const enginePostgresMigrations: readonly PostgresMigration[] = [
   credentials,
   shellRows,
   idempotencyStarted,
+  breakerMark,
 ];

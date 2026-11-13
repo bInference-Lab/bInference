@@ -34,7 +34,15 @@ export interface AgentRecord {
   readonly locale: Locale;
   readonly models: JsonValue;
   readonly notifications: JsonValue;
+  /**
+   * When the agent was held: by its owner's freeze, or by the breaker's hold of the install,
+   * whichever came first (decision 0440). Every check of whether the agent may act reads this.
+   */
   readonly frozenAtMs?: number;
+  /** While the breaker holds the install, when the owner froze the agent, if the owner did. */
+  readonly ownFrozenAtMs?: number;
+  /** When the breaker took hold of the install; absent while it does not hold. */
+  readonly breakerAtMs?: number;
   readonly archivedAtMs?: number;
   readonly createdAtMs: number;
   readonly changedAtMs: number;
@@ -54,6 +62,8 @@ const agentShape = {
 export const agentRecordSchema: z.ZodType<AgentRecord> = z.strictObject({
   ...agentShape,
   frozenAtMs: epochMsSchema.exactOptional(),
+  ownFrozenAtMs: epochMsSchema.exactOptional(),
+  breakerAtMs: epochMsSchema.exactOptional(),
   archivedAtMs: epochMsSchema.exactOptional(),
   createdAtMs: epochMsSchema,
   changedAtMs: epochMsSchema,

@@ -9,10 +9,12 @@ import {
   agentSettingsOf,
 } from "../agents/agent-record.js";
 import type { ApprovalModeChange, ApprovalModeRecord } from "../agents/approval-mode-record.js";
+import { withBreakerHold } from "../agents/breaker-hold.js";
 import type { LimitsChange, LimitsRecord } from "../agents/limits-record.js";
 import type { SendLevelChange, SendLevelRecord } from "../agents/send-level-record.js";
 import type { AgentFreeze } from "../intents/freeze-write.js";
 import type { AgentStore } from "../ports.js";
+import type { QuotaCall } from "../quotas/quotas.js";
 import { createMemoryAddressBook } from "./memory-address-book.js";
 import { byCreation, memoryCall } from "./memory-call.js";
 
@@ -174,6 +176,8 @@ export interface MemoryAgentStore extends AgentStore {
   ): Result<readonly AgentRecord[], "not_found" | "stale">;
   /** The agent as stored now, for another in-memory store's write, or `undefined`. */
   agentNow(id: Id<"agt">): AgentRecord | undefined;
+  /** Moves each agent's row version on by one, inside another in-memory store's write. */
+  touchNow(ids: readonly Id<"agt">[]): void;
 }
 
 // The agent as a freeze leaves it, or an unfreeze, without its freeze time.
@@ -214,42 +218,89 @@ function freezeNow(
   return ok(structuredClone(frozen));
 }
 
-/** Where an in-memory agent store reads the install's freeze; without it, never frozen. */
+/**
+ * Where an in-memory agent store reads the install's freeze and the breaker's hold of it (decision
+ * 0440); without them, never frozen.
+ */
 export interface MemoryAgentStoreOptions {
-  readonly install?: { readonly frozenAt: () => number | undefined };
+  readonly install?: {
+    readonly frozenAt: () => number | undefined;
+    readonly breakerMark?: { readonly at: () => number | undefined };
+  };
+}
+
+// The reads and the freeze of the store: it keeps each owner's freeze as it is, and every record
+// it gives folds the breaker's hold of the install in (decision 0440).
+function heldReads(
+  agents: Agents,
+  options: MemoryAgentStoreOptions & { readonly book: ReturnType<typeof createMemoryAddressBook> },
+) {
+  const held = (agent: AgentRecord) => withBreakerHold(agent, options.install?.breakerMark?.at());
+  const isFrozen = () => options.install?.frozenAt() !== undefined;
+  return {
+    held,
+    freezeNow: (freezes: readonly AgentFreeze[], change: FreezeChange) => {
+      const frozen = freezeNow(agents, structuredClone(freezes), change);
+      return frozen.ok ? ok(frozen.value.map(held)) : frozen;
+    },
+    agentNow: (id: Id<"agt">) => {
+      const agent = agents.get(id)?.agent;
+      return agent === undefined ? undefined : structuredClone(held(agent));
+    },
+    touchNow: (ids: readonly Id<"agt">[]) => {
+      for (const id of new Set(ids)) {
+        const settings = agents.get(id);
+        if (settings !== undefined) {
+          const version = settings.agent.version + 1;
+          agents.set(id, { ...settings, agent: { ...settings.agent, version } });
+        }
+      }
+    },
+    create: async (draft: AgentDraft, call: QuotaCall) =>
+      memoryCall(call, () => {
+        const made = create(agents, draft, { isFrozen: isFrozen(), quota: call.quota });
+        return made.ok ? ok({ ...made.value, agent: held(made.value.agent) }) : made;
+      }),
+    get: async (id: Id<"agt">, call: QuotaCall) =>
+      memoryCall(call, () => {
+        const settings = agents.get(id);
+        return settings === undefined
+          ? undefined
+          : {
+              ...structuredClone(settings),
+              agent: held(structuredClone(settings.agent)),
+              addressBook: options.book.live(id),
+            };
+      }),
+    list: async (call: QuotaCall) =>
+      memoryCall(call, () =>
+        structuredClone(
+          [...agents.values()].map((settings) => held(settings.agent)).toSorted(byCreation),
+        ),
+      ),
+  };
 }
 
 /** Creates an empty in-memory {@link MemoryAgentStore} for tests. */
 export function createMemoryAgentStore(options: MemoryAgentStoreOptions = {}): MemoryAgentStore {
   const agents: Agents = new Map();
   const book = createMemoryAddressBook();
-  const isFrozen = () => options.install?.frozenAt() !== undefined;
+  const { held, ...reads } = heldReads(agents, { ...options, book });
+  const heldRow = <E extends string>(written: Result<AgentRecord, E>): Result<AgentRecord, E> =>
+    written.ok ? ok(held(written.value)) : written;
   return {
-    freezeNow: (freezes, change) => freezeNow(agents, structuredClone(freezes), change),
-    agentNow: (id) => structuredClone(agents.get(id)?.agent),
-    create: async (draft, call) =>
-      memoryCall(call, () => create(agents, draft, { isFrozen: isFrozen(), quota: call.quota })),
-    get: async (id, call) =>
-      memoryCall(call, () => {
-        const settings = agents.get(id);
-        return settings === undefined
-          ? undefined
-          : { ...structuredClone(settings), addressBook: book.live(id) };
-      }),
-    list: async (call) =>
-      memoryCall(call, () =>
-        structuredClone(
-          [...agents.values()].map((settings) => settings.agent).toSorted(byCreation),
-        ),
-      ),
+    ...reads,
     setApprovalMode: async (change, call) =>
       memoryCall(call, () => setApprovalMode(agents, change)),
     setLimits: async (change, call) => memoryCall(call, () => setLimits(agents, change)),
-    setMode: async (change, call) => memoryCall(call, () => setMode(agents, change, call.quota)),
+    setMode: async (change, call) =>
+      memoryCall(call, () => heldRow(setMode(agents, change, call.quota))),
     setNotifications: async (change, call) =>
-      memoryCall(call, () => setAgentRow(agents, change, { notifications: change.notifications })),
+      memoryCall(call, () =>
+        heldRow(setAgentRow(agents, change, { notifications: change.notifications })),
+      ),
     setModels: async (change, call) =>
-      memoryCall(call, () => setAgentRow(agents, change, { models: change.models })),
+      memoryCall(call, () => heldRow(setAgentRow(agents, change, { models: change.models }))),
     setSendLevel: async (change, call) => memoryCall(call, () => setSendLevel(agents, change)),
     addAddress: async (entry, call) =>
       memoryCall(call, () => (agents.has(entry.agentId) ? book.add(entry) : err("not_found"))),

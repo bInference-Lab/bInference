@@ -1,6 +1,7 @@
 import { type Clock, ok } from "@binference/core";
 import type { ResultOf } from "@binference/protocol";
 import type { AgentRecord } from "../agents/agent-record.js";
+import { ownFreezeOf } from "../agents/breaker-hold.js";
 import type { InstallFacts } from "../install/install-record.js";
 import type { IntentRecord } from "../intents/intent-record.js";
 import type { EngineHandler } from "../operations/engine-call.js";
@@ -23,13 +24,15 @@ export interface SafetyStatusOptions {
 
 type SafetyStatus = ResultOf<"safety/status">;
 
-// Every frozen agent not archived, with its time, in the order the store lists them.
+// Every agent not archived its owner froze, with the owner's time, in the order the store lists
+// them: what an unfreeze would lift, apart from the breaker's hold (decision 0440).
 function frozenAgents(agents: readonly AgentRecord[]): NonNullable<SafetyStatus["agents"]> {
-  return agents.flatMap(({ id, frozenAtMs, archivedAtMs }) =>
-    frozenAtMs === undefined || archivedAtMs !== undefined
+  return agents.flatMap((agent) => {
+    const frozenAt = ownFreezeOf(agent);
+    return frozenAt === undefined || agent.archivedAtMs !== undefined
       ? []
-      : [{ agent: id, frozenAt: frozenAtMs }],
-  );
+      : [{ agent: agent.id, frozenAt }];
+  });
 }
 
 function statusOf(

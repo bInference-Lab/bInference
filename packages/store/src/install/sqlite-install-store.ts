@@ -2,6 +2,7 @@ import type { InstallStore } from "@binference/engine/install";
 import { bindTask, type StoreHost } from "../tasks/store-host.js";
 import type { TaskRunner } from "../tasks/store-task.js";
 import { attachTask, setSealKeyTask } from "./attach-task.js";
+import { tellBreakerTask } from "./breaker-told-task.js";
 import { acceptDisclaimerTask } from "./disclaimer-task.js";
 import {
   cancelRescueChangeTask,
@@ -28,6 +29,7 @@ export const installTasks: readonly TaskRunner[] = [
   keepRescueReachTask,
   createWalletTask,
   updateCeilingTask,
+  tellBreakerTask,
   attachTask,
   setSealKeyTask,
   acceptDisclaimerTask,
@@ -60,6 +62,7 @@ export function createSqliteInstallStore(host: StoreHost): InstallStore {
       await createWallet(wallet, options);
     },
     updateCeiling: bindTask(host, updateCeilingTask),
+    tellBreaker: bindTask(host, tellBreakerTask),
     attach: bindTask(host, attachTask),
     setSealKey: bindTask(host, setSealKeyTask),
     acceptDisclaimer: async (acceptance, options) => {

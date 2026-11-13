@@ -1,5 +1,6 @@
 import { BinferenceError, type Clock, type IdSource } from "@binference/core";
 import type { AgentRecord } from "../agents/agent-record.js";
+import { ownFreezeOf } from "../agents/breaker-hold.js";
 import type {
   IntentSnapshot,
   StoredFreeze,
@@ -77,7 +78,9 @@ async function writeOf(
   const quote = quoteOf(snapshot);
   const named = new Set(quote.agents.map(({ agent }) => agent));
   const records = await parts.agents.list({ signal });
-  const unfrozen = records.filter((agent) => named.has(agent.id) && agent.frozenAtMs !== undefined);
+  const unfrozen = records.filter(
+    (agent) => named.has(agent.id) && ownFreezeOf(agent) !== undefined,
+  );
   const step = createIntentStateMachine(parts).apply(snapshot.stored.status, {
     type: "unfreeze_written",
   });

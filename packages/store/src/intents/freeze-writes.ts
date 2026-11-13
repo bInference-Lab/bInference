@@ -7,6 +7,7 @@ import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { appendLedgerEntry } from "../ledger/ledger-rows.js";
 import { checkOrderMoves, writeOrderMoves } from "../orders/order-writes.js";
+import { breakerStale, bumpAgents, markBreaker } from "./breaker-writes.js";
 import { moveIntent, readMoved } from "./intent-writes.js";
 
 function moved(write: FreezeWrite["moves"][number], database: StoreConnection): IntentCommit {
@@ -60,19 +61,27 @@ export function writeFreeze(
   if (!rows.ok) {
     return rows;
   }
-  // An unfreeze lifts its agents before their orders move back to `active`.
-  const unfrozen = new Set(write.isFrozen ? [] : write.agents.map(({ agentId }) => agentId));
-  const orderMoves = checkOrderMoves(database, write.orders, unfrozen);
+  if (breakerStale(database, write.breaker)) {
+    return err("stale");
+  }
+  // An unfreeze lifts its agents, and the breaker's lift its hold, before orders move back to
+  // `active`.
+  const agentsLifted = new Set(write.isFrozen ? [] : write.agents.map(({ agentId }) => agentId));
+  const isBreakerLifted = write.breaker?.isPulled === false;
+  const lifted = { agents: agentsLifted, isBreakerLifted };
+  const orderMoves = checkOrderMoves(database, write.orders, lifted);
   if (!orderMoves.ok) {
     return err(orderMoves.error === "not_found" ? "not_found" : "stale");
   }
   const moves = write.moves.map((change) => moved(change, database));
+  markBreaker(database, write);
   const change = { atMs: write.atMs, isFrozen: write.isFrozen };
   const agents = writeAgentFreezes(database, rows.value, change);
   if (write.isWholeInstall) {
     freezeInstall(database, change);
   }
   const orders = writeOrderMoves(database, orderMoves.value);
+  bumpAgents(database, { write, orders });
   const ledgerEntries = write.ledger.map((draft) => appendLedgerEntry(database, draft));
   return ok({ agents, moves, orders, ledgerEntries });
 }

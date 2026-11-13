@@ -3,6 +3,7 @@ import type { AccessTables } from "./access-tables.js";
 import type { AgentInboxTables } from "./agent-inbox-tables.js";
 import type { AlertTables } from "./alert-tables.js";
 import type { BackupTables } from "./backup-tables.js";
+import type { BreakerColumns } from "./breaker-columns.js";
 import type { BridgeTables } from "./bridge-tables.js";
 import type { CredentialTables } from "./credential-tables.js";
 import type { DowntimeTables } from "./downtime-tables.js";
@@ -112,7 +113,7 @@ interface MetaTable {
 }
 
 /** `safety`: its one row, `id = 1`. */
-interface SafetyTable {
+interface SafetyTable extends BreakerColumns {
   id: number;
   frozen_at: number | null;
   rescue_address: string | null;

@@ -617,6 +617,12 @@ export interface InstallStore extends CustodyKeyStore, DisclaimerStore, RescueRe
    * `not_found` and changes nothing.
    */
   updateCeiling(update: CeilingUpdate, options: StoreCall): Promise<Result<void, "not_found">>;
+  /**
+   * Marks the breaker's `version` told, once the owner was told of its pull or its lift (decision
+   * 0440). It is `stale` and changes nothing unless `version` is the version the install applied
+   * and was not told yet.
+   */
+  tellBreaker(version: number, options: StoreCall): Promise<Result<void, "stale">>;
 }
 
 /** The config journal: every config change, who made it and where, in the order recorded. */

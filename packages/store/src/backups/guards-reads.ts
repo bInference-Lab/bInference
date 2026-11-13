@@ -88,8 +88,15 @@ function safetyOf(database: StoreConnection): SafetyGuards {
   }
   const address = row.pending_rescue_address;
   const atMs = row.pending_rescue_at;
+  const breaker = {
+    ...field("atMs", row.breaker_at),
+    version: row.breaker_version,
+    toldVersion: row.breaker_told,
+    ...field("pulledAtMs", row.breaker_pulled_at),
+  };
   return {
     ...field("frozenAtMs", row.frozen_at),
+    ...(breaker.version === 0 ? {} : { breaker }),
     ...field("rescueAddress", row.rescue_address),
     ...(address === null || atMs === null ? {} : { pendingRescue: { address, atMs } }),
     ...field("rescueCeiling", row.rescue_ceiling),

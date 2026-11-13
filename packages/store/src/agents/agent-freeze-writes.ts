@@ -5,7 +5,7 @@ import type { Selectable } from "kysely";
 import type { AgentsTable, EngineTables } from "../databases/engine-tables.js";
 import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
-import { toAgentRecord } from "./agent-rows.js";
+import { readBreakerAt, toAgentRecord } from "./agent-rows.js";
 
 /**
  * Reads each agent row a freeze names, in the caller's transaction: an unknown agent is
@@ -42,6 +42,7 @@ export function writeAgentFreezes(
 ): readonly AgentRecord[] {
   const { atMs, isFrozen } = change;
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
+  const breakerAt = readBreakerAt(database);
   return rows.map((read) => {
     const row = {
       ...read,
@@ -56,6 +57,6 @@ export function writeAgentFreezes(
         .where("id", "=", read.id)
         .where("version", "=", read.version),
     );
-    return toAgentRecord(row);
+    return toAgentRecord(row, breakerAt);
   });
 }

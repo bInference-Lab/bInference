@@ -20,7 +20,8 @@ import type { MemoryAgentStore } from "./memory-agent-store.js";
 import { memoryCall } from "./memory-call.js";
 import { createdSince } from "./memory-created-intents.js";
 import { fillsInFlightOf, recordLandedLate } from "./memory-fill-landings.js";
-import { checkFillWrites, ordersOf, saveFillWrites } from "./memory-fill-writes.js";
+import { checkFillWrites, saveFillWrites } from "./memory-fill-writes.js";
+import { checkFreezeBreaker, checkFreezeOrders } from "./memory-freeze-checks.js";
 import type { MemoryInstallStore } from "./memory-install-store.js";
 import { createMemoryIntentTables, type MemoryIntentTables } from "./memory-intent-tables.js";
 import type { MemoryLedgerStore } from "./memory-ledger-store.js";
@@ -191,22 +192,7 @@ function checkedMove(
   return fills.ok ? ok({ change, current: current.value, ...fills.value }) : fills;
 }
 
-// Every move is checked before the agents are marked, and nothing is written before both pass.
-// The freeze's order moves, checked as they would land after its agents are marked: an agent an
-// unfreeze lifts counts as not frozen. A refusal is the freeze's `stale`, as the SQLite store's.
-function checkOrders(
-  options: MemoryIntentStoreOptions,
-  write: FreezeWrite,
-): Result<readonly OrderRecord[], "stale"> {
-  if (write.orders.length === 0) {
-    return ok([]);
-  }
-  const store = ordersOf(options);
-  const unfrozen = new Set(write.isFrozen ? [] : write.agents.map(({ agentId }) => agentId));
-  const checked = store.checkNow(write.orders, unfrozen);
-  return checked.ok ? checked : err("stale");
-}
-
+// Every move is checked before the agents are marked, and nothing is written before all pass.
 function freeze(
   tables: MemoryIntentTables,
   options: MemoryIntentStoreOptions,
@@ -220,16 +206,25 @@ function freeze(
     }
     checked.push(move.value);
   }
-  const orders = checkOrders(options, write);
+  const orders = checkFreezeOrders(options, write);
   if (!orders.ok) {
     return orders;
+  }
+  const markBreaker = checkFreezeBreaker(options.install.breakerMark, write);
+  if (!markBreaker.ok) {
+    return markBreaker;
   }
   const change = { atMs: write.atMs, isFrozen: write.isFrozen };
   const agents = options.agents.freezeNow(write.agents, change);
   if (!agents.ok) {
     return agents;
   }
+  markBreaker.value();
   options.orders?.saveNow(orders.value);
+  // The breaker's write moves on each agent whose orders it moved (decision 0440).
+  if (write.breaker !== undefined) {
+    options.agents.touchNow(orders.value.map(({ agentId }) => agentId));
+  }
   if (write.isWholeInstall) {
     options.install.freezeNow(change);
   }

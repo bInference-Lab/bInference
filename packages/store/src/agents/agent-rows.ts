@@ -6,6 +6,7 @@ import {
   type ApprovalModeRecord,
   approvalModeRecordSchema,
 } from "@binference/engine";
+import { withBreakerHold } from "@binference/engine/safety";
 import { type SendLevelRecord, sendLevelRecordSchema } from "@binference/engine/sends";
 import type { Selectable } from "kysely";
 import type {
@@ -20,8 +21,22 @@ import { field, readJson } from "../rows/column-values.js";
 import { readAddressBook } from "./address-book-tasks.js";
 import { toLimitsRecord } from "./limits-rows.js";
 
-/** Reads one `agents` row as its record. */
-export function toAgentRecord(row: Selectable<AgentsTable>): AgentRecord {
+/** When the breaker took hold of the install (decision 0440), or `null` while it does not. */
+export function readBreakerAt(database: StoreConnection): number | null {
+  const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
+  const safety = takeFirst(kysely.selectFrom("safety").select("breaker_at").where("id", "=", 1));
+  return safety?.breaker_at ?? null;
+}
+
+/**
+ * Reads one `agents` row as its record, with the breaker's hold of the install folded in
+ * (decision 0440): `frozen_at` is the owner's freeze alone.
+ */
+export function toAgentRecord(row: Selectable<AgentsTable>, breakerAt: number | null): AgentRecord {
+  return withBreakerHold(ownRecordOf(row), breakerAt ?? undefined);
+}
+
+function ownRecordOf(row: Selectable<AgentsTable>): AgentRecord {
   return agentRecordSchema.parse({
     id: row.id,
     name: row.name,
@@ -79,7 +94,7 @@ export function readSettings(database: StoreConnection, id: Id<"agt">): AgentSet
     return undefined;
   }
   return {
-    agent: toAgentRecord(agent),
+    agent: toAgentRecord(agent, readBreakerAt(database)),
     limits: toLimitsRecord(limits),
     approvalMode: toApprovalMode(mode),
     sendLevel: toSendLevel(level),

@@ -155,6 +155,39 @@ describe("the guards a restore carries into the restored database", () => {
     expect(row?.rescue_reach).toBe(standings);
   });
 
+  it("keeps the running install's breaker mark, and only the owner's freeze of each agent", async () => {
+    // The backup: made while an older pull held, before the owner froze anything.
+    const restored = await installWith({});
+    const old = kyselyOf(restored.database);
+    old.execute(old.kysely.updateTable("safety").set({ breaker_at: 5, breaker_version: 1 }));
+    // The state it replaces: the breaker holds at version 3, the owner froze no agent.
+    const current = await installWith({});
+    const now = kyselyOf(current.database);
+    const mark = { breaker_at: 30, breaker_version: 3, breaker_told: 2, breaker_pulled_at: 29 };
+    now.execute(now.kysely.updateTable("safety").set(mark));
+    const read = await createRestoreGuards(current.host).read(testNowMs, options);
+
+    const after = await createRestoreGuards(restored.host).carry(read, testNowMs, options);
+
+    expect(read.agents[0]?.frozenAtMs).toBeUndefined();
+    expect(after.agents[0]?.frozenAtMs).toBeUndefined();
+    expect(after.safety.breaker).toStrictEqual({
+      atMs: 30,
+      version: 3,
+      toldVersion: 2,
+      pulledAtMs: 29,
+    });
+    const kept = kyselyOf(restored.database);
+    const row = kept.takeFirst(
+      kept.kysely
+        .selectFrom("safety")
+        .select(["breaker_at", "breaker_version", "breaker_told", "breaker_pulled_at"]),
+    );
+    expect({ ...row }).toStrictEqual(mark);
+    const agent = kept.takeFirst(kept.kysely.selectFrom("agents").select("frozen_at"));
+    expect(agent?.frozen_at).toBeNull();
+  });
+
   it("counts a carried intent once, in the place of the restored copy's own", async () => {
     const restored = await installWith({});
     await spend(restored, 2, 1_000_000n);
