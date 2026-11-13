@@ -13,6 +13,7 @@ import type { EngineTables } from "../databases/engine-tables.js";
 import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { jsonText } from "../rows/column-values.js";
+import { type QuotaWrite, quotaWriteSchema } from "../tasks/quota-write.js";
 import { resultSchema } from "../tasks/result-schema.js";
 import { defineTask, type StoreTask } from "../tasks/store-task.js";
 import { readSettings, toAgentRecord } from "./agent-rows.js";
@@ -89,19 +90,41 @@ function insertAgent(database: StoreConnection, draft: AgentDraft, frozenAt: num
   );
 }
 
-/** Writes a new agent with its limits, approval mode and send level. */
+// Whether the install holds as many agents not archived as its quota allows (decision 0431); with
+// no quota nothing is counted.
+function isOverAgents(database: StoreConnection, quota: number | undefined): boolean {
+  if (quota === undefined) {
+    return false;
+  }
+  const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
+  const held = takeFirst(
+    kysely
+      .selectFrom("agents")
+      .select((builder) => builder.fn.countAll<number>().as("count"))
+      .where("archived_at", "is", null),
+  );
+  return (held?.count ?? 0) >= quota;
+}
+
+/**
+ * Writes a new agent with its limits, approval mode and send level, within the agents' quota its
+ * caller hands it: an id or name in use is answered first, then `quota`.
+ */
 export const createAgentTask: StoreTask<
-  AgentDraft,
-  Result<AgentSettings, "exists" | "name_taken">
+  QuotaWrite<AgentDraft>,
+  Result<AgentSettings, "exists" | "name_taken" | "quota">
 > = defineTask({
   name: "agents.create",
   access: "write",
-  input: agentDraftSchema,
-  output: resultSchema(agentSettingsSchema, ["exists", "name_taken"]),
-  run(database, draft) {
+  input: quotaWriteSchema(agentDraftSchema),
+  output: resultSchema(agentSettingsSchema, ["exists", "name_taken", "quota"]),
+  run(database, { write: draft, quota }) {
     const taken = takenBy(database, draft);
     if (taken !== undefined) {
       return err(taken);
+    }
+    if (isOverAgents(database, quota)) {
+      return err("quota");
     }
     const frozenAt = isInstallFrozen(database) ? draft.atMs : null;
     insertAgent(database, draft, frozenAt);

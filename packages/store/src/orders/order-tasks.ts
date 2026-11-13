@@ -24,6 +24,7 @@ import { z } from "zod";
 import type { EngineTables } from "../databases/engine-tables.js";
 import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
+import { type QuotaWrite, quotaWriteSchema } from "../tasks/quota-write.js";
 import { resultSchema } from "../tasks/result-schema.js";
 import { defineTask, type StoreTask, type TaskRunner } from "../tasks/store-task.js";
 import { copyBuysTask } from "./copy-buy-rows.js";
@@ -42,16 +43,16 @@ import {
 import { toOrderRecord } from "./order-rows.js";
 import { checkOrderMoves, createOrder, readOrder, writeOrderMoves } from "./order-writes.js";
 
-/** Stores a new order awaiting its card. */
+/** Stores a new order awaiting its card, within the open orders' quota its caller hands it. */
 export const createOrderTask: StoreTask<
-  OrderDraft,
-  Result<OrderRecord, "exists" | "frozen" | "track_limit">
+  QuotaWrite<OrderDraft>,
+  Result<OrderRecord, "exists" | "frozen" | "quota" | "track_limit">
 > = defineTask({
   name: "orders.create",
   access: "write",
-  input: orderDraftSchema,
-  output: resultSchema(orderRecordSchema, ["exists", "frozen", "track_limit"]),
-  run: (database, draft) => createOrder(database, draft),
+  input: quotaWriteSchema(orderDraftSchema),
+  output: resultSchema(orderRecordSchema, ["exists", "frozen", "quota", "track_limit"]),
+  run: (database, write) => createOrder(database, write),
 });
 
 /** Writes order moves all or nothing. */

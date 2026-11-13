@@ -29,6 +29,7 @@ import {
 } from "./order-fill-checks.js";
 import { orderDraft, orderMove, type OrderStoreSubject } from "./order-fixtures.js";
 import { orderFreezeChecks, writesAFrozenFillsRow } from "./order-freeze-checks.js";
+import { orderQuotaChecks } from "./order-quota-checks.js";
 import {
   assertReadBack,
   assertRefusesAborted,
@@ -272,6 +273,7 @@ export function orderStoreContract(harness: OrderStoreHarness): readonly Contrac
     checkOn("keeps what a buy order spends and its size, exact", create, keepsBuySizes),
     checkOn("refuses an unknown agent, another's wallet, a held card", create, refusesStrangers),
     ...copyChecks(create),
+    ...orderQuotaChecks(create),
     checkOn("moves orders under their versions, all or nothing", create, movesUnderVersion),
     checkOn(
       "refuses a move that breaks an order rule and writes nothing",

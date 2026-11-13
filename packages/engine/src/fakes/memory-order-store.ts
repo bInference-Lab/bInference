@@ -16,6 +16,7 @@ import type { OrderStore } from "../orders/ports.js";
 import type { MemoryAgentStore } from "./memory-agent-store.js";
 import { byCreation, constraintFault, memoryCall } from "./memory-call.js";
 import type { MemoryInstallStore } from "./memory-install-store.js";
+import { isOverOpenOrders } from "./memory-open-orders.js";
 import { createMemoryOrderFills, type MemoryOrderFills } from "./memory-order-fills.js";
 import { matchesOrderQuery } from "./memory-order-query.js";
 import { rowReadsOf } from "./memory-order-row-reads.js";
@@ -57,11 +58,12 @@ export interface MemoryOrderStoreOptions {
 }
 
 type Orders = Map<Id<"ord">, OrderRecord>;
+
 function create(
   orders: Orders,
   options: MemoryOrderStoreOptions,
-  draft: OrderDraft,
-): Result<OrderRecord, "exists" | "frozen"> {
+  { draft, quota }: { readonly draft: OrderDraft; readonly quota: number | undefined },
+): Result<OrderRecord, "exists" | "frozen" | "quota"> {
   const agent = options.agents.agentNow(draft.agentId);
   const wallet = options.install.walletNow(draft.walletId);
   if (agent === undefined || wallet?.agentId !== draft.agentId) {
@@ -75,6 +77,9 @@ function create(
   }
   if (agent.frozenAtMs !== undefined) {
     return err("frozen");
+  }
+  if (isOverOpenOrders(orders.values(), draft.agentId, quota)) {
+    return err("quota");
   }
   const { atMs, ...fields } = draft;
   const record: OrderRecord = {
@@ -278,14 +283,13 @@ function trackedCalls(
   return {
     async create(draft, call) {
       const leader = copyLeaderOf(draft.request);
+      const write = { draft: structuredClone(draft), quota: call.quota };
       if (leader === undefined) {
-        return memoryCall(call, () => create(orders, options, structuredClone(draft)));
+        return memoryCall(call, () => create(orders, options, write));
       }
       await tracking.reconcile(draft.atMs, call);
       const made = await memoryCall(call, () =>
-        tracking.hasRoom(leader)
-          ? create(orders, options, structuredClone(draft))
-          : err("track_limit" as const),
+        tracking.hasRoom(leader) ? create(orders, options, write) : err("track_limit" as const),
       );
       await tracking.reconcile(draft.atMs, call);
       return made;

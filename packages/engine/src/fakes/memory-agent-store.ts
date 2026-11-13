@@ -18,17 +18,27 @@ import { byCreation, memoryCall } from "./memory-call.js";
 
 type Agents = Map<Id<"agt">, AgentSettings>;
 
-// An agent created while the whole install is frozen starts frozen at its creation.
+// How many agents not archived the store holds that pass the test.
+function heldWhere(agents: Agents, test: (agent: AgentRecord) => boolean): number {
+  return [...agents.values()].filter(({ agent }) => agent.archivedAtMs === undefined && test(agent))
+    .length;
+}
+
+// An agent created while the whole install is frozen starts frozen at its creation; with a quota,
+// an install that holds that many agents not archived takes none (decision 0431).
 function create(
   agents: Agents,
   draft: AgentDraft,
-  install: { readonly isFrozen: boolean },
-): Result<AgentSettings, "exists" | "name_taken"> {
+  install: { readonly isFrozen: boolean; readonly quota: number | undefined },
+): Result<AgentSettings, "exists" | "name_taken" | "quota"> {
   if (agents.has(draft.id)) {
     return err("exists");
   }
   if ([...agents.values()].some((settings) => settings.agent.name === draft.name)) {
     return err("name_taken");
+  }
+  if (install.quota !== undefined && heldWhere(agents, () => true) >= install.quota) {
+    return err("quota");
   }
   const settings = agentSettingsOf(structuredClone(draft));
   const agent = install.isFrozen ? { ...settings.agent, frozenAtMs: draft.atMs } : settings.agent;
@@ -67,6 +77,22 @@ function setAgentRow(
   };
   agents.set(change.agentId, { ...found.value, agent });
   return ok(structuredClone(agent));
+}
+
+// Sets the mode; with a quota, a paper agent goes live only while fewer other live agents not
+// archived are held (decision 0431).
+function setMode(
+  agents: Agents,
+  change: AgentModeChange,
+  quota: number | undefined,
+): Result<AgentRecord, "not_found" | "stale" | "quota"> {
+  const found = current(agents, change, (settings) => settings.agent.version);
+  const isGoingLive = found.ok && change.mode === "live" && found.value.agent.mode !== "live";
+  const others = (agent: AgentRecord) => agent.mode === "live" && agent.id !== change.agentId;
+  if (isGoingLive && quota !== undefined && heldWhere(agents, others) >= quota) {
+    return err("quota");
+  }
+  return setAgentRow(agents, change, { mode: change.mode });
 }
 
 function setSendLevel(
@@ -197,13 +223,12 @@ export interface MemoryAgentStoreOptions {
 export function createMemoryAgentStore(options: MemoryAgentStoreOptions = {}): MemoryAgentStore {
   const agents: Agents = new Map();
   const book = createMemoryAddressBook();
-  const install = (): { readonly isFrozen: boolean } => ({
-    isFrozen: options.install?.frozenAt() !== undefined,
-  });
+  const isFrozen = () => options.install?.frozenAt() !== undefined;
   return {
     freezeNow: (freezes, change) => freezeNow(agents, structuredClone(freezes), change),
     agentNow: (id) => structuredClone(agents.get(id)?.agent),
-    create: async (draft, call) => memoryCall(call, () => create(agents, draft, install())),
+    create: async (draft, call) =>
+      memoryCall(call, () => create(agents, draft, { isFrozen: isFrozen(), quota: call.quota })),
     get: async (id, call) =>
       memoryCall(call, () => {
         const settings = agents.get(id);
@@ -220,8 +245,7 @@ export function createMemoryAgentStore(options: MemoryAgentStoreOptions = {}): M
     setApprovalMode: async (change, call) =>
       memoryCall(call, () => setApprovalMode(agents, change)),
     setLimits: async (change, call) => memoryCall(call, () => setLimits(agents, change)),
-    setMode: async (change, call) =>
-      memoryCall(call, () => setAgentRow(agents, change, { mode: change.mode })),
+    setMode: async (change, call) => memoryCall(call, () => setMode(agents, change, call.quota)),
     setNotifications: async (change, call) =>
       memoryCall(call, () => setAgentRow(agents, change, { notifications: change.notifications })),
     setModels: async (change, call) =>

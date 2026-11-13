@@ -222,21 +222,25 @@ function rulesContextOf(
   };
 }
 
-// A stored order, or why the store refused it: a frozen agent, or a 51st tracked wallet. An id in
-// use is a fault.
+// A stored order, or why the store refused it: a frozen agent, the agent's open orders' quota
+// (decision 0431), or a 51st tracked wallet. An id in use is a fault.
 function storedOrder(
-  created: Result<OrderRecord, "exists" | "frozen" | "track_limit">,
+  created: Result<OrderRecord, "exists" | "frozen" | "quota" | "track_limit">,
   draft: OrderDraft,
-): Result<OrderRecord, "agent.frozen" | "wallet.track_limit"> {
+): Result<OrderRecord, "agent.frozen" | "quota.orders" | "wallet.track_limit"> {
   const stored = storedUnlessTaken(created, {
     code: "engine.order_not_stored",
     message: `A new auto order's id ${draft.id} is taken.`,
     details: { order: draft.id },
   });
-  return stored.ok
-    ? stored
-    : err(stored.error === "frozen" ? "agent.frozen" : "wallet.track_limit");
+  return stored.ok ? stored : err(storeRefusals[stored.error]);
 }
+
+const storeRefusals = {
+  frozen: "agent.frozen",
+  quota: "quota.orders",
+  track_limit: "wallet.track_limit",
+} as const;
 
 /**
  * Creates an auto order (decision 0189): checks the request and fills its defaults, stores the

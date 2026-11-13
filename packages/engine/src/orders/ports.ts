@@ -1,4 +1,5 @@
 import type { Id, Result } from "@binference/core";
+import type { QuotaCall } from "../quotas/quotas.js";
 import type { FillCountQuery, FillCounts } from "./fill-counts.js";
 import type {
   CopyBuyQuery,
@@ -31,15 +32,17 @@ interface StoreCall {
 export interface OrderStore {
   /**
    * Stores a new order `awaiting_confirmation`, with no fill. An id in use is `exists`, a frozen
-   * agent `frozen`, and a copy order whose leader would be the 51st tracked wallet of the install
-   * `track_limit` (decision 0251); each stores nothing. A copy order's leader is tracked in the
-   * same write, and every move of a copy order moves the tracked wallets with it. An unknown
-   * agent, or a wallet that is not the agent's, throws `store.constraint`.
+   * agent `frozen`, with a `quota` an agent that holds that many orders awaiting their card,
+   * active or paused `quota` (decision 0431), and a copy order whose leader would be the 51st
+   * tracked wallet of the install `track_limit` (decision 0251); each stores nothing. A copy
+   * order's leader is tracked in the same write, and every move of a copy order moves the tracked
+   * wallets with it. An unknown agent, or a wallet that is not the agent's, throws
+   * `store.constraint`.
    */
   create(
     draft: OrderDraft,
-    options: StoreCall,
-  ): Promise<Result<OrderRecord, "exists" | "frozen" | "track_limit">>;
+    options: QuotaCall,
+  ): Promise<Result<OrderRecord, "exists" | "frozen" | "quota" | "track_limit">>;
   /** One order, or `undefined` when the store has none with that id. */
   get(id: Id<"ord">, options: StoreCall): Promise<OrderRecord | undefined>;
   /** The order whose card the `autoOrder` intent carries, or `undefined`. */

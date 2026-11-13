@@ -7,6 +7,7 @@ import type { AgentDraft } from "../agents/agent-record.js";
 import type { LimitsValues } from "../agents/limits-record.js";
 import type { AgentStore } from "../ports.js";
 import { agentOrderChecks } from "./agent-order-checks.js";
+import { agentQuotaChecks } from "./agent-quota-checks.js";
 import { agentRowChecks } from "./agent-row-checks.js";
 import { assertRefusesAborted, checkOn, fixtureId, live } from "./store-fixtures.js";
 
@@ -297,6 +298,7 @@ export function agentStoreContract(harness: AgentStoreHarness): readonly Contrac
     ),
     checkOn("removes an entry once, so its account may be added again", create, removesAddresses),
     ...agentOrderChecks(create, (n) => draft(n)),
+    ...agentQuotaChecks(create, (n) => draft(n)),
     checkOn("refuses every call on an aborted signal and stores nothing", create, refusesAborted),
   ];
 }

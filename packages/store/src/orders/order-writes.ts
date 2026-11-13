@@ -19,6 +19,7 @@ import type { StoreConnection } from "../dialect/store-connection.js";
 import { createSyncKysely } from "../dialect/sync-kysely.js";
 import { hasTrackRoom, syncTrackedWallets } from "../leaders/tracked-sync.js";
 import { optionalJsonText, orNull } from "../rows/column-values.js";
+import type { QuotaWrite } from "../tasks/quota-write.js";
 import { requestText, toOrderRecord } from "./order-rows.js";
 
 function refused(message: string, details: Readonly<Record<string, string>>): BinferenceError {
@@ -82,16 +83,38 @@ function checkCardIntentFree(database: StoreConnection, draft: OrderDraft): void
   }
 }
 
+// Whether the agent holds as many orders awaiting their card, active or paused as its quota
+// allows (decision 0431); with no quota nothing is counted.
+function isOverOpenOrders(
+  database: StoreConnection,
+  agentId: string,
+  quota: number | undefined,
+): boolean {
+  if (quota === undefined) {
+    return false;
+  }
+  const { kysely, takeFirst } = createSyncKysely<EngineTables>(database);
+  const held = takeFirst(
+    kysely
+      .selectFrom("orders")
+      .select((builder) => builder.fn.countAll<number>().as("count"))
+      .where("agent_id", "=", agentId)
+      .where("state", "in", ["awaiting_confirmation", "active", "paused"]),
+  );
+  return (held?.count ?? 0) >= quota;
+}
+
 /**
  * Stores a new order `awaiting_confirmation`. An id in use is `exists`, a frozen agent `frozen`,
- * a copy order whose leader would be the 51st tracked wallet `track_limit` (decision 0251); a copy
- * order's leader is tracked in the same write. An unknown agent, a wallet that is not the agent's,
- * or a card intent another order holds throws.
+ * with a quota an agent that holds that many orders awaiting their card, active or paused
+ * `quota` (decision 0431), a copy order whose leader would be the 51st tracked wallet
+ * `track_limit` (decision 0251); a copy order's leader is tracked in the same write. An unknown
+ * agent, a wallet that is not the agent's, or a card intent another order holds throws.
  */
 export function createOrder(
   database: StoreConnection,
-  draft: OrderDraft,
-): Result<OrderRecord, "exists" | "frozen" | "track_limit"> {
+  { write: draft, quota }: QuotaWrite<OrderDraft>,
+): Result<OrderRecord, "exists" | "frozen" | "quota" | "track_limit"> {
   const { kysely, execute, takeFirst } = createSyncKysely<EngineTables>(database);
   const isFrozen = isAgentFrozen(database, draft.agentId);
   const wallet = takeFirst(
@@ -108,6 +131,9 @@ export function createOrder(
   checkCardIntentFree(database, draft);
   if (isFrozen) {
     return err("frozen");
+  }
+  if (isOverOpenOrders(database, draft.agentId, quota)) {
+    return err("quota");
   }
   const leader = copyLeaderOf(draft.request);
   if (leader !== undefined && !hasTrackRoom(database, leader)) {

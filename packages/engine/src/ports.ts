@@ -67,6 +67,7 @@ import type { ArrivalRecord, ArrivalWrite, PaperReset } from "./positions/arriva
 import type { DepartureOutcome, DepartureWrite } from "./positions/departure-record.js";
 import type { ExecutionQuery, ExecutionRecord } from "./positions/execution-record.js";
 import type { ExecutionWrite, PositionQuery, PositionRecord } from "./positions/position-record.js";
+import type { QuotaCall } from "./quotas/quotas.js";
 import type { RowPage } from "./records/row-page.js";
 import type { Sha256Hex } from "./records/sha256-hex.js";
 import type { StampedId } from "./records/stamped-id.js";
@@ -511,7 +512,7 @@ export interface AccessStore extends WebPushSubscriptions, MiniAppLaunches {
 type AgentRowWrite = Promise<Result<AgentRecord, "not_found" | "stale">>;
 
 /** A new agent with its settings, or why it was not written. */
-type AgentCreation = Promise<Result<AgentSettings, "exists" | "name_taken">>;
+type AgentCreation = Promise<Result<AgentSettings, "exists" | "name_taken" | "quota">>;
 
 /**
  * Keeps the agents and the settings the money path reads: their limits, approval modes, send
@@ -520,9 +521,11 @@ type AgentCreation = Promise<Result<AgentSettings, "exists" | "name_taken">>;
 export interface AgentStore {
   /**
    * Writes a new agent with its limits, approval mode and send level; a taken id or name is
-   * refused. While the whole install is frozen, the agent starts frozen at its creation.
+   * refused. With a `quota`, an install that holds that many agents not archived is `quota`, in
+   * the same write (decision 0431). While the whole install is frozen, the agent starts frozen at
+   * its creation.
    */
-  create(draft: AgentDraft, options: StoreCall): AgentCreation;
+  create(draft: AgentDraft, options: QuotaCall): AgentCreation;
   /** One agent with its settings. */
   get(id: Id<"agt">, options: StoreCall): Promise<AgentSettings | undefined>;
   /** Every agent, archived ones too, oldest first. */
@@ -563,9 +566,14 @@ export interface AgentStore {
   ): Promise<Result<AddressEntryRecord, "not_found">>;
   /**
    * Sets the agent's mode under the agent row's version the changer read, and raises that version
-   * by one. Another version is `stale` and writes nothing.
+   * by one. Another version is `stale` and writes nothing. With a `quota`, a paper agent's switch
+   * to live while the install holds that many other live agents not archived is `quota`, in the
+   * same write (decision 0431).
    */
-  setMode(change: AgentModeChange, options: StoreCall): AgentRowWrite;
+  setMode(
+    change: AgentModeChange,
+    options: QuotaCall,
+  ): Promise<Result<AgentRecord, "not_found" | "stale" | "quota">>;
   /** Sets the agent's notice settings as `setMode` sets its mode (decision 0185). */
   setNotifications(change: AgentNotificationsChange, options: StoreCall): AgentRowWrite;
   /** Sets the models the owner picked for the agent as `setMode` sets its mode (decision 0204). */

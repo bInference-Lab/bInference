@@ -1,7 +1,6 @@
 import { err, ok, type Result } from "@binference/core";
 import {
   type AgentModeChange,
-  agentModeChangeSchema,
   type AgentRecord,
   agentRecordSchema,
   type ApprovalModeChange,
@@ -108,8 +107,8 @@ export const setLimitsTask: StoreTask<
   },
 });
 
-// Writes columns of the agent row under the version the changer read, and raises that version.
-function setAgentRow(
+/** Writes columns of the agent row under the version the changer read, and raises that version. */
+export function setAgentRow(
   database: StoreConnection,
   change: AgentModeChange | AgentNotificationsChange | AgentModelsChange,
   columns: { readonly mode?: string; readonly notifications?: string; readonly models?: string },
@@ -131,18 +130,6 @@ function setAgentRow(
   execute(kysely.updateTable("agents").set(row).where("id", "=", change.agentId));
   return ok(toAgentRecord(row));
 }
-
-/** Sets an agent's mode under the agent row's version the changer read. */
-export const setModeTask: StoreTask<
-  AgentModeChange,
-  Result<AgentRecord, "not_found" | "stale">
-> = defineTask({
-  name: "agents.set_mode",
-  access: "write",
-  input: agentModeChangeSchema,
-  output: resultSchema(agentRecordSchema, ["not_found", "stale"]),
-  run: (database, change) => setAgentRow(database, change, { mode: change.mode }),
-});
 
 /** Sets an agent's notice settings under the agent row's version the changer read. */
 export const setNotificationsTask: StoreTask<

@@ -1,4 +1,5 @@
 import type { OrderStore } from "@binference/engine/orders";
+import { quotaWriteOf } from "../tasks/quota-write.js";
 import { bindTask, type StoreHost } from "../tasks/store-host.js";
 import { copyBuysTask } from "./copy-buy-rows.js";
 import { fillCountsTask } from "./fill-count-rows.js";
@@ -21,8 +22,9 @@ import {
  * runs in one transaction, which reads the confirmation and the agent a move into `active` needs.
  */
 export function createSqliteOrderStore(host: StoreHost): OrderStore {
+  const create = bindTask(host, createOrderTask);
   return {
-    create: bindTask(host, createOrderTask),
+    create: async (draft, call) => create(quotaWriteOf(draft, call), { signal: call.signal }),
     get: bindTask(host, getOrderTask),
     byIntent: bindTask(host, orderByIntentTask),
     list: bindTask(host, listOrdersTask),
