@@ -20,6 +20,7 @@ The tools the agent's model may call in a turn, in the order a turn offers them.
 - `staking_options` (read): Lists the validators and pools the agent may stake with, and its stakes.
 - `orders` (read): Lists the agent's auto orders.
 - `tx_status` (read): Reads one proposal's state, card and transactions.
+- `intents` (read): Lists the proposals changed since a time, with their states and cards.
 - `market_scan` (read): Lists new launches or trending tokens on a chain.
 - `chart` (read): Reads a token's price candles.
 - `wallet_activity` (read): Reads the trades of a wallet the agent tracks.

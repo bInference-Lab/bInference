@@ -37,6 +37,7 @@
   "tool.quote": "Getting a quote…",
   "tool.orders": "Reading the auto orders…",
   "tool.txStatus": "Checking a transaction…",
+  "tool.intents": "Reading the agent's proposals…",
   "tool.marketScan": "Scanning the market…",
   "tool.chart": "Reading a chart…",
   "tool.credentials": "Asking for a credential…",

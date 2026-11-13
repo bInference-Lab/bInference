@@ -13,6 +13,7 @@ import { z } from "zod";
 import type { ToolOutcome } from "../loop/turn-records.js";
 import { agentToolTexts } from "./agent-tool-texts.js";
 import { type AgentTool, defineTool } from "./define-tool.js";
+import { intentsTool } from "./intents-tool.js";
 import { answerOrFailure, answerOrRefusal, jsonOf, withUnlistedHidden } from "./tool-answer.js";
 import type { AgentToolParts } from "./tool-client.js";
 import { walletsTool } from "./wallets-tool.js";
@@ -252,5 +253,6 @@ export function readTools(parts: AgentToolParts): readonly AgentTool[] {
     stakingOptionsTool(parts),
     ordersTool(parts),
     txStatusTool(parts),
+    intentsTool(parts),
   ];
 }

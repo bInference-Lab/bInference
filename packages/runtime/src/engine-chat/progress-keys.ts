@@ -18,6 +18,7 @@ const toolKeys: Readonly<Record<AgentToolName, string | undefined>> = {
   quote: "turn.tool.quote",
   orders: "turn.tool.orders",
   tx_status: "turn.tool.txStatus",
+  intents: "turn.tool.intents",
   market_scan: "turn.tool.marketScan",
   chart: "turn.tool.chart",
   wallet_activity: "turn.tool.walletActivity",

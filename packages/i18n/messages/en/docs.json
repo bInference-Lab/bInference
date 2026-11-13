@@ -75,6 +75,7 @@
   "tools.summary.quote": "Quotes a swap without proposing it.",
   "tools.summary.orders": "Lists the agent's auto orders.",
   "tools.summary.tx_status": "Reads one proposal's state, card and transactions.",
+  "tools.summary.intents": "Lists the proposals changed since a time, with their states and cards.",
   "tools.summary.market_scan": "Lists new launches or trending tokens on a chain.",
   "tools.summary.chart": "Reads a token's price candles.",
   "tools.summary.wallet_activity": "Reads the trades of a wallet the agent tracks.",

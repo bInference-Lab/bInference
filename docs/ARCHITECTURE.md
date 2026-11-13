@@ -341,6 +341,7 @@ or waits for the turn to end (`after`). Cancelling a turn never cancels a confir
 | `addresses`                           | The address book: each saved address with its label and the entry id a send names                 |
 | `wallets`                             | The agent's own wallets: each one's role, chain and address, and its paper or live mode           |
 | `tx_status`, `orders`                 | A transaction's state; the agent's auto orders                                                    |
+| `intents`                             | The agent's intents changed since a time, read after a proposal whose outcome is unknown          |
 | `cex_*` (plugin)                      | Binance balances, positions, tickers and open orders through Agent OS                             |
 | `search_web`, `search_x`, `read_page` | Outside content; marks the turn                                                                   |
 | `mcp-<name>-<tool>` (Cloud)           | A listed MCP server's read ([decision 0428](DECISIONS.md#d0428)); marks every turn                |

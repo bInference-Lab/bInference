@@ -21,6 +21,8 @@ import {
   priceCondition,
   schedule,
   scheduleWire,
+  shellJob,
+  shellView,
   stopLoss,
   swapTerms,
   token,
@@ -43,23 +45,9 @@ const launchTerms = {
 const showArgs = { paths: ["a.png"], caption: "Made today." };
 const sendArgs = { paths: ["trades.csv"], caption: "The trades." };
 const turnOf = { turn: toolTurn.turn };
-const shellJob = "shj_0190f1c2-3a4b-7c5d-8e6f-000000000001";
 const navigate = { action: "navigate", url: "https://example.com/" } as const;
 const poll = { job: shellJob, action: "poll" } as const;
 const viewShot = { op: "image/view", args: { agent, path: "/x.png" } };
-const shellView = {
-  job: shellJob,
-  status: "ended",
-  command: "ls",
-  folder: "/home/owner",
-  startedAt: 1,
-  endedAt: 2,
-  exitCode: 0,
-  timedOut: false,
-  stopped: false,
-  output: "",
-  outputCut: false,
-};
 
 const answers: Readonly<Record<string, FakeAnswer>> = {
   "asset/search": { items: [{ asset: coin, ...coinInfo }] },
@@ -91,6 +79,7 @@ const answers: Readonly<Record<string, FakeAnswer>> = {
   },
   "order/list": { items: [] },
   "intent/get": intentWire("awaiting_confirmation"),
+  "intent/list": { items: [intentWire("awaiting_confirmation")] },
   "market/scan": {
     items: [{ asset: token, launchpad: "fake-curve", graduated: false }],
     assets: {},
@@ -224,6 +213,8 @@ const bridgeTerms = {
   reason: "You asked to move it to your address there.",
 };
 
+const listed = { agent, changedSince: 1_792_458_000_000, limit: 50 };
+
 // Each tool, the arguments a model writes, and the calls it makes of the engine.
 const mappings: readonly (readonly [string, JsonValue, JsonValue])[] = [
   [
@@ -260,6 +251,7 @@ const mappings: readonly (readonly [string, JsonValue, JsonValue])[] = [
     [{ op: "order/list", args: { state: "active", cursor: "c1", agent } }],
   ],
   ["tx_status", { intent }, [{ op: "intent/get", args: { intent } }]],
+  ["intents", { since: "2026-10-20T09:00:00+08:00" }, [{ op: "intent/list", args: listed }]],
   [
     "market_scan",
     { chain: "fake:1", source: "launches", filters: scanFilters },

@@ -180,8 +180,9 @@ entry ids a send or a bridge names, `wallets` (`wallet/list` and `agent/get`), t
 wallets with each one's role, chain and address and the agent's mode, `portfolio` (`portfolio/get`), `token_info` (`asset/get`),
 `token_risk` (`risk/check`), `quote` (`quote/get`), `bridge_quote` (`bridge/quote`),
 `staking_options` (`staking/options`), whose answer is outside content once it lists a validator,
-since the validator's operator wrote its name, `orders` (`order/list`) and `tx_status`
-(`intent/get`); the proposals `swap`, `buy`, `sell`, `send`, `bridge`, `approval_revoke`, a
+since the validator's operator wrote its name, `orders` (`order/list`), `tx_status`
+(`intent/get`) and `intents` (`intent/list` from a time), the read after a proposal whose outcome
+is unknown; the proposals `swap`, `buy`, `sell`, `send`, `bridge`, `approval_revoke`, a
 `revokeApproval` request, and `stake`, `unstake` and `claim`, which each name their action of a
 `stake` request (`intent/propose`), and
 `order_create` (`order/create`); and `order_cancel` (`order/cancel`), a control tool that brakes, so it runs in a

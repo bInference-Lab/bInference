@@ -71,6 +71,24 @@ export const toolTurn: AgentToolParts["turn"] = {
   turn: idSchema("trn").parse("trn_0190f1c2-3a4b-7c5d-8e6f-000000000001"),
 };
 
+/** A shell job's id. */
+export const shellJob: string = "shj_0190f1c2-3a4b-7c5d-8e6f-000000000001";
+
+/** The job of {@link shellJob} as `shell/run` and `shell/job` answer it once it ended. */
+export const shellView: WireObject = {
+  job: shellJob,
+  status: "ended",
+  command: "ls",
+  folder: "/home/owner",
+  startedAt: 1,
+  endedAt: 2,
+  exitCode: 0,
+  timedOut: false,
+  stopped: false,
+  output: "",
+  outputCut: false,
+};
+
 /** A PDF of one page as `pdf/read` answers it. */
 export const pdfReadWire: WireObject = {
   document: "9f2c4e1a7b3d5e60",

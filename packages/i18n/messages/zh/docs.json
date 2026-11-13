@@ -75,6 +75,7 @@
   "tools.summary.quote": "获取兑换的报价，不发起提议。",
   "tools.summary.orders": "列出 Agent 的自动订单。",
   "tools.summary.tx_status": "读取一个提议的状态、卡片和链上交易。",
+  "tools.summary.intents": "列出某个时间以来有变化的提议，及其状态和卡片。",
   "tools.summary.market_scan": "列出一条链上的新发射或热门代币。",
   "tools.summary.chart": "读取代币的价格 K 线。",
   "tools.summary.wallet_activity": "读取 Agent 关注的钱包的交易。",

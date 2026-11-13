@@ -37,6 +37,7 @@
   "tool.quote": "正在获取报价…",
   "tool.orders": "正在读取自动订单…",
   "tool.txStatus": "正在查询交易…",
+  "tool.intents": "正在读取 Agent 的提议…",
   "tool.marketScan": "正在扫描市场…",
   "tool.chart": "正在读取 K 线图…",
   "tool.credentials": "正在请求凭据…",

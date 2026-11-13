@@ -46,6 +46,7 @@ export const hiddenToolArgs: ReadonlyMap<string, readonly string[]> = new Map([
 /**
  * The agent's tools for one agent (runtime spec, section 5.1): the reads `addresses`, `wallets`,
  * `portfolio`, `token_info`, `token_risk`, `quote`, `bridge_quote`, `staking_options`, `orders`, `tx_status`,
+ * `intents`,
  * the market reads `market_scan`,
  * `chart` and `wallet_activity` (decision 0257), and `schedule_list`; the proposals
  * `swap`, `buy`, `sell`, `send`, `approval_revoke`, `order_create`, `stake`, `unstake`, `claim`

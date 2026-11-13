@@ -37,6 +37,7 @@ export type AgentToolName =
   | "quote"
   | "orders"
   | "tx_status"
+  | "intents"
   | "market_scan"
   | "chart"
   | "wallet_activity"
@@ -125,6 +126,8 @@ export const agentToolTexts: Readonly<Record<AgentToolName, string>> = {
     "Lists this agent's auto orders (limit, take-profit, stop-loss, trailing, DCA and copy), filtered by state, a page at a time: pass the answer's next as cursor for the next page.",
   tx_status:
     "Reads one of this agent's intents by its id: its state, terms, quote and card and, once it ran, its transaction hashes and fills. Use it to follow a proposal or a transaction the owner asks about.",
+  intents:
+    "Lists this agent's intents changed at or after since, an ISO 8601 date-time with its offset, the least recently changed first, up to 50 a page: pass the answer's next as cursor for the next page. Each shows its id, kind, state, whether it is paper, when it was made and last changed, its card's id, version and expiry, the reason an ended one stored, and the terms it was proposed with. Read it when a proposal's outcome is unknown, or when you are not sure an earlier proposal went through: list from a few minutes before you sent it, and propose again only if no intent there matches. tx_status reads one intent in full.",
   market_scan: `Scans a chain for new tokens. With source launches it answers the launches binference's launch feed read in the last 24 hours, newest first, each with its launchpad, time, curve progress and whether it graduated, through the filters given (launchpads, quoteTokens, maxTaxBps, maxSnipeTaxBps, minCurveProgressBps, maxInsiders, maxCreatorLaunches30d). With source trending it answers the market data source's trending tokens in its order, with price, liquidity, 24-hour volume and change and the paid boosts behind the rank, and takes no filters. Up to limit tokens (10 unless you ask for up to 20). A token's risk shows only when a fresh check is known: check it with token_risk before you propose to buy it. ${market} ${ids}`,
   chart: `Reads a token's OHLCV candles in USD from a market data source: the limit newest candles (60 unless you ask for up to 100) of interval 1m, 5m, 15m, 1h, 4h or 1d that start before to, an ISO 8601 date-time with its offset (now when absent), oldest first, as rows of at, open, high, low, close and volume. Prices are micro-dollars for 10^priceScale whole tokens, so a cheap token's price stays readable. A token still on a launchpad's curve has no candles. ${market} ${ids}`,
   wallet_activity: `Reads the trades of a wallet this agent tracks (the leader of one of its copy orders, or the account of one of its wallet alerts) since binference began watching it, newest first, up to limit (10 unless you ask for up to 15): each trade's time, side, token and amount, what it paid or received, its USD value, the share of the holding a sale took, the venue and the transaction. from and to, ISO 8601 date-times with their offsets, bound the span; cursor reads the next page. It does not read this agent's own wallets: use portfolio for those. ${market} ${ids} ${units}`,
