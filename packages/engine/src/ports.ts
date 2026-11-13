@@ -68,7 +68,7 @@ import type { ArrivalRecord, ArrivalWrite, PaperReset } from "./positions/arriva
 import type { DepartureOutcome, DepartureWrite } from "./positions/departure-record.js";
 import type { ExecutionQuery, ExecutionRecord } from "./positions/execution-record.js";
 import type { ExecutionWrite, PositionQuery, PositionRecord } from "./positions/position-record.js";
-import type { QuotaCall } from "./quotas/quotas.js";
+import type { QuotaCall, Quotas } from "./quotas/quotas.js";
 import type { RowPage } from "./records/row-page.js";
 import type { Sha256Hex } from "./records/sha256-hex.js";
 import type { StampedId } from "./records/stamped-id.js";
@@ -658,6 +658,19 @@ export interface ModelBilling {
    * signal's reason once the signal aborts, and charges nothing.
    */
   charge(charge: ModelCharge, options: { readonly signal: AbortSignal }): Promise<bigint>;
+}
+
+/**
+ * The install's quotas (ARCHITECTURE.md section 30, decision 0431): what it may hold and how fast
+ * its agents may work. Adapters: `noQuotas`, which holds none, and a reader of each user's
+ * numbers on bInference's hosted service. Each read answers the quotas now.
+ */
+export interface QuotaSource {
+  /**
+   * The install's quotas now. Rejects with the signal's reason once it aborts, and with a fault
+   * when they cannot be read; the call that asked then stores nothing.
+   */
+  read(options: { readonly signal: AbortSignal }): Promise<Quotas>;
 }
 
 /**

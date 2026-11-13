@@ -52,6 +52,7 @@ function webhookRulePartsOf(options: EngineOptions, orders: OrderParts): Webhook
     webhookBase: options.webhookBase ?? (async () => Promise.resolve(loopbackWebhookBase)),
     liveFills: options.liveOrderFills === true,
     ...(orders.launches === undefined ? {} : { launches: orders.launches }),
+    ...(orders.quotas === undefined ? {} : { quotas: orders.quotas }),
   };
 }
 

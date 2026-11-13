@@ -54,7 +54,7 @@ import type { ProfileParts } from "./profile-parts.js";
 
 /**
  * The profile parts the engine runs on: custody with its ceilings, wallet maker, exporter and
- * signer revoker, stores, prices, risk sources and market reads.
+ * signer revoker, stores, prices, risk sources, market reads and quotas.
  */
 export type EngineParts = Pick<
   ProfileParts,
@@ -67,6 +67,7 @@ export type EngineParts = Pick<
   | "prices"
   | "riskSources"
   | "marketReads"
+  | "quotas"
 >;
 
 /** What the token risk step runs on besides the venue host. */
@@ -299,6 +300,7 @@ function engineOf(
   const { host, launchHost, risk } = given.trading;
   return createEngine({
     stores: parts.stores,
+    quotas: parts.quotas,
     positions: options.positions,
     ...custodyPartsOf(parts),
     prices: parts.prices,

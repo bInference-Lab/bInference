@@ -19,6 +19,7 @@ import { openCardUnchecked } from "../money-path/open-card-unchecked.js";
 import type { ReadTokenFacts } from "../money-path/token-facts.js";
 import type { AgentStore, IntentStore, WalletFactsSource } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
+import type { InstallQuotas } from "../quotas/install-quotas.js";
 import type { InstallAccountParts } from "./install-accounts.js";
 
 /**
@@ -48,6 +49,11 @@ export interface OneCardParts {
   readonly expireCard: (intent: Id<"int">, call: { readonly signal: AbortSignal }) => Promise<void>;
   /** What sends a record on a launch's token to the agent's launch wallet (decision 0217). */
   readonly launches?: LaunchRouting;
+  /**
+   * The install's quotas, which a record's proposal and its store write count (decision 0431);
+   * none when absent.
+   */
+  readonly quotas?: InstallQuotas;
 }
 
 /** What a record's one card opens from. */

@@ -77,6 +77,7 @@ async function placedOf(
   if (!mode.ok) {
     return mode;
   }
+  await parts.quotas?.proposing({ agent: request.agent, kind: "webhookRule" }, { signal });
   const { isPaper } = mode.value;
   const asked = { request: { ...request, token }, chain, isPaper };
   const wallet = await orderWalletOf(parts, asked, signal);

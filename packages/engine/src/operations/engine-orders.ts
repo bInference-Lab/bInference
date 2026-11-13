@@ -17,6 +17,7 @@ import type { ResumeFence } from "../orders/resume-fence.js";
 import { followRuleCard } from "../webhooks/follow-rule-card.js";
 import type { WebhookRuleParts } from "../webhooks/webhook-rule-parts.js";
 import type { EngineOptions } from "./create-engine.js";
+import { installQuotasOf } from "./engine-quotas.js";
 
 /** What the auto order use cases read and write through, from the engine's options. */
 export function orderPartsOf(
@@ -54,6 +55,7 @@ export function orderPartsOf(
     ownerTimeZone: options.ownerTimeZone,
     liveFills: options.liveOrderFills === true,
     launches: parts.launches,
+    quotas: installQuotasOf(options),
   };
 }
 

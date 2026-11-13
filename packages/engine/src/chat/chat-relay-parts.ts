@@ -9,6 +9,7 @@ import type { MachineFiles } from "../files/ports.js";
 import type { EngineRequests } from "../http-requests/engine-requests.js";
 import type { AgentStore } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
+import type { InstallQuotas } from "../quotas/install-quotas.js";
 import type { ScreenCapture } from "../screen/ports.js";
 import type { LocalVoice } from "../speech/ports.js";
 import type { AgentInboxMessage } from "./agent-inbox-record.js";
@@ -32,6 +33,8 @@ export interface ChatRelayOptions {
   readonly agents: AgentStore;
   /** The runtime's running turns, and the token of its current start. */
   readonly turns: RunningTurns;
+  /** The install's quotas: an agent's turns of the last minute bound its next (decision 0431). */
+  readonly quotas?: Pick<InstallQuotas, "starting">;
   /** Each agent's daily model budget: a turn starts only while some is left. */
   readonly budget: ModelBudget;
   readonly intentView: IntentViewOf;

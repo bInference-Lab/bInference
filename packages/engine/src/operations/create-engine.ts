@@ -44,7 +44,14 @@ import type { CanPrice, OrderParts } from "../orders/create-order.js";
 import type { OrderFills } from "../orders/fill-orders.js";
 import { type OrderTriggers } from "../orders/order-triggers.js";
 import { createPaperParts, type PaperParts } from "../paper/paper-parts.js";
-import type { Executor, PositionStore, RiskCheck, Simulator, WalletFactsSource } from "../ports.js";
+import type {
+  Executor,
+  PositionStore,
+  QuotaSource,
+  RiskCheck,
+  Simulator,
+  WalletFactsSource,
+} from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
 import type { EngineStores } from "../records/engine-stores.js";
 import type { PruneWork } from "../records/prune-records.js";
@@ -240,6 +247,11 @@ export interface EngineOptions extends MarketParts, ModelBudgetParts, ChatSource
    * (decision 0428). None when absent.
    */
   readonly listedMcpOn?: (agent: Id<"agt">) => boolean;
+  /**
+   * The install's quotas (decision 0431): what it may hold and how fast its agents may work.
+   * None when absent, so nothing is counted or refused for a quota.
+   */
+  readonly quotas?: QuotaSource;
   /**
    * Whether the price watcher can price a token now; `order/create` refuses a limit, take-profit,
    * stop-loss or trailing order for a token it cannot (`order.unpriced_token`, decision 0194).

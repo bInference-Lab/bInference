@@ -10,7 +10,7 @@ import {
   type MemoryLogger,
 } from "@binference/core/testing";
 import type { EnginePush } from "@binference/engine";
-import { createVenueHost } from "@binference/engine";
+import { createVenueHost, noQuotas } from "@binference/engine";
 import { createRunningTurns, type RunningTurns } from "@binference/engine/chat";
 import { createSourceMarketReads } from "@binference/engine/market";
 import { createSimulationCheck } from "@binference/engine/simulation";
@@ -83,6 +83,7 @@ function partsOn(
     prices: createFakePriceSource(rigPrices(fork)),
     riskSources: [{ source, isRequired: true }],
     marketReads: createSourceMarketReads({ sources: [], clock, timeoutMs: 5_000 }),
+    quotas: noQuotas,
   };
 }
 

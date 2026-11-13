@@ -5,6 +5,7 @@ import type { AgentSettings } from "../agents/agent-record.js";
 import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import type { Proposer } from "../money-path/create-money-path.js";
 import { unlistedAssetInfos } from "../money-path/token-facts.js";
+import { type Quotas, withQuota } from "../quotas/quotas.js";
 import { autoOrderQuoteDocument } from "./auto-order-quote.js";
 import { expiryLimitRefusal } from "./expiry-limit-refusal.js";
 import { isInstallAccount } from "./install-accounts.js";
@@ -242,6 +243,31 @@ const storeRefusals = {
   track_limit: "wallet.track_limit",
 } as const;
 
+// The checks before anything is read on chain: the order's rules, its end and whether it would
+// ever fill, then the agent's proposals of the last minute (decision 0431), whose read answers the
+// install's quotas.
+async function checkedOf(
+  parts: OrderParts,
+  settings: AgentSettings,
+  call: { readonly request: OrderRequest; readonly signal: AbortSignal },
+): Promise<Result<{ readonly checked: CheckedOrder; readonly quotas: Quotas }, ProtocolErrorCode>> {
+  const { request, signal } = call;
+  const context = rulesContextOf(parts, settings);
+  const checked = checkOrderRequest(request, context);
+  if (!checked.ok) {
+    return checked;
+  }
+  const refusal =
+    expiryLimitRefusal(request, context) ??
+    neverFillsRefusal(parts, { settings, checked: checked.value });
+  if (refusal !== undefined) {
+    return err(refusal);
+  }
+  const proposing = { agent: request.agent, kind: "autoOrder" } as const;
+  const quotas = (await parts.quotas?.proposing(proposing, { signal })) ?? {};
+  return ok({ checked: checked.value, quotas });
+}
+
 /**
  * Creates an auto order (decision 0189): checks the request and fills its defaults, stores the
  * order `awaiting_confirmation` in its agent's mode with the proposal's outside-content mark, then
@@ -270,31 +296,24 @@ export async function createOrder(
   if (refusal !== undefined || settings === undefined) {
     return err(refusal ?? "agent.not_found");
   }
-  const context = rulesContextOf(parts, settings);
-  const checked = checkOrderRequest(request, context);
-  if (!checked.ok) {
-    return checked;
+  const ready = await checkedOf(parts, settings, call);
+  if (!ready.ok) {
+    return ready;
   }
-  const tooLate = expiryLimitRefusal(request, context);
-  if (tooLate !== undefined) {
-    return err(tooLate);
-  }
-  const neverFills = neverFillsRefusal(parts, { settings, checked: checked.value });
-  if (neverFills !== undefined) {
-    return err(neverFills);
-  }
-  if (await followsTheInstall(parts, checked.value, signal)) {
+  const { checked, quotas } = ready.value;
+  if (await followsTheInstall(parts, checked, signal)) {
     return err("protocol.bad_args");
   }
   const isPaper = settings.agent.mode === "paper";
-  const held = await holderOf(parts, { ...checked.value, isPaper }, signal);
+  const held = await holderOf(parts, { ...checked, isPaper }, signal);
   if (!held.ok) {
     return held;
   }
   const { wallet, assets } = held.value;
-  const draft = draftOf(parts, checked.value, { wallet, settings, proposer });
+  const draft = draftOf(parts, checked, { wallet, settings, proposer });
   const isLinked = await hasLinkedExits(parts, draft, signal);
-  const created = storedOrder(await parts.orders.create(draft, { signal }), draft);
+  const within = withQuota(call, quotas.openOrders);
+  const created = storedOrder(await parts.orders.create(draft, within), draft);
   if (!created.ok) {
     return created;
   }

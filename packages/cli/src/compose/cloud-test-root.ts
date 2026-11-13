@@ -9,14 +9,17 @@ import {
 import type { Id } from "@binference/core";
 import { createManualClock } from "@binference/core/testing";
 import { createSourceMarketReads } from "@binference/engine/market";
+import type { Quotas } from "@binference/engine/quotas";
 import {
   type CreditAccount,
   createCreditBilling,
   createFakeCeilingEditor,
   createFakeWalletMaker,
   createMemoryEngineStores,
+  createMemoryQuotaSource,
   createRelayUpdateSource,
   type MemoryEngineStores,
+  type MemoryQuotaSource,
   type RelayUpdateSource,
   createSharedMarketData,
   type SharedMarketData,
@@ -24,6 +27,20 @@ import {
 import { createSecretVault } from "@binference/platform/testing";
 import { createFakeListedMcpSource, type FakeListedMcpSource } from "@binference/runtime/testing";
 import type { ProfileParts } from "./profile-parts.js";
+
+/**
+ * A user's quotas on bInference Cloud's beta (decision 0431): 3 agents, 1 of them live, and the
+ * self-hosted limits per agent. The hosted adapter reads each user's own numbers.
+ */
+export const cloudBetaQuotas: Quotas = {
+  agents: 3,
+  liveAgents: 1,
+  openOrders: 50,
+  enabledPlugins: 4,
+  listedMcpServers: 4,
+  proposalsPerMinute: 6,
+  turnsPerMinute: 10,
+};
 
 /** What the Cloud test root starts with; a field left out starts empty. */
 export interface CloudTestRootOptions {
@@ -52,6 +69,8 @@ export interface CloudTestRoot extends ProfileParts {
   readonly marketSource: FakeMarketSource;
   /** The signed catalog's MCP listings with each agent's switches: `set` puts others in force. */
   readonly listedMcp: FakeListedMcpSource;
+  /** Each user's quotas, the beta's by default: `set` puts others in force. */
+  readonly quotas: MemoryQuotaSource;
 }
 
 /**
@@ -93,5 +112,6 @@ export function composeCloudTestRoot(options: CloudTestRootOptions = {}): CloudT
       { source: createFakeRiskSource({ id: "goplus", reports: new Map() }), isRequired: true },
     ],
     listedMcp: createFakeListedMcpSource(),
+    quotas: createMemoryQuotaSource(cloudBetaQuotas),
   };
 }

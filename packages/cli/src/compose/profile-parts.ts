@@ -8,6 +8,7 @@ import type {
   WalletMaker,
 } from "@binference/engine/install";
 import type { MarketReads } from "@binference/engine/market";
+import type { QuotaSource } from "@binference/engine/quotas";
 import type { RiskSourceUse } from "@binference/engine/risk";
 import type { ListedMcpSource } from "@binference/runtime";
 
@@ -61,4 +62,9 @@ export interface ProfileParts {
    * catalog; self-hosted gives none, so no self-hosted agent gets a listed tool.
    */
   readonly listedMcp?: ListedMcpSource;
+  /**
+   * Quotas: what the install may hold and how fast its agents may work (decision 0431).
+   * Self-hosted holds none (`noQuotas`); Cloud reads each user's numbers.
+   */
+  readonly quotas: QuotaSource;
 }

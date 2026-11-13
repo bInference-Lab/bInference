@@ -10,6 +10,7 @@ import { startProposal, storeProposed } from "../money-path/store-proposed.js";
 import { type ReadTokenFacts, unlistedAssetInfos } from "../money-path/token-facts.js";
 import type { PolicyPass } from "../policy/check-policy.js";
 import type { AgentStore, IntentStore } from "../ports.js";
+import type { ProposalQuotaParts } from "../quotas/install-quotas.js";
 import { checkTransferPolicy, type TransferPolicyParts } from "./check-transfer-policy.js";
 import { advanceBySimulation, advanceByVerdict, runToCard } from "./owner-steps.js";
 import { payeeOf } from "./payee-of.js";
@@ -23,7 +24,8 @@ import {
 } from "./resolve-transfer.js";
 
 /** What a send or an approval revoke is resolved, checked, simulated and stored through. */
-export interface TransferPathOptions extends TransferResolveOptions, TransferPolicyParts {
+export interface TransferPathOptions
+  extends TransferResolveOptions, TransferPolicyParts, ProposalQuotaParts {
   readonly stored: StoredIntents;
   /** The settled intents, which tell whether the agent ever sent to a send's address. */
   readonly intents: Pick<IntentStore, "list">;

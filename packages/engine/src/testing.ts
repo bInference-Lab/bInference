@@ -52,6 +52,8 @@ export { marketReadsContract } from "./contracts/market-reads-contract.js";
 export type { MarketReadsHarness, MarketReadsSubject } from "./contracts/market-reads-contract.js";
 export { modelBillingContract } from "./contracts/model-billing-contract.js";
 export type { ModelBillingHarness } from "./contracts/model-billing-contract.js";
+export { quotaSourceContract, type QuotaSourceHarness } from "./contracts/quota-source-contract.js";
+export { createMemoryQuotaSource, type MemoryQuotaSource } from "./fakes/memory-quota-source.js";
 export { modelUsageStoreContract } from "./contracts/model-usage-store-contract.js";
 export { bridgeStoreContract } from "./contracts/bridge-store-contract.js";
 export type { BridgeStoreHarness, BridgeStoreSubject } from "./contracts/bridge-store-contract.js";
@@ -76,12 +78,10 @@ export type {
   SimulatorHarness,
   SimulatorSubject,
 } from "./contracts/simulator-contract.js";
-export { createCreditBilling } from "./fakes/credit-billing.js";
-export type { CreditAccount } from "./fakes/credit-billing.js";
+export { createCreditBilling, type CreditAccount } from "./fakes/credit-billing.js";
 export { createFakeCeilingEditor, fakeOwnerKeyCode } from "./fakes/fake-ceiling-editor.js";
 export { createFakeBrowserDriver } from "./fakes/fake-browser-driver.js";
-export { createFakePdfReader, fakePdfBytes } from "./fakes/fake-pdf-reader.js";
-export type { FakePdf } from "./fakes/fake-pdf-reader.js";
+export { createFakePdfReader, fakePdfBytes, type FakePdf } from "./fakes/fake-pdf-reader.js";
 export { pdfReaderContract } from "./contracts/pdf-reader-contract.js";
 export { localVoiceContract } from "./contracts/local-voice-contract.js";
 export type { LocalVoiceHarness, LocalVoiceSubject } from "./contracts/local-voice-contract.js";

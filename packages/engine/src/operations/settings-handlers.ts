@@ -14,6 +14,7 @@ import { type AgentModeHandlers, createAgentModeHandlers } from "./agent-mode-ha
 import { type BridgeQuoteHandlers, createBridgeQuoteHandlers } from "./bridge-quote-handlers.js";
 import { type CeilingHandlers, createCeilingHandlers } from "./ceiling-handlers.js";
 import type { EngineOptions } from "./create-engine.js";
+import { installQuotasOf } from "./engine-quotas.js";
 import { createLiveFactsHandlers, type LiveFactsHandlers } from "./live-facts-handlers.js";
 import { createPortfolioHandlers, type PortfolioHandlers } from "./portfolio-handlers.js";
 import { createWalletHandlers, type WalletHandlers } from "./wallet-handlers.js";
@@ -119,6 +120,23 @@ function portfolioOf(options: EngineOptions, paper: PaperParts): PortfolioHandle
   });
 }
 
+// The agent's mode switch, which counts the install's live agents as one goes live (decision 0431).
+function modesOf(options: EngineOptions) {
+  const { stores } = options;
+  return createAgentModeHandlers({
+    agents: stores.agents,
+    journal: stores.configJournal,
+    wallets: options.wallets,
+    custody: options.custody,
+    chains: options.chains,
+    host: options.host,
+    install: stores.install,
+    clock: options.clock,
+    publish: options.publish,
+    quotas: installQuotasOf(options),
+  });
+}
+
 /**
  * Creates the settings handlers on the engine's options and its paper parts: the portfolio, the
  * agent's mode, its wallets and ceilings, its notice settings (decision 0185) and its workspace
@@ -127,17 +145,7 @@ function portfolioOf(options: EngineOptions, paper: PaperParts): PortfolioHandle
 export function settingsHandlers(options: EngineOptions, paper: PaperParts): SettingsHandlers {
   const { stores, chains } = options;
   const portfolio = portfolioOf(options, paper);
-  const modes = createAgentModeHandlers({
-    agents: stores.agents,
-    journal: stores.configJournal,
-    wallets: options.wallets,
-    custody: options.custody,
-    chains,
-    host: options.host,
-    install: options.stores.install,
-    clock: options.clock,
-    publish: options.publish,
-  });
+  const modes = modesOf(options);
   const wallets = createWalletHandlers({
     agents: stores.agents,
     install: stores.install,

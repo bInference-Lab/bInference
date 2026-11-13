@@ -20,6 +20,7 @@ import type { StoredIntents } from "../intents/create-stored-intents.js";
 import type { PolicyCheck } from "../policy/check-policy.js";
 import type { AgentStore, InstallStore, WalletFactsSource } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
+import type { ProposalQuotaParts } from "../quotas/install-quotas.js";
 import type { HostedLaunch } from "../venues/launch-calls.js";
 import type { LaunchHost } from "../venues/launch-host.js";
 import type { LaunchSetting } from "../venues/launch-settings.schema.js";
@@ -43,7 +44,7 @@ interface TokenLaunchParts {
 }
 
 /** The ports a token launch runs on: the money path's, and its own. */
-export interface LaunchPathOptions {
+export interface LaunchPathOptions extends ProposalQuotaParts {
   readonly stored: StoredIntents;
   readonly agents: AgentStore;
   readonly wallets: WalletFactsSource;

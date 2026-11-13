@@ -19,6 +19,7 @@ import type { StakePathOptions } from "../staking/propose-stake.js";
 import { withStakes } from "../staking/with-stakes.js";
 import { createStakingHost } from "../venues/staking-host.js";
 import type { EngineOptions } from "./create-engine.js";
+import { installQuotasOf } from "./engine-quotas.js";
 
 // What a token launch runs on beyond the money path's ports: the launch host, the owner's
 // uploads, the chain's simulator on live balances, and the notices (decision 0234).
@@ -137,6 +138,7 @@ export function moneyPathOf(
     liveFills: options.liveOrderFills === true,
     clock,
     ids,
+    quotas: installQuotasOf(options),
   };
   const transfers = withTransfers(createMoneyPath(path), transferPathOf(options, path));
   const bridges = withBridges(transfers, bridgePathOf(options, path));

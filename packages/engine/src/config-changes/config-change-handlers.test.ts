@@ -1,6 +1,7 @@
 import { err, type Id, idSchema, ok } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import type { ConfigAuthor } from "../audit/journal-config-change.js";
+import { createMemoryQuotaSource } from "../fakes/memory-quota-source.js";
 import type { IntentState } from "../intents/intent-state.js";
 import { expectOk, testAgent, testAgentDraft } from "../intents/test-intents.js";
 import type { EngineCaller } from "../operations/engine-call.js";
@@ -130,6 +131,17 @@ async function cardOf(test: TestEngine, intent: Id<"int">) {
 }
 
 describe("a config change from a chat", () => {
+  it("refuses a change past the agent's proposals of the minute, storing nothing", async () => {
+    const quotas = createMemoryQuotaSource({ proposalsPerMinute: 0 });
+    const config = fakeConfig({});
+    const test = await startTestEngine({ configChanges: config, quotas });
+    await expect(propose(test)).rejects.toMatchObject({ code: "quota.proposals" });
+    expect(config.previewed).toStrictEqual([]);
+    expect(
+      await test.stores.intents.createdSince({ agentId: testAgent, fromMs: 0 }, live),
+    ).toStrictEqual([]);
+  });
+
   it("opens a card naming each key before and after, and the reason, and changes nothing yet", async () => {
     const config = fakeConfig({ restartNeeded: true });
     const test = await startTestEngine({ configChanges: config });

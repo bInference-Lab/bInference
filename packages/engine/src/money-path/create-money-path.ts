@@ -14,6 +14,7 @@ import type { IntentStateMachine } from "../intents/state-machine.js";
 import type { PolicyCheck, PolicyPass, PolicyVerdict } from "../policy/check-policy.js";
 import type { PolicySubject } from "../policy/policy-rules.js";
 import type { AgentStore, RiskCheck, Simulator } from "../ports.js";
+import type { ProposalQuotaParts } from "../quotas/install-quotas.js";
 import type { QuoteOutcome, TradePlan, TradeQuote, VenueHost } from "../venues/venue-host.js";
 import { advanceIntent } from "./advance-intent.js";
 import { authorizeSimulated, type FillProposal } from "./authorize-simulated.js";
@@ -75,7 +76,7 @@ export interface MoneyPath {
 }
 
 /** The ports and steps the money path runs on. */
-export interface MoneyPathOptions extends ResolveOptions {
+export interface MoneyPathOptions extends ResolveOptions, ProposalQuotaParts {
   readonly stored: StoredIntents;
   readonly agents: AgentStore;
   /** What a wallet holds of the asset a sale by share sells, in the intent's mode. */

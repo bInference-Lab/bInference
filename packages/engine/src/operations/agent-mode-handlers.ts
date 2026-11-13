@@ -9,6 +9,8 @@ import { defaultWalletIn } from "../install/role-wallet.js";
 import { roleVenuesRefusal } from "../limits/limit-handlers.js";
 import type { AgentStore, ConfigJournal, InstallStore, WalletFactsSource } from "../ports.js";
 import type { PublishPush } from "../pushes/engine-push.js";
+import type { InstallQuotas } from "../quotas/install-quotas.js";
+import { withQuota } from "../quotas/quotas.js";
 import type { VenueHost } from "../venues/venue-host.js";
 import { activeAgent } from "./active-agent.js";
 import { agentViewOf } from "./agent-view-of.js";
@@ -43,6 +45,8 @@ export interface AgentModeHandlersOptions {
   readonly install: Pick<InstallStore, "read" | "acceptDisclaimer">;
   readonly clock: Clock;
   readonly publish: PublishPush;
+  /** The install's quotas: its live agents are counted as one goes live (decision 0431). */
+  readonly quotas?: Pick<InstallQuotas, "read">;
 }
 
 type ModeCall = EngineCall<"agent/goLive"> | EngineCall<"agent/goPaper">;
@@ -98,6 +102,20 @@ async function roleVenueRefusal(
   return roleVenuesRefusal(options, { venues, wallets, agent: found.agent.id });
 }
 
+// Why an agent may not go live yet: a venue only a launch or bridge wallet it lacks may use, then
+// a default wallet that holds no funds.
+async function goLiveRefusal(
+  options: AgentModeHandlersOptions,
+  found: { readonly agent: AgentRecord; readonly limits: LimitsRecord },
+  signal: AbortSignal,
+): Promise<ProtocolErrorCode | undefined> {
+  const refused = await roleVenueRefusal(options, found, signal);
+  if (refused !== undefined) {
+    return refused;
+  }
+  return (await isFunded(options, found.agent.id, signal)) ? undefined : "wallet.unfunded";
+}
+
 // The owner accepts the current disclaimer once (decision 0220): a call that carries its version
 // stores the acceptance. Until one is stored every call refuses, an agent live already included,
 // so `binference live` asks for a newer text there too.
@@ -137,6 +155,20 @@ async function journal(
   );
 }
 
+// The mode's write under the agent row's version; a switch to live within the install's live
+// agents' quota, which the write counts (decision 0431).
+async function writeMode(
+  options: AgentModeHandlersOptions,
+  switching: Switching,
+  agent: AgentRecord,
+): ReturnType<AgentStore["setMode"]> {
+  const { call, mode } = switching;
+  const quota = mode === "live" ? (await options.quotas?.read(call))?.liveAgents : undefined;
+  const change = { agentId: agent.id, mode, atMs: options.clock.now() };
+  const write = { ...change, expectedVersion: agent.version };
+  return options.agents.setMode(write, withQuota(call, quota));
+}
+
 async function switchMode(
   options: AgentModeHandlersOptions,
   switching: Switching,
@@ -147,22 +179,18 @@ async function switchMode(
     return found.ok ? ok(agentViewOf(found.value.agent)) : found;
   }
   const { agent } = found.value;
-  const launchFailure =
-    mode === "live" ? await roleVenueRefusal(options, found.value, call.signal) : undefined;
-  if (launchFailure !== undefined) {
-    return err(launchFailure);
+  const refused =
+    mode === "live" ? await goLiveRefusal(options, found.value, call.signal) : undefined;
+  if (refused !== undefined) {
+    return err(refused);
   }
-  if (mode === "live" && !(await isFunded(options, agent.id, call.signal))) {
-    return err("wallet.unfunded");
-  }
-  const change = { agentId: agent.id, mode, atMs: options.clock.now() };
-  const set = await options.agents.setMode(
-    { ...change, expectedVersion: agent.version },
-    { signal: call.signal },
-  );
+  const set = await writeMode(options, switching, agent);
   if (set.ok) {
     await journal(options, call, { before: agent, after: set.value });
     return ok(agentViewOf(set.value));
+  }
+  if (set.error === "quota") {
+    return err("quota.live_agents");
   }
   if (switching.attemptsLeft <= 1) {
     throw new BinferenceError({

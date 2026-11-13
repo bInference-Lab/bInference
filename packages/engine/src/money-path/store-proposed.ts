@@ -22,6 +22,7 @@ import {
   type IntentStep,
 } from "../intents/state-machine.js";
 import type { AgentStore } from "../ports.js";
+import type { ProposalQuotaParts } from "../quotas/install-quotas.js";
 import { agentStatusOf } from "./agent-status-of.js";
 import type { FillProposal } from "./authorize-simulated.js";
 import type { Proposer } from "./create-money-path.js";
@@ -101,10 +102,12 @@ export interface StartedProposal {
 /**
  * Reads the proposing agent's settings and checks the proposal with a new state machine, before
  * anything is resolved or stored: an unknown agent is `agent.not_found`, an archived one
- * `agent.archived`, and a proposer the kind does not take `auth.scope`.
+ * `agent.archived`, and a proposer the kind does not take `auth.scope`. Then, for a proposal that
+ * is no fill, of an agent that is not frozen, whose policy refuses it as before, it throws
+ * `quota.proposals` past the agent's proposals of the last minute (decision 0431).
  */
 export async function startProposal(
-  options: { readonly agents: AgentStore; readonly clock: Clock },
+  options: ProposalQuotaParts & { readonly agents: AgentStore; readonly clock: Clock },
   call: {
     readonly request: Exclude<IntentRequest, LendRequest>;
     readonly proposer: Proposer;
@@ -118,6 +121,10 @@ export async function startProposal(
   const step = machine.propose(proposal);
   if (!step.ok || settings === undefined) {
     return err(step.ok ? "agent.not_found" : proposalProblemCode(step.error));
+  }
+  if (call.fill === undefined && settings.agent.frozenAtMs === undefined) {
+    const { agent, kind } = call.request;
+    await options.quotas?.proposing({ agent, kind }, { signal });
   }
   return ok({ machine, settings, proposal, step: step.value });
 }

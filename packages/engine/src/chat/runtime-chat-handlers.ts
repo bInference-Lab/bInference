@@ -86,27 +86,32 @@ function offersOutsideTools(options: ChatRelayOptions, agent: Id<"agt">): boolea
   return options.communityPluginsOn?.() === true || options.listedMcpOn?.(agent) === true;
 }
 
+// Starts a turn of an agent that may take one: within its model budget, then its turns of the last
+// minute (decision 0431).
+async function startTurn(options: ChatRelayOptions, call: EngineCall<"turn/start">) {
+  const { agent, session, turn, outsideContent, messages } = call.args;
+  const active = await startable(options, call);
+  if (!active.ok) {
+    return active;
+  }
+  const left = await options.budget.open(active.value, call);
+  await options.quotas?.starting(agent, call);
+  const marked = outsideContent || offersOutsideTools(options, agent);
+  options.turns.start({ agent, turn, hasOutsideContent: marked, messages });
+  options.publish({
+    topic: chatTopic(agent),
+    kind: "chat/turnStarted",
+    data: { agent, session, turn },
+  });
+  return ok({ budgetLeftMicros: left });
+}
+
 function turnHandlers(
   options: ChatRelayOptions,
 ): Pick<RuntimeChatHandlers, "turn/start" | "turn/mark" | "turn/say" | "turn/status" | "turn/end"> {
   const { turns, publish } = options;
   return {
-    async "turn/start"(call) {
-      const { agent, session, turn, outsideContent, messages } = call.args;
-      const active = await startable(options, call);
-      if (!active.ok) {
-        return active;
-      }
-      const left = await options.budget.open(active.value, call);
-      const marked = outsideContent || offersOutsideTools(options, agent);
-      turns.start({ agent, turn, hasOutsideContent: marked, messages });
-      publish({
-        topic: chatTopic(agent),
-        kind: "chat/turnStarted",
-        data: { agent, session, turn },
-      });
-      return ok({ budgetLeftMicros: left });
-    },
+    "turn/start": async (call) => startTurn(options, call),
     async "turn/mark"(call) {
       const { agent, turn } = call.args;
       return Promise.resolve(turns.mark(agent, turn) ? ok({}) : err("protocol.bad_args"));

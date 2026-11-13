@@ -11,6 +11,7 @@ import { nativeAssetOf } from "../money-path/resolve-proposal.js";
 import { startProposal, storeProposed } from "../money-path/store-proposed.js";
 import type { PolicyPass } from "../policy/check-policy.js";
 import type { AgentStore } from "../ports.js";
+import type { ProposalQuotaParts } from "../quotas/install-quotas.js";
 import { checkTransferPolicy, type TransferPolicyParts } from "../sends/check-transfer-policy.js";
 import { advanceBySimulation, advanceByVerdict, runToCard } from "../sends/owner-steps.js";
 import { type BridgeCheckParts, bridgeRefusal } from "./bridge-checks.js";
@@ -21,7 +22,7 @@ import { simulateBridge } from "./simulate-bridge.js";
 
 /** What a bridge is resolved, checked, quoted, simulated and stored through. */
 export interface BridgePathOptions
-  extends BridgeResolveOptions, BridgeCheckParts, TransferPolicyParts {
+  extends BridgeResolveOptions, BridgeCheckParts, TransferPolicyParts, ProposalQuotaParts {
   readonly stored: StoredIntents;
   readonly agents: AgentStore;
   /** Runs the steps unsent on their chain, live balances only: a paper bridge never gets this far. */

@@ -5,6 +5,7 @@ import type { IntentRecord } from "../intents/intent-record.js";
 import { type EngineHandler, proposerOf } from "../operations/engine-call.js";
 import { intentViewOf } from "../operations/intent-view-of.js";
 import type { AgentStore, IntentStore, WalletFactsSource } from "../ports.js";
+import type { ProposalQuotaParts } from "../quotas/install-quotas.js";
 import type { ConfigChanges } from "./config-change-parts.js";
 import type { ConfigChangeRequest } from "./config-change-quote.js";
 import { proposeConfigChange } from "./propose-config-change.js";
@@ -17,7 +18,7 @@ export interface ConfigChangeHandlers {
 }
 
 /** What the config change handlers read, store and apply through. */
-export interface ConfigChangeHandlersOptions {
+export interface ConfigChangeHandlersOptions extends ProposalQuotaParts {
   readonly stored: StoredIntents;
   readonly intents: IntentStore;
   readonly agents: AgentStore;

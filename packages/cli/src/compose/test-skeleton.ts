@@ -28,7 +28,7 @@ import {
   type ManualClock,
   type MemoryLogger,
 } from "@binference/core/testing";
-import { type PositionStore, sha256Hex } from "@binference/engine";
+import { noQuotas, type PositionStore, sha256Hex } from "@binference/engine";
 import {
   createFakeExecutor,
   createFakePriceSource,
@@ -145,6 +145,7 @@ export const skeletonCompositions: readonly SkeletonComposition[] = [
           selfHostedSources({ http: createScriptedHttp([]), clock }),
           clock,
         ),
+        quotas: noQuotas,
       };
     },
   },

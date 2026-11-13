@@ -29,6 +29,7 @@ import { createUploadHandlers, type UploadHandlers } from "../uploads/upload-han
 import { createUploadShelf } from "../uploads/upload-shelf.js";
 import type { EngineOptions } from "./create-engine.js";
 import { launchRoutingOf } from "./engine-intent-parts.js";
+import { installQuotasOf } from "./engine-quotas.js";
 import { intentViewOf } from "./intent-view-of.js";
 import { createTokenReadHandlers, type TokenReadHandlers } from "./token-read-handlers.js";
 
@@ -165,6 +166,7 @@ function relayOptionsOf(
     questions: stores.questions,
     agents: stores.agents,
     turns: options.turns ?? createRunningTurns(),
+    quotas: installQuotasOf(options),
     budget,
     intentView: async (intent, signal) => {
       const snapshot = await late.stored?.snapshot(intent, { signal });
@@ -347,11 +349,10 @@ function alertFiringOf(options: EngineOptions, chat: ChatWakes): AlertFiring {
 
 // The token reads, `asset/get`, `quote/get` and `risk/check`, on the money path's own parts.
 function tokenReadsOf(options: EngineOptions, paper: PaperParts): TokenReadHandlers {
-  const { stores, custody, host, chains, clock, readTokenFacts } = options;
+  const { stores, custody, host, chains, clock, readTokenFacts, risk } = options;
   const { wallets, holdings } = paper;
   const launches = launchRoutingOf(options, paper);
   const quotes = { custody, wallets, holdings, launches, host, chains, clock };
-  const { risk } = options;
   return createTokenReadHandlers({ agents: stores.agents, chains, readTokenFacts, quotes, risk });
 }
 

@@ -14,6 +14,7 @@ import { createIntentStateMachine } from "../intents/state-machine.js";
 import type { Proposer } from "../money-path/create-money-path.js";
 import { openCardUnchecked } from "../money-path/open-card-unchecked.js";
 import type { AgentStore, WalletFactsSource } from "../ports.js";
+import type { ProposalQuotaParts } from "../quotas/install-quotas.js";
 import type { ConfigChanges, ConfigPatchAsked } from "./config-change-parts.js";
 import {
   type ConfigChangeRequest,
@@ -22,7 +23,7 @@ import {
 } from "./config-change-quote.js";
 
 /** What a config change is previewed and stored through. */
-export interface ConfigChangeProposalParts {
+export interface ConfigChangeProposalParts extends ProposalQuotaParts {
   readonly stored: StoredIntents;
   readonly agents: AgentStore;
   /** The agent's wallets, its default first, as the money path reads them. */
@@ -117,6 +118,7 @@ export async function proposeConfigChange(
   if (!owner.ok) {
     return owner;
   }
+  await parts.quotas?.proposing({ agent: owner.value.agentId, kind: "configChange" }, { signal });
   const asked = { ...call.asked, patch: call.request.patch };
   const preview = await parts.configChanges.preview(asked, { signal });
   if (!preview.ok) {

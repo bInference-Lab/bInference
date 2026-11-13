@@ -15,6 +15,7 @@ import type { Proposer } from "../money-path/create-money-path.js";
 import { nativeAssetOf } from "../money-path/resolve-proposal.js";
 import { startProposal, storeProposed } from "../money-path/store-proposed.js";
 import type { AgentStore } from "../ports.js";
+import type { ProposalQuotaParts } from "../quotas/install-quotas.js";
 import { checkTransferPolicy, type TransferPolicyParts } from "../sends/check-transfer-policy.js";
 import { advanceBySimulation, advanceByVerdict, runToCard } from "../sends/owner-steps.js";
 import {
@@ -25,7 +26,8 @@ import {
 import { isTestedRegistry } from "./tested-registry.js";
 
 /** What an identity registration is resolved, checked, simulated and stored through. */
-export interface IdentityPathOptions extends IdentityResolveOptions, TransferPolicyParts {
+export interface IdentityPathOptions
+  extends IdentityResolveOptions, TransferPolicyParts, ProposalQuotaParts {
   readonly stored: StoredIntents;
   readonly agents: AgentStore;
   /** Runs the registration's call unsent on its chain; a paper registration never gets this far. */

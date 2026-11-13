@@ -19,6 +19,7 @@ import { createRuleFillOnPaper } from "../webhooks/rule-fill-on-paper.js";
 import type { WebhookRuleParts } from "../webhooks/webhook-rule-parts.js";
 import type { EngineOptions } from "./create-engine.js";
 import { fillEndOf, fillOnPaperOf, followCardOf, followRuleCardOf } from "./engine-orders.js";
+import { installQuotasOf } from "./engine-quotas.js";
 
 /**
  * A re-quote at a tap weighs every venue as the money path does, on the paper balances.
@@ -147,6 +148,7 @@ export function configChangeHandlersOf(
   }
   const { intents, agents } = stores;
   return createConfigChangeHandlers({
+    quotas: installQuotasOf(options),
     stored,
     intents,
     agents,

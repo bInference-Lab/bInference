@@ -1,6 +1,6 @@
 import type { ChainRegistry, Signer } from "@binference/chain";
 import { BinferenceError } from "@binference/core";
-import { type Engine, type EnginePush, signerStoppedNotice } from "@binference/engine";
+import { type Engine, type EnginePush, noQuotas, signerStoppedNotice } from "@binference/engine";
 import type { AgentInboxMessage } from "@binference/engine/chat";
 import { type RunningExecutor, signerRefusedNotice } from "@binference/engine/executor";
 import type { EngineHandlerTable } from "@binference/engine/surfaces";
@@ -208,10 +208,11 @@ function composeParts(opening: Opening, opened: Opened): Wiring {
   };
 }
 
-// The custody parts the engine takes, from the custody cell that the lock opens.
-function custodyPartsOf(custody: ComposedCustody) {
+// The parts this machine's owner gives the engine: custody, from the custody cell that the lock
+// opens, and no quota (decision 0431).
+function ownPartsOf(custody: ComposedCustody) {
   const { signer, ceilings, walletMaker, exporter, revoker } = custody.cell;
-  return { custody: signer, ceilings, walletMaker, exporter, revoker };
+  return { custody: signer, ceilings, walletMaker, exporter, revoker, quotas: noQuotas };
 }
 
 // The operations the composition root answers: the engine's own, and those routed to the runtime.
@@ -255,7 +256,7 @@ function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
   const bot = opened.bot === undefined ? undefined : botParts(opened.bot, stores, telegram);
   return composeEngine(
     {
-      ...custodyPartsOf(custody),
+      ...ownPartsOf(custody),
       stores,
       prices: parts.prices,
       riskSources: selfHostedRiskSources(host.http),

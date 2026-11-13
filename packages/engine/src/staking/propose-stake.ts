@@ -11,6 +11,7 @@ import { startProposal, storeProposed } from "../money-path/store-proposed.js";
 import { type ReadTokenFacts, unlistedAssetInfos } from "../money-path/token-facts.js";
 import type { PolicyPass } from "../policy/check-policy.js";
 import type { AgentStore } from "../ports.js";
+import type { ProposalQuotaParts } from "../quotas/install-quotas.js";
 import { advanceBySimulation } from "../sends/owner-steps.js";
 import { declaredSpenders } from "../venues/declared-spenders.js";
 import { type StakePlanParts, planStakeMove } from "./plan-stake-move.js";
@@ -25,7 +26,8 @@ import {
 } from "./stake-steps.js";
 
 /** What a staking move is resolved, planned, checked, simulated, authorized and run through. */
-export interface StakePathOptions extends StakeResolveOptions, StakePlanParts, StakeStepParts {
+export interface StakePathOptions
+  extends StakeResolveOptions, StakePlanParts, StakeStepParts, ProposalQuotaParts {
   readonly stored: StoredIntents;
   readonly agents: AgentStore;
   /** Runs a live move's call unsent on its chain; a paper move runs nothing. */
