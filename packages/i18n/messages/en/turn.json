@@ -18,6 +18,7 @@
   "failed.timeLimit": "Stopped: this answer ran for 10 minutes. Ask again to go on.",
   "failed.proposalUnknown": "⚠️ binference did not hear back about a proposal, so it was not sent again. Check your open cards.",
   "failed.engine": "Stopped: the agent lost its link to the engine. It starts again by itself.",
+  "failed.lapsed": "Stopped before the answer was complete. A proposal it made may be waiting on a card: check your open cards before you ask again.",
   "image.tooMany": "Not read: a message takes at most {count} images. Send the rest in another message.",
   "image.tooLarge": "Not read: an image is over the {mib} MiB limit. Send a smaller one.",
   "image.format": "Not read: only PNG, JPEG and WebP images can be read. Send the image in one of these formats.",

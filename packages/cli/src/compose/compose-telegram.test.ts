@@ -1,4 +1,5 @@
 import { idSchema } from "@binference/core";
+import { createManualClock } from "@binference/core/testing";
 import type { EngineCaller } from "@binference/engine";
 import { createRunningTurns } from "@binference/engine/chat";
 import {
@@ -191,7 +192,7 @@ describe("the bot joined to the engine", () => {
   });
 
   it("posts the owner's message to the agent as one written in Telegram", async () => {
-    const turns = createRunningTurns();
+    const turns = createRunningTurns({ clock: createManualClock(0) });
     const test = await bot({ turns });
     await ownerWrites(test);
     turns.startRuntime(runtimeToken);
@@ -207,7 +208,7 @@ describe("the bot joined to the engine", () => {
   });
 
   it("shows the text written before a tool in the status message, then the answer", async () => {
-    const turns = createRunningTurns();
+    const turns = createRunningTurns({ clock: createManualClock(0) });
     const test = await bot({ turns });
     const { handlers } = test.composed.engine;
     await ownerWrites(test);
@@ -240,7 +241,7 @@ describe("the bot joined to the engine", () => {
   });
 
   it("grows the answer in one message in the partial mode, read as the turn starts", async () => {
-    const turns = createRunningTurns();
+    const turns = createRunningTurns({ clock: createManualClock(0) });
     const setting = { stream: "progress" as "progress" | "partial" };
     const test = await bot({ turns, replies: () => setting });
     const { handlers } = test.composed.engine;

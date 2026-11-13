@@ -213,6 +213,14 @@ Rules for this package:
   Each move is journaled, pushed
   as `config/changed`, and announced per limit as `notice.limitChange` and
   `notice.limitChangeCancelled`.
+- The runtime's running turns (`src/chat/running-turns.ts`, decision 0442) end a turn whose
+  `turn/end` never came, each once: when the runtime exits or starts again, when the agent's next
+  turn starts, and `turnLapseMs` after its start, the turn's limit `maxTurnMs` of the protocol, which
+  the runtime reads too, and a minute. The chat relay tells every surface with the status line
+  `turn.failed.lapsed`, then `chat/turnEnded`, outcome `failed`. Each listener of the lapses runs
+  on its own: one that throws is logged and never fails a `turn/start` or the runtime's exit. The
+  record keeps the last lapsed turn of each agent, for at most `lapsedAgentsKept` agents, and
+  `turn/status` shows no line for such a turn: a restarted runtime's repair of it adds none.
 - Alerts (`src/alerts/`, decisions 0244 and 0245) are set with no card and fire through
   `createAlertFiring`, which the watchers call: a price alert at its level on a confirmed price,
   a wallet alert on each matching trade, a launch alert on each launch its filter passes. Each

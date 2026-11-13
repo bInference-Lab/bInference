@@ -14,7 +14,7 @@ const page = "https://example.test/";
 const runtime = testCallers.runtime;
 
 function setUp(given: { readonly settings?: BrowserSettings; readonly files?: MachineFiles } = {}) {
-  const turns = createRunningTurns();
+  const turns = createRunningTurns({ clock: createManualClock(0) });
   turns.startRuntime(idSchema("tok").parse(runtime.credential));
   const driver = createFakeBrowserDriver({
     pages: { [page]: { title: "Example", text: "The harbour." } },
@@ -60,7 +60,7 @@ describe("the agent's browser", () => {
   });
 
   it("is off in an engine without a browser", async () => {
-    const turns = createRunningTurns();
+    const turns = createRunningTurns({ clock: createManualClock(0) });
     turns.startRuntime(idSchema("tok").parse(runtime.credential));
     const handler = createBrowserHandlers({
       turns,

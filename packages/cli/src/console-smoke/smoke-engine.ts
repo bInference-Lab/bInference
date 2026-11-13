@@ -5,7 +5,7 @@ import process from "node:process";
 import { text } from "node:stream/consumers";
 import { accountRefSchema } from "@binference/chain";
 import type { JsonValue } from "@binference/core";
-import { createMemoryLogger, type ManualClock } from "@binference/core/testing";
+import { createManualClock, createMemoryLogger, type ManualClock } from "@binference/core/testing";
 import { createRunningTurns } from "@binference/engine/chat";
 import {
   testAgent as agent,
@@ -89,7 +89,7 @@ async function startEngine(): Promise<Skeleton> {
     throw new Error("The smoke engine needs the console's build: run pnpm test:console.");
   }
   const http = { host: "127.0.0.1", port: Number(env.SMOKE_PORT) };
-  const turns = createRunningTurns();
+  const turns = createRunningTurns({ clock: createManualClock(0) });
   const browser = { http, consoleFiles };
   const skeleton = await startSkeleton(selfHosted.parts(), { browser, turns, owner });
   const stopClock = new AbortController();

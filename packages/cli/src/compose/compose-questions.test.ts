@@ -1,4 +1,5 @@
 import { idSchema } from "@binference/core";
+import { createManualClock } from "@binference/core/testing";
 import type { EngineCaller } from "@binference/engine";
 import { createRunningTurns } from "@binference/engine/chat";
 import { testAgent as agent } from "@binference/engine/testing";
@@ -20,7 +21,7 @@ const message = idSchema("msg").parse("msg_0190f1c2-3a4b-7c5d-8e6f-000000000001"
 
 // A bot whose agent asked the owner a question in its running turn, and the question's reference.
 async function asked(): Promise<{ readonly test: Bot; readonly ref: string }> {
-  const turns = createRunningTurns();
+  const turns = createRunningTurns({ clock: createManualClock(0) });
   const test = await bot({ turns });
   turns.startRuntime(runtimeToken);
   const { handlers } = test.composed.engine;

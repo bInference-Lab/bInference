@@ -107,7 +107,7 @@ async function operations(name: string, failures: DataFailures = {}, quotas?: Qu
   const clock = createManualClock(1_767_261_610_000);
   const random = createSeededRandom(5);
   const logger = createMemoryLogger({ subsystem: "plugins" });
-  const turns = createRunningTurns();
+  const turns = createRunningTurns({ clock: createManualClock(0) });
   turns.startRuntime(runtimeToken);
   const offered: (readonly RuntimePlugin[])[] = [];
   const pushes: EnginePush[] = [];

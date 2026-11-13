@@ -1,6 +1,5 @@
 import type { Amount, ChainRef, ChainRegistry, TxSimulator, Venue } from "@binference/chain";
 import {
-  BinferenceError,
   type Clock,
   createIdSource,
   type Id,
@@ -51,6 +50,7 @@ import { agentPartsOf, type EngineAgentParts } from "./engine-agent-parts.js";
 import { chainPartsOf, type EngineChainParts } from "./engine-chain-parts.js";
 import { createNoticeLog, type NoticeLog } from "./notice-log.js";
 import type { EngineParts } from "./profile-parts.js";
+import { sendToEach } from "./send-to-each.js";
 
 /** What the token risk step runs on besides the venue host. */
 interface RiskParts {
@@ -350,17 +350,15 @@ export function composeEngine(parts: EngineParts, options: ComposeEngineOptions)
   const notices = noticeLogOf(parts, options, ids);
   const publish = (push: EnginePush): void => {
     const stamped = notices.take(push);
-    try {
-      server.publish(stamped);
-    } catch (error) {
-      const code = error instanceof BinferenceError ? error.code : "unexpected";
-      logger.warn("engine.push_failed", { errorCode: code });
-    }
-    telegram?.relay(stamped);
-    webPush.relay?.relay(stamped);
+    const toServer = () => server.publish(stamped);
+    const toBot = () => telegram?.relay(stamped);
+    sendToEach([toServer, toBot, () => webPush.relay?.relay(stamped)], logger);
   };
   // One record of running turns: the relay starts and ends them, and proposals take their marks.
-  const turns = options.turns ?? createRunningTurns();
+  const turns = options.turns ?? createRunningTurns({ clock, logger });
+  turns.onLapse(({ turn, cause }) => {
+    logger.warn("chat.turn_lapsed", { agentId: turn.agent, traceId: turn.turn, reason: cause });
+  });
   const trading = tradingOf(parts, options);
   // One shelf of uploads: the server fills it, and the engine reads the owner's images from it.
   const uploads = createUploadShelf({ clock, random });

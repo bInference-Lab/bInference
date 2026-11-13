@@ -1,4 +1,5 @@
 import { BinferenceError } from "@binference/core";
+import { createManualClock } from "@binference/core/testing";
 import { createRunningTurns } from "@binference/engine/chat";
 import { testAgent } from "@binference/engine/testing";
 import { textReply } from "@binference/runtime/testing";
@@ -37,7 +38,7 @@ async function startMachine() {
     throw new BinferenceError({ code: "test.no_composition", message: "No composition." });
   }
   const { botApi, telegram } = await ownerBot();
-  const turns = createRunningTurns();
+  const turns = createRunningTurns({ clock: createManualClock(0) });
   const skeleton = await startSkeleton(selfHosted.parts(), { telegram, turns, owner });
   stops.push(async () => skeleton.close());
   const engine = { ...skeleton, stores: skeleton.parts.stores, server: skeleton.composed.server };

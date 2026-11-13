@@ -209,7 +209,7 @@ function supervisorOf(
  */
 export function composeRuntime(opening: Opening, opened: Opened): ComposedRuntime {
   const { closers } = opening;
-  const turns = createRunningTurns();
+  const turns = createRunningTurns({ clock: opening.host.clock, logger: opened.log.logger });
   const ended = { endSessions: (_credential: string): void => undefined };
   const supervisor = supervisorOf(opening, opened, { turns, ended });
   const held = heldSettingsOf(opened, supervisor);

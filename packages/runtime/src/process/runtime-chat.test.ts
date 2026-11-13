@@ -118,6 +118,34 @@ describe("the runtime's chat", () => {
     ]);
   });
 
+  it("ends a repaired turn with no proposal in doubt with the line that the agent lost its link", async () => {
+    const database = createMemoryAgentDatabase();
+    const { stores } = await createMemoryAgentStores(database);
+    const session = nthTestId("ses", 1);
+    const { fence } = stores;
+    const open = {
+      id: session,
+      agentId: agent,
+      surface: "cli",
+      conversation: "cli",
+      startedAtMs: 1,
+    };
+    await stores.sessions.open({ ...open, fence }, { signal: live() });
+    const turn = {
+      id: nthTestId("trn", 1),
+      sessionId: session,
+      startedAtMs: 2,
+      outsideContent: false,
+    };
+    await stores.sessions.startTurn({ ...turn, fence }, { signal: live() });
+    const engine = createMemoryEngineChat([agent]);
+    await ready({ engine, database });
+    expect(engine.pushes.map((push) => [push.kind, push.detail])).toStrictEqual([
+      ["chat/status", "turn.failed.engine"],
+      ["chat/turnEnded", "failed"],
+    ]);
+  });
+
   it("after a restart in the middle of a turn, every call has a result and nothing is proposed again", async () => {
     const engine = createMemoryEngineChat([agent]);
     const database = createMemoryAgentDatabase();

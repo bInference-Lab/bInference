@@ -4,6 +4,7 @@ import type { Fork } from "@binference/chain-evm/fork";
 import { createFakeRiskSource } from "@binference/chain/testing";
 import { BinferenceError, type Clock } from "@binference/core";
 import {
+  createManualClock,
   createMemoryLogger,
   createMemoryWorkspaceFiles,
   createSeededRandom,
@@ -202,7 +203,7 @@ export async function startLaunchChatMachine(
   // One owner record, as the self-hosted engine keeps it: the bot's and the engine's draft desk's.
   await stores.owners.bind({ userId: ownerId, pairedAtMs: 1 }, { signal });
   const telegram = { ...bot.telegram, owners: stores.owners };
-  const turns = createRunningTurns();
+  const turns = createRunningTurns({ clock: createManualClock(0) });
   const logger = createMemoryLogger({ subsystem: "engine" });
   const made = { fork, stores, custody, venues, maker, telegram, turns, logger };
   try {

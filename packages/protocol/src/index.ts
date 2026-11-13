@@ -45,6 +45,7 @@ export type {
 export * from "./operations/operations.js";
 export { ownerKeyOperations, takesOwnerKey } from "./operations/owner-key-operations.js";
 export * from "./operations/device-only-operations.js";
+export * from "./operations/turn-limits.js";
 export {
   imageContentTypeSchema,
   imagePartBytes,

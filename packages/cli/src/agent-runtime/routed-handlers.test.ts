@@ -1,4 +1,5 @@
 import { idSchema } from "@binference/core";
+import { createManualClock } from "@binference/core/testing";
 import { createRunningTurns } from "@binference/engine/chat";
 import { operationNames, operations, protocolIdSchema } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
@@ -34,7 +35,7 @@ const noteView = {
 
 // The engine's record of the runtime's running turns: the agent's turn, marked or not.
 function runningTurn(mark: { readonly hasOutsideContent: boolean }) {
-  const turns = createRunningTurns();
+  const turns = createRunningTurns({ clock: createManualClock(0) });
   turns.startRuntime(idSchema("tok").parse(runtimeToken));
   turns.start({ agent, turn, ...mark });
   return turns;
@@ -90,7 +91,7 @@ describe("createRoutedHandlers", () => {
         sent.push(request);
         return { ok: true, value: { items: [] } };
       },
-      createRunningTurns(),
+      createRunningTurns({ clock: createManualClock(0) }),
       noSession,
     );
     const list = handlers["notes/list"];
@@ -102,12 +103,12 @@ describe("createRoutedHandlers", () => {
   it("passes the runtime's refusal on, and fails a result that breaks the schema", async () => {
     const refused = createRoutedHandlers(
       async () => ({ ok: false, error: "runtime.unavailable" }),
-      createRunningTurns(),
+      createRunningTurns({ clock: createManualClock(0) }),
       noSession,
     );
     const broken = createRoutedHandlers(
       async () => ({ ok: true, value: { items: "none" } }),
-      createRunningTurns(),
+      createRunningTurns({ clock: createManualClock(0) }),
       noSession,
     );
     const call = { args: { agent }, caller, signal };
@@ -128,7 +129,7 @@ describe("createRoutedHandlers", () => {
         sent.push(request);
         return { ok: true, value: { items: [] } };
       },
-      createRunningTurns(),
+      createRunningTurns({ clock: createManualClock(0) }),
       async () => Promise.resolve(session),
     );
     await handlers["chat/messages"]?.({ args: { agent, limit: 5 }, caller, signal });
@@ -144,7 +145,7 @@ describe("createRoutedHandlers", () => {
         sent.push(request);
         return { ok: true, value: { items: [] } };
       },
-      createRunningTurns(),
+      createRunningTurns({ clock: createManualClock(0) }),
       noSession,
     );
     const answer = await handlers["chat/messages"]?.({ args: { agent }, caller, signal });
@@ -158,14 +159,20 @@ describe("createRoutedHandlers", () => {
       sent.push(request);
       return { ok: true as const, value: {} };
     };
-    const open = createRoutedHandlers(route, createRunningTurns(), async () =>
-      Promise.resolve(session),
+    const open = createRoutedHandlers(
+      route,
+      createRunningTurns({ clock: createManualClock(0) }),
+      async () => Promise.resolve(session),
     );
     await open["goal/change"]?.({ args: { agent, action: "pause" }, caller, signal });
     expect(sent).toStrictEqual([
       { op: "goal/change", args: { agent, action: "pause", session }, origin: "owner" },
     ]);
-    const none = createRoutedHandlers(route, createRunningTurns(), noSession);
+    const none = createRoutedHandlers(
+      route,
+      createRunningTurns({ clock: createManualClock(0) }),
+      noSession,
+    );
     const read = await none["goal/get"]?.({ args: { agent }, caller, signal });
     const set = await none["goal/set"]?.({ args: { agent, objective: "x" }, caller, signal });
     expect([read, set]).toStrictEqual([

@@ -131,7 +131,7 @@ async function cloudOnRealHost(root: string) {
     form: "required",
   });
   const life = new AbortController();
-  const turns = createRunningTurns();
+  const turns = createRunningTurns({ clock: createManualClock(0) });
   turns.startRuntime(runtimeToken);
   const data = (id: string) => join(root, "data", id);
   const told: PluginNotice[] = [];

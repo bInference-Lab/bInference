@@ -125,6 +125,11 @@ function turnHandlers(
     },
     async "turn/status"(call) {
       const { agent, turn, statusKey, values } = call.args;
+      // The owner read this turn's `turn.failed.lapsed`: a restarted runtime's repair of it
+      // shows no second line (decision 0442).
+      if (turns.hasLapsed(agent, turn)) {
+        return ok({});
+      }
       const data = { agent, turn, statusKey, ...(values === undefined ? {} : { values }) };
       publish({ topic: chatTopic(agent), kind: "chat/status", data });
       if (statusKey === loopStatusKey) {
@@ -219,6 +224,27 @@ function inboxHandlers(
       return ok({});
     },
   };
+}
+
+// The line of a turn the engine ended: it stopped, and a proposal it made may wait on a card.
+const lapsedStatusKey = "turn.failed.lapsed";
+
+/**
+ * Tells every surface of each turn the engine ended without the runtime's `turn/end` (decision
+ * 0442): first its status line, `turn.failed.lapsed`, which says the turn stopped and a proposal
+ * it made may wait on an open card, so the owner reads that before anything asks them to try
+ * again; then `chat/turnEnded` with the outcome `failed`, as the runtime's own end of a failed
+ * turn says, so no surface shows the turn running for good.
+ */
+export function tellLapsedTurns(options: Pick<ChatRelayOptions, "turns" | "publish">): void {
+  options.turns.onLapse(({ turn }) => {
+    const { agent } = turn;
+    const topic = chatTopic(agent);
+    const status = { agent, turn: turn.turn, statusKey: lapsedStatusKey };
+    options.publish({ topic, kind: "chat/status", data: status });
+    const ended = { agent, turn: turn.turn, outcome: "failed" };
+    options.publish({ topic, kind: "chat/turnEnded", data: ended });
+  });
 }
 
 /**

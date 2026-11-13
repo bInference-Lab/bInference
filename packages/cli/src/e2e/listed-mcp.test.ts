@@ -1,4 +1,5 @@
 import { BinferenceError } from "@binference/core";
+import { createManualClock } from "@binference/core/testing";
 import { createRunningTurns } from "@binference/engine/chat";
 import { testAgent, testCoin, testToken } from "@binference/engine/testing";
 import type { ListedMcpSource } from "@binference/runtime";
@@ -95,7 +96,7 @@ async function startMachine(
   replies: readonly ScriptedReply[],
 ): Promise<Machine> {
   const { botApi, telegram } = await ownerBot();
-  const turns = createRunningTurns();
+  const turns = createRunningTurns({ clock: createManualClock(0) });
   const skeleton = await startSkeleton(parts, { telegram, turns });
   stops.push(async () => skeleton.close());
   await skeleton.client.call("approval/set", { agent: testAgent, mode: "auto" }, live());

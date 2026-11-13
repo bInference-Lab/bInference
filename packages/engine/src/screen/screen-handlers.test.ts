@@ -20,7 +20,7 @@ interface SetUp {
 }
 
 function setUp(given: SetUp = {}) {
-  const turns = createRunningTurns();
+  const turns = createRunningTurns({ clock: createManualClock(0) });
   turns.startRuntime(idSchema("tok").parse(runtime.credential));
   const screen = given.screen ?? createFakeScreenCapture();
   const files = given.files ?? createMemoryFiles();

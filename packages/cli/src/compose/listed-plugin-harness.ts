@@ -180,7 +180,7 @@ export function cloudPluginOperations(
     removeData:
       extra.removeData ?? (async (id, signal) => removePath(join(folder, "data", id), signal)),
     newPlugin: () => ids.next("plg"),
-    turns: createRunningTurns(),
+    turns: createRunningTurns({ clock: createManualClock(0) }),
     publish: (push) => ends.shift()?.(push),
     closers: createClosers(),
     clock,

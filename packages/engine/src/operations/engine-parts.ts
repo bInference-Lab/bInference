@@ -165,7 +165,7 @@ function relayOptionsOf(
     ...heldInboxOf(stores.agentInbox),
     questions: stores.questions,
     agents: stores.agents,
-    turns: options.turns ?? createRunningTurns(),
+    turns: options.turns ?? createRunningTurns({ clock: options.clock }),
     quotas: installQuotasOf(options),
     budget,
     intentView: async (intent, signal) => {

@@ -52,8 +52,14 @@ export type {
   QuestionRecord,
 } from "./chat/question-record.js";
 export { markRuntimeTurns } from "./chat/mark-runtime-turns.js";
-export { createRunningTurns } from "./chat/running-turns.js";
-export type { RunningTurn, RunningTurns } from "./chat/running-turns.js";
+export { createRunningTurns, turnLapseMs } from "./chat/running-turns.js";
+export type {
+  RunningTurn,
+  RunningTurns,
+  RunningTurnsOptions,
+  TurnLapse,
+  TurnLapseCause,
+} from "./chat/running-turns.js";
 export { createChatRelay } from "./chat/chat-relay.js";
 export type { ChatHandlers, ChatRelay } from "./chat/chat-relay.js";
 export {

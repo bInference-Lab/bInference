@@ -18,6 +18,7 @@
   "failed.timeLimit": "已停止：本次回答已运行 10 分钟。请再次提问以继续。",
   "failed.proposalUnknown": "⚠️ binference 未收到某个提议的结果，因此没有再次发送。请查看你未处理的卡片。",
   "failed.engine": "已停止：Agent 与引擎的连接中断。它会自动重新启动。",
+  "failed.lapsed": "回答完成前已停止。它提出的提议可能正在卡片上等待：请先查看你未处理的卡片，再重新提问。",
   "image.tooMany": "未读取：每条消息最多 {count} 张图片。请在另一条消息中发送其余图片。",
   "image.tooLarge": "未读取：有图片超过 {mib} MiB 的上限。请发送更小的图片。",
   "image.format": "未读取：只能读取 PNG、JPEG 和 WebP 图片。请以其中一种格式发送图片。",

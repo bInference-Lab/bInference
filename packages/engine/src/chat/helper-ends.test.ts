@@ -18,7 +18,7 @@ async function setUp() {
   const clock = createManualClock(Date.UTC(2026, 10, 8, 12));
   const agents = createMemoryAgentStore();
   await agents.create(testAgentDraft({}), testCall({}));
-  const turns = createRunningTurns();
+  const turns = createRunningTurns({ clock: createManualClock(0) });
   turns.startRuntime(idSchema("tok").parse(runtime.credential));
   const pushes: EnginePush[] = [];
   const handlers = createHelperEndHandlers({

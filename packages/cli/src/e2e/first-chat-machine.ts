@@ -116,7 +116,7 @@ export async function startFirstChat(locale: Locale, script: SharedScript): Prom
   const workspace = createMemoryWorkspaceFiles(createManualClock(1));
   const made = { agent: testAgent, name: "main", locale, timeZone: "UTC" };
   await makeAgentWorkspace(workspace, made, live().signal);
-  const turns = createRunningTurns();
+  const turns = createRunningTurns({ clock: createManualClock(0) });
   const owner = () => ({ locale, timezone: "UTC" });
   const skeleton = await startSkeleton(selfHostedParts(), { turns, workspace, owner });
   const engine = { ...skeleton, stores: skeleton.parts.stores, server: skeleton.composed.server };

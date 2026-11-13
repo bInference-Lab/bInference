@@ -1,4 +1,5 @@
 import { err, idSchema } from "@binference/core";
+import { createManualClock } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
 import { expectOk, testAgent, testSwap } from "../intents/test-intents.js";
 import type { EngineCaller, EngineHandler } from "../operations/engine-call.js";
@@ -21,7 +22,7 @@ async function proposeAs(
   setUp: (turns: ReturnType<typeof createRunningTurns>) => void,
 ) {
   const test = await startTestEngine({ agent: { approvalMode: "auto" } });
-  const turns = createRunningTurns();
+  const turns = createRunningTurns({ clock: createManualClock(0) });
   turns.startRuntime(token);
   setUp(turns);
   const handlers = markRuntimeTurns(test.engine.handlers, turns);
@@ -35,7 +36,7 @@ async function proposeAs(
 // The runtime's write of the strategy, with the caller claiming a clean turn whatever it is.
 async function editAs(running: { readonly hasOutsideContent: boolean }) {
   const test = await startTestEngine();
-  const turns = createRunningTurns();
+  const turns = createRunningTurns({ clock: createManualClock(0) });
   turns.startRuntime(token);
   turns.start({ agent: testAgent, turn, ...running });
   const edit = markRuntimeTurns(test.engine.handlers, turns)["agent/editFile"];
@@ -90,7 +91,7 @@ describe("markRuntimeTurns", () => {
       seen.push(call.caller);
       return Promise.resolve(err("request.unavailable"));
     };
-    const turns = createRunningTurns();
+    const turns = createRunningTurns({ clock: createManualClock(0) });
     turns.startRuntime(token);
     turns.start({ agent: testAgent, turn, hasOutsideContent: true });
     const wrapped = markRuntimeTurns({ "http/request": request }, turns)["http/request"];
@@ -102,15 +103,18 @@ describe("markRuntimeTurns", () => {
 
   it("leaves every other handler as it was", async () => {
     const test = await startTestEngine();
-    const handlers = markRuntimeTurns(test.engine.handlers, createRunningTurns());
+    const handlers = markRuntimeTurns(
+      test.engine.handlers,
+      createRunningTurns({ clock: createManualClock(0) }),
+    );
     expect(handlers["intent/get"]).toBe(test.engine.handlers["intent/get"]);
   });
 
   it("adds no handler the table does not serve", () => {
     const getOnly = { "intent/list": async () => Promise.resolve(err("protocol.busy" as const)) };
-    expect(Object.keys(markRuntimeTurns(getOnly, createRunningTurns()))).toStrictEqual([
-      "intent/list",
-    ]);
+    expect(
+      Object.keys(markRuntimeTurns(getOnly, createRunningTurns({ clock: createManualClock(0) }))),
+    ).toStrictEqual(["intent/list"]);
   });
 
   it("keeps where the call came in, so a local caller stays local", async () => {
@@ -119,7 +123,10 @@ describe("markRuntimeTurns", () => {
       seen.push(call.caller);
       return Promise.resolve(err("protocol.busy"));
     };
-    const wrapped = markRuntimeTurns({ "intent/propose": propose }, createRunningTurns());
+    const wrapped = markRuntimeTurns(
+      { "intent/propose": propose },
+      createRunningTurns({ clock: createManualClock(0) }),
+    );
     await wrapped["intent/propose"]?.(testCall(testSwap(), testCallers.cli));
     expect(seen).toStrictEqual([testCallers.cli]);
   });

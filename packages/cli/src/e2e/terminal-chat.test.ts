@@ -1,6 +1,7 @@
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import { BinferenceError } from "@binference/core";
+import { createManualClock } from "@binference/core/testing";
 import { createRunningTurns } from "@binference/engine/chat";
 import { testAgent, testCoin, testToken } from "@binference/engine/testing";
 import { ensurePrivateFolder, writePrivateFile } from "@binference/platform";
@@ -57,7 +58,7 @@ async function serveChat(machine: TestMachine): Promise<Skeleton> {
   if (composition === undefined) {
     throw new BinferenceError({ code: "test.no_skeleton", message: "No skeleton composition." });
   }
-  const turns = createRunningTurns();
+  const turns = createRunningTurns({ clock: createManualClock(0) });
   const skeleton = await startSkeleton(composition.parts(), { turns });
   const platform = platformOf(hostOn(machine, []));
   const files = { permissions: noPermissions, signal: live().signal };

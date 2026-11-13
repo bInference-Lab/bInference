@@ -31,7 +31,7 @@ export function withSharedParts(options: EngineOptions): DraftingOptions {
   const { clock, random } = options;
   return {
     ...options,
-    turns: options.turns ?? createRunningTurns(),
+    turns: options.turns ?? createRunningTurns({ clock }),
     uploads: options.uploads ?? createUploadShelf({ clock, random }),
   };
 }

@@ -3,6 +3,7 @@ import type { Fork } from "@binference/chain-evm/fork";
 import { createFakeRiskSource } from "@binference/chain/testing";
 import { BinferenceError, type Clock, idSchema, type Id } from "@binference/core";
 import {
+  createManualClock,
   createMemoryLogger,
   createMemoryWorkspaceFiles,
   createSeededRandom,
@@ -139,7 +140,7 @@ export async function startOrdersMachine(
   const chains = selfHostedChains();
   const { rpc, chain } = fork;
   const simulator = createEvmTxSimulator({ rpc, chain });
-  const turns = createRunningTurns();
+  const turns = createRunningTurns({ clock: createManualClock(0) });
   const venue = createFeeTokenVenue({ fork, nativeAsset: chain.nativeAsset, via: new Map() });
   const logger = createMemoryLogger({ subsystem: "engine" });
   const composed = composeEngine(parts, {

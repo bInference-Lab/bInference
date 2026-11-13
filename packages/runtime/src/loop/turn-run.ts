@@ -1,4 +1,5 @@
 import type { Clock } from "@binference/core";
+import { maxTurnMs } from "@binference/protocol";
 import type { TurnHistory } from "../compaction/turn-history.js";
 import type { SettingsFacts } from "../context/live-facts-text.js";
 import type { LoopGuard } from "./loop-guard.js";
@@ -72,7 +73,7 @@ export const turnLimits: TurnLimits = {
   toolTimeoutMs: 60_000,
   proposeTimeoutMs: 30_000,
   stopGraceMs: 5_000,
-  turnTimeMs: 600_000,
+  turnTimeMs: maxTurnMs,
   modelIdleMs: 120_000,
   endWriteTimeoutMs: 10_000,
   loopGuard: true,

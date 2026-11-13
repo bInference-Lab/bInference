@@ -5,6 +5,7 @@ import type { StakingVenue } from "@binference/chain/staking";
 import { createFakeRiskSource } from "@binference/chain/testing";
 import { BinferenceError } from "@binference/core";
 import {
+  createManualClock,
   createMemoryLogger,
   createMemoryWorkspaceFiles,
   createSeededRandom,
@@ -175,7 +176,7 @@ export async function startOwnerChatMachine(
   // One owner record, as the self-hosted engine keeps it: the bot's and the engine's.
   await rig.stores.owners.bind({ userId: ownerId, pairedAtMs: 1 }, { signal });
   const telegram = { ...owned.telegram, owners: rig.stores.owners };
-  const turns = createRunningTurns();
+  const turns = createRunningTurns({ clock: createManualClock(0) });
   const logger = createMemoryLogger({ subsystem: "engine" });
   const made = { rig, names, bridging, telegram, turns, logger, stakingVenues, positions };
   const composed = composedOn(fork, made);

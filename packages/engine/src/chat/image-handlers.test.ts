@@ -48,7 +48,7 @@ function setUp(sourceImages = new Map<string, Uint8Array>()) {
     },
   };
   const clock = createManualClock(0);
-  const turns = createRunningTurns();
+  const turns = createRunningTurns({ clock: createManualClock(0) });
   turns.startRuntime(idSchema("tok").parse(testCallers.runtime.credential));
   const agentInbox = {
     get: async (id: string) => Promise.resolve([stored, later].find((each) => each.id === id)),
@@ -169,7 +169,7 @@ describe("inbox/readImage", () => {
   });
 
   it("answers unreadable for an image its own message names when no image source is set", async () => {
-    const turns = createRunningTurns();
+    const turns = createRunningTurns({ clock: createManualClock(0) });
     turns.startRuntime(idSchema("tok").parse(testCallers.runtime.credential));
     const agentInbox = { get: async () => Promise.resolve(stored) };
     const handler = createImageHandlers({ agentInbox, turns })["inbox/readImage"];

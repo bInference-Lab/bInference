@@ -25,7 +25,11 @@ import { createImageHold } from "./image-hold.js";
 import { createMadeImageHandlers, type MadeImageHandlers } from "./made-images.js";
 import { createMadeMediaHandlers, type MadeMediaHandlers } from "./made-media.js";
 import { createOwnerChatHandlers, type OwnerChatHandlers } from "./owner-chat-handlers.js";
-import { createRuntimeChatHandlers, type RuntimeChatHandlers } from "./runtime-chat-handlers.js";
+import {
+  createRuntimeChatHandlers,
+  type RuntimeChatHandlers,
+  tellLapsedTurns,
+} from "./runtime-chat-handlers.js";
 import { createSentFileHandlers, type SentFileHandlers } from "./sent-files.js";
 import { createViewImageHandlers, type ViewImageHandlers } from "./view-image-handlers.js";
 
@@ -200,8 +204,21 @@ async function frozenAgents(
   return listed.filter((each) => each.archivedAtMs === undefined).map((each) => each.id);
 }
 
-/** Creates the {@link ChatRelay} over the agent inbox, the agents and the running turns. */
+// The images the agent views, from the source the options name, if any.
+function viewImageHandlersOf(options: ChatRelayOptions): ViewImageHandlers {
+  return createViewImageHandlers({
+    turns: options.turns,
+    clock: options.clock,
+    ...(options.viewImages === undefined ? {} : { source: options.viewImages }),
+  });
+}
+
+/**
+ * Creates the {@link ChatRelay} over the agent inbox, the agents and the running turns, and tells
+ * every surface of each running turn that lapses.
+ */
 export function createChatRelay(options: ChatRelayOptions): ChatRelay {
+  tellLapsedTurns(options);
   const stopFrozen = async (agent: Id<"agt"> | undefined, signal: AbortSignal) => {
     const frozen = await frozenAgents(options, agent, signal);
     for (const each of frozen) {
@@ -215,11 +232,7 @@ export function createChatRelay(options: ChatRelayOptions): ChatRelay {
       "chat/delete": createChatDeleteHandler(options),
       ...createRuntimeChatHandlers(options),
       ...imageHandlersOf(options),
-      ...createViewImageHandlers({
-        turns: options.turns,
-        clock: options.clock,
-        ...(options.viewImages === undefined ? {} : { source: options.viewImages }),
-      }),
+      ...viewImageHandlersOf(options),
       ...createMadeImageHandlers(options),
       ...createMadeMediaHandlers(options),
       ...createSentFileHandlers(options),

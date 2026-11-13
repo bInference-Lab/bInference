@@ -7,6 +7,7 @@ import {
   type TxHash,
 } from "@binference/chain";
 import { BinferenceError, type Bps, bpsSchema } from "@binference/core";
+import { createManualClock } from "@binference/core/testing";
 import { createRunningTurns } from "@binference/engine/chat";
 import { type NewLaunch, tellLaunches } from "@binference/engine/market";
 import { testAgent, testCoin, testToken } from "@binference/engine/testing";
@@ -97,7 +98,7 @@ async function startMachine() {
   if (selfHosted === undefined) {
     throw new BinferenceError({ code: "test.no_composition", message: "No composition." });
   }
-  const turns = createRunningTurns();
+  const turns = createRunningTurns({ clock: createManualClock(0) });
   const skeleton = await startSkeleton(selfHosted.parts(), { turns });
   stops.push(async () => skeleton.close());
   await skeleton.client.call("approval/set", { agent: testAgent, mode: "auto" }, live());

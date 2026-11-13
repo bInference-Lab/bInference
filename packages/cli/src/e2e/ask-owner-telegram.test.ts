@@ -1,4 +1,5 @@
 import { BinferenceError } from "@binference/core";
+import { createManualClock } from "@binference/core/testing";
 import { createRunningTurns } from "@binference/engine/chat";
 import { testAgent } from "@binference/engine/testing";
 import {
@@ -50,7 +51,7 @@ interface Machine {
 async function startMachine(): Promise<Machine> {
   const [composition] = skeletonCompositions;
   const { botApi, telegram } = await ownerBot();
-  const turns = createRunningTurns();
+  const turns = createRunningTurns({ clock: createManualClock(0) });
   if (composition === undefined) {
     throw new BinferenceError({ code: "test.no_engine", message: "The skeleton has an engine." });
   }

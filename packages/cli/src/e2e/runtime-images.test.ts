@@ -1,4 +1,5 @@
 import { BinferenceError, directRoute } from "@binference/core";
+import { createManualClock } from "@binference/core/testing";
 import { createRunningTurns } from "@binference/engine/chat";
 import { testAgent, testCoin, testPng, testToken } from "@binference/engine/testing";
 import { maxImageBytes } from "@binference/protocol";
@@ -50,7 +51,7 @@ async function startMachine(script: RuntimeScript, photo: Uint8Array = testPng):
   }
   const { botApi, telegram } = await ownerBot();
   botApi.addFile("AgACchart", { bytes: photo, reportedSize: null });
-  const turns = createRunningTurns();
+  const turns = createRunningTurns({ clock: createManualClock(0) });
   // The HTTP listener on a free port, as the console uploads through it.
   const browser = { http: { host: "127.0.0.1", port: 0 } };
   const skeleton = await startSkeleton(selfHosted.parts(), { telegram, turns, browser });

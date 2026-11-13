@@ -1413,6 +1413,7 @@ than the agent's words (italics in Telegram).
 | Failed, the 10 minutes                                                 | `turn.failed.timeLimit`       | Stopped: this answer ran for 10 minutes. Ask again to go on.                                                                                                                                     | 已停止：本次回答已运行 10 分钟。请再次提问以继续。                                                                                                       |
 | Failed, a proposal's outcome unknown                                   | `turn.failed.proposalUnknown` | ⚠️ binference did not hear back about a proposal, so it was not sent again. Check your open cards.                                                                                               | ⚠️ binference 未收到某个提议的结果，因此没有再次发送。请查看你未处理的卡片。                                                                             |
 | Failed, the engine                                                     | `turn.failed.engine`          | Stopped: the agent lost its link to the engine. It starts again by itself.                                                                                                                       | 已停止：Agent 与引擎的连接中断。它会自动重新启动。                                                                                                       |
+| The engine ended a turn whose end never came                           | `turn.failed.lapsed`          | Stopped before the answer was complete. A proposal it made may be waiting on a card: check your open cards before you ask again.                                                                 | 回答完成前已停止。它提出的提议可能正在卡片上等待：请先查看你未处理的卡片，再重新提问。                                                                   |
 | A message holds over 4 images                                          | `turn.image.tooMany`          | Not read: a message takes at most {count} images. Send the rest in another message.                                                                                                              | 未读取：每条消息最多 {count} 张图片。请在另一条消息中发送其余图片。                                                                                      |
 | An image is over 5 MiB                                                 | `turn.image.tooLarge`         | Not read: an image is over the {mib} MiB limit. Send a smaller one.                                                                                                                              | 未读取：有图片超过 {mib} MiB 的上限。请发送更小的图片。                                                                                                  |
 | An image in another format                                             | `turn.image.format`           | Not read: only PNG, JPEG and WebP images can be read. Send the image in one of these formats.                                                                                                    | 未读取：只能读取 PNG、JPEG 和 WebP 图片。请以其中一种格式发送图片。                                                                                      |
@@ -1435,9 +1436,14 @@ than the agent's words (italics in Telegram).
 - `{count}` in `turn.image.tooMany` is 4 and `{mib}` in `turn.image.tooLarge` is 5, the limits of
   spec 1 section 7.7. A `turn.image.*` line ends a turn that called no model: its images are
   checked before the first model call ([decision 0227](../DECISIONS.md#d0227)).
-- A turn the runtime repairs after a restart with no proposal in doubt gets `turn.failed.engine`,
-  and a committed turn whose proposal the engine refused gets no line: its settle message starts
-  the turn that reports it ([decision 0174](../DECISIONS.md#d0174)).
+- A turn the engine ends because its end never came, when the runtime exits or starts again, when
+  the agent's next turn starts, or a minute past the turn's own limit, gets `turn.failed.lapsed`
+  before its `chat/turnEnded`, so no surface tells the owner to try again first
+  ([decision 0442](../DECISIONS.md#d0442)), and no second line when the runtime repairs it after a
+  restart. A turn the runtime repairs that the engine did not end, such as after a stop of both,
+  gets `turn.failed.proposalUnknown` when a proposal's outcome is in doubt and
+  `turn.failed.engine` otherwise; a committed turn whose proposal the engine refused gets no line:
+  its settle message starts the turn that reports it ([decision 0174](../DECISIONS.md#d0174)).
 - A change of a chat's goal ([decision 0407](../DECISIONS.md#d0407)) shows one line on every
   surface from its `chat/goal` push, outside any turn: `turn.goal.set`, `turn.goal.resumed`,
   `turn.goal.complete` and `turn.goal.blocked` with the objective (and `turn.goal.note` with the

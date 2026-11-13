@@ -296,6 +296,66 @@ describe("the chat relay", () => {
     expect(test.turns.runningOf(testAgent)).toBeUndefined();
   });
 
+  it("ends the agent's earlier turn failed, its line first, before its next turn starts", async () => {
+    const test = await startTestEngine();
+    expectOk(await startTurn(test));
+    const next = idSchema("trn").parse("trn_0190f1c2-3a4b-7c5d-8e6f-000000000002");
+    const message = idSchema("msg").parse("msg_0190f1c2-3a4b-7c5d-8e6f-000000000002");
+    const args = {
+      agent: testAgent,
+      session,
+      turn: next,
+      messages: [message],
+      outsideContent: false,
+    };
+    expectOk(await test.engine.handlers["turn/start"](testCall(args, runtime)));
+    const pushed = test.pushes.filter((push) => push.topic === `chat:${testAgent}`);
+    expect(pushed.map((push) => [push.kind, push.data])).toStrictEqual([
+      ["chat/turnStarted", { agent: testAgent, session, turn }],
+      ["chat/status", { agent: testAgent, turn, statusKey: "turn.failed.lapsed" }],
+      ["chat/turnEnded", { agent: testAgent, turn, outcome: "failed" }],
+      ["chat/turnStarted", { agent: testAgent, session, turn: next }],
+    ]);
+  });
+
+  it("ends every running turn failed, its line first, when the runtime exits", async () => {
+    const test = await startTestEngine();
+    expectOk(await startTurn(test));
+    test.turns.clearAll();
+    const pushed = test.pushes.filter((push) => push.topic === `chat:${testAgent}`);
+    expect(pushed.map((push) => [push.kind, push.data])).toStrictEqual([
+      ["chat/turnStarted", { agent: testAgent, session, turn }],
+      ["chat/status", { agent: testAgent, turn, statusKey: "turn.failed.lapsed" }],
+      ["chat/turnEnded", { agent: testAgent, turn, outcome: "failed" }],
+    ]);
+  });
+
+  it("shows one line for a turn it ended itself, whatever the runtime's repair says of it", async () => {
+    const test = await startTestEngine();
+    expectOk(await startTurn(test));
+    test.turns.clearAll();
+    const restarted = { ...runtime, credential: "tok_0190f1c2-3a4b-7c5d-8e6f-000000000003" };
+    test.turns.startRuntime(idSchema("tok").parse(restarted.credential));
+    const { handlers } = test.engine;
+    for (const statusKey of ["turn.failed.engine", "turn.failed.proposalUnknown"]) {
+      const status = { agent: testAgent, turn, statusKey };
+      // oxlint-disable-next-line eslint/no-await-in-loop -- the repair's lines, one after another
+      expectOk(await handlers["turn/status"](testCall(status, restarted)));
+    }
+    const pushed = test.pushes.filter((push) => push.kind === "chat/status");
+    expect(pushed.map((push) => push.data)).toStrictEqual([
+      { agent: testAgent, turn, statusKey: "turn.failed.lapsed" },
+    ]);
+  });
+
+  it("shows the repair's line of a turn it never ended, as after the engine stopped too", async () => {
+    const test = await startTestEngine();
+    const status = { agent: testAgent, turn, statusKey: "turn.failed.engine" };
+    expectOk(await test.engine.handlers["turn/status"](testCall(status, runtime)));
+    const pushed = test.pushes.filter((push) => push.kind === "chat/status");
+    expect(pushed.map((push) => push.data)).toStrictEqual([status]);
+  });
+
   it("carries a status line's values to the agent's chat topic with its key", async () => {
     const test = await startTestEngine();
     expectOk(await startTurn(test));

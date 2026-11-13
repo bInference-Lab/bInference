@@ -43,7 +43,7 @@ const stored: readonly Stored[] = [
 const hostsOf: Readonly<Record<string, readonly string[]>> = { OTHER_KEY: ["other.example"] };
 
 async function setUp(answer: Answer = async () => Promise.resolve(json("{}"))) {
-  const turns = createRunningTurns();
+  const turns = createRunningTurns({ clock: createManualClock(0) });
   turns.startRuntime(idSchema("tok").parse(runtime.credential));
   const credentials = createMemoryCredentialStore();
   const signal = new AbortController().signal;
@@ -362,7 +362,7 @@ describe("the agent's API calls", () => {
   });
 
   it("is unavailable in an engine that sends no requests", async () => {
-    const turns = createRunningTurns();
+    const turns = createRunningTurns({ clock: createManualClock(0) });
     turns.startRuntime(idSchema("tok").parse(runtime.credential));
     const handler = createHttpRequestHandlers({ turns, clock: createManualClock(0) })[
       "http/request"

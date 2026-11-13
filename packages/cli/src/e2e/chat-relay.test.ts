@@ -62,7 +62,7 @@ async function startRelay(
   composition: (typeof skeletonCompositions)[number],
   approval: "auto" | "manual" = "auto",
 ): Promise<Relay> {
-  const turns = createRunningTurns();
+  const turns = createRunningTurns({ clock: createManualClock(0) });
   const notes = runtimeNotes();
   const handlers = createRoutedHandlers(notes.route, turns, async () => undefined);
   const skeleton = await startSkeleton(composition.parts(), { turns, handlers, launchFeed: true });

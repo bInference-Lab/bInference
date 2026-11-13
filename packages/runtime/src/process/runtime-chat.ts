@@ -67,7 +67,8 @@ export interface RuntimeChat {
 }
 
 // A repaired turn's status line and its end (decision 0174), best effort: the engine cleared the
-// runtime's running turns when it exited, so a failure here leaves nothing running.
+// runtime's running turns when it exited, so a failure here leaves nothing running. The engine
+// shows no line for a turn it ended itself with its own line (decision 0442).
 async function endRepaired(start: ChatStart, signal: AbortSignal): Promise<void> {
   for (const { agent, turn, proposalUnknown } of start.prepared.repaired) {
     const statusKey = proposalUnknown ? "turn.failed.proposalUnknown" : "turn.failed.engine";

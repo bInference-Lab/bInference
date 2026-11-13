@@ -22,7 +22,7 @@ async function setUp(given: { readonly store?: "none" } = {}) {
   await agents.create(testAgentDraft({}), testCall({}));
   const agentInbox = createMemoryAgentInboxStore({ agents });
   const credentials = createMemoryCredentialStore();
-  const turns = createRunningTurns();
+  const turns = createRunningTurns({ clock: createManualClock(0) });
   turns.startRuntime(idSchema("tok").parse(testCallers.runtime.credential));
   const pushes: EnginePush[] = [];
   const options = {
