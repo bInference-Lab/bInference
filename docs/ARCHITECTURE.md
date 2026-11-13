@@ -1418,8 +1418,10 @@ the Cloud profile. A port with two adapters runs one contract test suite against
   public, so self-hosters can use it too.
 - Any change to a port names both adapters in its PR, and both pass its contract suite.
 - The ports: custody `Signer` and market data `PriceSource` (`@binference/chain`); Telegram
-  `BotUpdateSource`, models `ModelBilling`, store the store ports, market data `MarketData`
-  (`@binference/engine`); secrets `SecretStore` (`@binference/core`). The test composition root
+  `BotUpdateSource`, models `ModelBilling`, store the store ports, market data `MarketData`,
+  quotas `QuotaSource` (`@binference/engine`,
+  [spec 1, section 7.16](specs/protocol.md#section-7-16)); secrets `SecretStore`
+  (`@binference/core`). The test composition root
   in `cli/src/compose/` fills them with fakes shaped like the Cloud adapters.
 
 **What Cloud adds:**

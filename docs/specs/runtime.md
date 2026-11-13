@@ -7,7 +7,9 @@ proposal rule is [decision 0167](../DECISIONS.md#d0167), accepted on 2026-10-10.
 [decision 0221](../DECISIONS.md#d0221) (the model check) and
 [decision 0247](../DECISIONS.md#d0247) (the alert and schedule tools) and
 [decision 0415](../DECISIONS.md#d0415) (deleting chats) and decisions
-[0428](../DECISIONS.md#d0428) to [0430](../DECISIONS.md#d0430) (listed MCP servers).
+[0428](../DECISIONS.md#d0428) to [0430](../DECISIONS.md#d0430) (listed MCP servers). Made with
+decision [0431](../DECISIONS.md#d0431), accepted by the tech lead on 2026-11-13: the wait for a turn
+quota.
 
 The agent runtime is the process that runs each agent's model loop: sessions, context, tools,
 compaction and model calls ([ARCHITECTURE.md section 4](../ARCHITECTURE.md#section-4)). It is a
@@ -251,20 +253,20 @@ while it is full.
 
 ### 4.2 Transitions
 
-| From                                            | To          | Trigger                                                                                      | Guard or effect                                                              |
-| ----------------------------------------------- | ----------- | -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| (none)                                          | `starting`  | A message that starts a turn waits, and no turn runs for the agent                           | Fewer than 4 turns run in the install                                        |
-| `starting`                                      | `refused`   | `turn/start` fails `agent.budget`, `agent.frozen`, `agent.archived` or `agent.not_found`     | Section 8.3 says what waits                                                  |
-| `starting`                                      | `streaming` | The engine started the turn; the context is built (section 7)                                | Compaction runs here when needed                                             |
-| `streaming`                                     | `streaming` | A failure that section 8.2 retries or falls back; or merge point 3                           | Within the attempts of section 8.2 and the limits of section 9               |
-| `streaming`                                     | `tools`     | The response holds tool calls                                                                | The calls are validated first (section 5.2)                                  |
-| `streaming`                                     | `ending`    | The response has no tool call and no message waits to merge; or a failure with no next step  | Outcome `ok`, or `failed`                                                    |
-| `tools`                                         | `committed` | A propose call's body starts                                                                 | The committed mark is stored first (section 6.1)                             |
-| `tools`                                         | `streaming` | The batch ended                                                                              | Budget left, under the call caps, no loop found, no `ask_owner` in the batch |
-| `tools`                                         | `ending`    | The batch ended, and `ask_owner` ran, the budget is spent, a cap was reached or a loop found | Outcome `ok`, `budget` or `loop` (section 9)                                 |
-| `committed`                                     | `ending`    | The batch ended                                                                              | Outcome `ok`                                                                 |
-| `starting`, `streaming`, `tools` or `committed` | `ending`    | `inbox/stop`, `inbox/clear`, the turn's 10 minutes, the runtime's `stop`                     | Outcome `stopped`, or `failed` for the time limit (section 4.4)              |
-| `ending`                                        | `ended`     | `turn/end` answered                                                                          | The engine's running turn for the agent clears                               |
+| From                                            | To          | Trigger                                                                                                 | Guard or effect                                                              |
+| ----------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| (none)                                          | `starting`  | A message that starts a turn waits, and no turn runs for the agent                                      | Fewer than 4 turns run in the install                                        |
+| `starting`                                      | `refused`   | `turn/start` fails `agent.budget`, `agent.frozen`, `agent.archived`, `agent.not_found` or `quota.turns` | Sections 8.3 and 9 say what waits                                            |
+| `starting`                                      | `streaming` | The engine started the turn; the context is built (section 7)                                           | Compaction runs here when needed                                             |
+| `streaming`                                     | `streaming` | A failure that section 8.2 retries or falls back; or merge point 3                                      | Within the attempts of section 8.2 and the limits of section 9               |
+| `streaming`                                     | `tools`     | The response holds tool calls                                                                           | The calls are validated first (section 5.2)                                  |
+| `streaming`                                     | `ending`    | The response has no tool call and no message waits to merge; or a failure with no next step             | Outcome `ok`, or `failed`                                                    |
+| `tools`                                         | `committed` | A propose call's body starts                                                                            | The committed mark is stored first (section 6.1)                             |
+| `tools`                                         | `streaming` | The batch ended                                                                                         | Budget left, under the call caps, no loop found, no `ask_owner` in the batch |
+| `tools`                                         | `ending`    | The batch ended, and `ask_owner` ran, the budget is spent, a cap was reached or a loop found            | Outcome `ok`, `budget` or `loop` (section 9)                                 |
+| `committed`                                     | `ending`    | The batch ended                                                                                         | Outcome `ok`                                                                 |
+| `starting`, `streaming`, `tools` or `committed` | `ending`    | `inbox/stop`, `inbox/clear`, the turn's 10 minutes, the runtime's `stop`                                | Outcome `stopped`, or `failed` for the time limit (section 4.4)              |
+| `ending`                                        | `ended`     | `turn/end` answered                                                                                     | The engine's running turn for the agent clears                               |
 
 <a id="section-4-3"></a>
 
@@ -856,6 +858,14 @@ Orders, watchers and alerts never wait for the budget: they are code.
 | Waiting messages per agent (runtime) | 200                                                                            | The runtime stops taking                                                                                       |
 | Routed operations at once            | 8, then 64 waiting in the engine                                               | `protocol.busy`                                                                                                |
 | Listed MCP calls at once             | 4 per agent and listing                                                        | The fifth answers `busy` ([decision 0428](../DECISIONS.md#d0428))                                              |
+| Turns a minute                       | The install's quota, `turnsPerMinute`; none on self-hosted                     | `turn/start` fails `quota.turns`; the turn waits until `resumesAt`, below                                      |
+
+**A turn quota** ([decision 0431](../DECISIONS.md#d0431);
+[spec 1, section 7.16](protocol.md#section-7-16)). When `turn/start` fails `quota.turns`, the
+runtime keeps every message the turn took, wake-ups among them, sends the status line `turn.quota`
+with `{ when }`, the time `details.resumesAt` names, and starts the turn then. A message that comes
+meanwhile waits for that start. Unlike a spent budget, the wait drops no scheduled or alert turn,
+since it ends within a minute.
 
 The loop guard compares a call's tool name, the SHA-256 of its arguments as JSON with sorted keys,
 and the SHA-256 of its result. Three equal triples anywhere in one turn trip it; the third call's
