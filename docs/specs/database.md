@@ -20,9 +20,10 @@ Approved by the owner on 2026-11-05: the Postgres form of both databases, with t
 and the database roles of bInference Cloud (section 6), on decisions
 [0365](../DECISIONS.md#d0365) to [0367](../DECISIONS.md#d0367).
 
-Made with decision [0437](../DECISIONS.md#d0437), accepted by the tech lead on 2026-11-13: a
-write's key kept as started, with no result, while its write runs (sections 2.7 and 4), in engine
-migration 0065.
+Made with decisions [0437](../DECISIONS.md#d0437) and [0438](../DECISIONS.md#d0438), accepted by
+the tech lead on 2026-11-13: a write's key kept as started, with no result, while its write runs
+(sections 2.7 and 4), in engine migration 0065; and a Postgres write whose `COMMIT` answer was lost
+asks the database how it ended (sections 6.1, 6.5 and 6.6).
 
 <a id="section-1"></a>
 
@@ -510,11 +511,30 @@ three times more; then it fails `store.write_conflict`. A write that fails with 
 `23P01`, a key another write took, runs again once from its first read, within the same three,
 and fails `store.constraint` when it meets one again ([decision 0413](../DECISIONS.md#d0413)). A
 write task that inserts a key its caller chose reads that key first, so its rerun finds the row and
-gives the store port's own answer. A connection lost while `COMMIT` is in flight fails
-`store.commit_unknown` and is never retried by the store; the caller replays the same write, and a
-money write (a signed step, a ledger entry, an execution, a landed fill) answers its own replay as
-its first run did. The worker keeps one writer per database: an install's write tasks run one at
-a time, in arrival order ([decision 0366](../DECISIONS.md#d0366)).
+gives the store port's own answer. The worker keeps one writer per database: an install's write
+tasks run one at a time, in arrival order ([decision 0366](../DECISIONS.md#d0366)).
+
+Before `COMMIT`, each write reads in its own transaction its transaction id, if it has one, its
+session's process id and start, and the server's start time. When `COMMIT`'s answer is lost, to a
+lost connection or an abort while it runs, the write asks the database how its transaction ended
+(`pg_xact_status`), on a connection of its own, every 100 ms within 10 seconds, whatever the
+caller's signal ([decision 0438](../DECISIONS.md#d0438)):
+
+- **Committed:** the write answers what its task gave.
+- **Aborted, or no transaction id:** it runs again from its first read, within the same three.
+- **In progress:** it asks again, and after 3 seconds ends the old session, only while that process
+  id has the same session start and runs the write's own transaction.
+- **Another server start, a status no longer kept, or no connection:** it fails
+  `store.commit_unknown`. Its store host then refuses every later write with that code, those
+  already queued too, and tells its owner through `onCommitUnknown`, which every host with a lease
+  takes; the owner stops the install (section 6.5).
+
+Each ask and each session end gets what is left of the 10 seconds and is cut then. After an abort
+while `COMMIT` runs, `COMMIT`'s own answer and the database's race, and the first decides; the
+write keeps its connection out of the pool until both ended.
+
+No caller replays a write. A money write (a signed step, a ledger entry, an execution, a landed
+fill) still answers its own replay as its first run did.
 
 <a id="section-6-2"></a>
 
@@ -731,6 +751,9 @@ Primary key `(install_id, agent_id)`; an index on `expires_at` for the take scan
 - **A paused worker.** A worker paused inside a transaction loses it to
   `idle_in_transaction_session_timeout`, which frees its locks; its next write fails the fence
   check.
+- **An unknown commit.** A host whose write failed `store.commit_unknown` (section 6.1) writes
+  nothing more, and the worker stops the install's engine and runtime at once, as on a lost lease;
+  the next holder's start reads the rows as after a crash ([decision 0438](../DECISIONS.md#d0438)).
 - **The writer fence stays.** `meta.writer_fence` in the agent schema still guards the runtime
   within a worker ([spec 8, section 2.3](runtime.md#section-2-3)); the lease fence guards both
   schemas across workers.
@@ -761,6 +784,9 @@ keys stay in KMS and the platform's secret store.
   A compromised sign-up path can therefore make a new install but cannot touch an existing one.
 - No service but a deploy connects as the migrator, and the migrator is a member of no other role.
 - No role holds `UPDATE` or `DELETE` on `ledger`.
+- The worker role may run `pg_current_xact_id_if_assigned`, `pg_xact_status` and
+  `pg_postmaster_start_time`, and `pg_terminate_backend` on its own role's sessions, so a write
+  whose `COMMIT` answer was lost can ask how it ended ([decision 0438](../DECISIONS.md#d0438)).
 - A worker cannot insert a confirmation, change a ceiling record, sign or read a key. The ingress
   cannot sign: it holds no key and cannot write `txs`.
 - How a confirmation, a ceiling read-back and a rescue change reach these rows on Cloud is not

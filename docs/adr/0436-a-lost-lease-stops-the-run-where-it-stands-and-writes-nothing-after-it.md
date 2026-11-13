@@ -1,6 +1,6 @@
 # 0436. A lost lease stops the run where it stands and writes nothing after it
 
-Status: Accepted
+Status: Amended by 0438
 
 Accepted by the tech lead on 2026-11-13.
 

@@ -1,6 +1,6 @@
 # 0413. Postgres writes rerun once on a unique violation and money writes answer their own replay
 
-Status: Accepted
+Status: Amended by 0438
 
 Accepted by the tech lead on 2026-11-12. Amends
 [decision 0366](0366-postgres-writes-run-serializable-and-every-ordered-read-names-its-order.md).
