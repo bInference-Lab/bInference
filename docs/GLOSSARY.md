@@ -449,7 +449,7 @@ new name here first, in the change that uses it.
 - **bInference Cloud**: the hosted profile on binference.io, on the same packages.
 - **profile**: self-hosted or Cloud. Only the composition root knows which.
 - **profile parts**: the parts whose adapter depends on the profile: custody (the `Signer` port),
-  the bot's updates, model billing, secrets, the store and market data. Each is a port.
+  the bot's updates, model billing, secrets, the store, market data and quotas. Each is a port.
 - **update source**: where the engine reads a bot's inbound updates, by long polling or through a
   webhook relay. The engine stores each update in the inbox before it acknowledges it.
 - **notice**: one owner notification of spec 4, section 4, such as a freeze or low gas. The engine
@@ -555,6 +555,10 @@ check` tries it as `network.proxy`.
   bInference's owner moves. Not a user's own freeze.
 - **operations control**: the closed-source console from which bInference's owner pulls and lifts
   the breaker, connecting as the database role `binference_ops`.
+- **quota**: a bound bInference Cloud sets on what one user's install holds or how fast its agents
+  work, such as 3 agents with 1 of them live, or 6 proposals a minute per agent; the engine reads it
+  through the `QuotaSource` port, and self-hosted has none. Not a **limit**, which the owner sets
+  and the policy checks, and not a cap, which both profiles keep.
 - **listing catalog**: the Cloud service that writes the reviewed plugin and MCP server listings.
 - **MCP listing**: the listing catalog's entry for one outside MCP server (`mls_…`): its endpoint,
   the MCP revision its review tested, its time and size caps, and up to 8 read tools, each pinned
@@ -897,6 +901,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | 24-hour sums, reservation                   | 24 小时累计额, 额度预留  | The signer service's, per user |
 | breaker (on Cloud)                          | 熔断开关                 | Freezes every Cloud agent      |
 | operations control                          | 运维控制台               | Moves the breaker              |
+| quota (on Cloud)                            | 配额                     | Not a limit (限额)             |
 | listing catalog                             | 上架目录服务             | Writes the listings            |
 | MCP listing                                 | MCP 上架条目             | One server's listing           |
 | listed MCP server                           | 上架 MCP 服务器          | Answers are outside content    |

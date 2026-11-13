@@ -19,6 +19,8 @@ Accepted by the owner on 2026-10-30: the lines of sends by name, staking, bridge
 identity and webhook rules (section 3.9), the plugin permission review (section 3.10), their
 notices (section 4.4), `/positions`' staking and in-transit sections (section 5), their reasons and
 errors (section 6) and the glossary rows they need (section 7).
+Made with decision [0431](../DECISIONS.md#d0431), accepted by the tech lead on 2026-11-13: the
+quota errors (section 6) and the status line `turn.quota` (section 8.1).
 
 Every string here lives in `packages/i18n/messages/{en,zh}/<area>.json` as an ICU message; this spec
 names the keys and fixes the wording.
@@ -1249,6 +1251,18 @@ section 4; spec 1, section 10):
 | `error.remote.not_operator`      | Tailscale refused binference's change because this account may not change its settings, so nothing changed. On Linux, run `sudo tailscale set --operator=$USER` once; on Windows, run binference as the account signed in to Tailscale. Then run `binference expose` again.                                | Tailscale 拒绝了 binference 的更改，因为此账户无权更改其设置，因此未做任何更改。在 Linux 上，请运行一次 `sudo tailscale set --operator=$USER`；在 Windows 上，请用已登录 Tailscale 的账户运行 binference。然后再次运行 `binference expose`。   |
 | `error.remote.not_applied`       | Tailscale did not take binference's change, so binference took back what it set. Run `tailscale serve status` to see what Tailscale holds, then `binference expose` again.                                                                                                                                 | Tailscale 没有接受 binference 的更改，因此 binference 已撤回它设置的内容。请运行 `tailscale serve status` 查看 Tailscale 当前的设置，然后再次运行 `binference expose`。                                                                        |
 
+Errors of quotas, which only bInference Cloud sends (spec 1, section 7.16;
+[decision 0431](../DECISIONS.md#d0431)):
+
+| Key                       | English                                                                                                                | 中文                                                                                                         |
+| ------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `error.quota.agents`      | You have as many agents as your quota on bInference Cloud allows. Archive one before you add another.                  | 你的 Agent 数量已达到 bInference Cloud 配额的上限。请先归档一个，再添加新的。                                |
+| `error.quota.live_agents` | You have as many live agents as your quota on bInference Cloud allows. Switch one to paper, then take this one live.   | 你的实盘 Agent 数量已达到 bInference Cloud 配额的上限。请先将其中一个切换到模拟模式，再让此 Agent 进入实盘。 |
+| `error.quota.orders`      | This agent holds as many open auto orders as your quota on bInference Cloud allows. Cancel one before you add another. | 此 Agent 未完成的自动订单已达到 bInference Cloud 配额的上限。请先取消一个，再添加新的。                      |
+| `error.quota.plugins`     | As many plugins are enabled as your quota on bInference Cloud allows. Disable one, then enable this one.               | 已启用的插件数量已达到 bInference Cloud 配额的上限。请先关闭一个，再启用此插件。                             |
+| `error.quota.proposals`   | This agent proposed as much in the last minute as your quota on bInference Cloud allows. Try again in a minute.        | 此 Agent 最近一分钟内的提议已达到 bInference Cloud 配额的上限。请一分钟后再试。                              |
+| `error.quota.turns`       | This agent answered as often in the last minute as your quota on bInference Cloud allows. It goes on within a minute.  | 此 Agent 最近一分钟内的回答次数已达到 bInference Cloud 配额的上限。它会在一分钟内继续。                      |
+
 <a id="section-7"></a>
 
 ## 7. Glossary additions
@@ -1313,6 +1327,7 @@ after it is there ([ENGINEERING.md section 14](../ENGINEERING.md#section-14)):
 | .bnb name, reverse record                          | .bnb 域名, 反向记录          |
 | on-chain identity, identity registry               | 链上身份, 身份注册表         |
 | permission review, npm provenance                  | 权限审核, npm 来源证明       |
+| quota (on Cloud)                                   | 配额                         |
 
 <a id="section-8"></a>
 
@@ -1332,6 +1347,7 @@ than the agent's words (italics in Telegram).
 | A proposal waits for the owner                                         | `turn.proposalWaits`          | 🟡 Waiting for your answer on its card                                                                                                                                                           | 🟡 等待你在卡片上回复                                                                                                                                    |
 | Proposals held back                                                    | `turn.moreProposals`          | {count, plural, one {One more proposal follows} other {# more proposals follow}} once you answer this card                                                                                       | 你回复此卡片后，还会有 {count, plural, other {# 个提议}}                                                                                                 |
 | The budget is spent                                                    | `turn.budget`                 | Chat paused until {when}: today's model budget is spent. Orders keep running.                                                                                                                    | 对话暂停至 {when}：今日模型预算已用完。自动订单继续运行。                                                                                                |
+| A turn quota is reached ([decision 0431](../DECISIONS.md#d0431))       | `turn.quota`                  | Chat paused until {when}: this agent answered as often in the last minute as your quota on bInference Cloud allows. Your messages wait.                                                          | 对话暂停至 {when}：此 Agent 最近一分钟内的回答次数已达到 bInference Cloud 配额的上限。你的消息会保留。                                                   |
 | Stopped                                                                | `turn.stopped`                | Stopped. Anything you already confirmed still goes through.                                                                                                                                      | 已停止。你已确认的操作仍会执行。                                                                                                                         |
 | Stopped, a proposal's card open                                        | `turn.stoppedCardOpen`        | 🟡 Stopped. The card of its proposal is still open: answer it there.                                                                                                                             | 🟡 已停止。其提议的卡片仍待处理，请在卡片上回复。                                                                                                        |
 | 25 tool calls                                                          | `turn.toolCallLimit`          | Stopped: this answer reached its limit of 25 tool calls. Ask again to go on.                                                                                                                     | 已停止：本次回答已达到 25 次工具调用上限。请再次提问以继续。                                                                                             |
