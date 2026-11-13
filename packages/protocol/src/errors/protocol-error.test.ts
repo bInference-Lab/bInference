@@ -36,6 +36,7 @@ describe("protocolErrorCodes", () => {
       "quote",
       "chain",
       "limit",
+      "quota",
       "config",
       "plugin",
       "skill",

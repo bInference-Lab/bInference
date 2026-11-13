@@ -8,7 +8,7 @@ import {
 const protocolCodes: ReadonlySet<string> = new Set(protocolErrorCodes);
 
 // The codes a call may meet again and pass later unchanged: the engine, the runtime or a provider
-// was busy or away.
+// was busy or away, or a rate quota's minute had not passed (decision 0431).
 const retryableCodes: ReadonlySet<ProtocolErrorCode> = new Set([
   "protocol.busy",
   "engine.starting",
@@ -25,6 +25,8 @@ const retryableCodes: ReadonlySet<ProtocolErrorCode> = new Set([
   "telegram.unreachable",
   "update.registry_unreachable",
   "plugin.call_failed",
+  "quota.proposals",
+  "quota.turns",
 ]);
 
 /**
