@@ -45,7 +45,7 @@ describe("the first chat in Chinese", () => {
       machines.push(machine);
       const { prefix, ...left } = await runInterview(machine, chinese, script);
       expect(prefix).toContain(
-        '<workspace-file name="FIRST-CHAT.md">\n# 初次对话\n\n了解所有者的交易方式。',
+        '<workspace-file name="FIRST-CHAT.md">\n# 初次对话\n\n用一段不打扰所有者的简短介绍了解其交易方式。',
       );
       expect(left).toStrictEqual({
         strategy: chinese.strategy,
