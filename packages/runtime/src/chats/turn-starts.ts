@@ -8,13 +8,13 @@ import { createChatTurn, type TurnReport } from "../loop/chat-turn.js";
 import type { OwnerMessage } from "../loop/model-message.js";
 import type { ReadImage } from "../loop/turn-records.js";
 import type { TurnParts } from "../loop/turn-run.js";
-import { written } from "../sessions/agent-stores.js";
 import { loadConversation } from "../sessions/conversation.js";
 import { withHiddenArgs } from "../sessions/hidden-args.js";
 import { createSessionJournal } from "../sessions/session-journal.js";
 import type { TurnPlace } from "../sessions/turn-place.js";
 import { hiddenToolArgs } from "../tools/agent-tools.js";
 import type { ChatContext, TurnSetup } from "./chat-context.js";
+import { closeSession } from "./close-session.js";
 import { dropMessages } from "./drop-messages.js";
 import { admitGoalTurns, afterGoalTurn, goalLineOf } from "./goal-pace.js";
 import { messagesPerTurn, createQueueMerge } from "./queue-merge.js";
@@ -52,17 +52,6 @@ function mayStart(context: ChatContext, agent: Id<"agt">): boolean {
     (resumesAt === undefined || resumesAt <= context.clock.now()) &&
     chats.running.size < (context.maxRunning ?? maxRunningDefault)
   );
-}
-
-/** Closes a session a clear ended, at the version it holds now; one already closed stays so. */
-export async function closeSession(context: ChatContext, session: Id<"ses">): Promise<void> {
-  const { sessions, fence } = context.stores;
-  const signal = context.lifetime;
-  const stored = await sessions.get(session, { signal });
-  if (stored !== undefined && stored.clearedAtMs === undefined) {
-    const close = { session, atMs: context.clock.now(), version: stored.version, fence };
-    written(await sessions.close(close, { signal }), "close a session");
-  }
 }
 
 // Waits before the agent's next turn: until the time given, or until its next message.

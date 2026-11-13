@@ -3,6 +3,7 @@ import type { InboxMessageView } from "@binference/protocol";
 import type { QueuedMessage } from "@binference/store";
 import { written } from "../sessions/agent-stores.js";
 import type { ChatContext } from "./chat-context.js";
+import { closeSession } from "./close-session.js";
 import { dropMessages } from "./drop-messages.js";
 import { goalStopped } from "./goal-pace.js";
 import {
@@ -12,7 +13,7 @@ import {
   turnMessageOf,
   viewWithoutNul,
 } from "./queued-view.js";
-import { closeSession, kickAgent, kickAll } from "./turn-starts.js";
+import { kickAgent, kickAll } from "./turn-starts.js";
 
 /** The most messages the chat queue holds waiting for one agent (runtime spec, section 3.4). */
 const maxWaiting = 200;
