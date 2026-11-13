@@ -11,6 +11,7 @@ function timerWith(options: { readonly fails?: boolean }) {
   const closers = createClosers();
   const logger = createMemoryLogger({ subsystem: "engine" });
   const runs: number[] = [];
+  const keyRuns: number[] = [];
   startPruneTimer({
     pruneRecords: async () => {
       runs.push(clock.now());
@@ -18,11 +19,15 @@ function timerWith(options: { readonly fails?: boolean }) {
         ? Promise.reject(new BinferenceError({ code: "store.unavailable", message: "Gone." }))
         : Promise.resolve(3);
     },
+    pruneKeys: async () => {
+      keyRuns.push(clock.now());
+      return Promise.resolve(2);
+    },
     clock,
     closers,
     logger,
   });
-  return { clock, closers, logger, runs };
+  return { clock, closers, logger, runs, keyRuns };
 }
 
 describe("the prune timer", () => {
@@ -42,5 +47,12 @@ describe("the prune timer", () => {
     await clock.advance(dayMs);
     expect(runs).toHaveLength(2);
     expect(logger.records().map(({ event }) => event)).toContain("engine.prune_failed");
+  });
+
+  it("prunes the idempotency keys a day old with the records, even when theirs fails", async () => {
+    const { clock, keyRuns } = timerWith({ fails: true });
+    await clock.advance(60_000);
+    await clock.advance(dayMs);
+    expect(keyRuns).toStrictEqual([60_000, 60_000 + dayMs]);
   });
 });

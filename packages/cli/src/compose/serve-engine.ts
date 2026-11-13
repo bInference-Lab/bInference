@@ -54,7 +54,8 @@ function startShutdown(
 }
 
 // The timers that read and tell, locked or not: the launches' pins, the daily summaries, the
-// bridges in transit and the unstaked coin ready to claim; and the daily prune.
+// bridges in transit and the unstaked coin ready to claim; and the daily prune of old records and
+// idempotency keys.
 function startReadTimers(
   composed: ComposedSelfHosted,
   timers: Pick<Parameters<typeof startPinTimer>[0], "clock" | "closers" | "logger">,
@@ -63,7 +64,8 @@ function startReadTimers(
   startSummaryTimer({ sendDailySummaries: composed.sendDailySummaries, ...timers });
   startBridgeTimer({ followBridges: composed.followBridges, ...timers });
   startClaimReadyTimer({ tellClaimsReady: composed.tellClaimsReady, ...timers });
-  startPruneTimer({ pruneRecords: composed.pruneRecords, ...timers });
+  const { server, pruneRecords } = composed;
+  startPruneTimer({ pruneRecords, pruneKeys: async (call) => server.pruneKeys(call), ...timers });
 }
 
 // What a stop left: the positions of paper fills, the rows of order fills, the launches' pins and
