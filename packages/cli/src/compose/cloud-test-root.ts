@@ -7,7 +7,7 @@ import {
   type FakeSigner,
 } from "@binference/chain/testing";
 import type { Id } from "@binference/core";
-import { createManualClock } from "@binference/core/testing";
+import { createManualClock, type ManualClock } from "@binference/core/testing";
 import { createSourceMarketReads } from "@binference/engine/market";
 import type { Quotas } from "@binference/engine/quotas";
 import {
@@ -26,6 +26,8 @@ import {
 } from "@binference/engine/testing";
 import { createSecretVault } from "@binference/platform/testing";
 import { createFakeListedMcpSource, type FakeListedMcpSource } from "@binference/runtime/testing";
+import { createFakePluginCatalog, type FakePluginCatalog } from "../plugins/fake-plugin-catalog.js";
+import { createListingKeys, type ListingKeys } from "../plugins/listing-keys.js";
 import type { ProfileParts } from "./profile-parts.js";
 
 /**
@@ -48,6 +50,8 @@ export interface CloudTestRootOptions {
   readonly wallets?: ReadonlyMap<Id<"wal">, AccountRef>;
   /** The owners' bInference AI credit, each with the agents it pays for. */
   readonly credits?: readonly CreditAccount[];
+  /** The clock the parts run on, the listing catalog's among them; one at 0 when left out. */
+  readonly clock?: ManualClock;
 }
 
 /**
@@ -71,6 +75,12 @@ export interface CloudTestRoot extends ProfileParts {
   readonly listedMcp: FakeListedMcpSource;
   /** Each user's quotas, the beta's by default: `set` puts others in force. */
   readonly quotas: MemoryQuotaSource;
+  /** Plugins need a listing the catalog's own key signed, which the listing keys hold. */
+  readonly pluginListing: {
+    readonly kind: "required";
+    readonly keys: ListingKeys;
+    readonly catalog: FakePluginCatalog;
+  };
 }
 
 /**
@@ -81,7 +91,8 @@ export interface CloudTestRoot extends ProfileParts {
  */
 export function composeCloudTestRoot(options: CloudTestRootOptions = {}): CloudTestRoot {
   const market = createSharedMarketData();
-  const clock = createManualClock(0);
+  const clock = options.clock ?? createManualClock(0);
+  const catalog = createFakePluginCatalog({ clock });
   const marketSource = createFakeMarketSource({
     id: "dexscreener",
     chains: [chainRefSchema.parse("fake:1")],
@@ -113,5 +124,10 @@ export function composeCloudTestRoot(options: CloudTestRootOptions = {}): CloudT
     ],
     listedMcp: createFakeListedMcpSource(),
     quotas: createMemoryQuotaSource(cloudBetaQuotas),
+    pluginListing: {
+      kind: "required",
+      keys: createListingKeys([catalog.signer.spki]),
+      catalog,
+    },
   };
 }

@@ -1,6 +1,7 @@
 import type { AccountRef, AssetRef, ChainRef } from "@binference/chain";
 import type { Id } from "@binference/core";
 import { describe, expect, it } from "vitest";
+import { openEnvelope } from "../plugins/listing-envelope.js";
 import { composeCloudTestRoot } from "./cloud-test-root.js";
 
 const live = { signal: new AbortController().signal };
@@ -9,6 +10,13 @@ const wallet = "wal_0190f1c2-3a4b-7c5d-8e6f-000000000001" as Id<"wal">;
 const account = "fake:1:0x0000000a" as AccountRef;
 const coin = "fake:1/slip44:1" as AssetRef;
 const price = { numerator: 600n, denominator: 10n ** 12n };
+
+// Whether the root's listing keys open the revocation list its catalog answers now.
+async function opensRevocations(root: ReturnType<typeof composeCloudTestRoot>): Promise<boolean> {
+  const { catalog, keys } = root.pluginListing;
+  const answer = await catalog.revocations(live.signal);
+  return answer.ok && openEnvelope(answer.value, { kind: "pluginRevocations", keys }).ok;
+}
 
 describe("cloud test root", () => {
   it("stores a relayed update in the inbox before it acknowledges it", async () => {
@@ -80,5 +88,13 @@ describe("cloud test root", () => {
     expect(root.riskSources.map(({ source, isRequired }) => [source.id, isRequired])).toStrictEqual(
       [["goplus", true]],
     );
+  });
+
+  it("holds every plugin to a listing that its catalog's own key signs", async () => {
+    const root = composeCloudTestRoot();
+
+    expect(root.pluginListing.kind).toBe("required");
+    expect(root.pluginListing.keys.ids).toStrictEqual([root.pluginListing.catalog.signer.id]);
+    await expect(opensRevocations(root)).resolves.toBe(true);
   });
 });

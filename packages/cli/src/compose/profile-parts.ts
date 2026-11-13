@@ -11,6 +11,7 @@ import type { MarketReads } from "@binference/engine/market";
 import type { QuotaSource } from "@binference/engine/quotas";
 import type { RiskSourceUse } from "@binference/engine/risk";
 import type { ListedMcpSource } from "@binference/runtime";
+import type { PluginListingRule } from "../plugins/plugin-listing-rule.js";
 
 /**
  * The parts whose adapter depends on the profile (ARCHITECTURE.md section 30). A composition root
@@ -67,4 +68,10 @@ export interface ProfileParts {
    * Self-hosted holds none (`noQuotas`); Cloud reads each user's numbers.
    */
   readonly quotas: QuotaSource;
+  /**
+   * Plugins: whether a plugin needs a listing bInference signed (decision 0433). Self-hosted needs
+   * none (`notRequired`); Cloud holds the listing keys and reads the catalog. The field is
+   * required, so no composition root leaves installs open by leaving it out.
+   */
+  readonly pluginListing: PluginListingRule;
 }
