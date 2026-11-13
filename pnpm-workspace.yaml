@@ -114,11 +114,6 @@ overrides:
   # The MCP SDK, astro and its sitemap take the catalog's zod too.
   zod: "catalog:"
 
-auditConfig:
-  ignoreGhsas:
-    # Reaches only our own glob patterns through markdownlint-cli2, and no fixed release exists
-    # yet; remove after 2026-11-06.
-    - GHSA-vfj7-8cjw-p6xm
 blockExoticSubdeps: true
 nodeLinker: isolated
 savePrefix: ""
