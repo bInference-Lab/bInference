@@ -7,6 +7,7 @@ import { LedgerScreen } from "../screens/ledger-screen";
 import { LimitsScreen } from "../screens/limits-screen";
 import { PortfolioScreen } from "../screens/portfolio-screen";
 import { RulesScreen } from "../screens/rules-screen";
+import { SafetyScreen } from "../screens/safety-screen";
 import { SkillsScreen } from "../screens/skills-screen";
 
 function buildRouter(basepath: string) {
@@ -18,6 +19,7 @@ function buildRouter(basepath: string) {
     createRoute({ ...parent, path: "/portfolio", component: PortfolioScreen }),
     createRoute({ ...parent, path: "/ledger", component: LedgerScreen }),
     createRoute({ ...parent, path: "/limits", component: LimitsScreen }),
+    createRoute({ ...parent, path: "/safety", component: SafetyScreen }),
     createRoute({ ...parent, path: "/rules", component: RulesScreen }),
     createRoute({ ...parent, path: "/skills", component: SkillsScreen }),
   ]);

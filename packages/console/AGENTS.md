@@ -23,6 +23,11 @@ The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
   hosts (`src/chat/credential-request-card.tsx`); the value goes only in the answer's call. The agent's answers show their
   Markdown through `rich-text`, the reader the Telegram bot uses, drawn as elements
   (`src/chat/rich-text.tsx`, decision 0383).
+- The brakes live on the safety screen (`src/safety/`, decisions 0089 and 0128): a freeze, asked
+  once more in the page, through `safety/freeze` with `confirm`; an unfreeze through
+  `safety/unfreeze` with `loosen`, which only opens its card; the rescue card through
+  `safety/rescue`. A tap on the card confirms, here or on any surface. While the breaker holds,
+  its `safety.breaker` words show in place of every Unfreeze (decision 0441).
 - The stack is React, Vite, Tailwind, shadcn on Base UI, TanStack Router and TanStack Query.
   Add a component with the shadcn CLI (`pnpm dlx shadcn@<version> add <name>` in this folder).
   `src/components/ui/` stays as the CLI writes it: lint, format, dead-code and duplicate checks

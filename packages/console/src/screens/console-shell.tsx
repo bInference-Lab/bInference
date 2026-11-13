@@ -17,6 +17,7 @@ const sections = [
   { to: "/portfolio", key: "console.nav.portfolio" },
   { to: "/ledger", key: "console.nav.ledger" },
   { to: "/limits", key: "console.nav.limits" },
+  { to: "/safety", key: "console.nav.safety" },
   { to: "/rules", key: "console.nav.rules" },
   { to: "/skills", key: "console.nav.skills" },
 ] as const;
