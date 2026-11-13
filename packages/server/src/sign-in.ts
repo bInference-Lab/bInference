@@ -4,6 +4,7 @@ import {
   type AccessStore,
   type DeviceRecord,
   sha256Hex,
+  type TokenKind,
   type TokenRecord,
 } from "@binference/engine";
 import { launchTicketHash, type LaunchClaimOutcome } from "@binference/engine/access";
@@ -42,10 +43,15 @@ type SignInRefusal =
   | "auth.revoked"
   | "auth.local_only";
 
-/** A credential that signed in: its id, the scopes it holds and when it stops working. */
+/**
+ * A credential that signed in: its id, the scopes it holds, the kind of token it is and when it
+ * stops working.
+ */
 export interface Identity {
   readonly credential: string;
   readonly scopes: readonly Scope[];
+  /** The kind of the token it signed in with; a device and a Mini App launch have none. */
+  readonly tokenKind?: TokenKind;
   /** When a token with an expiry stops working; its connections end then. */
   readonly expiresAtMs?: number;
 }
@@ -250,8 +256,8 @@ async function signInWithToken(
     return used;
   }
   const expiry = record.expiresAtMs === undefined ? {} : { expiresAtMs: record.expiresAtMs };
-  const identity = { credential: record.id, scopes: scopesOf(record), ...expiry };
-  return ok({ kind: "signed_in", identity });
+  const identity = { credential: record.id, scopes: scopesOf(record), tokenKind: record.kind };
+  return ok({ kind: "signed_in", identity: { ...identity, ...expiry } });
 }
 
 interface DeviceStart {

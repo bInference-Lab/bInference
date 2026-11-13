@@ -70,6 +70,10 @@ export interface TestServer {
   readonly cliToken: TestToken;
   /** An MCP token: `read` and `propose`. */
   readonly mcpToken: TestToken;
+  /** The agent runtime's token: `read`, `propose` and `agent`. */
+  readonly runtimeToken: TestToken;
+  /** A token the owner registered with `read` and `agent`, of kind `custom`. */
+  readonly customToken: TestToken;
   readonly device: TestDevice;
   /** The pushes the device pairing published, oldest first. */
   readonly pairingPushes: readonly EnginePush[];
@@ -123,6 +127,22 @@ async function addToken(
   };
   await access.addToken(record, { signal: AbortSignal.timeout(1_000) });
   return { id, secret };
+}
+
+// The CLI's, an MCP client's, the agent runtime's and an owner's custom token holding `agent`.
+async function addTokens(
+  access: AccessStore,
+): Promise<Pick<TestServer, "cliToken" | "mcpToken" | "runtimeToken" | "customToken">> {
+  return {
+    cliToken: await addToken(access, { n: 1, kind: "cli", scopes: cliScopes }),
+    mcpToken: await addToken(access, { n: 2, kind: "mcp", scopes: ["read", "propose"] }),
+    runtimeToken: await addToken(access, {
+      n: 3,
+      kind: "runtime",
+      scopes: ["read", "propose", "agent"],
+    }),
+    customToken: await addToken(access, { n: 4, kind: "custom", scopes: ["read", "agent"] }),
+  };
 }
 
 async function addDevice(access: AccessStore): Promise<TestDevice> {
@@ -179,7 +199,7 @@ function authOf(access: AccessStore, options: TestServerOptions): ServerAuth {
   };
 }
 
-/** Starts a protocol server on 127.0.0.1 with fresh memory stores, two tokens and a device. */
+/** Starts a protocol server on 127.0.0.1 with fresh memory stores, four tokens and a device. */
 export async function startTestServer(options: TestServerOptions = {}): Promise<TestServer> {
   const clock = createManualClock(1_000_000);
   const logger = createMemoryLogger({ subsystem: "server" });
@@ -218,8 +238,7 @@ export async function startTestServer(options: TestServerOptions = {}): Promise<
     logger,
     access,
     idempotency,
-    cliToken: await addToken(access, { n: 1, kind: "cli", scopes: cliScopes }),
-    mcpToken: await addToken(access, { n: 2, kind: "mcp", scopes: ["read", "propose"] }),
+    ...(await addTokens(access)),
     device: await addDevice(access),
     pairingPushes,
     lockouts,

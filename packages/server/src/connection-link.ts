@@ -25,6 +25,11 @@ export interface ConnectionContext {
   readonly failures: AuthFailures;
   /** Tells the owner of the lockouts those failures set. */
   readonly alerts: LockoutAlerts;
+  /**
+   * Ends every other connection signed in with the credential, with `bye` `auth.revoked`: the agent
+   * runtime's token holds one connection, its newest (decision 0442).
+   */
+  readonly endOlderSessions: (credential: string, newest: string) => void;
 }
 
 /** Where a connection came from. */
@@ -50,6 +55,8 @@ export type Phase =
   | {
       readonly name: "ready";
       readonly session: Session;
+      /** The connection's call rate, set by the kind of credential it signed in with. */
+      readonly budget: CallBudget;
       /** When the sign-in stops working; a call from then on ends the connection. */
       readonly expiresAtMs?: number;
     }
@@ -68,7 +75,6 @@ export interface Link {
   readonly signedIn: AbortController;
   /** The ids of the calls running, at most `maxCallsInFlight`. */
   readonly inFlight: Set<string>;
-  readonly budget: CallBudget;
 }
 
 // The WebSocket close code for each kind of bye: 1001 going away, 1009 too big, 1008 policy.

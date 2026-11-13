@@ -11,7 +11,7 @@ import {
   type ReplyFrame,
 } from "@binference/protocol";
 import type { WebSocket } from "ws";
-import { createCallBudget } from "./call-budget.js";
+import { type CallBudget, createCallBudget } from "./call-budget.js";
 import {
   type ConnectionContext,
   type Link,
@@ -27,6 +27,8 @@ import type { Identity } from "./sign-in.js";
 
 /** One served connection. */
 export interface Connection {
+  /** The connection's id, `con_…`. */
+  readonly id: string;
   /** Says `bye` with the code and closes the socket. */
   end(code: ErrorCode, message: string): void;
   /** Cuts the socket at once, with no `bye`. */
@@ -57,6 +59,18 @@ function endAtExpiry(link: Link, expiresAtMs: number | undefined): void {
   void clock.sleep(leftMs, link.closed.signal).then(expired, () => undefined);
 }
 
+// The agent runtime's connection carries every agent's turns, helpers and tools, so a token of
+// kind `runtime` gets a budget of its own (decision 0442); any other sign-in gets the shared one.
+function budgetOf(link: Link, identity: Identity): CallBudget {
+  const { clock, limits } = link.context;
+  const isRuntime = identity.tokenKind === "runtime";
+  return createCallBudget({
+    clock,
+    callsPerSecond: isRuntime ? limits.runtimeCallsPerSecond : limits.callsPerSecond,
+    callBurst: isRuntime ? limits.runtimeCallBurst : limits.callBurst,
+  });
+}
+
 function becomeReady(link: Link, open: OpenFrame, identity: Identity): void {
   const { engine } = link.context;
   const caller = {
@@ -73,7 +87,13 @@ function becomeReady(link: Link, open: OpenFrame, identity: Identity): void {
   };
   const session = { caller, subscriber, closed: link.closed.signal };
   const { expiresAtMs } = identity;
-  link.phase.set({ name: "ready", session, ...(expiresAtMs === undefined ? {} : { expiresAtMs }) });
+  const budget = budgetOf(link, identity);
+  const expiry = expiresAtMs === undefined ? {} : { expiresAtMs };
+  link.phase.set({ name: "ready", session, budget, ...expiry });
+  // A reconnect of the agent runtime replaces its connection, so its budget never doubles.
+  if (identity.tokenKind === "runtime") {
+    link.context.endOlderSessions(identity.credential, link.id);
+  }
   link.signedIn.abort();
   sendFrame(link, {
     t: "ready",
@@ -145,7 +165,7 @@ function call(link: Link, phase: Extract<Phase, { name: "ready" }>, frame: CallF
     sayBye(link, "protocol.bad_frame", "A call id is still in use on this connection.");
     return;
   }
-  if (!link.budget.take() || link.inFlight.size >= limits.maxCallsInFlight) {
+  if (!phase.budget.take() || link.inFlight.size >= limits.maxCallsInFlight) {
     const error = { code: "protocol.busy", message: "Too many calls.", retryable: true } as const;
     sendFrame(link, { t: "fail", id: frame.id, error });
     return;
@@ -226,7 +246,6 @@ function startTimers(link: Link): void {
 
 function createLink(socket: WebSocket, peer: Peer, context: ConnectionContext): Link {
   let phase: Phase = { name: "opening" };
-  const { clock, limits } = context;
   return {
     id: context.ids.next("con"),
     socket,
@@ -241,11 +260,6 @@ function createLink(socket: WebSocket, peer: Peer, context: ConnectionContext): 
     closed: new AbortController(),
     signedIn: new AbortController(),
     inFlight: new Set(),
-    budget: createCallBudget({
-      clock,
-      callsPerSecond: limits.callsPerSecond,
-      callBurst: limits.callBurst,
-    }),
   };
 }
 
@@ -306,6 +320,7 @@ export function serveConnection(
     sayBye(link, "auth.origin", "This origin may not connect.");
   }
   return {
+    id: link.id,
     end: (code, message) => sayBye(link, code, message),
     terminate: () => socket.terminate(),
     credential: () => credentialOf(link.phase.get()),

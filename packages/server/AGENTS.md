@@ -27,6 +27,11 @@ The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
 - Every queue and map has a bound in `ServerLimits` and a stated overflow: a call over a bound fails
   with `protocol.busy` or `protocol.too_large`, a connection over one is refused with 503, a slow
   client is cut with 1013 and resumes its topics.
+- A connection's call rate is set at `ready` by what signed it in: a token of kind `runtime`, the
+  agent runtime's, gets `runtimeCallBurst` and `runtimeCallsPerSecond`, and every other sign-in
+  `callBurst` and `callsPerSecond` (decision 0442). A runtime token holds one connection: its
+  newest sign-in ends the older ones with `bye` `auth.revoked`, so a reconnect works and the budget
+  never doubles.
 - A secret never reaches a log, an error or a stored row: a log line names the connection by its
   id, and idempotency keys are kept per credential id.
 - A write's key is marked started in the store, in a write of its own, before its handler runs, and

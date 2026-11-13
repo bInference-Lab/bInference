@@ -35,14 +35,12 @@ describe("createSignIn", () => {
   const clock = createManualClock(500);
   const random = createSeededRandom(3);
 
-  it("signs a token in over IPC with its scopes and marks its use", async () => {
+  it("signs a token in over IPC with its scopes and kind, and marks its use", async () => {
     const access = await accessWithToken();
     const signIn = createSignIn({ auth: { access }, clock, random });
     const step = await signIn.start({ credential: { token }, transport: "ipc", connection }, call);
-    expect(step).toStrictEqual({
-      ok: true,
-      value: { kind: "signed_in", identity: { credential: tokenId, scopes: ["read", "propose"] } },
-    });
+    const identity = { credential: tokenId, scopes: ["read", "propose"], tokenKind: "mcp" };
+    expect(step).toStrictEqual({ ok: true, value: { kind: "signed_in", identity } });
     const [stored] = await access.listTokens(live);
     expect(stored?.lastUsedAtMs).toBe(500);
   });

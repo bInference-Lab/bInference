@@ -165,6 +165,15 @@ function webSocketServerOf(limits: ServerLimits): WebSocketServer {
   });
 }
 
+// The other connections signed in with the credential end: the newest one holds it alone.
+function endOlder(connections: ReadonlySet<Connection>, credential: string, newest: string): void {
+  for (const connection of connections) {
+    if (connection.signedInAs() === credential && connection.id !== newest) {
+      connection.end("auth.revoked", "A newer connection signed in with this token.");
+    }
+  }
+}
+
 function createState(options: ProtocolServerOptions): ServerState {
   const limits = { ...defaultServerLimits, ...options.limits };
   const lifetime = new AbortController();
@@ -195,12 +204,16 @@ function createState(options: ProtocolServerOptions): ServerState {
   const failures = createAuthFailures({ ...limits, clock });
   const report = options.onLockout === undefined ? {} : { report: options.onLockout };
   const alerts = createLockoutAlerts({ ...limits, clock, ...report });
+  const connections = new Set<Connection>();
+  const endOlderSessions = (credential: string, newest: string): void =>
+    endOlder(connections, credential, newest);
+  const parts = { dispatch, signIn, pushes, engine, ids, clock, logger, limits, failures, alerts };
   return {
     limits,
     lifetime,
-    context: { dispatch, signIn, pushes, engine, ids, clock, logger, limits, failures, alerts },
+    context: { ...parts, endOlderSessions },
     webSocketServer: webSocketServerOf(limits),
-    connections: new Set(),
+    connections,
     origins: cell<OriginRules>(closedOriginRules),
     closing: cell<Promise<void> | undefined>(undefined),
     writes,

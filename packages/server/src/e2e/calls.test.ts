@@ -2,7 +2,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import { ok, stableJson } from "@binference/core";
 import { sha256Hex } from "@binference/engine";
 import { createMemoryIdempotencyStore } from "@binference/engine/testing";
-import type { EngineFrame } from "@binference/protocol";
+import type { ClientKind, EngineFrame } from "@binference/protocol";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { OperationHandler, OperationHandlers } from "../operation-handlers.js";
 import type { ServerLimits } from "../server-limits.js";
@@ -33,6 +33,34 @@ function latch(): { readonly opened: Promise<void>; readonly open: () => void } 
 
 function idOf(frame: EngineFrame): string {
   return "id" in frame ? frame.id : frame.t;
+}
+
+// The next frames the server sends, in order.
+async function nextFrames(raw: RawSocket, count: number): Promise<readonly EngineFrame[]> {
+  if (count === 0) {
+    return [];
+  }
+  const first = await raw.next();
+  return [first, ...(await nextFrames(raw, count - 1))];
+}
+
+// A raw socket signed in with a token's secret, as the client kind it names, the CLI by default.
+async function openedAs(
+  server: TestServer,
+  secret: string,
+  kind: ClientKind = "cli",
+): Promise<RawSocket> {
+  const raw = await openRawSocket(server.ipcUrl);
+  raw.send({ ...openFrame({ token: secret }), client: { kind, version: "test" } });
+  await raw.next();
+  return raw;
+}
+
+// Sends one call of `safety/status` per id at once, and answers the ids that failed.
+async function failedOf(raw: RawSocket, ids: readonly string[]): Promise<readonly string[]> {
+  ids.forEach((id) => raw.send({ t: "call", op: "safety/status", args: {}, id }));
+  const frames = await nextFrames(raw, ids.length);
+  return frames.filter((frame) => frame.t === "fail").map(idOf);
 }
 
 describe("calls over a signed-in connection", () => {
@@ -97,6 +125,51 @@ describe("calls over a signed-in connection", () => {
     await server.clock.advance(1_000);
     raw.send({ ...status, id: "4" });
     await expect(raw.next()).resolves.toMatchObject({ t: "reply", id: "4" });
+  });
+
+  it("gives a connection signed in with the agent runtime's token a call rate of its own", async () => {
+    const handlers = { "safety/status": async () => ok({ frozen: false }) };
+    const rates = {
+      callBurst: 2,
+      callsPerSecond: 1,
+      runtimeCallBurst: 4,
+      runtimeCallsPerSecond: 2,
+    };
+    const server = await startTestServer({ handlers, limits: rates });
+    test = server;
+    const runtime = await openedAs(server, server.runtimeToken.secret);
+    const custom = await openedAs(server, server.customToken.secret);
+    expect(await failedOf(runtime, ["1", "2", "3", "4", "5"])).toStrictEqual(["5"]);
+    expect(await failedOf(custom, ["1", "2", "3", "4", "5"])).toStrictEqual(["3", "4", "5"]);
+    await server.clock.advance(1_000);
+    expect(await failedOf(runtime, ["6", "7", "8"])).toStrictEqual(["8"]);
+  });
+
+  it("keeps the shared rate for a token of another kind that calls itself the runtime", async () => {
+    const handlers = { "safety/status": async () => ok({ frozen: false }) };
+    const rates = { callBurst: 2, runtimeCallBurst: 4 };
+    const server = await startTestServer({ handlers, limits: rates });
+    test = server;
+    const claimed = await openedAs(server, server.customToken.secret, "runtime");
+    expect(await failedOf(claimed, ["1", "2", "3"])).toStrictEqual(["3"]);
+  });
+
+  it("lets the runtime's token hold one connection, its newest, while others keep many", async () => {
+    const handlers = { "safety/status": async () => ok({ frozen: false }) };
+    const server = await startTestServer({ handlers });
+    test = server;
+    const older = await openedAs(server, server.runtimeToken.secret, "runtime");
+    const newer = await openedAs(server, server.runtimeToken.secret, "runtime");
+    await expect(older.next()).resolves.toMatchObject({ t: "bye", code: "auth.revoked" });
+    const first = await openedAs(server, server.customToken.secret);
+    const second = await openedAs(server, server.customToken.secret);
+    const answers = await Promise.all(
+      [newer, first, second].map(async (raw) => {
+        raw.send({ t: "call", op: "safety/status", args: {}, id: "1" });
+        return (await raw.next()).t;
+      }),
+    );
+    expect(answers).toStrictEqual(["reply", "reply", "reply"]);
   });
 
   it("ends the connection when a call reuses the id of a running one", async () => {

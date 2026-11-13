@@ -18,6 +18,13 @@ export interface ServerLimits extends AuthFailureLimits, LockoutAlertLimits {
   readonly callsPerSecond: number;
   /** How many calls a connection may make at once before the rate applies. */
   readonly callBurst: number;
+  /**
+   * How many calls a second the agent runtime's connection, signed in with a token of kind
+   * `runtime`, may make once its burst is spent (decision 0442).
+   */
+  readonly runtimeCallsPerSecond: number;
+  /** How many calls the agent runtime's connection may make at once before its rate applies. */
+  readonly runtimeCallBurst: number;
   /** The most connections open at once, over both transports; one more is refused with 503. */
   readonly maxConnections: number;
   /** How long a connection may take from its first byte to `ready`. */
@@ -46,7 +53,8 @@ export interface ServerLimits extends AuthFailureLimits, LockoutAlertLimits {
 
 /**
  * The limits a server uses unless its options change them: the spec's 1 MiB frames, 64 calls in
- * flight and 20 calls a second with a burst of 60, a 10-second sign-in, a ping every 20 seconds and
+ * flight and 20 calls a second with a burst of 60, 100 a second with a burst of 400 on the agent
+ * runtime's connection, a 10-second sign-in, a ping every 20 seconds and
  * a drop after 60 seconds without a pong, pushes kept for 10 minutes or 1,000 per topic, and a
  * source or credential that fails to sign in or pair 10 times within a minute refused for 5
  * minutes, and the owner told of such a lockout at most once in 15 minutes per source or credential.
@@ -57,6 +65,8 @@ export const defaultServerLimits: ServerLimits = {
   maxCallsInFlight: 64,
   callsPerSecond: 20,
   callBurst: 60,
+  runtimeCallsPerSecond: 100,
+  runtimeCallBurst: 400,
   maxConnections: 64,
   signInTimeoutMs: 10_000,
   pingIntervalMs: 20_000,
