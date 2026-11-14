@@ -120,22 +120,30 @@ export function reportUnreachable(
     case "not_running":
       output.fail({
         code: "engine.not_running",
-        key: "connect.notRunning",
+        key: "check.connect.notRunning",
         values: { folder: failure.folder },
       });
       break;
     case "no_sign_in":
       output.fail({
         code: "cli.no_sign_in",
-        key: "connect.noSignIn",
+        key: "check.connect.noSignIn",
         values: { file: failure.file },
       });
       break;
     case "refused":
-      output.fail({ code: failure.code, key: "connect.refused", values: { code: failure.code } });
+      output.fail({
+        code: failure.code,
+        key: "check.connect.refused",
+        values: { code: failure.code },
+      });
       break;
     case "failed":
-      output.fail({ code: failure.code, key: "connect.failed", values: { code: failure.code } });
+      output.fail({
+        code: failure.code,
+        key: "check.connect.failed",
+        values: { code: failure.code },
+      });
       break;
   }
   return 1;

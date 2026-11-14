@@ -162,8 +162,8 @@ describe("binference check", () => {
     const english = await runOn(machine, ["check"]);
     const chinese = await runOn(machine, ["check"], { LANG: "zh_CN.UTF-8" });
 
-    expect(english.stdout).toContain(`${String(messages.en["cli.check.ceilingPromise"])}\n`);
-    expect(chinese.stdout).toContain(`${String(messages.zh["cli.check.ceilingPromise"])}\n`);
+    expect(english.stdout).toContain(`${String(messages.en["check.ceilingPromise"])}\n`);
+    expect(chinese.stdout).toContain(`${String(messages.zh["check.ceilingPromise"])}\n`);
   });
 
   it("leaves no path others can open after --fix", slow, async () => {
@@ -186,7 +186,7 @@ describe("binference check", () => {
     await writeTestConfig(machine.folder, fileUnlock);
     const chinese = await runOn(machine, ["check"], { LANG: "zh_CN.UTF-8" });
     const keys = platformOf(hostOn(machine, [])).stateFolder.keys;
-    const warning = String(messages.zh["cli.check.unlockFile"]).replace("{folder}", keys);
+    const warning = String(messages.zh["check.unlockFile"]).replace("{folder}", keys);
     expect(chinese.stdout).toContain(`  ${warning}\n`);
   });
 
@@ -257,7 +257,7 @@ describe("binference check", () => {
           problem: "bad_key",
         },
       ]);
-      const message = String(messages.en["cli.check.model.bad_key"])
+      const message = String(messages.en["check.model.bad_key"])
         .replaceAll("{provider}", "openai")
         .replace("{model}", testModelId);
       expect(words.stdout).toContain(message);
@@ -285,11 +285,8 @@ describe("binference check", () => {
 
     await runCli(host);
 
-    const note = String(messages.en["cli.check.modelImages.reads"]).replace(
-      "{model}",
-      "router/eyes",
-    );
-    expect(host.stdout()).toContain(String(messages.en["cli.check.notes"]));
+    const note = String(messages.en["check.modelImages.reads"]).replace("{model}", "router/eyes");
+    expect(host.stdout()).toContain(String(messages.en["check.notes"]));
     expect(host.stdout()).toContain(note);
   });
 

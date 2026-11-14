@@ -26,8 +26,10 @@ Rules for this package:
   `warn` (decision 0272).
 - Commands live in `src/commands/`, one file each, and run on a `CliHost`, never on `process`
   directly: only `src/main.ts` reads `process`. Every command takes `--json` and `--yes`; people
-  get messages from the i18n `cli` area through `CliOutput`, scripts get JSON. Log lines and JSON
-  stay English.
+  get messages from the i18n `cli` area through `CliOutput`, scripts get JSON. The words of
+  `binference check` and its findings (each check's message, the engine connection's and the
+  config issues' messages) live in the shared `check` area, which the console reads too; a key
+  that starts with `check.` names it (`cliMessageKey`). Log lines and JSON stay English.
 - `startSelfHosted` opens the owner's bot from `telegram.botToken` (`src/compose/open-bot.ts`):
   grammY over `host.http` with the token's throttler. Its owner and card copies come from
   `engine.sqlite` (`botParts`, decision 0139), so a pairing outlasts a restart. The bot's channel (`bot-channel.ts`) adds its closer at the channels

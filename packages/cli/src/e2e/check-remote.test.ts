@@ -112,7 +112,7 @@ describe("binference check on remote access", () => {
     expect(failed.code).toBe(1);
     expect(failed.findings[0]).toStrictEqual({ check: "remote.funnel", level: "fail" });
     const people = await check(at, both, []);
-    expect(people.stdout).toContain(english.message("cli.check.remote.funnelExtra"));
+    expect(people.stdout).toContain(english.message("check.remote.funnelExtra"));
   });
 
   it("fails what the config records and Tailscale lacks", slow, async () => {

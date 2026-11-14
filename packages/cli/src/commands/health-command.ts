@@ -14,14 +14,14 @@ export async function runHealth(host: CliHost, output: CliOutput): Promise<ExitC
     const health = status.health.map(({ signal: name, state }) => ({ signal: name, state }));
     output.json({ state: status.state, health });
     if (status.state === "ready") {
-      output.say("health.ready");
+      output.say("check.health.ready");
       return 0;
     }
     if (status.state === "locked") {
-      output.say("health.locked");
+      output.say("check.health.locked");
       return 0;
     }
-    output.explain("health.starting");
+    output.explain("check.health.starting");
     return 1;
   });
 }

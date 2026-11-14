@@ -1,5 +1,6 @@
 import { messages } from "@binference/i18n";
 import { afterEach, describe, expect, it } from "vitest";
+import { cliMessageKey } from "../program/cli-message-key.js";
 import { runOn } from "./init-fixtures.js";
 import { connectClient } from "./test-host.js";
 import {
@@ -14,7 +15,7 @@ import {
 
 const slow = { timeout: 60_000 };
 const engines = createRunningEngines();
-const en = (key: string): string => String(messages.en[`cli.${key}`]);
+const en = (key: string): string => String(messages.en[cliMessageKey(key)]);
 const call = (): { readonly signal: AbortSignal } => ({ signal: new AbortController().signal });
 
 afterEach(async () => {
@@ -40,7 +41,7 @@ describe("a self-hosted engine and its agent key", () => {
     expect(status.stdout).toContain(en("status.locked"));
     await expect(runOn(machine, ["health"])).resolves.toMatchObject({
       code: 0,
-      stdout: `${en("health.locked")}\n`,
+      stdout: `${en("check.health.locked")}\n`,
     });
     const client = await connectClient(machine);
     try {

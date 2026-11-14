@@ -1,7 +1,7 @@
 import type { MessageValues } from "@binference/i18n";
 import type { ConfigFix, ConfigIssue, ConfigOrigin } from "../config/config-issue.js";
 
-/** One message of the `cli` area with its values. */
+/** One message the CLI prints, by its key (see `cliMessageKey`), with its values. */
 export interface CliMessage {
   readonly key: string;
   readonly values: MessageValues;
@@ -38,7 +38,7 @@ function problemOf(issue: ConfigIssue): CliMessage {
   const { problem } = issue;
   const unseen = problem.kind === "bad_value" && problem.got === "";
   return {
-    key: unseen ? "config.bad_value_unseen" : `config.${problem.kind}`,
+    key: unseen ? "check.config.bad_value_unseen" : `check.config.${problem.kind}`,
     values: problemValues(issue),
   };
 }
@@ -50,14 +50,14 @@ function fixOf(issue: ConfigIssue): CliMessage {
   const { fix, origin } = issue;
   if (layered.has(fix)) {
     if (origin.layer === "env") {
-      return { key: `configFix.${fix}.env`, values: { variable: origin.name } };
+      return { key: `check.configFix.${fix}.env`, values: { variable: origin.name } };
     }
     if (origin.layer === "flag") {
-      return { key: `configFix.${fix}.flag`, values: { flag: `--set ${origin.name}=` } };
+      return { key: `check.configFix.${fix}.flag`, values: { flag: `--set ${origin.name}=` } };
     }
-    return { key: `configFix.${fix}.file`, values: { file: fileOf(origin) } };
+    return { key: `check.configFix.${fix}.file`, values: { file: fileOf(origin) } };
   }
-  return { key: `configFix.${fix}`, values: { file: fileOf(origin) } };
+  return { key: `check.configFix.${fix}`, values: { file: fileOf(origin) } };
 }
 
 /**

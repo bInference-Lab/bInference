@@ -2,6 +2,7 @@ import type { JsonValue } from "@binference/core";
 import type { Formatter, MessageValues } from "@binference/i18n";
 import type { ProtocolErrorCode } from "@binference/protocol";
 import type { CliHost } from "./cli-host.js";
+import { cliMessageKey } from "./cli-message-key.js";
 
 /** How a command ends: 0 done, 1 an error, 2 refused by policy (ENGINEERING section 24.5). */
 export type ExitCode = 0 | 1 | 2;
@@ -16,9 +17,9 @@ export type StepOutcome<T> =
  * one JSON value per line on standard output and no message at all.
  */
 export interface CliOutput {
-  /** The message under a `cli.` key, on its own line; nothing with `--json`. */
+  /** The message under a key of the CLI, on its own line; nothing with `--json`. */
   say(key: string, values?: MessageValues): void;
-  /** The message under a `cli.` key as an indented item of a list; nothing with `--json`. */
+  /** The message under a key of the CLI as an indented item of a list; nothing with `--json`. */
   item(key: string, values?: MessageValues): void;
   /** A line written as it is, such as a log line; nothing with `--json`. */
   line(text: string): void;
@@ -60,7 +61,7 @@ export interface CliOutputOptions {
 export function createCliOutput(options: CliOutputOptions): CliOutput {
   const { host, formatter, isJson } = options;
   const message = (key: string, values?: MessageValues): string =>
-    formatter.message(`cli.${key}`, values);
+    formatter.message(cliMessageKey(key), values);
   return {
     say(key, values) {
       if (!isJson) {

@@ -2,6 +2,7 @@ import { createFormatter, messages } from "@binference/i18n";
 import { describe, expect, it } from "vitest";
 import type { ConfigIssue, ConfigProblem } from "../config/config-issue.js";
 import { configIssue } from "../config/config-issue.js";
+import { cliMessageKey } from "../program/cli-message-key.js";
 import { configIssueMessages } from "./config-issue-messages.js";
 
 const file = { layer: "file", name: "/srv/binference/config.json5" } as const;
@@ -25,11 +26,15 @@ const problems: readonly ConfigProblem[] = [
 const english = createFormatter({ locale: "en", timeZone: "UTC" });
 
 function rendered(issue: ConfigIssue): readonly string[] {
-  return configIssueMessages(issue).map(({ key, values }) => english.message(`cli.${key}`, values));
+  return configIssueMessages(issue).map(({ key, values }) =>
+    english.message(cliMessageKey(key), values),
+  );
 }
 
 function englishOf(issue: ConfigIssue): readonly string[] {
-  return configIssueMessages(issue).map(({ key }) => messages.en[`cli.${key}`] ?? `missing ${key}`);
+  return configIssueMessages(issue).map(
+    ({ key }) => messages.en[cliMessageKey(key)] ?? `missing ${key}`,
+  );
 }
 
 describe("config issue messages", () => {

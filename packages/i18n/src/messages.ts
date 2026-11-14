@@ -1,6 +1,7 @@
 import enAlert from "../messages/en/alert.json" with { type: "json" };
 import enAutoAsks from "../messages/en/autoAsks.json" with { type: "json" };
 import enCard from "../messages/en/card.json" with { type: "json" };
+import enCheck from "../messages/en/check.json" with { type: "json" };
 import enCli from "../messages/en/cli.json" with { type: "json" };
 import enCmd from "../messages/en/cmd.json" with { type: "json" };
 import enConfig from "../messages/en/config.json" with { type: "json" };
@@ -33,6 +34,7 @@ import enWorkspace from "../messages/en/workspace.json" with { type: "json" };
 import zhAlert from "../messages/zh/alert.json" with { type: "json" };
 import zhAutoAsks from "../messages/zh/autoAsks.json" with { type: "json" };
 import zhCard from "../messages/zh/card.json" with { type: "json" };
+import zhCheck from "../messages/zh/check.json" with { type: "json" };
 import zhCli from "../messages/zh/cli.json" with { type: "json" };
 import zhCmd from "../messages/zh/cmd.json" with { type: "json" };
 import zhConfig from "../messages/zh/config.json" with { type: "json" };
@@ -104,6 +106,7 @@ export const messages: Readonly<Record<MessageLocale, Catalog>> = {
     ...inArea("shell", enShell),
     ...inArea("cmd", enCmd),
     ...inArea("cli", enCli),
+    ...inArea("check", enCheck),
     ...inArea("init", enInit),
     ...inArea("disclaimer", enDisclaimer),
     ...inArea("language", enLanguage),
@@ -138,6 +141,7 @@ export const messages: Readonly<Record<MessageLocale, Catalog>> = {
     ...inArea("shell", zhShell),
     ...inArea("cmd", zhCmd),
     ...inArea("cli", zhCli),
+    ...inArea("check", zhCheck),
     ...inArea("init", zhInit),
     ...inArea("disclaimer", zhDisclaimer),
     ...inArea("language", zhLanguage),

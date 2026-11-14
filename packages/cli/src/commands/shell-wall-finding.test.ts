@@ -2,6 +2,7 @@ import { createManualClock } from "@binference/core/testing";
 import { createFormatter } from "@binference/i18n";
 import type { CommandWallState, ShellEnd, ShellLaunch, ShellLauncher } from "@binference/platform";
 import { describe, expect, it } from "vitest";
+import { cliMessageKey } from "../program/cli-message-key.js";
 import type { CheckFinding } from "./check-finding.js";
 import { shellWallFinding } from "./shell-wall-finding.js";
 
@@ -15,7 +16,7 @@ function wordsOf(finding: CheckFinding): readonly string[] {
     ...(finding.message === undefined ? [] : [finding.message]),
     ...(finding.more ?? []),
   ];
-  return lines.map(({ key, values }) => english.message(`cli.${key}`, values));
+  return lines.map(({ key, values }) => english.message(cliMessageKey(key), values));
 }
 
 // A launcher whose wall a check finds as given, which ends each command as `end` says and

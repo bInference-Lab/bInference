@@ -132,6 +132,6 @@ export function reportJobFailure(output: CliOutput, push: JobFailedPush): void {
   if (isProtocolCode(code)) {
     output.refuse(code);
   } else {
-    output.fail({ code, key: "connect.failed", values: { code } });
+    output.fail({ code, key: "check.connect.failed", values: { code } });
   }
 }

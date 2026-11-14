@@ -97,7 +97,7 @@ function unreachableFinding(
     return engineProblem({
       level: "warn",
       code: "engine.not_running",
-      key: "connect.notRunning",
+      key: "check.connect.notRunning",
       values,
     });
   }
@@ -106,19 +106,19 @@ function unreachableFinding(
     return engineProblem({
       level: "fail",
       code: "cli.no_sign_in",
-      key: "connect.noSignIn",
+      key: "check.connect.noSignIn",
       values,
     });
   }
   const { code, reason } = connection;
-  return engineProblem({ level: "fail", code, key: `connect.${reason}`, values: { code } });
+  return engineProblem({ level: "fail", code, key: `check.connect.${reason}`, values: { code } });
 }
 
 // A fault while reaching the engine, such as a state folder whose socket path is too long, which
 // `start` refuses the same way.
 function faultFinding(error: ErrorOptions["cause"]): CheckFinding {
   const code = error instanceof BinferenceError ? error.code : "unexpected";
-  const key = code === "platform.ipc_path_too_long" ? "error.pathTooLong" : "connect.failed";
+  const key = code === "platform.ipc_path_too_long" ? "check.pathTooLong" : "check.connect.failed";
   return engineProblem({ level: "fail", code, key, values: { code } });
 }
 
@@ -134,7 +134,7 @@ async function reachEngine(options: InstallCheck): Promise<CheckFinding> {
       : engineProblem({
           level: "warn",
           code: `engine.${status.state}`,
-          key: `health.${status.state}`,
+          key: `check.health.${status.state}`,
           values: {},
         });
   } finally {

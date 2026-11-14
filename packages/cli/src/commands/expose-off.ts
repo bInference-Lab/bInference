@@ -66,7 +66,7 @@ export async function runExposeOff(run: CommandRun): Promise<ExitCode> {
       if (typeof off === "string") {
         output.fail({
           code: off,
-          key: offFailures[off] ?? "connect.failed",
+          key: offFailures[off] ?? "check.connect.failed",
           values: { code: off },
         });
         return 1;
