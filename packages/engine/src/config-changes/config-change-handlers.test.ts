@@ -199,6 +199,17 @@ describe("a config change from a chat", () => {
     ).toStrictEqual([]);
   });
 
+  it("fails, opening no card, when the store will not take the new change", async () => {
+    const test = await startTestEngine({
+      configChanges: fakeConfig({}),
+      intents: (store) => ({ ...store, create: async () => Promise.resolve(err("exists")) }),
+    });
+    await expect(propose(test)).rejects.toMatchObject({
+      code: "engine.config_change_not_stored",
+    });
+    expect(test.pushes.some(({ kind }) => kind === "card/opened")).toBe(false);
+  });
+
   it("marks the agent's proposal from a turn that read outside content, and never lets an MCP client propose", async () => {
     const test = await startTestEngine({ configChanges: fakeConfig({}) });
     const marked = { ...testCallers.runtime, turn: { hasOutsideContent: true } };

@@ -356,6 +356,14 @@ describe("an identity registration", () => {
     expect(await test.stores.intents.list(allStates, live)).toStrictEqual([]);
   });
 
+  it("refuses an agent the install does not hold, before anything is stored", async () => {
+    const test = await startIdentityEngine(testRegistry());
+    await expect(
+      test.engine.handlers["identity/register"](testCall({ agent: fixtureId("agt", 9) })),
+    ).resolves.toStrictEqual({ ok: false, error: "agent.not_found" });
+    expect(await test.stores.intents.list(allStates, live)).toStrictEqual([]);
+  });
+
   it("refuses an agent with no main wallet, before anything is stored", async () => {
     const test = await startIdentityEngine(testRegistry(), { wallets: [] });
     await expect(

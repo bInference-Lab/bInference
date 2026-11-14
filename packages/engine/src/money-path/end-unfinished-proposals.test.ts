@@ -14,7 +14,6 @@ import {
   testCall,
   testCallers,
   type TestEngine,
-  type TestEngineOptions,
 } from "../operations/test-engine.js";
 import type { OrderRecord } from "../orders/order-record.js";
 import { eightyCents } from "../orders/test-fills.js";
@@ -53,7 +52,7 @@ function stoppedIn(
 
 /** A test engine whose next run stops once it stored an intent in `state`, and that run's call. */
 interface Stopping {
-  readonly options: Pick<TestEngineOptions, "intents">;
+  readonly options: { readonly intents: (store: IntentStore) => IntentStore };
   /** A call on the stopping run's signal, which the stop aborts. */
   readonly call: <Args>(args: Args) => ReturnType<typeof testCall<Args>>;
 }
@@ -159,6 +158,17 @@ describe("the start's end of the proposals a stop left before their cards", () =
     ]);
     await expect(everyIntent(test)).resolves.toStrictEqual(before);
     expect(waiting.state).toBe("awaiting_confirmation");
+  });
+
+  it("counts no intent whose cancel lost to another write, and moves it no further", async () => {
+    const stop = stoppingIn("quoted");
+    const raced = racedTo("cancelled");
+    const test = await startTestEngine({ intents: (store) => raced(stop.options.intents(store)) });
+    await cutShort(test.engine.handlers["intent/propose"](stop.call(testSwap())));
+
+    await expect(test.restart().endUnfinishedProposals(live)).resolves.toBe(0);
+
+    await expect(onlyIntent(test)).resolves.toMatchObject({ state: "quoted" });
   });
 
   it("ends nothing a second time", async () => {

@@ -220,6 +220,17 @@ describe("resolving a staking request", () => {
     expect(stored).toStrictEqual([]);
   });
 
+  it("refuses a stake of an agent the install does not hold, storing nothing", async () => {
+    const test = await startStakeEngine(testStakingFake());
+    const stranger = idSchema("agt").parse("agt_0190f1c2-3a4b-7c5d-8e6f-0000000000ff");
+
+    await expect(answerOf(test, stakeRequest("stake", { agent: stranger }))).resolves.toBe(
+      "agent.not_found",
+    );
+    const stored = await test.stores.intents.list({ states: [...intentStates], limit: 10 }, live);
+    expect(stored).toStrictEqual([]);
+  });
+
   it("refuses a stake from the agent's bridge wallet, which only makes bridge deposits", async () => {
     const bridge = fixtureId("wal", 0xd2);
     const test = await startStakeEngine(testStakingFake(), { wallets: [testWallet, bridge] });
