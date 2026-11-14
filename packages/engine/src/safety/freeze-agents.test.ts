@@ -20,8 +20,8 @@ import {
   type TestEngine,
   type TestEngineOptions,
 } from "../operations/test-engine.js";
-import type { IntentStore } from "../ports.js";
 import { frozenNoticeKey } from "./freeze-agents.js";
+import { beatenFreezes } from "./test-beaten-freezes.js";
 import { setUpRescue } from "./test-rescue.js";
 
 const live = { signal: new AbortController().signal };
@@ -88,19 +88,6 @@ function freeze(test: TestEngine, agent?: Id<"agt">) {
 
 function frozenNotices(test: TestEngine) {
   return test.pushes.filter(({ topic }) => topic === "notice");
-}
-
-// An intent store whose first `times` freezes another write beats, and how often it was tried.
-function beatenTimes(times: number) {
-  const counted = { tries: 0 };
-  const wrap = (store: IntentStore): IntentStore => ({
-    ...store,
-    async freeze(write, call) {
-      counted.tries += 1;
-      return counted.tries <= times ? err("stale") : store.freeze(write, call);
-    },
-  });
-  return { wrap, tries: () => counted.tries };
 }
 
 describe("safety/freeze", () => {
@@ -195,7 +182,7 @@ describe("safety/freeze", () => {
   });
 
   it("reads again and freezes when another write beat its first try", async () => {
-    const beaten = beatenTimes(1);
+    const beaten = beatenFreezes(1);
     const test = await startTestEngine({ intents: beaten.wrap });
     const waiting = await proposeSwap(test);
     expectOk(await freeze(test));
@@ -204,7 +191,7 @@ describe("safety/freeze", () => {
   });
 
   it("throws, having written nothing, when other writes beat every try", async () => {
-    const test = await startTestEngine({ intents: beatenTimes(1_000).wrap });
+    const test = await startTestEngine({ intents: beatenFreezes(1_000).wrap });
     const waiting = await proposeSwap(test);
     await expect(freeze(test)).rejects.toMatchObject({ code: "engine.freeze_contended" });
     await expect(frozenTimes(test)).resolves.toStrictEqual([undefined]);

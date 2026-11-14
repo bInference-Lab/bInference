@@ -136,6 +136,13 @@ describe("safety/rescue", () => {
     expect(test.pushes.some(({ kind }) => kind === "card/opened")).toBe(true);
   });
 
+  it("leaves out a wallet custody gives no account on the rescue address's chain", async () => {
+    const test = await startRescuing({ custodyWallets: new Map() });
+    const { intent } = expectOk(await rescue(test));
+    const { quote } = await storedOf(test, intent);
+    expect(quote.moves).toStrictEqual(testMoves.slice(0, 2));
+  });
+
   it("opens its card while every agent is frozen and at the strictest send level", async () => {
     const test = await startRescuing();
     expectOk(await test.engine.handlers["safety/freeze"](testCall({})));

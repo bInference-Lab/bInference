@@ -8,6 +8,7 @@ import type { IntentState } from "../intents/intent-state.js";
 import { expectOk, testAgent, testNowMs, testSwap, testWallet } from "../intents/test-intents.js";
 import { startTestEngine, testCall, type TestEngine } from "../operations/test-engine.js";
 import type { AgentStore } from "../ports.js";
+import { beatenFreezes } from "./test-beaten-freezes.js";
 
 const live = { signal: new AbortController().signal };
 
@@ -190,6 +191,68 @@ describe("following the breaker", () => {
       values: { frozen: "none" },
       lists: { agents: [] },
     });
+  });
+
+  it("plans the pull again when another write beat its first try", async () => {
+    const breaker = createMemoryBreaker();
+    const beaten = beatenFreezes(1);
+    const test = await startTestEngine({ breaker, intents: beaten.wrap });
+    const waiting = await storeIntent(test, 1, { kind: "swap", state: "awaiting_confirmation" });
+    breaker.pull(testNowMs);
+    await expect(test.engine.followBreaker(live)).resolves.toStrictEqual({ outcome: "pulled" });
+    expect(beaten.tries()).toBe(2);
+    await expect(stateOf(test, waiting)).resolves.toBe("cancelled");
+    await expect(markOf(test)).resolves.toStrictEqual([testNowMs, 1]);
+  });
+
+  it("rejects as contended, having written nothing, when other writes beat every try", async () => {
+    const breaker = createMemoryBreaker();
+    const beaten = beatenFreezes(1_000);
+    const test = await startTestEngine({ breaker, intents: beaten.wrap });
+    const waiting = await storeIntent(test, 1, { kind: "swap", state: "awaiting_confirmation" });
+    breaker.pull(testNowMs);
+    await expect(test.engine.followBreaker(live)).rejects.toMatchObject({
+      code: "engine.freeze_contended",
+      retryable: true,
+    });
+    expect(beaten.tries()).toBe(5);
+    await expect(stateOf(test, waiting)).resolves.toBe("awaiting_confirmation");
+    await expect(markOf(test)).resolves.toStrictEqual([undefined, undefined]);
+    expect(breakerNotices(test)).toStrictEqual([]);
+  });
+
+  it("keeps the version another engine on the install applied while its own write was planned", async () => {
+    const breaker = createMemoryBreaker();
+    const other: { engine?: Pick<TestEngine["engine"], "followBreaker"> } = {};
+    // The other engine applies the same version while this engine's first write waits to land.
+    const test = await startTestEngine({
+      breaker,
+      intents: (store) => ({
+        ...store,
+        async freeze(write, call) {
+          const first = other.engine;
+          delete other.engine;
+          await first?.followBreaker(live);
+          return store.freeze(write, call);
+        },
+      }),
+    });
+    other.engine = test.restart();
+    breaker.pull(testNowMs);
+    await expect(test.engine.followBreaker(live)).resolves.toStrictEqual({ outcome: "kept" });
+    await expect(markOf(test)).resolves.toStrictEqual([testNowMs, 1]);
+    await expect(ledgerKinds(test)).resolves.toStrictEqual(["freeze"]);
+    expect(breakerNotices(test)).toStrictEqual([pulledNotice]);
+  });
+
+  it("answers unread with the breaker's own code for a source fault that names none", async () => {
+    const breaker = { read: async () => Promise.reject(new Error("socket hang up")) };
+    const test = await startTestEngine({ breaker });
+    await expect(test.engine.followBreaker(live)).resolves.toStrictEqual({
+      outcome: "unread",
+      errorCode: "breaker.unreadable",
+    });
+    await expect(markOf(test)).resolves.toStrictEqual([undefined, undefined]);
   });
 
   it("keeps the state applied last while its source does not answer", async () => {
