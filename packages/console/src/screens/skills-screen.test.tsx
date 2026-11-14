@@ -54,6 +54,26 @@ describe("the skills screen", () => {
     expect(applied.map(({ args }) => args)).toStrictEqual([{ proposal: skillsFixture.clean }]);
   });
 
+  it("lists the skills the agent can load, with what each is and where it came from", async () => {
+    renderSignedIn(<SkillsScreen />, { client: fakeClient(skillsAnswers).client });
+    await settle();
+    const installed = screen.getByRole("region", { name: "Installed skills" });
+    const names = within(installed)
+      .getAllByRole("listitem")
+      .map((item) => item.querySelector("[data-slot=card-title]")?.textContent);
+    expect(names).toStrictEqual(["grid-trader", "my-notes", "safe-swap"]);
+    const bundled = itemOf("safe-swap");
+    expect(within(bundled).getByText("Checks a token before a swap.")).toBeDefined();
+    expect(within(bundled).getByText("Comes with binference.")).toBeDefined();
+    expect(itemOf("grid-trader").textContent).toContain(
+      `Installed from npm:grid-trader@1.0.0 on Nov 2, 2026, 08:00:00, pinned to SHA-256 ${skillsFixture.hash}.`,
+    );
+    expect(itemOf("my-notes").textContent).toContain(
+      "In the workspace of main, at workspace/my-notes/SKILL.md.",
+    );
+    expect(within(installed).queryByText("planted")).toBeNull();
+  });
+
   it("accepts a waiting skill at the hash the list read, after asking once more", async () => {
     const engine = fakeClient(skillsAnswers);
     renderSignedIn(<SkillsScreen />, { client: engine.client });

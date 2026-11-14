@@ -1,5 +1,6 @@
 import { useAgents } from "../connection/use-agents";
 import { useText } from "../i18n/console-text";
+import { InstalledSkills } from "../skills/installed-skills";
 import { ProposalItem } from "../skills/proposal-item";
 import { usePendingProposals } from "../skills/use-skill-review";
 import { WaitingSkills } from "../skills/waiting-skills";
@@ -8,7 +9,8 @@ import { ScreenState } from "./screen-state";
 /**
  * The skills the agents propose and the workspace skills that wait (decision 0408): each pending
  * skill proposal with its findings, its changes, Apply and Reject; then each agent's waiting
- * skills with Accept. Nothing here applies without the owner's press.
+ * skills with Accept. Nothing here applies without the owner's press. Below them, the skills the
+ * agents can load and where each came from (decision 0207).
  */
 export function SkillsScreen(): React.JSX.Element {
   const text = useText();
@@ -37,6 +39,7 @@ export function SkillsScreen(): React.JSX.Element {
       {agents.map((agent) => (
         <WaitingSkills key={agent.agent} agent={agent.agent} />
       ))}
+      <InstalledSkills agents={agents} />
     </section>
   );
 }

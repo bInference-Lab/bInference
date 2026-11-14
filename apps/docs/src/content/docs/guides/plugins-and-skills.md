@@ -92,6 +92,10 @@ agent's tools, cards and caps. binference ships these skills:
 
 The skills never pick an amount for you, and never draft a launch.
 
+The console's Skills screen lists the skills the agent can load, each with its description and
+where it came from: shipped with binference, installed from its source with `binference skill add`,
+or written in an agent's workspace.
+
 ### Skills the agent proposes
 
 The agent can write a new skill, or a change to one of its workspace skills, as a skill proposal.

@@ -45,7 +45,9 @@ The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
   where it stands with its listing where one is needed. Disable runs `plugin/disable` with
   `confirm` at once; Enable, asked once more, runs `plugin/enable` with `admin`, so the Mini App
   only disables. Adding, updating and removing stay in the terminal, where the review needs the
-  owner. It loads again on the `job` and `notice` topics.
+  owner. The skills screen (`src/skills/`) also lists the skills the agents can load, from
+  `skill/list` without an agent and each agent's own workspace skills, with where each came from
+  (decision 0207). Both load again on the `job` topic, and the plugins on the `notice` topic.
 - The stack is React, Vite, Tailwind, shadcn on Base UI, TanStack Router and TanStack Query.
   Add a component with the shadcn CLI (`pnpm dlx shadcn@<version> add <name>` in this folder).
   `src/components/ui/` stays as the CLI writes it: lint, format, dead-code and duplicate checks
@@ -75,8 +77,8 @@ The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
   control listener the test drives; its agent runtime answers the routed operations on the engine's
   clock, as beside a self-hosted engine. It pairs a browser, confirms a paper card, reads the chat
   so far again after a reload, makes an alert rule whose alert the engine's webhook listener takes
-  and fills on paper, confirms and cancels a paper order on the auto orders screen, disables and
-  enables a plugin of the smoke engine's plugin lock
+  and fills on paper, confirms and cancels a paper order on the auto orders screen, lists the
+  installed skills, disables and enables a plugin of the smoke engine's plugin lock
   (`packages/cli/src/console-smoke/smoke-shelves.ts`), freezes and unfreezes on the safety screen,
   changes limits, and fails on any error or warning the page logs.
   The safety tests (`safety.spec.ts`, `safety.zh.spec.ts`) run last, since a freeze cancels the

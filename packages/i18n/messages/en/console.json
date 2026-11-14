@@ -351,5 +351,11 @@
   "plugins.disable": "Disable",
   "plugins.switched": "{state, select, enabled {{name} is on. Its tools reach the agent from its next turn.} other {{name} is off. The agent can no longer call its tools.}}",
   "plugins.failed": "Nothing changed: {reason}",
-  "plugins.noEnable": "This connection can disable a plugin, but not enable one. Enable it in the console of a paired computer, or in the terminal with `binference plugin enable`."
+  "plugins.noEnable": "This connection can disable a plugin, but not enable one. Enable it in the console of a paired computer, or in the terminal with `binference plugin enable`.",
+  "skills.installedList": "Installed skills",
+  "skills.installedIntro": "The skills the agent can load, and where each came from. Install a skill in the terminal with `binference skill add`.",
+  "skills.installedNone": "No skill is installed.",
+  "skills.fromBundled": "Comes with binference.",
+  "skills.fromInstalled": "Installed from `{source}` on {at}, pinned to SHA-256 `{hash}`.",
+  "skills.fromWorkspace": "In the workspace of {name}, at `{location}`."
 }

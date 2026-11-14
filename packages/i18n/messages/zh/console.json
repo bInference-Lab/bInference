@@ -351,5 +351,11 @@
   "plugins.disable": "停用",
   "plugins.switched": "{state, select, enabled {{name} 已启用。从下一轮起，Agent 可以使用它的工具。} other {{name} 已停用。Agent 不能再使用它的工具。}}",
   "plugins.failed": "没有任何更改：{reason}",
-  "plugins.noEnable": "此连接可以停用插件，但不能启用插件。请在已配对电脑的控制台中启用，或在终端中运行 `binference plugin enable`。"
+  "plugins.noEnable": "此连接可以停用插件，但不能启用插件。请在已配对电脑的控制台中启用，或在终端中运行 `binference plugin enable`。",
+  "skills.installedList": "已安装的技能",
+  "skills.installedIntro": "Agent 可以加载的技能，以及每个技能的来源。请在终端中用 `binference skill add` 安装技能。",
+  "skills.installedNone": "尚未安装技能。",
+  "skills.fromBundled": "随 binference 提供。",
+  "skills.fromInstalled": "于 {at} 从 `{source}` 安装，按 SHA-256 `{hash}` 锁定。",
+  "skills.fromWorkspace": "位于 {name} 的工作区：`{location}`。"
 }

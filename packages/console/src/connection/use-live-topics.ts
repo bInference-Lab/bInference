@@ -18,6 +18,7 @@ const followed: readonly (readonly [PushTopic, QueryKey])[] = [
   ["alert", ["alerts"]],
   ["notice", ["plugins"]],
   ["job", ["plugins"]],
+  ["job", ["skills"]],
 ];
 
 /**
@@ -27,8 +28,8 @@ const followed: readonly (readonly [PushTopic, QueryKey])[] = [
  * fill reloads the alert rules, whose state and fills they change. A notice or a card, such as a
  * freeze from Telegram or a rescue that moves on, reloads the safety screen. An order's move,
  * fill or skip, or a move of its card, reloads the auto orders, and a fire the alerts. A notice,
- * such as a plugin stopped after crashing, reloads the plugins, and so does a job's end, such as
- * an install in the terminal.
+ * such as a plugin stopped after crashing, reloads the plugins, and a job's end, such as an
+ * install in the terminal, the plugins and the skills.
  */
 export function useLiveTopics(): void {
   const { topics } = useEngine();

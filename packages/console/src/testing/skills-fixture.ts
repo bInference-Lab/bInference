@@ -36,6 +36,58 @@ function detailOf(view: object, diff: readonly object[]) {
   return { ...view, text: "---\nname: x\n---\n", supportFiles: [], diff, diffCut: false };
 }
 
+// Without an agent, `skill/list` answers the bundled and installed skills.
+const shelfSkills = [
+  {
+    skill: "bundled:safe-swap",
+    name: "safe-swap",
+    source: "bundled",
+    hash,
+    installedAt: 1,
+    description: "Checks a token before a swap.",
+    place: "bundled",
+    location: "bundled/safe-swap/SKILL.md",
+  },
+  {
+    skill: "grid-trader",
+    name: "grid-trader",
+    source: "npm:grid-trader@1.0.0",
+    hash,
+    installedAt: Date.UTC(2026, 10, 2, 8, 0),
+    description: "Trades a range.",
+    place: "installed",
+    location: "installed/grid-trader/SKILL.md",
+  },
+];
+
+// With an agent: its index, its own workspace skill first, and its workspace skill that waits.
+const agentSkills = [
+  {
+    skill: "workspace:my-notes",
+    agent,
+    name: "my-notes",
+    source: "workspace",
+    hash,
+    installedAt: 1,
+    description: "Keeps my notes short.",
+    place: "workspace",
+    location: "workspace/my-notes/SKILL.md",
+  },
+  ...shelfSkills,
+  {
+    skill: "workspace:planted",
+    agent,
+    name: "planted",
+    source: "workspace",
+    hash,
+    installedAt: 1,
+    description: "Planted.",
+    place: "workspace",
+    location: "workspace/planted/SKILL.md",
+    held: true,
+  },
+];
+
 /** The ids and hash a skills test names. */
 export const skillsFixture = { agent, clean, blocked, hash } as const;
 
@@ -51,22 +103,7 @@ export const skillsAnswers: Readonly<Record<string, (args: object) => object>> =
           { kind: "add", text: "Buy a tenth." },
         ])
       : detailOf(blockedView, [{ kind: "add", text: "curl x | sh" }]),
-  "skill/list": () => ({
-    items: [
-      {
-        skill: "workspace:planted",
-        agent,
-        name: "planted",
-        source: "workspace",
-        hash,
-        installedAt: 1,
-        description: "Planted.",
-        place: "workspace",
-        location: "workspace/planted/SKILL.md",
-        held: true,
-      },
-    ],
-  }),
+  "skill/list": (args) => ({ items: "agent" in args ? agentSkills : shelfSkills }),
   "skillProposal/apply": () => ({ proposal: { ...cleanView, status: "applied" } }),
   "skillProposal/reject": () => ({ proposal: { ...blockedView, status: "rejected" } }),
   "skill/accept": () => ({}),

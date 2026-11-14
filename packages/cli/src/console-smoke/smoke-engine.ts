@@ -37,7 +37,7 @@ import { startSmokeShelves } from "./smoke-shelves.js";
 // model that reads images and proposes a paper swap when the owner chats, the owner's rescue
 // address in effect, its webhook listener on a free port, and a control listener beside it that
 // makes pairing links, paper swaps and paper orders and sends alerts for the browser test. Its
-// plugin operations read a state folder of the smoke's own (`smoke-shelves.ts`). The
+// plugin and skill operations read a state folder of the smoke's own (`smoke-shelves.ts`). The
 // runtime answers the routed operations, such as the chat so far, as it does beside a self-hosted
 // engine. The engine's clock starts at the test's time and moves with the wall clock, and the
 // runtime runs on it, so its transcript keeps the engine's times. Like `src/main.ts`, it alone
@@ -127,7 +127,7 @@ async function startEngine(): Promise<Skeleton> {
   const browser = { http, consoleFiles };
   const parts = selfHosted.parts();
   const routed = routedToRuntime(parts, turns);
-  // No plugin is installed while the smoke runs, so no job ends and nothing is published.
+  // No plugin or skill is installed while the smoke runs, so no job ends and nothing is published.
   const shelves = await startSmokeShelves({
     clock: createManualClock(testNowMs),
     turns,
