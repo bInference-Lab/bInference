@@ -8,7 +8,7 @@ test("lists the installed skills in Chinese, in light and in dark", async ({
   request,
 }, testInfo) => {
   const problems = await openPaired(page, request);
-  await page.getByRole("link", { name: "技能" }).click();
+  await page.getByRole("link", { name: "系统" }).click();
   await expect(page.getByRole("heading", { name: "技能", level: 1 })).toBeVisible();
   const installed = page.getByRole("region", { name: "已安装的技能" }).getByRole("listitem");
   await expect(installed.filter({ hasText: "grid-trader" })).toContainText(

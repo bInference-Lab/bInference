@@ -1,4 +1,6 @@
 import { expect, test } from "@playwright/test";
+import { chineseNav } from "./chinese-nav.zh";
+import { openSystemPage } from "./smoke-nav";
 import { openPaired, ownerReadsChinese, shootThemes } from "./smoke-page";
 
 // Runs after plugins.spec.ts, which leaves fear-index on as it found it; this test does too.
@@ -9,8 +11,7 @@ test("disables and enables a plugin in Chinese, in light and in dark", async ({
   request,
 }, testInfo) => {
   const problems = await openPaired(page, request);
-  await page.getByRole("link", { name: "插件" }).click();
-  await expect(page.getByRole("heading", { name: "插件", level: 1 })).toBeVisible();
+  await openSystemPage(page, chineseNav, "插件");
   const plugins = page.getByRole("list", { name: "已安装的插件" }).locator(":scope > li");
   const fear = plugins.filter({ hasText: "fear-index" });
   await expect(fear.getByText("已启用", { exact: true })).toBeVisible();

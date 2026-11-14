@@ -57,6 +57,11 @@ The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
   shows: the report in the words of the shared i18n `check` area, as the terminal prints it, its
   problems, warnings and notes, and every other check by its id and level. A fix runs only in the
   terminal; a connection without `admin` is told where to run the checks.
+- The skills, plugins, logs and checks screens sit in one System section
+  (`src/screens/system-layout.tsx`): its entry opens the skills, and a nav of its own leads to the
+  four, each at its own route. The console's sections stand on one line beside the brand and the
+  connection in a wide window, and in a row of their own that scrolls sideways on a phone, with the
+  one shown scrolled into view.
 - The stack is React, Vite, Tailwind, shadcn on Base UI, TanStack Router and TanStack Query.
   Add a component with the shadcn CLI (`pnpm dlx shadcn@<version> add <name>` in this folder).
   `src/components/ui/` stays as the CLI writes it: lint, format, dead-code and duplicate checks
@@ -89,7 +94,8 @@ The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
   and fills on paper, confirms and cancels a paper order on the auto orders screen, lists the
   installed skills, disables and enables a plugin of the smoke engine's plugin lock
   (`packages/cli/src/console-smoke/smoke-shelves.ts`), reads the smoke engine's log
-  (`smoke-log.ts`), runs its checks (`smoke-checks.ts`), freezes and unfreezes on the safety
+  (`smoke-log.ts`), runs its checks (`smoke-checks.ts`), lays out the sections at 1280 and 375
+  pixels wide (`smoke-nav.ts`), freezes and unfreezes on the safety
   screen, changes limits, and fails on any error or warning the page logs.
   The safety tests (`safety.spec.ts`, `safety.zh.spec.ts`) run last, since a freeze cancels the
   cards that wait and a lower limit stays. The control listener

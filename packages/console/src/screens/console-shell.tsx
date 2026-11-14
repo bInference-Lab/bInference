@@ -1,4 +1,4 @@
-import { Link, Outlet } from "@tanstack/react-router";
+import { Link, Outlet, useMatchRoute } from "@tanstack/react-router";
 import { CircleIcon } from "lucide-react";
 import { BrandLockup } from "../brand/brand-lockup";
 import { Alert, AlertDescription } from "../components/ui/alert";
@@ -9,6 +9,7 @@ import { useLiveTopics } from "../connection/use-live-topics";
 import { MessageText, useText } from "../i18n/console-text";
 import { NoticeArea } from "../notices/notice-area";
 import { SignInEnded } from "./sign-in-ended";
+import { useOnSystemPage } from "./system-layout";
 
 // The console's sections, in the order the header shows them.
 const sections = [
@@ -20,10 +21,7 @@ const sections = [
   { to: "/limits", key: "console.nav.limits" },
   { to: "/safety", key: "console.nav.safety" },
   { to: "/rules", key: "console.nav.rules" },
-  { to: "/skills", key: "console.nav.skills" },
-  { to: "/plugins", key: "console.nav.plugins" },
-  { to: "/logs", key: "console.nav.logs" },
-  { to: "/checks", key: "console.nav.checks" },
+  { to: "/skills", key: "console.nav.system" },
 ] as const;
 
 const statusKeys = {
@@ -49,6 +47,54 @@ function ConnectionBadge(): React.JSX.Element {
   );
 }
 
+// Scrolls the row of sections, where it scrolls sideways on a narrow screen, so the link of the
+// section shown is in view. React calls it with each link that becomes the shown one.
+function scrollIntoRow(link: HTMLAnchorElement | null): void {
+  const row = link?.parentElement;
+  if (link === null || row === null || row === undefined) {
+    return;
+  }
+  const end = link.offsetLeft + link.offsetWidth;
+  if (link.offsetLeft < row.scrollLeft) {
+    row.scrollLeft = link.offsetLeft;
+  } else if (end > row.scrollLeft + row.clientWidth) {
+    row.scrollLeft = end - row.clientWidth;
+  }
+}
+
+// The console's sections: one line beside the brand on a wide screen, a row of their own that
+// scrolls sideways on a phone. The System entry stays marked on each of its pages.
+function SectionsNav(): React.JSX.Element {
+  const text = useText();
+  const matchRoute = useMatchRoute();
+  const onSystemPage = useOnSystemPage();
+  return (
+    <nav
+      aria-label={text("console.nav.label")}
+      className="relative order-last flex min-w-0 basis-full gap-1 overflow-x-auto [scrollbar-width:none] lg:order-none lg:flex-1 lg:basis-auto"
+    >
+      {sections.map((section) => {
+        const shown =
+          section.key === "console.nav.system"
+            ? onSystemPage
+            : matchRoute({ to: section.to }) !== false;
+        return (
+          <Link
+            key={section.key}
+            to={section.to}
+            ref={shown ? scrollIntoRow : undefined}
+            aria-current={shown ? "page" : undefined}
+            data-status={shown ? "active" : undefined}
+            className="shrink-0 rounded-md px-2.5 py-1.5 text-sm whitespace-nowrap text-muted-foreground hover:text-foreground data-[status=active]:bg-accent data-[status=active]:text-foreground"
+          >
+            {text(section.key)}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
 /** The frame of every console screen: the brand, the sections, the connection. */
 export function ConsoleShell(): React.JSX.Element {
   const text = useText();
@@ -57,20 +103,10 @@ export function ConsoleShell(): React.JSX.Element {
   return (
     <div className="flex min-h-svh flex-col">
       <header className="border-b">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-3">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
           <BrandLockup className="h-6 w-auto text-foreground" />
           <span className="sr-only">{text("console.brand")}</span>
-          <nav aria-label={text("console.nav.label")} className="flex flex-wrap gap-1">
-            {sections.map((section) => (
-              <Link
-                key={section.to}
-                to={section.to}
-                className="rounded-md px-2.5 py-1.5 text-sm text-muted-foreground hover:text-foreground data-[status=active]:bg-accent data-[status=active]:text-foreground"
-              >
-                {text(section.key)}
-              </Link>
-            ))}
-          </nav>
+          <SectionsNav />
           <div className="ml-auto">
             <ConnectionBadge />
           </div>

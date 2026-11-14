@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { englishNav, openSystemPage } from "./smoke-nav";
 import { openPaired, shootThemes } from "./smoke-page";
 
 // The smoke engine's log holds an info line, a warning that names a host, an error and a line of
@@ -9,8 +10,7 @@ test("reads the engine log's newest lines by the bundle's rules, in light and in
   request,
 }, testInfo) => {
   const problems = await openPaired(page, request);
-  await page.getByRole("link", { name: "Logs" }).click();
-  await expect(page.getByRole("heading", { name: "Logs", level: 1 })).toBeVisible();
+  await openSystemPage(page, englishNav, "Logs");
   const lines = page.getByRole("list", { name: "Log lines" }).getByRole("listitem");
   await expect(lines).toHaveCount(3);
   await expect(lines.filter({ hasText: "order.skipped" })).toContainText("host=[omitted]");

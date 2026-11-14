@@ -9,7 +9,7 @@ test("lists the installed skills with where each came from, in light and in dark
   request,
 }, testInfo) => {
   const problems = await openPaired(page, request);
-  await page.getByRole("link", { name: "Skills" }).click();
+  await page.getByRole("link", { name: "System" }).click();
   await expect(page.getByRole("heading", { name: "Skills", level: 1 })).toBeVisible();
   await expect(page.getByText("No skill proposal waits for you.")).toBeVisible();
   const installed = page.getByRole("region", { name: "Installed skills" }).getByRole("listitem");

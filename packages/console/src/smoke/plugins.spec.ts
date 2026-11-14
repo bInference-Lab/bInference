@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { englishNav, openSystemPage } from "./smoke-nav";
 import { openPaired, shootThemes } from "./smoke-page";
 
 // The smoke engine's plugin lock holds fear-index, on, and whale-feed, stopped after crashing; the
@@ -9,8 +10,7 @@ test("shows each plugin's review, disables one and enables it again, in light an
   request,
 }, testInfo) => {
   const problems = await openPaired(page, request);
-  await page.getByRole("link", { name: "Plugins" }).click();
-  await expect(page.getByRole("heading", { name: "Plugins", level: 1 })).toBeVisible();
+  await openSystemPage(page, englishNav, "Plugins");
   const plugins = page.getByRole("list", { name: "Installed plugins" }).locator(":scope > li");
   const fear = plugins.filter({ hasText: "fear-index" });
   await expect(fear.getByText("On", { exact: true })).toBeVisible();

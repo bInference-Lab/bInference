@@ -371,6 +371,8 @@
   "logs.cut": "为保持页面简洁，较早的日志行未显示。在终端中运行 `binference logs` 可查看全部。",
   "logs.noAdmin": "此连接无法读取引擎日志。请在已配对电脑的控制台中查看，或在终端中运行 `binference logs`。",
   "nav.checks": "检查",
+  "nav.system": "系统",
+  "nav.systemPages": "系统页面",
   "checks.title": "检查",
   "checks.intro": "`binference check` 会检查本机的：配置、谁可以打开状态文件夹、模型、代理、引擎、远程访问、插件沙箱以及命令的隔离墙。每个问题都会说明下一步。",
   "checks.run": "运行检查",

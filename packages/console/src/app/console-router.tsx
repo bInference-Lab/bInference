@@ -13,10 +13,14 @@ import { PortfolioScreen } from "../screens/portfolio-screen";
 import { RulesScreen } from "../screens/rules-screen";
 import { SafetyScreen } from "../screens/safety-screen";
 import { SkillsScreen } from "../screens/skills-screen";
+import { SystemLayout } from "../screens/system-layout";
 
 function buildRouter(basepath: string) {
   const root = createRootRoute({ component: ConsoleShell });
   const parent = { getParentRoute: () => root };
+  // The System section holds its pages under a layout of its own, with no path of its own.
+  const system = createRoute({ ...parent, id: "system", component: SystemLayout });
+  const inSystem = { getParentRoute: () => system };
   const routeTree = root.addChildren([
     createRoute({ ...parent, path: "/", component: ConfirmationsScreen }),
     createRoute({ ...parent, path: "/chat", component: ChatScreen }),
@@ -26,10 +30,12 @@ function buildRouter(basepath: string) {
     createRoute({ ...parent, path: "/limits", component: LimitsScreen }),
     createRoute({ ...parent, path: "/safety", component: SafetyScreen }),
     createRoute({ ...parent, path: "/rules", component: RulesScreen }),
-    createRoute({ ...parent, path: "/skills", component: SkillsScreen }),
-    createRoute({ ...parent, path: "/plugins", component: PluginsScreen }),
-    createRoute({ ...parent, path: "/logs", component: LogsScreen }),
-    createRoute({ ...parent, path: "/checks", component: ChecksScreen }),
+    system.addChildren([
+      createRoute({ ...inSystem, path: "/skills", component: SkillsScreen }),
+      createRoute({ ...inSystem, path: "/plugins", component: PluginsScreen }),
+      createRoute({ ...inSystem, path: "/logs", component: LogsScreen }),
+      createRoute({ ...inSystem, path: "/checks", component: ChecksScreen }),
+    ]),
   ]);
   return createRouter({ routeTree, basepath });
 }

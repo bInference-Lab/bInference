@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { englishNav, openSystemPage } from "./smoke-nav";
 import { openPaired, shootThemes } from "./smoke-page";
 
 // The smoke engine's check/run answers findings of every level: a problem, a warning, a note, two
@@ -9,8 +10,7 @@ test("runs the checks in the engine and shows their report, in light and in dark
   request,
 }, testInfo) => {
   const problems = await openPaired(page, request);
-  await page.getByRole("link", { name: "Checks" }).click();
-  await expect(page.getByRole("heading", { name: "Checks", level: 1 })).toBeVisible();
+  await openSystemPage(page, englishNav, "Checks");
   await page.getByRole("button", { name: "Run the checks" }).click();
   await expect(page.getByText("6 checks ran: 1 problem and 1 warning.")).toBeVisible();
   await expect(page.getByRole("region", { name: "Problems" })).toContainText(

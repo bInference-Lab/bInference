@@ -371,6 +371,8 @@
   "logs.cut": "Older lines are left out to keep this page small. `binference logs` in the terminal shows them all.",
   "logs.noAdmin": "This connection cannot read the engine's log. Read it in the console of a paired computer, or with `binference logs` in the terminal.",
   "nav.checks": "Checks",
+  "nav.system": "System",
+  "nav.systemPages": "System pages",
   "checks.title": "Checks",
   "checks.intro": "What `binference check` checks on this machine: the config, who can open the state folder, the model, the proxy, the engine, remote access, the plugin sandbox and the shell's wall. Each problem names its next step.",
   "checks.run": "Run the checks",

@@ -46,11 +46,11 @@ review again, with what changed. If an update fails, the version you had stays.
 | `binference plugin disable <name>` | Disables a plugin at once     |
 | `binference plugin remove <name>`  | Removes a plugin and its data |
 
-The console's Plugins screen shows each installed plugin with what its review showed: its kinds,
-hosts, tools and config keys, its npm provenance and publisher, and the pin of its files. It says
-whether the plugin is on, and why one is off: you disabled it, it crashed, or its files changed.
-Disable works there, in the Mini App too; Enable asks once more and needs the console of a paired
-computer. Adding, updating and removing stay in the terminal.
+The console's Plugins screen, under System, shows each installed plugin with what its review showed:
+its kinds, hosts, tools and config keys, its npm provenance and publisher, and the pin of its files.
+It says whether the plugin is on, and why one is off: you disabled it, it crashed, or its files
+changed. Disable works there, in the Mini App too; Enable asks once more and needs the console of a
+paired computer. Adding, updating and removing stay in the terminal.
 
 ### What a plugin changes for the agent
 
@@ -92,9 +92,9 @@ agent's tools, cards and caps. binference ships these skills:
 
 The skills never pick an amount for you, and never draft a launch.
 
-The console's Skills screen lists the skills the agent can load, each with its description and
-where it came from: shipped with binference, installed from its source with `binference skill add`,
-or written in an agent's workspace.
+The console's Skills screen, under System, lists the skills the agent can load, each with its
+description and where it came from: shipped with binference, installed from its source with
+`binference skill add`, or written in an agent's workspace.
 
 ### Skills the agent proposes
 
