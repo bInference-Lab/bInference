@@ -357,5 +357,17 @@
   "skills.installedNone": "No skill is installed.",
   "skills.fromBundled": "Comes with binference.",
   "skills.fromInstalled": "Installed from `{source}` on {at}, pinned to SHA-256 `{hash}`.",
-  "skills.fromWorkspace": "In the workspace of {name}, at `{location}`."
+  "skills.fromWorkspace": "In the workspace of {name}, at `{location}`.",
+  "nav.logs": "Logs",
+  "logs.title": "Logs",
+  "logs.intro": "The newest lines of the engine's log, as the support bundle keeps them: ids, error codes and events, never a host, a label, chat text or a secret. Log lines are in English. Follow them as they come with `binference logs --follow` in the terminal.",
+  "logs.omittedMark": "`[omitted]` stands for a value the rules hold back, such as a host name.",
+  "logs.levels": "Lines to show",
+  "logs.level": "{level, select, debug {Every line} info {Info and above} warn {Warnings and errors} other {Errors only}}",
+  "logs.reload": "Reload",
+  "logs.list": "Log lines",
+  "logs.none": "No log line at this level yet.",
+  "logs.omitted": "{count, plural, one {# line was} other {# lines were}} left out, since {count, plural, one {it is} other {they are}} not in the log's JSON shape.",
+  "logs.cut": "Older lines are left out to keep this page small. `binference logs` in the terminal shows them all.",
+  "logs.noAdmin": "This connection cannot read the engine's log. Read it in the console of a paired computer, or with `binference logs` in the terminal."
 }

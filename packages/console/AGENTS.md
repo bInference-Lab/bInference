@@ -48,6 +48,10 @@ The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
   owner. The skills screen (`src/skills/`) also lists the skills the agents can load, from
   `skill/list` without an agent and each agent's own workspace skills, with where each came from
   (decision 0207). Both load again on the `job` topic, and the plugins on the `notice` topic.
+- The logs screen (`src/logs/`, decision 0446) reads the engine log's newest lines through
+  `log/recent` with `admin`, at the level the owner picks, each as the log writes it in English and
+  kept by the support bundle's field rules, with the count of lines left out; it reads again on
+  Reload only. A connection without `admin`, such as the Mini App, is told where to read them.
 - The stack is React, Vite, Tailwind, shadcn on Base UI, TanStack Router and TanStack Query.
   Add a component with the shadcn CLI (`pnpm dlx shadcn@<version> add <name>` in this folder).
   `src/components/ui/` stays as the CLI writes it: lint, format, dead-code and duplicate checks
@@ -79,8 +83,9 @@ The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
   so far again after a reload, makes an alert rule whose alert the engine's webhook listener takes
   and fills on paper, confirms and cancels a paper order on the auto orders screen, lists the
   installed skills, disables and enables a plugin of the smoke engine's plugin lock
-  (`packages/cli/src/console-smoke/smoke-shelves.ts`), freezes and unfreezes on the safety screen,
-  changes limits, and fails on any error or warning the page logs.
+  (`packages/cli/src/console-smoke/smoke-shelves.ts`), reads the smoke engine's log
+  (`smoke-log.ts`), freezes and unfreezes on the safety screen, changes limits, and fails on any
+  error or warning the page logs.
   The safety tests (`safety.spec.ts`, `safety.zh.spec.ts`) run last, since a freeze cancels the
   cards that wait and a lower limit stays. The control listener
   sets the owner's language, which the signed-in console speaks, for the Chinese screenshots. It is

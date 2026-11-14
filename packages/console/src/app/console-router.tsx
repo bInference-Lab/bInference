@@ -5,6 +5,7 @@ import { ConfirmationsScreen } from "../screens/confirmations-screen";
 import { ConsoleShell } from "../screens/console-shell";
 import { LedgerScreen } from "../screens/ledger-screen";
 import { LimitsScreen } from "../screens/limits-screen";
+import { LogsScreen } from "../screens/logs-screen";
 import { OrdersScreen } from "../screens/orders-screen";
 import { PluginsScreen } from "../screens/plugins-screen";
 import { PortfolioScreen } from "../screens/portfolio-screen";
@@ -26,6 +27,7 @@ function buildRouter(basepath: string) {
     createRoute({ ...parent, path: "/rules", component: RulesScreen }),
     createRoute({ ...parent, path: "/skills", component: SkillsScreen }),
     createRoute({ ...parent, path: "/plugins", component: PluginsScreen }),
+    createRoute({ ...parent, path: "/logs", component: LogsScreen }),
   ]);
   return createRouter({ routeTree, basepath });
 }

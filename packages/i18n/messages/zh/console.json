@@ -357,5 +357,17 @@
   "skills.installedNone": "尚未安装技能。",
   "skills.fromBundled": "随 binference 提供。",
   "skills.fromInstalled": "于 {at} 从 `{source}` 安装，按 SHA-256 `{hash}` 锁定。",
-  "skills.fromWorkspace": "位于 {name} 的工作区：`{location}`。"
+  "skills.fromWorkspace": "位于 {name} 的工作区：`{location}`。",
+  "nav.logs": "日志",
+  "logs.title": "日志",
+  "logs.intro": "引擎日志中最新的几行，按诊断包的规则保留：只有 ID、错误码和事件，绝不包含主机名、标签、对话内容或密钥。日志行为英文。在终端中运行 `binference logs --follow` 可实时查看。",
+  "logs.omittedMark": "`[omitted]` 表示被规则隐去的值，例如主机名。",
+  "logs.levels": "显示的日志行",
+  "logs.level": "{level, select, debug {全部} info {Info 及以上} warn {警告和错误} other {仅错误}}",
+  "logs.reload": "重新加载",
+  "logs.list": "日志行",
+  "logs.none": "此级别还没有日志行。",
+  "logs.omitted": "{count, plural, other {有 # 行}}不是日志的 JSON 格式，因此未显示。",
+  "logs.cut": "为保持页面简洁，较早的日志行未显示。在终端中运行 `binference logs` 可查看全部。",
+  "logs.noAdmin": "此连接无法读取引擎日志。请在已配对电脑的控制台中查看，或在终端中运行 `binference logs`。"
 }

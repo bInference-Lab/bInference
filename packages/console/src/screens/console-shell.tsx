@@ -22,6 +22,7 @@ const sections = [
   { to: "/rules", key: "console.nav.rules" },
   { to: "/skills", key: "console.nav.skills" },
   { to: "/plugins", key: "console.nav.plugins" },
+  { to: "/logs", key: "console.nav.logs" },
 ] as const;
 
 const statusKeys = {

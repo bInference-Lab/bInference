@@ -30,6 +30,7 @@ import { superviseRuntime } from "../e2e/runtime-machine.js";
 import { createSystemClock } from "../runtime/system-clock.js";
 import { type SmokeAlerts, startSmokeAlerts } from "./smoke-alerts.js";
 import { smokeAlertSchema, smokeEnvSchema } from "./smoke-engine.schema.js";
+import { startSmokeLog } from "./smoke-log.js";
 import { startSmokeShelves } from "./smoke-shelves.js";
 
 // The console's smoke engine (`pnpm test:console`): the skeleton's engine on in-memory stores and
@@ -37,7 +38,8 @@ import { startSmokeShelves } from "./smoke-shelves.js";
 // model that reads images and proposes a paper swap when the owner chats, the owner's rescue
 // address in effect, its webhook listener on a free port, and a control listener beside it that
 // makes pairing links, paper swaps and paper orders and sends alerts for the browser test. Its
-// plugin and skill operations read a state folder of the smoke's own (`smoke-shelves.ts`). The
+// plugin and skill operations read a state folder of the smoke's own (`smoke-shelves.ts`), and
+// `log/recent` a log file of its own (`smoke-log.ts`). The
 // runtime answers the routed operations, such as the chat so far, as it does beside a self-hosted
 // engine. The engine's clock starts at the test's time and moves with the wall clock, and the
 // runtime runs on it, so its transcript keeps the engine's times. Like `src/main.ts`, it alone
@@ -134,7 +136,8 @@ async function startEngine(): Promise<Skeleton> {
     publish: () => undefined,
     logger,
   });
-  const handlers = { ...routed.handlers, ...shelves.handlers };
+  const log = await startSmokeLog();
+  const handlers = { ...routed.handlers, ...shelves.handlers, ...log.handlers };
   const skeleton = await startSkeleton(parts, { browser, turns, owner, handlers });
   const stopClock = new AbortController();
   const clockFollows = followWallClock(skeleton.clock, stopClock.signal);
@@ -151,6 +154,7 @@ async function startEngine(): Promise<Skeleton> {
       await runtime.stop(live().signal);
       await skeleton.close();
       await shelves.close();
+      await log.close();
       stopClock.abort();
       await clockFollows;
     },
