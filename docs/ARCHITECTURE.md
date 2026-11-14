@@ -946,7 +946,9 @@ Decided in [decision 0007](DECISIONS.md#d0007).
   any provider and checks it with one small live call before it keeps it
   ([decision 0221](DECISIONS.md#d0221)).
 - **Any provider allowed.** Any OpenAI- or Anthropic-compatible provider works instead, local models
-  included.
+  included. A model listed in `models.repairToolCalls` gets its malformed tool calls repaired in
+  form: a repaired read runs, and any other repaired call, a proposal, a change or a command, is
+  held for the model to send again, never sent or run ([decision 0447](DECISIONS.md#d0447)).
 - **Roles:**
   - `main` talks and proposes.
   - `fast` handles summaries, compaction and classification.

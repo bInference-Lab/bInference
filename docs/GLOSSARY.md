@@ -336,6 +336,11 @@ new name here first, in the change that uses it.
   ordered batch, after a batch, or when the model would end the turn.
 - **held-back proposal**: a propose call after the first in one model response; it is not run, and
   the agent proposes it in a later turn.
+- **call repair**: reading a malformed tool call of a model `models.repairToolCalls` lists in the
+  form it meant, its JSON and its tool's name, never a value of a call that is not a read
+  ([decision 0447](DECISIONS.md#d0447)).
+- **held call**: a call that is not a read and passes its check only after a call repair; it never
+  runs, and the model sends it again in valid form. Not a **held-back proposal**.
 - **stable prefix, volatile tail**: the parts of a model call's context that stay the same from
   call to call (instructions, workspace files, skills index, tools), and the live facts after the
   history.
@@ -808,6 +813,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | schedule (of a DCA order)               | 计划                    |                             |
 | scheduled turn, wake                    | 定时轮, 唤醒            |                             |
 | tool calling, function calling          | 工具调用, 函数调用      |                             |
+| call repair                             | 调用修复                |                             |
 | web search, web fetch                   | 联网搜索, 网页抓取      |                             |
 | research                                | 调研                    |                             |
 | market intelligence                     | 市场情报                |                             |

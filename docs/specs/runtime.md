@@ -268,7 +268,7 @@ while it is full.
 | `starting`                                      | `refused`   | `turn/start` fails `agent.budget`, `agent.frozen`, `agent.archived`, `agent.not_found` or `quota.turns` | Sections 8.3 and 9 say what waits                                            |
 | `starting`                                      | `streaming` | The engine started the turn; the context is built (section 7)                                           | Compaction runs here when needed                                             |
 | `streaming`                                     | `streaming` | A failure that section 8.2 retries or falls back; or merge point 3                                      | Within the attempts of section 8.2 and the limits of section 9               |
-| `streaming`                                     | `tools`     | The response holds tool calls                                                                           | The calls are validated first (section 5.2)                                  |
+| `streaming`                                     | `tools`     | The response holds tool calls                                                                           | The calls are validated first (section 5.2), a listed model's repaired (5.6) |
 | `streaming`                                     | `ending`    | The response has no tool call and no message waits to merge; or a failure with no next step             | Outcome `ok`, or `failed`                                                    |
 | `tools`                                         | `committed` | A propose call's body starts                                                                            | The committed mark is stored first (section 6.1)                             |
 | `tools`                                         | `streaming` | The batch ended                                                                                         | Budget left, under the call caps, no loop found, no `ask_owner` in the batch |
@@ -494,7 +494,9 @@ content, so the tool's text tells the model to end its turn instead of polling i
   strings, then checked with `safeParse` and no coercion. Money is a decimal string of base units,
   parsed to `bigint`.
 - A call that fails the check, or names no known tool, does not run: its result is the error with
-  the schema's issues, so the model can correct it. A refused call never commits the turn.
+  the schema's issues, so the model can correct it. A refused call never commits the turn. A
+  listed model's call may be repaired first, and a repaired propose or control call is held, never
+  run (section 5.6).
 - The runtime fills the agent and the wallet; the model gives the terms and its reason, shown on the
   card as "agent says". A wallet outside the agent's own is refused
   ([decision 0176](../DECISIONS.md#d0176)).
@@ -627,6 +629,76 @@ self-hosted agent gets none of these tools.
   counts nothing. A listing the settings in force no longer name answers `revoked`; a call from a
   turn that started on another version of its listing answers `listing_changed`. Each change of state goes to the `health` line, and the engine logs it with ids only;
   no argument, answer or word of a server reaches a log.
+
+<a id="section-5-6"></a>
+
+### 5.6 Repairing a call
+
+A model that `models.repairToolCalls` lists ([spec 2, section 6.3](config.md#section-6-3)) gets
+its malformed calls repaired in form, never in meaning
+([decision 0447](../DECISIONS.md#d0447)). Any model of any provider kind may be listed; none is by
+default. A response is repaired only when the model that wrote it is listed, whatever its place in
+the chain, in the agent's own turns and its helpers'.
+
+- **When.** A call the tool box refused for its name, for arguments that are not JSON, or for its
+  schema, in a response that did not stop at its output limit
+  ([decision 0171](../DECISIONS.md#d0171)). A call that passes as written is never touched, and
+  nothing else is repaired.
+- **One pass.** The steps below run once, in this order, and give one candidate or none. The
+  candidate goes through the tool box again: the same parser, limits, schema and address check
+  (section 5.4) as any call. Nothing is tried a second way.
+- **Form steps**, on a call of any kind:
+  - `fence`: arguments in one code fence, with or without a language, give what is inside it;
+  - `words_around`: text of at most 64 characters before or after the arguments, made only of
+    letters, spaces and `.`, `:`, `_`, `-`, `/`, `<` or `>`, gives the one JSON object between,
+    when there is exactly one; text with a digit, a quote, a brace or a square bracket ends the
+    repair;
+  - `string_object`: arguments written as a JSON string that holds one object give that object;
+  - `single_quotes`: each string in single quotes is written in double quotes, its characters
+    unchanged; an escape JSON lacks, other than `\'`, ends the repair;
+  - `trailing_comma`: a comma before a closing brace or bracket goes;
+  - `closed`: objects and lists left open when the text ends right after a whole value are
+    closed; text that ends inside a string, after a key, a colon or a comma, ends the repair;
+  - `name_case`, `name_prefix`: a name in another case, or behind one of `functions`, `function`,
+    `tools`, `tool` or `default_api` joined by `.`, `/` or `:`, gives the one declared tool it
+    names, when exactly one fits.
+- **Value steps**, on a `read` or `machine` call only, for a field of an object under no `anyOf`,
+  `oneOf` or `allOf` in the tool's JSON Schema:
+  - `integer_string`: a string of plain digits where the schema asks for an integer gives that
+    integer, when it is below 2^53;
+  - `null_optional`: `null` for a field the schema does not require and that takes no `null` leaves
+    the field out.
+- **Never repaired:** a string's content; a number where the schema asks for a string, so no
+  amount, address, asset or id changes form; a required field the model left out; a field the
+  schema does not name, which is neither dropped nor renamed; a name that fits no declared tool, or
+  two; a call written in the response's text; a call refused for its size, its depth, a key written
+  twice, an integer past 2^53 or an address only a note holds.
+- **A read or a machine call runs** with the repaired arguments, as any call does: beside other
+  reads when its tool allows, under its time limits, the shell's ask modes and walls, and the loop
+  guard, which compares the repaired arguments. Its result starts with the line "binference fixed
+  the form of this call before it ran (`<steps>`). Write plain JSON arguments with nothing around
+  them."
+- **A propose or a control call is held.** It never runs and never reaches the engine. Its result is
+  an error that never ran: "not run: binference fixed the form of this call before reading it
+  (`<steps>`), and a call that proposes or changes something never runs repaired. Nothing was sent.
+  If this is the call you meant, send it again exactly as below, with plain JSON arguments and
+  nothing around them; if not, write the call you meant.", then the tool's name and the arguments
+  as binference read them, as one line of JSON. The turn does not commit, and the next model call
+  follows. A call sent again in valid form is a new call, checked as written and never compared
+  with the held one. A held call never counts as a held-back proposal (section 6.2), and an
+  `ask_owner` beside it still runs, since no card asks the owner.
+- **A refused candidate.** A candidate the tool box refuses gets that refusal, after the line that
+  names the repair, and never runs.
+- **The hold limit.** A turn holds at most 3 calls. The next propose or control call a repair would
+  hold is refused as written, and a turn that has not committed ends after that batch with outcome
+  `loop` and the status line `turn.unreadableCalls` (spec 4, section 8.1). Repairs of reads and
+  machine calls have no limit of their own: the turn's 25 tool calls bound them.
+- **The record.** The `tool_call` event keeps the name and the arguments as the model wrote them;
+  a repaired call's event adds `repair`, with the name and the arguments as binference read them
+  and the steps. The conversation the model reads, in the turn and after a reload, carries a
+  repaired call by its repaired name and arguments; a refused call goes back as for any model. The
+  progress line names the repaired tool. A repair adds no new content and never sets or clears the
+  turn's mark (section 5.4).
 
 <a id="section-6"></a>
 
@@ -897,6 +969,7 @@ Orders, watchers and alerts never wait for the budget: they are code.
 | Waiting messages per agent (runtime) | 200                                                                            | The runtime stops taking                                                                                       |
 | Routed operations at once            | 8, then 64 waiting in the engine                                               | `protocol.busy`                                                                                                |
 | Listed MCP calls at once             | 4 per agent and listing                                                        | The fifth answers `busy` ([decision 0428](../DECISIONS.md#d0428))                                              |
+| Held calls                           | 3 in a turn, from a listed model (section 5.6)                                 | The next call a repair would hold is refused; the turn ends after its batch, `loop`                            |
 | Turns a minute                       | The install's quota, `turnsPerMinute`; none on self-hosted                     | `turn/start` fails `quota.turns`; the turn waits until `resumesAt`, below                                      |
 
 **A turn quota** ([decision 0431](../DECISIONS.md#d0431);
@@ -955,7 +1028,7 @@ write checks the fence in its transaction. The order of writes is part of this s
 1. A message is written to `chat_queue` before `inbox/take`.
 2. A turn's row is written once `turn/start` answers, with the messages it took.
 3. A tool call is written before it runs; a propose call with the committed mark, before the engine
-   call.
+   call. A repaired call is written as the model wrote it, with its repair (section 5.6).
 4. A tool result is written when it returns, before the next call starts.
 5. `usage/record` is answered before the runtime acts on the model's response.
 6. The final text event is written before `turn/say` with `final: true`, and `turn/end` comes last.
@@ -1000,6 +1073,11 @@ tech lead on 2026-11-13:
 - **Spec 4.** `autoAsks.listedMcp` and the progress line `turn.tool.listedMcp`, in both languages.
 - **Spec 6, section 5.** The auto test names `listedMcp` after `plugin` and before `outside`.
 
+Made with [decision 0447](../DECISIONS.md#d0447), accepted by the tech lead on 2026-11-14:
+
+- **Spec 2.** `models.repairToolCalls`, empty by default, from config version 24.
+- **Spec 4.** The status line `turn.unreadableCalls`, in both languages.
+
 <a id="section-13"></a>
 
 ## 13. Invariants
@@ -1017,6 +1095,8 @@ Property and scripted-model tests hold these for every generated run:
    reason.
 9. Compaction never removes an identifier from what the model sees.
 10. A message that joins a turn never sits between a tool call and its result.
+11. No propose or control call runs from repaired arguments: a held call reaches neither its tool
+    nor the engine.
 
 <a id="section-14"></a>
 
@@ -1029,6 +1109,8 @@ Property and scripted-model tests hold these for every generated run:
   marked.
 - Cards come from the stored intent, never from model text; propose arguments are typed, checked
   without coercion, and carry money as decimal strings.
+- A repair changes a call's form, never a value of a propose or control call, and never a string;
+  a repaired propose or control call is held for the model to send again, never sent.
 - The runtime fills the agent and the wallet; the model never picks them.
 - A deployer's token name reaches the model only through a tool that marks the turn.
 - No proposal is retried, after a failure or a restart.
