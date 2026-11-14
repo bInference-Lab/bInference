@@ -103,7 +103,22 @@ test("answers the agent's question once with a button in the chat", async ({
   const log = page.getByRole("log", { name: "Chat with main" });
   await expect(log).toContainText("Hours it is.", { timeout: 20_000 });
   await expect(log.getByText("Hours it is.")).toHaveCount(1);
+  // The owner's message shows once: the page knows its copy in the chat so far.
+  await expect(log.getByText("Ask me first", { exact: true })).toHaveCount(1);
   await shootThemes(page, testInfo, "question-answered");
+
+  // After a reload the chat so far comes from the runtime's transcript, each message once.
+  await page.reload();
+  const history = page.getByRole("log", { name: "Chat with main" });
+  await expect(history.getByText("Hours it is.")).toHaveCount(1);
+  await expect(history.getByText("Ask me first", { exact: true })).toHaveCount(1);
+  await expect(history).toContainText("Buy the token on this chart");
+  await expect(history).toContainText("1 image");
+  // The settle message that started the turn after the swap filled is binference's, not shown.
+  await expect(history).toContainText("The card is open");
+  await expect(history).not.toContainText("you proposed is now");
+  await expect(page.getByText(/^The chat so far could not load\./u)).toHaveCount(0);
+  await shootThemes(page, testInfo, "chat-history");
   expect(problems).toStrictEqual([]);
 });
 
