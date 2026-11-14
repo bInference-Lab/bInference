@@ -369,5 +369,20 @@
   "logs.none": "No log line at this level yet.",
   "logs.omitted": "{count, plural, one {# line was} other {# lines were}} left out, since {count, plural, one {it is} other {they are}} not in the log's JSON shape.",
   "logs.cut": "Older lines are left out to keep this page small. `binference logs` in the terminal shows them all.",
-  "logs.noAdmin": "This connection cannot read the engine's log. Read it in the console of a paired computer, or with `binference logs` in the terminal."
+  "logs.noAdmin": "This connection cannot read the engine's log. Read it in the console of a paired computer, or with `binference logs` in the terminal.",
+  "nav.checks": "Checks",
+  "checks.title": "Checks",
+  "checks.intro": "What `binference check` checks on this machine: the config, who can open the state folder, the model, the proxy, the engine, remote access, the plugin sandbox and the shell's wall. Each problem names its next step.",
+  "checks.run": "Run the checks",
+  "checks.runAgain": "Run the checks again",
+  "checks.ranAt": "Checked at {at}. For a minute, running them again shows this result.",
+  "checks.level": "{level, select, ok {Fine} warn {Warning} fail {Problem} other {Not checked}}",
+  "checks.problems": "Problems",
+  "checks.warnings": "Warnings",
+  "checks.notes": "Good to know",
+  "checks.rest": "The other checks",
+  "checks.fixInTerminal": "To fix what it can, run `binference check --fix` in the terminal: it moves an older config.json5 and makes the state folder's files yours alone.",
+  "checks.none": "The checks have not run from here yet.",
+  "checks.failed": "The checks did not finish: {reason}",
+  "checks.noAdmin": "This connection cannot run the checks. Run them in the console of a paired computer, or with `binference check` in the terminal."
 }

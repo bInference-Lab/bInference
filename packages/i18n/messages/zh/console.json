@@ -369,5 +369,20 @@
   "logs.none": "此级别还没有日志行。",
   "logs.omitted": "{count, plural, other {有 # 行}}不是日志的 JSON 格式，因此未显示。",
   "logs.cut": "为保持页面简洁，较早的日志行未显示。在终端中运行 `binference logs` 可查看全部。",
-  "logs.noAdmin": "此连接无法读取引擎日志。请在已配对电脑的控制台中查看，或在终端中运行 `binference logs`。"
+  "logs.noAdmin": "此连接无法读取引擎日志。请在已配对电脑的控制台中查看，或在终端中运行 `binference logs`。",
+  "nav.checks": "检查",
+  "checks.title": "检查",
+  "checks.intro": "`binference check` 会检查本机的：配置、谁可以打开状态文件夹、模型、代理、引擎、远程访问、插件沙箱以及命令的隔离墙。每个问题都会说明下一步。",
+  "checks.run": "运行检查",
+  "checks.runAgain": "再次运行检查",
+  "checks.ranAt": "检查于 {at}。一分钟内再次运行会显示这次的结果。",
+  "checks.level": "{level, select, ok {正常} warn {警告} fail {问题} other {未检查}}",
+  "checks.problems": "问题",
+  "checks.warnings": "警告",
+  "checks.notes": "供参考",
+  "checks.rest": "其他检查",
+  "checks.fixInTerminal": "要修复能修复的问题，请在终端中运行 `binference check --fix`：它会迁移较旧的 config.json5，并让状态文件夹中的文件只归你所有。",
+  "checks.none": "尚未在此运行检查。",
+  "checks.failed": "检查未完成：{reason}",
+  "checks.noAdmin": "此连接无法运行检查。请在已配对电脑的控制台中运行，或在终端中运行 `binference check`。"
 }

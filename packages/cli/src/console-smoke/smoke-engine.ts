@@ -6,6 +6,7 @@ import { text } from "node:stream/consumers";
 import { accountRefSchema } from "@binference/chain";
 import { bpsSchema, err, idSchema, type JsonValue } from "@binference/core";
 import { createManualClock, createMemoryLogger, type ManualClock } from "@binference/core/testing";
+import type { PublishPush } from "@binference/engine";
 import { createRunningTurns, type RunningTurns } from "@binference/engine/chat";
 import type { EngineHandlerTable } from "@binference/engine/surfaces";
 import {
@@ -29,6 +30,7 @@ import {
 import { superviseRuntime } from "../e2e/runtime-machine.js";
 import { createSystemClock } from "../runtime/system-clock.js";
 import { type SmokeAlerts, startSmokeAlerts } from "./smoke-alerts.js";
+import { smokeCheckHandlers } from "./smoke-checks.js";
 import { smokeAlertSchema, smokeEnvSchema } from "./smoke-engine.schema.js";
 import { startSmokeLog } from "./smoke-log.js";
 import { startSmokeShelves } from "./smoke-shelves.js";
@@ -39,7 +41,8 @@ import { startSmokeShelves } from "./smoke-shelves.js";
 // address in effect, its webhook listener on a free port, and a control listener beside it that
 // makes pairing links, paper swaps and paper orders and sends alerts for the browser test. Its
 // plugin and skill operations read a state folder of the smoke's own (`smoke-shelves.ts`), and
-// `log/recent` a log file of its own (`smoke-log.ts`). The
+// `log/recent` a log file of its own (`smoke-log.ts`), and `check/run` findings of its own
+// (`smoke-checks.ts`). The
 // runtime answers the routed operations, such as the chat so far, as it does beside a self-hosted
 // engine. The engine's clock starts at the test's time and moves with the wall clock, and the
 // runtime runs on it, so its transcript keeps the engine's times. Like `src/main.ts`, it alone
@@ -137,8 +140,12 @@ async function startEngine(): Promise<Skeleton> {
     logger,
   });
   const log = await startSmokeLog();
-  const handlers = { ...routed.handlers, ...shelves.handlers, ...log.handlers };
+  // A check run's end reaches the engine's publish once the skeleton is composed.
+  const published: { publish: PublishPush } = { publish: () => undefined };
+  const checks = smokeCheckHandlers((push) => published.publish(push));
+  const handlers = { ...routed.handlers, ...shelves.handlers, ...log.handlers, ...checks };
   const skeleton = await startSkeleton(parts, { browser, turns, owner, handlers });
+  published.publish = skeleton.composed.publish;
   const stopClock = new AbortController();
   const clockFollows = followWallClock(skeleton.clock, stopClock.signal);
   await skeleton.parts.stores.install.changeRescue(rescue, live());

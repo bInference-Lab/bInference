@@ -1,6 +1,7 @@
 import { createRootRoute, createRoute, createRouter, RouterProvider } from "@tanstack/react-router";
 import { useState } from "react";
 import { ChatScreen } from "../screens/chat-screen";
+import { ChecksScreen } from "../screens/checks-screen";
 import { ConfirmationsScreen } from "../screens/confirmations-screen";
 import { ConsoleShell } from "../screens/console-shell";
 import { LedgerScreen } from "../screens/ledger-screen";
@@ -28,6 +29,7 @@ function buildRouter(basepath: string) {
     createRoute({ ...parent, path: "/skills", component: SkillsScreen }),
     createRoute({ ...parent, path: "/plugins", component: PluginsScreen }),
     createRoute({ ...parent, path: "/logs", component: LogsScreen }),
+    createRoute({ ...parent, path: "/checks", component: ChecksScreen }),
   ]);
   return createRouter({ routeTree, basepath });
 }
