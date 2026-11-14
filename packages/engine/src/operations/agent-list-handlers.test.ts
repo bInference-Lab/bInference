@@ -12,8 +12,9 @@ import { createMemoryAgentStore } from "../fakes/memory-agent-store.js";
 import { createMemoryInstallStore } from "../fakes/memory-install-store.js";
 import { testWalletRecord } from "../install/test-wallet-record.js";
 import { expectOk, testAgent, testAgentDraft, testNowMs } from "../intents/test-intents.js";
+import type { AgentStore } from "../ports.js";
 import { createAgentListHandlers } from "./agent-list-handlers.js";
-import { testCall } from "./test-engine.js";
+import { listedArchived, testCall } from "./test-engine.js";
 
 const second = fixtureId("agt", 51);
 const third = fixtureId("agt", 52);
@@ -44,7 +45,7 @@ const unheld = testWalletRecord({
 });
 const address = accountRefSchema.parse("fake:1:0x00000052");
 
-async function agentHandlers() {
+async function agentHandlers(listed: (store: AgentStore) => AgentStore = (store) => store) {
   const agents = createMemoryAgentStore();
   await agents.create(testAgentDraft(), testCall({}));
   await agents.create(
@@ -63,7 +64,7 @@ async function agentHandlers() {
     signingSchemes: [createFakeSigningScheme()],
   });
   const custody = createFakeSigner(new Map([[main.id, address]]));
-  return createAgentListHandlers({ agents, install, custody, chains });
+  return createAgentListHandlers({ agents: listed(agents), install, custody, chains });
 }
 
 async function agentList() {
@@ -95,6 +96,12 @@ describe("the agent list", () => {
     const list = await agentList();
     const { items } = expectOk(await list(testCall({})));
     expect(items.slice(1).map((view) => "defaultWallet" in view)).toStrictEqual([false, false]);
+  });
+
+  it("shows when each archived agent was archived", async () => {
+    const list = (await agentHandlers(listedArchived))["agent/list"];
+    const { items } = expectOk(await list(testCall({})));
+    expect(items.map((view) => view.archivedAt)).toStrictEqual([1, 1, 1]);
   });
 
   it("pages from the last agent of the page before", async () => {

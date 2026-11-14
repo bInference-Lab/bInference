@@ -1,10 +1,26 @@
 import { BinferenceError, err, ok } from "@binference/core";
 import { createManualClock } from "@binference/core/testing";
+import type { BalanceView } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
-import { expectOk, testAgent, testCoin, testNowMs, testSwap } from "../intents/test-intents.js";
+import {
+  expectOk,
+  testAgent,
+  testCoin,
+  testNowMs,
+  testSwap,
+  testWallet,
+} from "../intents/test-intents.js";
 import { createdOrder, startOrderEngine, tapCard } from "../orders/test-orders.js";
 import { createLiveFactsHandlers } from "./live-facts-handlers.js";
 import { startTestEngine, testCall, testCallers, testChains } from "./test-engine.js";
+
+// The test wallet's coin, held live and on paper.
+const liveCoin: BalanceView = {
+  wallet: testWallet,
+  amount: { asset: testCoin, base: 3n },
+  paper: false,
+};
+const paperCoin: BalanceView = { ...liveCoin, amount: { asset: testCoin, base: 9n }, paper: true };
 
 describe("the live facts", () => {
   it("answer the agent's mode, balances, orders and spend against its caps in one read", async () => {
@@ -90,5 +106,27 @@ describe("the live facts", () => {
     });
     const read = expectOk(await facts["facts/get"](testCall({ agent: testAgent })));
     expect(read).toMatchObject({ mode: "paper", balances: [], totalUsdMicros: 0n });
+  });
+
+  it("give a live agent its live balances and total, never its paper ones", async () => {
+    const test = await startTestEngine({ agent: { mode: "live" } });
+    const both = {
+      balances: [liveCoin, paperCoin],
+      positions: [],
+      totalUsdMicros: 7_000_000n,
+      paperTotalUsdMicros: 2_000_000n,
+      assets: {},
+    };
+    const facts = createLiveFactsHandlers({
+      agents: test.stores.agents,
+      orders: test.stores.orders,
+      intents: test.stores.intents,
+      portfolio: async () => await Promise.resolve(ok(both)),
+      chains: testChains(),
+      clock: createManualClock(testNowMs),
+      ownerTimeZone: () => "UTC",
+    });
+    const read = expectOk(await facts["facts/get"](testCall({ agent: testAgent })));
+    expect(read).toMatchObject({ mode: "live", balances: [liveCoin], totalUsdMicros: 7_000_000n });
   });
 });
