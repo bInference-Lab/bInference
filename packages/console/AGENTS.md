@@ -39,6 +39,13 @@ The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
   `order/cancel` with `propose`, and the engine's answer or refusal shows in its words. The active
   alerts show below, each deleted through `alert/delete`, asked once more too. The screen loads
   again on the `order` and `intent` topics, and the alerts on the `alert` topic.
+- The plugins screen (`src/plugins/`, decisions 0348 to 0351 and 0433 to 0435) lists what
+  `plugin/list` answers: each plugin's kinds, hosts, tools and config keys as its review showed
+  them, its npm provenance, publisher, source and pin, whether it is on and why one is off, and
+  where it stands with its listing where one is needed. Disable runs `plugin/disable` with
+  `confirm` at once; Enable, asked once more, runs `plugin/enable` with `admin`, so the Mini App
+  only disables. Adding, updating and removing stay in the terminal, where the review needs the
+  owner. It loads again on the `job` and `notice` topics.
 - The stack is React, Vite, Tailwind, shadcn on Base UI, TanStack Router and TanStack Query.
   Add a component with the shadcn CLI (`pnpm dlx shadcn@<version> add <name>` in this folder).
   `src/components/ui/` stays as the CLI writes it: lint, format, dead-code and duplicate checks
@@ -68,8 +75,10 @@ The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
   control listener the test drives; its agent runtime answers the routed operations on the engine's
   clock, as beside a self-hosted engine. It pairs a browser, confirms a paper card, reads the chat
   so far again after a reload, makes an alert rule whose alert the engine's webhook listener takes
-  and fills on paper, confirms and cancels a paper order on the auto orders screen, freezes and
-  unfreezes on the safety screen, changes limits, and fails on any error or warning the page logs.
+  and fills on paper, confirms and cancels a paper order on the auto orders screen, disables and
+  enables a plugin of the smoke engine's plugin lock
+  (`packages/cli/src/console-smoke/smoke-shelves.ts`), freezes and unfreezes on the safety screen,
+  changes limits, and fails on any error or warning the page logs.
   The safety tests (`safety.spec.ts`, `safety.zh.spec.ts`) run last, since a freeze cancels the
   cards that wait and a lower limit stays. The control listener
   sets the owner's language, which the signed-in console speaks, for the Chinese screenshots. It is

@@ -46,6 +46,12 @@ review again, with what changed. If an update fails, the version you had stays.
 | `binference plugin disable <name>` | Disables a plugin at once     |
 | `binference plugin remove <name>`  | Removes a plugin and its data |
 
+The console's Plugins screen shows each installed plugin with what its review showed: its kinds,
+hosts, tools and config keys, its npm provenance and publisher, and the pin of its files. It says
+whether the plugin is on, and why one is off: you disabled it, it crashed, or its files changed.
+Disable works there, in the Mini App too; Enable asks once more and needs the console of a paired
+computer. Adding, updating and removing stay in the terminal.
+
 ### What a plugin changes for the agent
 
 The agent sees a plugin's tools as `<plugin>__<tool>`, such as `fear_index__score`. What a plugin

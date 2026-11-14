@@ -21,6 +21,7 @@ const sections = [
   { to: "/safety", key: "console.nav.safety" },
   { to: "/rules", key: "console.nav.rules" },
   { to: "/skills", key: "console.nav.skills" },
+  { to: "/plugins", key: "console.nav.plugins" },
 ] as const;
 
 const statusKeys = {

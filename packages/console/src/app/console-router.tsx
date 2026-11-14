@@ -6,6 +6,7 @@ import { ConsoleShell } from "../screens/console-shell";
 import { LedgerScreen } from "../screens/ledger-screen";
 import { LimitsScreen } from "../screens/limits-screen";
 import { OrdersScreen } from "../screens/orders-screen";
+import { PluginsScreen } from "../screens/plugins-screen";
 import { PortfolioScreen } from "../screens/portfolio-screen";
 import { RulesScreen } from "../screens/rules-screen";
 import { SafetyScreen } from "../screens/safety-screen";
@@ -24,6 +25,7 @@ function buildRouter(basepath: string) {
     createRoute({ ...parent, path: "/safety", component: SafetyScreen }),
     createRoute({ ...parent, path: "/rules", component: RulesScreen }),
     createRoute({ ...parent, path: "/skills", component: SkillsScreen }),
+    createRoute({ ...parent, path: "/plugins", component: PluginsScreen }),
   ]);
   return createRouter({ routeTree, basepath });
 }
