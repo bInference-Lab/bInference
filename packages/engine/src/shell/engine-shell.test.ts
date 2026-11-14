@@ -43,6 +43,14 @@ describe("the agent's shell in the engine", () => {
     });
   });
 
+  it("answers shell off in an engine without the machine's shell", async () => {
+    const test = await startTestEngine();
+    const args = { agent: testAgent, command: "ls" } as const;
+    expect(
+      await test.engine.handlers["shell/run"](testCall(args, testCallers.runtime)),
+    ).toStrictEqual({ ok: false, error: "shell.off" });
+  });
+
   it("sends the agent's API calls through the requests the shell gives", async () => {
     const sent: HttpRequest[] = [];
     const http = {

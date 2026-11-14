@@ -54,6 +54,7 @@ describe("reading a command line", () => {
     "! ls",
     "ls ^x",
     "ls \\\n -l",
+    'echo "a\\\nb"',
     "echo 'open",
     'echo "open',
     "ls |",

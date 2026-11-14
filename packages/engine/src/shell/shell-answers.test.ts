@@ -89,6 +89,40 @@ describe("the owner's answer to a shell request", () => {
     expect(again).toMatchObject({ ok: true, value: { status: "ended" } });
   });
 
+  it("tells the agent a command still running 10 seconds after the answer runs as its job, then its end", async () => {
+    const shell = await createTestShell({
+      settings: { ask: "always" },
+      script: { serve: { kind: "runs", output: "listening\n" } },
+    });
+    const request = await asked(shell, "serve");
+    expect((await shell.answer(request.request, "once")).ok).toBe(true);
+    await shell.clock.advance(10_000);
+    expect(shell.wokenTexts()).toStrictEqual([
+      expect.stringContaining(
+        `The owner allowed it once. It runs as job ${request.job}; its end comes to you as a message like this one, so do not poll it.]`,
+      ),
+    ]);
+    shell.runner.finish("serve", { output: "stopped\n", exitCode: 1 });
+    await shell.clock.advance(0);
+    expect(shell.wokenTexts()[1]).toContain(
+      `(job ${request.job}, in /srv/project) ended with exit code 1`,
+    );
+  });
+
+  it("journals and announces nothing when every step it allows always was allowed already", async () => {
+    const shell = await createTestShell({ settings: { ask: "always" } });
+    const first = await asked(shell, "git status");
+    expect((await shell.answer(first.request, "always")).ok).toBe(true);
+    const again = await asked(shell, "git status");
+    expect(await shell.answer(again.request, "always")).toMatchObject({
+      ok: true,
+      value: { outcome: "allowed_always" },
+    });
+    expect(await shell.journal.list({ after: 0, limit: 10 }, live)).toHaveLength(1);
+    expect(shell.pushes.filter((push) => push.topic === "notice")).toHaveLength(1);
+    expect(shell.runner.started).toStrictEqual(["git status", "git status"]);
+  });
+
   it("refuses Always allow where it is not offered, and keeps the request open", async () => {
     const shell = await createTestShell({ settings: { ask: "unlisted" } });
     const request = await asked(shell, "bash -c 'rm -rf build'");

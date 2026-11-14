@@ -23,6 +23,18 @@ function viewOf(answer: Result<ResultOf<"shell/run">, ProtocolErrorCode>): Resul
   return answer.value;
 }
 
+// A row the owner allowed always: `program` run with `--dry` in the project folder.
+function allowedAs(n: number, program: string, text: string) {
+  return {
+    id: idSchema("sac").parse(`sac_0190f1c2-3a4b-7c5d-8e6f-00000000000${String(n)}`),
+    text,
+    program,
+    args: ["--dry"],
+    folder: "/srv/project",
+    allowedAtMs: 1,
+  };
+}
+
 describe("shell/run", () => {
   it("answers a command that ended within its wait with its output and exit code", async () => {
     const shell = await createTestShell({
@@ -112,6 +124,23 @@ describe("shell/run under the owner's ask and run settings", () => {
     expect(viewOf(await windows.run({ command: "ls" })).request?.reason).toBe("powershell");
   });
 
+  it("refuses a command in a folder that does not exist before it asks the owner", async () => {
+    const shell = await createTestShell({ settings: { ask: "always" } });
+    expect(await shell.run({ command: "ls", folder: "/nowhere" })).toStrictEqual(
+      err("shell.folder_missing"),
+    );
+    expect([shell.requestPushes(), shell.runner.started]).toStrictEqual([[], []]);
+  });
+
+  it("refuses to remove an allowed command no row holds, and journals nothing", async () => {
+    const shell = await createTestShell();
+    const allowed = idSchema("sac").parse("sac_0190f1c2-3a4b-7c5d-8e6f-0000000000ff");
+    expect(
+      await shell.part.handlers["shell/disallow"](testCall({ allowed }, testCallers.cli)),
+    ).toStrictEqual(err("shell.allowed_not_found"));
+    expect(await shell.journal.list({ after: 0, limit: 10 }, live)).toStrictEqual([]);
+  });
+
   it("refuses an unlisted command under listed with never asking, and runs a listed one", async () => {
     const shell = await createTestShell({ settings: { run: "listed" } });
     expect(await shell.run({ command: "ls" })).toStrictEqual(err("shell.not_listed"));
@@ -132,6 +161,27 @@ describe("shell/run under the owner's ask and run settings", () => {
       ok: true,
       value: { status: "ended" },
     });
+  });
+
+  it("matches a program named by a path by the file it names in the call's folder, a bare name on the path", async () => {
+    const shell = await createTestShell({ settings: { run: "listed" } });
+    await shell.store.allow(
+      [
+        allowedAs(1, "/srv/project/scripts/deploy.sh", "./scripts/deploy.sh --dry"),
+        allowedAs(2, "/opt/tools/check", "/opt/tools/check --dry"),
+      ],
+      live,
+    );
+    const folder = "/srv/project";
+    expect([
+      await shell.run({ command: "./scripts/deploy.sh --dry", folder }),
+      await shell.run({ command: "/opt/tools/check --dry", folder }),
+      await shell.run({ command: "deploy.sh --dry", folder }),
+    ]).toMatchObject([
+      { ok: true, value: { status: "ended" } },
+      { ok: true, value: { status: "ended" } },
+      err("shell.not_listed"),
+    ]);
   });
 
   it("polls a command that waits with its request, and withdraws it on stop", async () => {
