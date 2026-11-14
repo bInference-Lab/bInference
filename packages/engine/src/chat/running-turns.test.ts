@@ -231,4 +231,17 @@ describe("a running turn whose end never came", () => {
       ["chat.lapse_unheard", { agentId: agent, traceId: next, errorCode: "telegram.unreachable" }],
     ]);
   });
+
+  it("logs a listener's fault that names no code as unexpected", () => {
+    const logger = createMemoryLogger({ subsystem: "engine" });
+    const turns = createRunningTurns({ clock: createManualClock(0), logger });
+    turns.onLapse(() => {
+      throw new TypeError("Cannot read properties of undefined");
+    });
+    turns.start({ agent, turn, hasOutsideContent: false });
+    turns.clearAll();
+    expect(logger.records().map(({ fields }) => fields)).toStrictEqual([
+      { agentId: agent, traceId: turn, errorCode: "unexpected" },
+    ]);
+  });
 });

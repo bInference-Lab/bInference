@@ -94,6 +94,29 @@ describe("the files the agent sends the owner", () => {
     expect([...test.pushes, ...workspaceOnly.pushes]).toStrictEqual([]);
   });
 
+  it("answers not found for a sent file removed before the surface read it", async () => {
+    const files = createMemoryFiles({ [csv]: "date,side\n" });
+    const test = setUp({ files });
+    const [file] = expectOk(await test.send([csv])).files;
+    expectOk(
+      await files.remove(csv, { signal: new AbortController().signal, workspaceOnly: false }),
+    );
+    expect(await test.fetch(String(file?.file))).toStrictEqual(err("file.not_found"));
+  });
+
+  it("refuses every send where binference has no file tools", async () => {
+    const turns = createRunningTurns({ clock: createManualClock(0) });
+    turns.startRuntime(idSchema("tok").parse(runtime.credential));
+    const handlers = createSentFileHandlers({
+      turns,
+      clock: createManualClock(0),
+      random: createSeededRandom(3),
+      publish: () => undefined,
+    });
+    const call = testCall({ agent: testAgent, turn, paths: [csv], caption: "The files." }, runtime);
+    expect(await handlers["file/send"](call)).toStrictEqual(err("file.unreadable"));
+  });
+
   it("answers only the runtime the engine runs now, and no file of another agent or unknown id", async () => {
     const test = setUp();
     const other = idSchema("agt").parse("agt_0190f1c2-3a4b-7c5d-8e6f-0000000000ff");

@@ -296,6 +296,30 @@ describe("the chat relay", () => {
     expect(test.turns.runningOf(testAgent)).toBeUndefined();
   });
 
+  it("names the tool that failed last on the turn's end, so a surface can say which", async () => {
+    const test = await startTestEngine();
+    expectOk(await startTurn(test));
+    const ended = { agent: testAgent, turn, outcome: "failed", failedTool: "make_image" } as const;
+    expectOk(await test.engine.handlers["turn/end"](testCall(ended, runtime)));
+    expect(test.pushes.at(-1)).toStrictEqual({
+      topic: `chat:${testAgent}`,
+      kind: "chat/turnEnded",
+      data: ended,
+    });
+  });
+
+  it("refuses a turn of an agent the install does not hold, and runs none", async () => {
+    const test = await startTestEngine();
+    const stranger = idSchema("agt").parse("agt_0190f1c2-3a4b-7c5d-8e6f-000000000099");
+    const message = idSchema("msg").parse("msg_0190f1c2-3a4b-7c5d-8e6f-000000000001");
+    const args = { agent: stranger, session, turn, messages: [message], outsideContent: false };
+    expect(await test.engine.handlers["turn/start"](testCall(args, runtime))).toStrictEqual({
+      ok: false,
+      error: "agent.not_found",
+    });
+    expect(test.turns.runningOf(stranger)).toBeUndefined();
+  });
+
   it("ends the agent's earlier turn failed, its line first, before its next turn starts", async () => {
     const test = await startTestEngine();
     expectOk(await startTurn(test));
