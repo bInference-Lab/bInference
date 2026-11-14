@@ -194,7 +194,7 @@ const specTable = [
   ["backup/restore", "admin", "write local"],
   ["update/check", "read", ""],
   ["update/apply", "admin", "write local"],
-  ["check/run", "read", "write"],
+  ["check/run", "admin", "write"],
   ["report/create", "admin", "write"],
   ["device/pair", "admin", "local"],
   ["device/list", "admin", ""],
@@ -276,7 +276,6 @@ describe("operations", () => {
       ["sendLevel/set", "confirm", { scope: "loosen", when: "looser" }],
       ["approval/set", "confirm", { scope: "loosen", when: "autoMode" }],
       ["notes/write", "agent", { scope: "admin", when: "ownerNote" }],
-      ["check/run", "read", { scope: "admin", when: "fix" }],
       ["binanceAgent/setLimits", "confirm", { scope: "admin", when: "looser" }],
     ]);
   });

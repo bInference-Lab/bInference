@@ -2,6 +2,7 @@ import type { EnginePush } from "@binference/engine";
 import type { EngineHandlerTable } from "@binference/engine/surfaces";
 import type { RuntimeHealth } from "../agent-runtime/runtime-supervisor.js";
 import { composeBackupOperations } from "./backup-operations.js";
+import { composeCheckOperations } from "./check-operations.js";
 import type { ComposedLock } from "./compose-lock.js";
 import type { ComposedRuntime } from "./compose-runtime.js";
 import { composeSkillOperations } from "./compose-skills.js";
@@ -25,8 +26,11 @@ interface EngineWiring {
   readonly restart: Pick<EngineRestart, "request">;
   /** The engine lock, whose state `engine/status` reports and `engine/unlock` opens. */
   readonly locked: ComposedLock;
-  /** Where a long job's end goes, once the engine's publish exists. */
-  readonly jobs: { publish: (push: EnginePush) => void };
+  /**
+   * Where a long job's end goes, once the engine's publish exists, and the engine's own handlers,
+   * once it is composed.
+   */
+  readonly jobs: { publish: (push: EnginePush) => void; readonly engine?: EngineHandlerTable };
   /** The `rpc` health signal: how the chains' RPC endpoints answered. */
   readonly rpc: () => HealthSignal["state"];
   /** The executor's health signal. */
@@ -62,16 +66,8 @@ function configHandlersOf(
   return { ...configChange, ...composeRemoteOperations(opening, opened, remote) };
 }
 
-/**
- * The engine's own operations: its status with the health signals, its stop, its unlock, a new
- * pairing link for the owner's bot, the backups, the skills, the change of `config.json5`, remote
- * access, the update check, the models each agent uses, and the engine log's recent lines.
- */
-export function engineHandlers(
-  opening: Opening,
-  opened: Opened,
-  wiring: EngineWiring,
-): EngineHandlerTable {
+// The health signals `engine/status` reads, until the shutdown sequence stops them.
+function healthProbeOf(opening: Opening, opened: Opened, wiring: EngineWiring) {
   const probe = startHealthProbe({
     parts: [
       { signal: "executor", state: wiring.executor },
@@ -88,8 +84,23 @@ export function engineHandlers(
     logFailed: opened.log.hasFailed,
   });
   opening.closers.add("health", async () => probe.stop());
+  return probe;
+}
+
+/**
+ * The engine's own operations: its status with the health signals, its stop, its unlock, a new
+ * pairing link for the owner's bot, the backups, the skills, the change of `config.json5`, remote
+ * access, the update check, the models each agent uses, the engine log's recent lines, and the
+ * checks of `binference check`, whose engine reads go to these and the engine's handlers.
+ */
+export function engineHandlers(
+  opening: Opening,
+  opened: Opened,
+  wiring: EngineWiring,
+): EngineHandlerTable {
+  const probe = healthProbeOf(opening, opened, wiring);
   const { clock, random } = opening.host;
-  return {
+  const own: EngineHandlerTable = {
     ...createEngineOperations({
       agents: opened.stores.agents,
       install: opened.stores.install,
@@ -115,4 +126,9 @@ export function engineHandlers(
       picked: async (agent, picks) => wiring.pick(agent, picks),
     }),
   };
+  const checks = composeCheckOperations(opening, opened, {
+    handlers: () => ({ ...wiring.jobs.engine, ...own }),
+    publish: (push) => wiring.jobs.publish(push),
+  });
+  return { ...own, ...checks };
 }

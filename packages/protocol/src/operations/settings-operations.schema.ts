@@ -79,7 +79,10 @@ interface UpdateView {
   readonly releaseNotes?: ReleaseNotes;
 }
 
-/** The args of `check/run`: `fix` repairs what it can; `only` names stable check ids. */
+/**
+ * The args of `check/run`: `only` names the stable check ids the report keeps; `fix`, which only
+ * the terminal runs, is refused with `check.terminal_only` (decision 0445).
+ */
 interface CheckArgs {
   readonly fix?: boolean;
   readonly only?: readonly string[];
@@ -114,6 +117,7 @@ export interface SettingsOperationShapes {
     readonly args: { readonly version?: string };
     readonly result: JobRef;
   };
+  /** The job ends with a check report: every finding of `binference check` (decision 0445). */
   readonly "check/run": { readonly args: CheckArgs; readonly result: JobRef };
   /** The job ends with a file: the redacted support bundle. */
   readonly "report/create": { readonly args: Empty; readonly result: JobRef };
@@ -232,8 +236,7 @@ export const settingsOperations: OperationTable<SettingsOperationShapes> = {
   "check/run": {
     ...writeFlags,
     name: "check/run",
-    scope: "read",
-    scopeCase: { scope: "admin", when: "fix" },
+    scope: "admin",
     args: z.strictObject({
       fix: z.boolean().exactOptional(),
       only: z.array(plainIdSchema).min(1).exactOptional(),

@@ -3,7 +3,7 @@ import { connectEngine, type EngineConnection } from "./connect-engine.js";
 import type { InstallCheck } from "./install-findings.js";
 
 /** What a check reads the engine with: its calls, and a close once the check has read it. */
-type EngineReader = Pick<ProtocolClient, "call" | "close">;
+export type EngineReader = Pick<ProtocolClient, "call" | "close">;
 
 /** A reader of the engine, or why there is none, as `connectEngine` says it. */
 export type EngineReading =

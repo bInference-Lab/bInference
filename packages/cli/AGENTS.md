@@ -231,6 +231,11 @@ Rules for this package:
   A new log field needs its rule there, or the bundle shows it as `[omitted]`. `log/recent`
   (`src/compose/log-operations.ts`, decision 0446) answers the console from the same reader, served
   by the self-hosted root only (`cloudUnservedOperations`).
+- `check/run` (`src/compose/check-operations.ts`, decision 0445) runs `checkFindings` in the
+  engine's process, one run at a time within 15 seconds, its report kept 60 seconds; the findings
+  that read the engine read its handlers through `createHandlerReach`, not over IPC. `fix` is
+  refused with `check.terminal_only`, and only the self-hosted root serves it. A report carries no
+  secret a finding read: `src/e2e/check-run.test.ts` plants one in every source and looks for it.
 - Updates live in `src/updates/` (decisions 0355 and 0356). The engine's daily check reads npm's
   dist-tags and a release's notes through `host.http`, tells the owner once per release in
   `updates/announced.json`, and posts the opt-in counts while telemetry is on; tests point npm at

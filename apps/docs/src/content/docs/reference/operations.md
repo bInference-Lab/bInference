@@ -469,7 +469,7 @@ Every operation of the engine protocol, version 1, by domain. A client calls an 
 
 | Operation | Scope | Kind | Accepted | Answered by |
 | --- | --- | --- | --- | --- |
-| `check/run` | `read`; `admin` when it repairs what it finds | write | any connection | no one yet: not built |
+| `check/run` | `admin` | write | any connection | engine, on a self-hosted install only |
 
 ## `report`
 

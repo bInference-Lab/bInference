@@ -155,8 +155,11 @@ interface Wiring extends ComposedWatching, RuntimeWithPlugins {
   readonly signerStopped: { run: () => void };
   /** What a step the signer refused sets off, once the server can say so. */
   readonly signerRefused: { run: (notice: SignerRefusalNotice) => void };
-  /** Where a long job's end goes, once the server can say so. */
-  readonly jobs: { publish: (push: EnginePush) => void };
+  /**
+   * Where a long job's end goes, once the server can say so, and the engine's handlers, which a
+   * check run reads the engine through (decision 0445), once it is composed.
+   */
+  readonly jobs: { publish: (push: EnginePush) => void; engine?: EngineHandlerTable };
   /** Whether backups are sealed to the sealing key yet, and the owner key hook that moves them. */
   readonly sealKey: SealKeyKeeper;
 }
@@ -192,7 +195,7 @@ function composeParts(opening: Opening, opened: Opened): Wiring {
     resume,
   });
   const stopper = createEngineStopper(platform, host.clock);
-  const jobs = { publish: (_push: EnginePush): void => undefined };
+  const jobs: Wiring["jobs"] = { publish: (_push: EnginePush): void => undefined };
   return {
     ...composeWatching(opening, opened, parts.reads),
     jobs,
@@ -322,6 +325,7 @@ export function composeSelfHosted(opening: Opening, opened: Opened): ComposedSel
   sending.pushes.settled = engine.pushSettled;
   locked.announce.publish = publish;
   wiring.jobs.publish = publish;
+  wiring.jobs.engine = engine.handlers;
   wiring.watcherPushes.publish = publish;
   const watching = serveWatching(wiring, engine);
   wiring.signerRefused.run = ({ intent, refused }) => {

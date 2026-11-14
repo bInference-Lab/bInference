@@ -147,7 +147,7 @@ export const settingsExamples: { readonly [N in keyof SettingsOperationShapes]: 
     },
   },
   "update/apply": { args: { version: "2026.11.0" }, result: job },
-  "check/run": { args: { fix: true, only: ["ledger.chain"] }, result: job },
+  "check/run": { args: { only: ["engine.reachable"] }, result: job },
   "report/create": { args: empty, result: job },
 };
 

@@ -133,6 +133,7 @@ export * from "./views/market-view.schema.js";
 export * from "./views/backup-view.schema.js";
 export * from "./views/remote-view.schema.js";
 export * from "./views/log-line-view.schema.js";
+export * from "./views/check-report-view.schema.js";
 export * from "./views/card-lines.schema.js";
 export * from "./views/card-view.schema.js";
 export * from "./views/ceiling-view.schema.js";

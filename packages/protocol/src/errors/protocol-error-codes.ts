@@ -186,6 +186,7 @@ export const protocolErrorCodes = [
   "backup.copy_failed",
   "update.registry_unreachable",
   "update.terminal_only",
+  "check.terminal_only",
   "telegram.not_running",
   "telegram.unreachable",
   "remote.tailscale_missing",

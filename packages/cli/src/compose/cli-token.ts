@@ -22,8 +22,15 @@ export interface CliTokenOptions {
   readonly signal: AbortSignal;
 }
 
-// The CLI holds every scope (protocol spec 4.1); it signs in over IPC only.
-const cliScopes: TokenRecord["scopes"] = ["read", "propose", "chat", "confirm", "loosen", "admin"];
+/** The scopes the CLI's token holds: every scope (protocol spec 4.1); it signs in over IPC only. */
+export const cliScopes: TokenRecord["scopes"] = [
+  "read",
+  "propose",
+  "chat",
+  "confirm",
+  "loosen",
+  "admin",
+];
 
 /** The CLI's token file in a state folder: `auth/cli.token`, owner-only. */
 export function cliTokenFile(stateFolder: StateFolder): string {
