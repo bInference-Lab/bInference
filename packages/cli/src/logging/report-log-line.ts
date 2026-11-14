@@ -1,6 +1,6 @@
 import type { JsonValue } from "@binference/core";
 import { addressPartOf, shortAddress } from "@binference/i18n";
-import { type LogLine, logLineSchema } from "../logging/log-line.schema.js";
+import { type LogLine, logLineSchema } from "./log-line.schema.js";
 
 /** What stands in for a field value its rule does not take. */
 export const omittedMark = "[omitted]";

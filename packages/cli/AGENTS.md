@@ -226,8 +226,9 @@ Rules for this package:
   as it ran: the service again, or in the foreground in its own terminal.
 - `binference report` (`src/report/`, decision 0263) writes the support bundle in the CLI, so it
   works while the engine is stopped. It never opens a key, a database or the keychain. An engine
-  log line passes only by the field rules of `report-log-line.ts`; every other value passes
-  `redactReportJson`. A new log field needs its rule there, or the bundle shows it as `[omitted]`.
+  log line passes only by the field rules of `src/logging/report-log-line.ts`, which
+  `readRecentLogLines` applies to the newest lines; every other value passes `redactReportJson`.
+  A new log field needs its rule there, or the bundle shows it as `[omitted]`.
 - Updates live in `src/updates/` (decisions 0355 and 0356). The engine's daily check reads npm's
   dist-tags and a release's notes through `host.http`, tells the owner once per release in
   `updates/announced.json`, and posts the opt-in counts while telemetry is on; tests point npm at

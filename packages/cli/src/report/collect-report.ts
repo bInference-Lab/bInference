@@ -1,6 +1,6 @@
 import { join } from "node:path";
 import { createDeadline, type JsonValue, jsonValueSchema } from "@binference/core";
-import { fileSize, readLogLines } from "@binference/platform";
+import { fileSize } from "@binference/platform";
 import { operations } from "@binference/protocol";
 import { z } from "zod";
 import { checkFindings, findingJson } from "../commands/check-command.js";
@@ -9,9 +9,9 @@ import { configFinding } from "../commands/install-findings.js";
 import { engineLogFile, platformOf } from "../compose/engine-locations.js";
 import { serviceLogFile } from "../compose/engine-service.js";
 import { isObject, shownConfig } from "../config/shown-config.js";
+import { readRecentLogLines } from "../logging/recent-log-lines.js";
 import type { CliHost } from "../program/cli-host.js";
 import { redactReportJson } from "./report-json.js";
-import { reportLogLine } from "./report-log-line.js";
 import type { ReportPlaces } from "./report-text.js";
 
 // The checks and the engine's answer each get at most this long.
@@ -63,17 +63,13 @@ async function engineStatus(host: CliHost): Promise<JsonValue> {
 // many lines were left out; then only the size of the service's own output, which is free text.
 async function logs(host: CliHost, signal: AbortSignal): Promise<JsonValue> {
   const platform = platformOf(host);
-  const tail = await readLogLines(engineLogFile(platform), { maxBytes: logTailBytes, signal });
-  const read = tail.ok ? tail.value.lines.slice(-maxLogLines) : [];
-  const kept = read.flatMap((text) => {
-    const line = reportLogLine(text);
-    return line === undefined ? [] : [line];
-  });
+  const bounds = { maxBytes: logTailBytes, maxLines: maxLogLines, signal };
+  const recent = await readRecentLogLines(engineLogFile(platform), bounds);
   const service = await fileSize(serviceLogFile(platform), signal);
   return {
-    engineLog: tail.ok ? "read" : "none",
-    lines: kept,
-    omittedLines: read.length - kept.length,
+    engineLog: recent.isRead ? "read" : "none",
+    lines: recent.lines,
+    omittedLines: recent.omitted,
     ...(service.ok ? { serviceLogBytes: service.value } : {}),
   };
 }
@@ -81,8 +77,8 @@ async function logs(host: CliHost, signal: AbortSignal): Promise<JsonValue> {
 /**
  * Collects the support bundle of the host's install: the versions of binference, Node, the OS and
  * the CPU type; the config with each secret source shown as its kind; every finding of
- * `binference check`; the engine's status if it answers; and the newest engine log lines, kept by
- * the field rules of {@link reportLogLine}. Every value but the log lines then passes through
+ * `binference check`; the engine's status if it answers; and the newest engine log lines, as
+ * {@link readRecentLogLines} keeps them. Every value but the log lines then passes through
  * {@link redactReportJson}. Reads only: it opens no key, no database and no secret.
  */
 export async function collectReport(host: CliHost, places: ReportPlaces): Promise<CollectedReport> {
