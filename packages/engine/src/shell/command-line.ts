@@ -76,11 +76,11 @@ function singleQuoted(line: string, at: number): Part | undefined {
 // One character inside double quotes: a backslash keeps only `$`, a backquote, `"`, `\` and a
 // line break special, and a `$` or a backquote expands.
 function doubleQuotedChar(line: string, at: number): Part | undefined {
-  const char = line[at] ?? "";
+  const char = line.charAt(at);
   if (char === "$" || char === "`") {
     return undefined;
   }
-  const next = line[at + 1] ?? "";
+  const next = line.charAt(at + 1);
   if (char !== "\\" || !/^[$`"\\\n]$/u.test(next)) {
     return { value: char, next: at + 1 };
   }
@@ -110,7 +110,7 @@ function plain(
   line: string,
   cursor: { readonly at: number; readonly start: number },
 ): Part | undefined {
-  const char = line[cursor.at] ?? "";
+  const char = line.charAt(cursor.at);
   const isFirst = cursor.at === cursor.start;
   const refused =
     refusedChars.has(char) ||

@@ -38,7 +38,7 @@ const runsOtherCode: ReadonlySet<string> = new Set(
 const versionedInterpreter = /^(?:python|pypy|perl|ruby|php|lua|node|pip)[\d.]*$/u;
 
 function nameOf(program: string): string {
-  const base = program.split(/[\\/]/u).at(-1) ?? program;
+  const base = program.replace(/^[\s\S]*[\\/]/u, "");
   return base.toLowerCase().replace(/\.exe$/u, "");
 }
 

@@ -39,7 +39,7 @@ const heldMs = 120_000;
 
 // A path's last part, as a surface names the file.
 function nameOf(path: string): string {
-  const name = path.split(/[\\/]/u).at(-1) ?? "";
+  const name = path.replace(/^[\s\S]*[\\/]/u, "");
   return name === "" ? "file" : name.slice(0, 255);
 }
 

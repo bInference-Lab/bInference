@@ -33,6 +33,9 @@ interface ShellJob {
   readonly waiters: number;
 }
 
+/** A job whose command ended: how and when. */
+type FinishedJob = ShellJob & { readonly end: CommandEnd; readonly endedAt: number };
+
 /**
  * A job's end as the jobs hand it on (decision 0409): the job, how it ended, whether a call left it
  * running, whether its end is to be told, and the output no answer gave yet, masked.
@@ -126,16 +129,16 @@ function viewOf(job: ShellJob, mask: (text: string) => string): ShellJobView {
 // The jobs to drop: the finished ones past their keeping time, then the oldest finished past the
 // cap.
 function droppable(jobs: ReadonlyMap<string, ShellJob>, now: number): readonly string[] {
-  const finished = [...jobs.values()].filter((job) => job.endedAt !== undefined);
-  const stale = finished.filter((job) => now - (job.endedAt ?? now) > keepFinishedMs);
+  const finished = [...jobs.values()].filter(
+    (job): job is ShellJob & { readonly endedAt: number } => job.endedAt !== undefined,
+  );
+  const stale = finished.filter((job) => now - job.endedAt > keepFinishedMs);
   const over = finished.slice(0, Math.max(0, jobs.size - stale.length - mostJobs));
   return [...stale, ...over].map((job) => job.id);
 }
 
-function endedOf(job: ShellJob, parts: ShellJobsParts): EndedJob {
-  const { id, agent, command, folder, startedAt, stoppedBy, leftRunning } = job;
-  const end = job.end ?? { timedOut: false, stopped: false };
-  const endedAt = job.endedAt ?? job.startedAt;
+function endedOf(job: FinishedJob, parts: ShellJobsParts): EndedJob {
+  const { id, agent, command, folder, startedAt, end, endedAt, stoppedBy, leftRunning } = job;
   const tell = leftRunning && stoppedBy === undefined && job.waiters === 0;
   const unread = parts.mask(unreadOf(job).text);
   const stop = stoppedBy === undefined ? {} : { stoppedBy };
@@ -162,7 +165,7 @@ function watchEnd(jobs: Map<string, ShellJob>, parts: ShellJobsParts, id: string
       return;
     }
     const endedAt = parts.clock.now();
-    const done = { ...job, end, endedAt };
+    const done: FinishedJob = { ...job, end, endedAt };
     jobs.set(id, done);
     const durationMs = endedAt - job.startedAt;
     parts.logger?.info("shell.ended", { agentId: job.agent, sourceId: id, durationMs });

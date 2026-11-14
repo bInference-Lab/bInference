@@ -46,7 +46,7 @@ interface Rest {
 // The last part of a venue's fault code, such as `rate_limited` of `relay.rate_limited`; a
 // timeout or a throw that is not ours is `venue_down`.
 function kindOf(code: string): string {
-  return code.split(".").at(-1) ?? code;
+  return code.slice(code.lastIndexOf(".") + 1);
 }
 
 /** What the reads remember across passes: each venue's rest, each bridge's last log, the keys told. */

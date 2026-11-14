@@ -102,10 +102,11 @@ function partValues(part: string, range: FieldRange): readonly number[] | undefi
 
 function fieldValues(text: string, range: FieldRange): readonly number[] | undefined {
   const parts = text.split(",").map((part) => partValues(part, range));
-  if (parts.some((values) => values === undefined)) {
+  const read = parts.filter((values) => values !== undefined);
+  if (read.length < parts.length) {
     return undefined;
   }
-  const values = new Set(parts.flatMap((each) => each ?? []));
+  const values = new Set(read.flat());
   return [...values].toSorted((left, right) => left - right);
 }
 
