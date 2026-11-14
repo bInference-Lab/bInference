@@ -31,6 +31,7 @@ export { messageLocales } from "./locales.js";
 export type { MessageLocale } from "./locales.js";
 export { messages } from "./messages.js";
 export { noticeAssetsToRead } from "./notices/notice-assets.js";
+export { orderLineText } from "./orders/order-lines.js";
 export { writeNotice } from "./notices/write-notice.js";
 export type { NoticeWriting, WrittenNotice } from "./notices/write-notice.js";
 export type { Catalog } from "./messages.js";
