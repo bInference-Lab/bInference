@@ -192,6 +192,10 @@ its reserved `turn`.
 | `inbox/stop`          | `chat/stop`, a freeze of the agent or the install                                                                                     | `reason` (`owner`, `freeze`)                                                                                                                                                                                                                                                                                             | Ends the running turn and drops the messages that waited before it (section 4.4)                             |
 | `inbox/clear`         | `chat/clear`                                                                                                                          | `next` (the new session)                                                                                                                                                                                                                                                                                                 | Ends the running turn, drops the waiting messages, closes the session; the next message opens `next`         |
 
+- An `inbox/message` the engine wrote in the owner's place carries `fromEngine`
+  ([decision 0443](../DECISIONS.md#d0443)): the answer to a credential request, the end of an
+  image or media job, a command or a helper, and a goal turn's words. The model reads it, and a
+  settle message, a schedule's or an alert's wake-up and a resume report, in the owner's role.
 - A skipped message is marked dropped in the chat queue with its reason; nothing tells the owner
   twice, because the engine already sent the notice that explains it.
 - A schedule's run stores no `inbox/scheduleDue` while its agent is archived or frozen, while its
@@ -914,6 +918,9 @@ status line (`turn.loop`) ([decision 0191](../DECISIONS.md#d0191)).
 
 `chat/messages`, `notes/search`, `notes/list`, `notes/write` and `notes/delete` (marked R in
 [spec 1, section 7](protocol.md#section-7)) read and write what only `agent.sqlite` holds.
+`chat/messages` answers each transcript event with its role, except the words binference wrote in
+the owner's place (section 3.3), which it answers with `role: system`, so no surface shows them as
+the owner's ([decision 0443](../DECISIONS.md#d0443)).
 
 1. The engine checks the caller's scopes, as for any operation.
 2. It sends a `route` line with the operation, its parsed args and the origin it sets from the

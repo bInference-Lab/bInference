@@ -22,8 +22,9 @@ export interface EngineMessage {
 
 /**
  * Starts the agent's next turn with a message from the engine, as an answer to its credential
- * request or the end of an image job does: stored in the agent inbox and pushed on `inbox`, with
- * U+FFFD in place of each U+0000 in its words, such as a command's last lines (decision 0416).
+ * request or the end of an image job does: stored in the agent inbox, marked `fromEngine`
+ * (decision 0443), and pushed on `inbox`, with U+FFFD in place of each U+0000 in its words, such
+ * as a command's last lines (decision 0416).
  * Answers the session and turn it opens, or `protocol.busy` while the inbox is full or a deletion
  * holds the agent's chats for words the runtime asked for, and `agent.not_found` for an agent the
  * inbox does not hold. Other words wait while a deletion holds the agent.
@@ -50,6 +51,7 @@ export async function wakeWithMessage(
       payload: {
         text: replaceNul(message.text),
         surface: message.surface,
+        fromEngine: true,
         ...(message.outsideContent === true ? { outsideContent: true } : {}),
         ...(message.goalTurn === true ? { goalTurn: true } : {}),
       },

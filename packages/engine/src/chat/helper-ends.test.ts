@@ -71,8 +71,9 @@ describe("a helper's end", () => {
       surface: "telegram",
       text: ended({ outsideContent: true }).text,
       outsideContent: true,
+      fromEngine: true,
     });
-    expect(clean?.kind).toBe("inbox/message");
+    expect(clean).toMatchObject({ kind: "inbox/message", fromEngine: true });
     expect(clean).not.toHaveProperty("outsideContent");
   });
 

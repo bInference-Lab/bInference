@@ -17,7 +17,10 @@ export interface JournalPlace {
   readonly turn: Id<"trn">;
 }
 
-/** The owner's messages as transcript events of a turn: each one outside content when it is. */
+/**
+ * The owner's messages as transcript events of a turn: each one outside content when it is, and
+ * marked `fromEngine` when binference wrote it in the owner's place (decision 0443).
+ */
 export function ownerEvents(
   messages: readonly OwnerMessage[],
   context: { readonly turn: Id<"trn">; readonly atMs: number },
@@ -28,6 +31,7 @@ export function ownerEvents(
       message: message.id,
       text: message.text,
       ...(count === 0 ? {} : { images: count }),
+      ...(message.fromEngine === true ? { fromEngine: true } : {}),
     };
     return {
       turnId: context.turn,

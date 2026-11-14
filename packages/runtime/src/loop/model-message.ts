@@ -19,6 +19,11 @@ export interface OwnerMessage {
   readonly outside: boolean;
   /** The upload ids or `tg:<file_id>` of the images the owner sent with it, at most 4. */
   readonly images?: readonly string[];
+  /**
+   * binference wrote it in the owner's place, such as a settle message or a wake-up (decision
+   * 0443): the model reads it as the owner's, and the chat's history as binference's.
+   */
+  readonly fromEngine?: true;
 }
 
 /**

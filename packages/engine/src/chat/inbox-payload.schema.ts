@@ -27,6 +27,8 @@ export interface OwnerMessagePayload {
   readonly outsideContent?: boolean;
   /** binference's words that start the chat's next goal turn (decision 0407). */
   readonly goalTurn?: boolean;
+  /** Words the engine wrote in the owner's place (decision 0443). */
+  readonly fromEngine?: boolean;
 }
 
 /** Parses an owner's message payload. */
@@ -37,6 +39,7 @@ export const ownerMessagePayloadSchema: z.ZodType<OwnerMessagePayload> = z.stric
   answer: z.strictObject({ question: idSchema("qst"), choice: choicePlaceSchema }).exactOptional(),
   outsideContent: z.boolean().exactOptional(),
   goalTurn: z.boolean().exactOptional(),
+  fromEngine: z.boolean().exactOptional(),
 });
 
 /** A settle message: the intent that ended. */

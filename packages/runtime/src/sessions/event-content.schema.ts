@@ -12,6 +12,8 @@ export interface OwnerTextContent {
   readonly text: string;
   /** How many images the owner sent with it; their bytes are never stored (decision 0227). */
   readonly images?: number;
+  /** binference wrote it in the owner's place, such as a settle message (decision 0443). */
+  readonly fromEngine?: true;
 }
 
 /** The vision model's description of one image of an owner's message: outside content. */
@@ -67,6 +69,7 @@ export const ownerTextContentSchema: z.ZodType<OwnerTextContent> = z.object({
   message: z.string(),
   text: z.string(),
   images: z.int().positive().exactOptional(),
+  fromEngine: z.literal(true).exactOptional(),
 });
 
 /** Parses an image's description. */

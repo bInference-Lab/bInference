@@ -1,4 +1,5 @@
 import { idSchema, type JsonValue } from "@binference/core";
+import { inboxMessageViewSchema } from "@binference/protocol";
 import type { EventDraft } from "@binference/store";
 import {
   createMemoryAgentDatabase,
@@ -9,7 +10,9 @@ import {
 import { describe, expect, it } from "vitest";
 import type { RouteReplyLine } from "../control/control-line.schema.js";
 import { ownerEvents } from "../sessions/session-journal.js";
+import { intentWire } from "../testing/agent-tool-fixtures.js";
 import { answerMessagesRoute, type MessageRouteParts } from "./message-routes.js";
+import { ownerMessageOf, type TurnMessage } from "./queued-view.js";
 
 const agent = "agt_0190f1c2-3a4b-7c5d-8e6f-000000000001";
 const otherAgent = "agt_0190f1c2-3a4b-7c5d-8e6f-000000000002";
@@ -88,6 +91,18 @@ async function transcriptOn(added: readonly EventDraft[] = []): Promise<MessageR
   return { sessions, transcript };
 }
 
+// A message of the agent inbox that starts a turn, as the engine sends it: the nth of the test.
+function inboxMessage(nth: number, fields: Record<string, JsonValue>): TurnMessage {
+  const message = `msg_0190f1c2-3a4b-7c5d-8e6f-00000000000${String(nth)}`;
+  const wire = { message, agent, session, turn, at: 25, ...fields };
+  return inboxMessageViewSchema.parse(wire) as TurnMessage;
+}
+
+// The fields of an `inbox/message` written on the console, with the engine's mark when it has one.
+function said(text: string, mark: Record<string, JsonValue> = {}): Record<string, JsonValue> {
+  return { kind: "inbox/message", text, surface: "console", ...mark };
+}
+
 async function messages(parts: MessageRouteParts, args: JsonValue): Promise<RouteReplyLine> {
   return answerMessagesRoute(
     { t: "route", id: "r1", op: "chat/messages", args, origin: "owner" },
@@ -136,6 +151,39 @@ describe("the routed chat/messages", () => {
         ],
       },
     });
+  });
+
+  it("answers the words binference wrote in the owner's place as system, never the owner's", async () => {
+    const taken = [
+      inboxMessage(3, { kind: "inbox/intentSettled", intent: intentWire("paper_filled") }),
+      inboxMessage(4, said("[The image job ended: 1 image made.]", { fromEngine: true })),
+      inboxMessage(5, said("Thanks")),
+    ].map(ownerMessageOf);
+    const parts = await transcriptOn(ownerEvents(taken, { turn, atMs: 25 }));
+    const page = await messages(parts, { agent, session, cursor: "5" });
+    const [settled] = taken;
+    expect(page).toStrictEqual({
+      t: "routeReply",
+      id: "r1",
+      result: {
+        items: [
+          { session, turn, seq: 6, role: "system", kind: "text", text: settled?.text, at: 25 },
+          {
+            session,
+            turn,
+            seq: 7,
+            role: "system",
+            kind: "text",
+            text: "[The image job ended: 1 image made.]",
+            at: 25,
+          },
+          { session, turn, seq: 8, role: "owner", kind: "text", text: "Thanks", at: 25 },
+        ],
+      },
+    });
+    expect(settled?.text).toMatch(
+      /^The paper swap intent int_\S+ you proposed is now paper_filled\.$/u,
+    );
   });
 
   it("pages by the last message's seq", async () => {

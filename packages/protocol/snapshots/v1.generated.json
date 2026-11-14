@@ -36722,6 +36722,9 @@
                       },
                       "goalTurn": {
                         "type": "boolean"
+                      },
+                      "fromEngine": {
+                        "type": "boolean"
                       }
                     },
                     "required": [

@@ -110,6 +110,29 @@ describe("the chat screen", () => {
     ]);
   });
 
+  it("leaves out the words binference wrote to the agent in the owner's place", async () => {
+    // A settle message starts the turn that reports the trade, kept as binference's words.
+    const settled = "The paper swap intent int_1 you proposed is now paper_filled.";
+    const engine = fakeClient(
+      chatAnswers({
+        "chat/messages": () => ({
+          items: [
+            kept(1, { role: "owner", kind: "text", text: "Buy the token" }),
+            kept(2, { role: "system", kind: "text", text: settled }, nextTurn),
+            kept(3, { role: "agent", kind: "text", text: "It filled on paper." }, nextTurn),
+          ],
+        }),
+      }),
+    );
+    renderSignedIn(<ChatScreen />, { client: engine.client });
+    await settle();
+    const log = screen.getByRole("log", { name: "Chat with main" });
+    expect([...log.children].map((entry) => entry.textContent)).toStrictEqual([
+      "You: Buy the token",
+      "main: It filled on paper.",
+    ]);
+  });
+
   it("says how many images the owner sent with a message the chat so far holds", async () => {
     const owned = { role: "owner", kind: "text", text: "Buy the token on this chart" };
     const engine = fakeClient(

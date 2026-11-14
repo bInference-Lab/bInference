@@ -141,25 +141,27 @@ export function noteOf(message: QueuedMessage): OwnerMessage | undefined {
   if (view?.kind !== "inbox/resumeReport") {
     return undefined;
   }
-  return { id: view.message, text: resumeText(view), outside: false };
+  return { id: view.message, text: resumeText(view), outside: false, fromEngine: true };
 }
 
 /**
  * A message as a turn's conversation holds it: one with images or marked by the engine is outside
  * content, and so is a schedule's wake-up whose `outsideContent` is set, and every alert's
- * wake-up.
+ * wake-up. Each one binference wrote in the owner's place, every kind but an owner's own message,
+ * is marked `fromEngine` (decision 0443).
  */
 export function ownerMessageOf(view: TurnMessage): OwnerMessage {
+  const fromEngine = true;
   if (view.kind === "inbox/intentSettled") {
-    return { id: view.message, text: settleText(view), outside: false };
+    return { id: view.message, text: settleText(view), outside: false, fromEngine };
   }
   if (view.kind === "inbox/scheduleDue") {
-    return { id: view.message, text: scheduleText(view), outside: view.outsideContent };
+    return { id: view.message, text: scheduleText(view), outside: view.outsideContent, fromEngine };
   }
   // What fires an alert is a market's or another wallet's doing: every alert wake-up is outside
   // content, whatever the message says (decision 0245).
   if (view.kind === "inbox/alertFired") {
-    return { id: view.message, text: alertText(view), outside: true };
+    return { id: view.message, text: alertText(view), outside: true, fromEngine };
   }
   // A helper's report the engine wrote in the owner's place is outside content when the helper read
   // some (decision 0403).
@@ -169,6 +171,7 @@ export function ownerMessageOf(view: TurnMessage): OwnerMessage {
     text: view.text,
     outside: images !== undefined || view.outsideContent === true,
     ...(images === undefined ? {} : { images }),
+    ...(view.fromEngine === true ? { fromEngine } : {}),
   };
 }
 

@@ -43,6 +43,13 @@ interface InboxOwnerMessage extends InboxMessageBase {
    * it starts a turn only when no other message waits.
    */
   readonly goalTurn?: boolean;
+  /**
+   * The engine wrote it in the owner's place (decision 0443), as it writes every message
+   * `outsideContent` or `goalTurn` marks, the answer to a credential request and the end of a job
+   * the agent started: the agent reads it as the owner's, and `chat/messages` answers it as
+   * binference's, never the owner's.
+   */
+  readonly fromEngine?: boolean;
 }
 
 /** A press of a question's button, as the message that answers it carries it. */
@@ -175,6 +182,7 @@ export const inboxMessageViewSchema: z.ZodType<InboxMessageView> = z.discriminat
       .exactOptional(),
     outsideContent: z.boolean().exactOptional(),
     goalTurn: z.boolean().exactOptional(),
+    fromEngine: z.boolean().exactOptional(),
   }),
   z.object({ ...base, kind: z.literal("inbox/intentSettled"), turn, intent: intentViewSchema }),
   z.object({ ...base, kind: z.literal("inbox/stop"), reason: z.enum(["owner", "freeze"]) }),

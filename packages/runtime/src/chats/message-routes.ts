@@ -37,14 +37,21 @@ function textOf(event: TranscriptEvent): string | undefined {
   return content.success ? content.data.text : undefined;
 }
 
-// How many images the owner sent with an owner's message; none for any other event.
-function imagesOf(event: TranscriptEvent): { readonly images?: number } {
-  if (event.role !== "owner" || event.kind !== "text") {
-    return {};
+// Who wrote an owner's message, and how many images the owner sent with it: words binference
+// wrote in the owner's place read as `system` (decision 0443). Any other event keeps its role.
+function writerOf(event: TranscriptEvent): Pick<MessageView, "role" | "images"> {
+  const owned =
+    event.role === "owner" && event.kind === "text"
+      ? ownerTextContentSchema.safeParse(event.content)
+      : undefined;
+  if (owned?.success !== true) {
+    return { role: event.role };
   }
-  const owned = ownerTextContentSchema.safeParse(event.content);
-  const images = owned.success ? owned.data.images : undefined;
-  return images === undefined ? {} : { images };
+  const { images, fromEngine } = owned.data;
+  if (fromEngine === true) {
+    return { role: "system" };
+  }
+  return images === undefined ? { role: "owner" } : { role: "owner", images };
 }
 
 function viewOf(event: TranscriptEvent): MessageView {
@@ -52,11 +59,10 @@ function viewOf(event: TranscriptEvent): MessageView {
   const view = {
     session: event.sessionId,
     seq: event.seq,
-    role: event.role,
     kind: event.kind,
     at: event.atMs,
     ...(text === undefined ? {} : { text }),
-    ...imagesOf(event),
+    ...writerOf(event),
   };
   return event.turnId === undefined ? view : { ...view, turn: event.turnId };
 }
@@ -117,9 +123,10 @@ export function isMessagesRoute(
  * Answers `chat/messages` from `agent.sqlite` (runtime spec, section 10): a page of one of the
  * agent's sessions, oldest first after the cursor, each event as a message with its role, kind,
  * time and turn, and its text (a tool call as its name and arguments, an image with none); an
- * owner's message says how many images it held. The cursor is the last message's `seq`; `next`
- * names it when the page is full. A session the agent does not hold reads as no message; args that
- * break the operation's schema, or a cursor no page gave, fail `protocol.bad_args`.
+ * owner's message says how many images it held, and words binference wrote in the owner's place
+ * read as `system`. The cursor is the last message's `seq`; `next` names it when the page is full.
+ * A session the agent does not hold reads as no message; args that break the operation's schema,
+ * or a cursor no page gave, fail `protocol.bad_args`.
  */
 export async function answerMessagesRoute(
   route: RouteLine & { readonly op: MessagesOp },
