@@ -186,6 +186,18 @@ describe("validate config", () => {
     ]);
   });
 
+  it("lists at most 64 models whose calls are repaired, as many as the runtime takes", () => {
+    const names = Array.from({ length: 65 }, (_, at) => `local/m${String(at)}`);
+    const listed = { ...base, models: { repairToolCalls: names } };
+    expect(issuesOf(check({ ...base, models: { repairToolCalls: names.slice(1) } }))).toStrictEqual(
+      [],
+    );
+    const issues = issuesOf(check(listed));
+    expect(issues.map(({ path, problem }) => [path, problem.kind])).toStrictEqual([
+      ["models.repairToolCalls", "bad_value"],
+    ]);
+  });
+
   it("names the variable or the flag that set a bad value", () => {
     expect(
       lines({ ...base, engine: { port: 1 } }, { layer: "env", name: "BINFERENCE_ENGINE__PORT" }),

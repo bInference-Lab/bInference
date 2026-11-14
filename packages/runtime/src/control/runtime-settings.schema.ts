@@ -46,6 +46,8 @@ export interface RuntimeModels {
   readonly speech?: string;
   /** The models that take images as input (decision 0227); the vision model reads them by its role. */
   readonly imageInput: readonly string[];
+  /** The models whose malformed tool calls the runtime repairs (decision 0447); none when absent. */
+  readonly repairToolCalls?: readonly string[];
   readonly fallbacks: { readonly main: readonly string[]; readonly fast: readonly string[] };
   readonly idleTimeoutMs: number;
   readonly cooldownMs: number;
@@ -170,6 +172,7 @@ const modelsSchema = z.strictObject({
   videoMaking: nameSchema.exactOptional(),
   speech: nameSchema.exactOptional(),
   imageInput: z.array(nameSchema).max(64),
+  repairToolCalls: z.array(nameSchema).max(64).exactOptional(),
   fallbacks: z.strictObject({
     main: z.array(nameSchema).max(16),
     fast: z.array(nameSchema).max(16),

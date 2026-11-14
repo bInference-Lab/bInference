@@ -5,7 +5,7 @@ description: "config.json5 中的每个配置项：取值、默认值和环境�
 
 <!-- Generated from the code by pnpm docs:gen. Never edit this file: change the code, then run pnpm docs:gen. -->
 
-此版本的 binference 读取第 23 版的 `config.json5`。每个配置项可以在文件中、通过对应的变量或用 `--set <key>=<value>` 设置，后面的层优先。密钥始终写成密钥来源，从不写密钥本身。
+此版本的 binference 读取第 24 版的 `config.json5`。每个配置项可以在文件中、通过对应的变量或用 `--set <key>=<value>` 设置，后面的层优先。密钥始终写成密钥来源，从不写密钥本身。
 
 ## `version`
 
@@ -66,6 +66,7 @@ description: "config.json5 中的每个配置项：取值、默认值和环境�
 - `models.videoMaking`: 生成视频的模型：bInference 网关的视频模型之一。取值：写作 provider/model 的模型，即服务商名加模型名。默认：无。变量：`BINFERENCE_MODELS__VIDEO_MAKING`。
 - `models.speech`: 所有者要求语音时朗读 Agent 话语的方式：openai 服务商上的语音模型，或在 macOS 上用 local 表示本机自带的语音。取值："local"或写作 provider/model 的模型，即服务商名加模型名。默认：无。变量：`BINFERENCE_MODELS__SPEECH`。
 - `models.imageInput`: 能以图片作为输入的模型；其他模型收到视觉模型写的图片描述。取值：列表，每一项为写作 provider/model 的模型，即服务商名加模型名。默认：`[]`。变量：`BINFERENCE_MODELS__IMAGE_INPUT`。
+- `models.repairToolCalls`: 运行时修复其格式错误的工具调用的模型：修复后的读取会运行，其他调用则等待模型重新发送。取值：列表，每一项为写作 provider/model 的模型，即服务商名加模型名。默认：`[]`。变量：`BINFERENCE_MODELS__REPAIR_TOOL_CALLS`。
 - `models.fallbacks.main`: 主模型失败时依次尝试的备用模型。取值：列表，每一项为写作 provider/model 的模型，即服务商名加模型名。默认：`[]`。变量：`BINFERENCE_MODELS__FALLBACKS__MAIN`。
 - `models.fallbacks.fast`: 快速模型失败时依次尝试的备用模型。取值：列表，每一项为写作 provider/model 的模型，即服务商名加模型名。默认：`[]`。变量：`BINFERENCE_MODELS__FALLBACKS__FAST`。
 - `models.idleTimeoutMs`: 模型请求在这么多毫秒内没有输出时中止。取值：不小于 1 的整数。默认：`120000`。变量：`BINFERENCE_MODELS__IDLE_TIMEOUT_MS`。

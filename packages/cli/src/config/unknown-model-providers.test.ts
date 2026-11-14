@@ -6,6 +6,7 @@ const models: ModelsConfig = {
   providers: { binference: { kind: "binference" }, claude: { kind: "anthropic" } },
   main: "binference/openai/gpt-5",
   imageInput: [],
+  repairToolCalls: [],
   fallbacks: { main: [], fast: [] },
   idleTimeoutMs: 1,
   cooldownMs: 1,
@@ -20,6 +21,13 @@ describe("models a change adds", () => {
       unknownModelProviders(models, { ...models, imageMaking: "openai/gpt-image-1" }),
       unknownModelProviders(models, { ...models, imageMaking: "binference/openai/gpt-image-1" }),
     ]).toStrictEqual([["openai/gpt-image-1"], []]);
+  });
+
+  it("names a model listed for call repair whose provider the config does not hold", () => {
+    expect([
+      unknownModelProviders(models, { ...models, repairToolCalls: ["local/qwen"] }),
+      unknownModelProviders(models, { ...models, repairToolCalls: ["binference/qwen"] }),
+    ]).toStrictEqual([["local/qwen"], []]);
   });
 
   it("names an image model on a provider that cannot make images", () => {

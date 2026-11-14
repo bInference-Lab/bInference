@@ -5,7 +5,7 @@ description: "Every config key in config.json5: what it takes, its default and i
 
 <!-- Generated from the code by pnpm docs:gen. Never edit this file: change the code, then run pnpm docs:gen. -->
 
-This binference reads `config.json5` version 23. Each config key is set in the file, by its variable, or by `--set <key>=<value>`, and a later layer wins. A secret is always a secret source, never the secret itself.
+This binference reads `config.json5` version 24. Each config key is set in the file, by its variable, or by `--set <key>=<value>`, and a later layer wins. A secret is always a secret source, never the secret itself.
 
 ## `version`
 
@@ -66,6 +66,7 @@ Model providers and the models the agent uses.
 - `models.videoMaking`: The model that makes videos: one of the bInference gateway's video models. Takes a model written as provider/model. Default: none. Variable: `BINFERENCE_MODELS__VIDEO_MAKING`.
 - `models.speech`: What speaks the agent's words when the owner asks for voice: a speech model on an openai provider, or local for this machine's own voice on macOS. Takes "local" or a model written as provider/model. Default: none. Variable: `BINFERENCE_MODELS__SPEECH`.
 - `models.imageInput`: The models that take images as input; any other model gets the vision model's description. Takes a list in which each item is a model written as provider/model. Default: `[]`. Variable: `BINFERENCE_MODELS__IMAGE_INPUT`.
+- `models.repairToolCalls`: The models whose malformed tool calls the runtime repairs in form: a read runs repaired, and any other call waits for the model to send it again. Takes a list in which each item is a model written as provider/model. Default: `[]`. Variable: `BINFERENCE_MODELS__REPAIR_TOOL_CALLS`.
 - `models.fallbacks.main`: Models tried in order when the main one fails. Takes a list in which each item is a model written as provider/model. Default: `[]`. Variable: `BINFERENCE_MODELS__FALLBACKS__MAIN`.
 - `models.fallbacks.fast`: Models tried in order when the fast one fails. Takes a list in which each item is a model written as provider/model. Default: `[]`. Variable: `BINFERENCE_MODELS__FALLBACKS__FAST`.
 - `models.idleTimeoutMs`: No output for this many milliseconds aborts a model request. Takes a whole number of at least 1. Default: `120000`. Variable: `BINFERENCE_MODELS__IDLE_TIMEOUT_MS`.

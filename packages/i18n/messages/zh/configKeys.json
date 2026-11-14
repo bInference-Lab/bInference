@@ -34,6 +34,7 @@
   "models.fast": "负责写摘要、压缩上下文和分类的模型。",
   "models.vision": "主模型无法读取图片时，负责读取图片的模型。",
   "models.imageInput": "能以图片作为输入的模型；其他模型收到视觉模型写的图片描述。",
+  "models.repairToolCalls": "运行时修复其格式错误的工具调用的模型：修复后的读取会运行，其他调用则等待模型重新发送。",
   "models.fallbacks.main": "主模型失败时依次尝试的备用模型。",
   "models.fallbacks.fast": "快速模型失败时依次尝试的备用模型。",
   "models.idleTimeoutMs": "模型请求在这么多毫秒内没有输出时中止。",

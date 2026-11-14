@@ -166,6 +166,13 @@ export const configMigrations: readonly ConfigMigration[] = [
       "(false): every command runs as before.",
     edits: () => [],
   },
+  {
+    from: 23,
+    summary:
+      "Adds models.repairToolCalls, the models whose malformed tool calls the runtime repairs, " +
+      "empty: no model's calls are repaired until the owner lists it.",
+    edits: () => [],
+  },
 ];
 
 /** The version of `config.json5` this binference writes and reads. */

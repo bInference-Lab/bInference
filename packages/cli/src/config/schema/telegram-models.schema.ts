@@ -59,6 +59,8 @@ export interface ModelsConfig {
   readonly imageMaking?: string;
   /** The models that take images as input, each `<provider>/<model>` (decision 0227). */
   readonly imageInput: readonly string[];
+  /** The models whose malformed tool calls the runtime repairs (decision 0447). */
+  readonly repairToolCalls: readonly string[];
   /** The model that makes videos, on the bInference gateway (decision 0405). */
   readonly videoMaking?: string;
   /** What speaks: a model on an openai provider, or `local` for this machine's voice (decision 0405). */
@@ -153,6 +155,13 @@ export const modelsSchema: z.ZodType<ModelsConfig> = z
       .prefault([])
       .describe(
         "The models that take images as input; any other model gets the vision model's description.",
+      ),
+    repairToolCalls: z
+      .array(modelSchema)
+      .max(64)
+      .prefault([])
+      .describe(
+        "The models whose malformed tool calls the runtime repairs in form: a read runs repaired, and any other call waits for the model to send it again.",
       ),
     fallbacks: z
       .strictObject({ main: fallbackList("main"), fast: fallbackList("fast") })

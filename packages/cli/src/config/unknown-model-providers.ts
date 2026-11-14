@@ -7,7 +7,8 @@ function modelsNamed(models: ModelsConfig): readonly string[] {
   const roles = [main, fast, vision, imageMaking, videoMaking, speech].filter(
     (model) => model !== undefined,
   );
-  return [...roles, ...imageInput, ...fallbacks.main, ...fallbacks.fast];
+  const lists = [...imageInput, ...models.repairToolCalls];
+  return [...roles, ...lists, ...fallbacks.main, ...fallbacks.fast];
 }
 
 // The provider a model names: its text before the first `/`.

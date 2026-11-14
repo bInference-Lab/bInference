@@ -1,5 +1,5 @@
 {
-  "version": 23,
+  "version": 24,
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object",
@@ -283,6 +283,17 @@
           "imageInput": {
             "description": "The models that take images as input; any other model gets the vision model's description.",
             "default": [],
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[^\\s/]+\\/\\S+$",
+              "valueFormat": "model"
+            }
+          },
+          "repairToolCalls": {
+            "description": "The models whose malformed tool calls the runtime repairs in form: a read runs repaired, and any other call waits for the model to send it again.",
+            "default": [],
+            "maxItems": 64,
             "type": "array",
             "items": {
               "type": "string",

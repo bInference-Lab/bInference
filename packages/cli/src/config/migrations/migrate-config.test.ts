@@ -328,6 +328,16 @@ describe("migrate config", () => {
     });
   });
 
+  it("moves a version 23 file to version 24 unchanged, no model's calls repaired", () => {
+    const twentyThird: JsonObject = { version: 23, models: { main: "local/qwen" } };
+    const migrated = migrateConfig(twentyThird, configMigrations.slice(0, 23));
+    expect(migrated).toMatchObject({
+      ok: true,
+      file: { version: 24, models: { main: "local/qwen" } },
+      steps: [{ from: 23, to: 24, edits: [] }],
+    });
+  });
+
   it("keeps the shipped migrations in order, one version each", () => {
     expect(() => {
       assertMigrationOrder(configMigrations);

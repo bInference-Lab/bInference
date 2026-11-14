@@ -23,7 +23,7 @@ const secrets: SecretReader = {
   },
 };
 
-const config = configSchema.parse({
+const input = {
   version: currentConfigVersion,
   telegram: { botToken: { fromEnv: "TEST_BOT_TOKEN" } },
   owner: { locale: "zh", timezone: "Asia/Shanghai" },
@@ -44,7 +44,8 @@ const config = configSchema.parse({
     xApiKey: { fromEnv: "NONE" },
   },
   chats: { newMessageMode: "after" },
-});
+};
+const config = configSchema.parse(input);
 
 describe("runtimeSettingsOf", () => {
   it("reads each key from its source and leaves out, logged, one it cannot read", async () => {
@@ -92,5 +93,20 @@ describe("runtimeSettingsOf", () => {
     expect(settings.network).toStrictEqual({ proxy: sent, noProxy: ["10.0.0.0/8"] });
     const wire = runtimeSettingsSchema.encode(settings);
     expect(runtimeSettingsSchema.parse(wire).network).toStrictEqual(settings.network);
+  });
+
+  it("hands the runtime the models whose malformed calls it repairs", async () => {
+    const listed = configSchema.parse({
+      ...input,
+      models: { ...input.models, repairToolCalls: ["own/qwen"] },
+    });
+    const settings = await runtimeSettingsOf(listed, {
+      proxy: { noProxy: [] },
+      secrets,
+      logger: createMemoryLogger({ subsystem: "runtime" }),
+      signal: new AbortController().signal,
+    });
+    const wire = runtimeSettingsSchema.encode(settings);
+    expect(runtimeSettingsSchema.parse(wire).models.repairToolCalls).toStrictEqual(["own/qwen"]);
   });
 });
