@@ -3,6 +3,7 @@ import type { IntentSnapshot } from "../intents/create-stored-intents.js";
 import { quoteDocument } from "../intents/intent-documents.schema.js";
 import { announceOrder, fillOrderOf, fillRuleOf } from "../orders/fill-ends.js";
 import { landedFillWrite, type LandedTrade } from "../orders/fill-landed.js";
+import { orderFillPush } from "../orders/order-fill-view-of.js";
 import type { OrderRecord } from "../orders/order-record.js";
 import { orderPush } from "../orders/order-view-of.js";
 import { type NoticePart, noticePush } from "../pushes/notice-push.js";
@@ -18,8 +19,9 @@ const unvaluedNoticeKey = "notice.fillUnvalued";
 // fill or a skip told in the rule's notice hour, is read and written again.
 const countTries = 3;
 
-// The count's write on the order as read now, and what the order store answered it; `undefined`
-// when the intent fills no stored order, `order_refused` when the order cannot take the fill.
+// The count's write on the order as read now, and what the order store answered it, its row pushed
+// once it is stored; `undefined` when the intent fills no stored order, `order_refused` when the
+// order cannot take the fill.
 async function countOnce(
   run: ExecutionRun,
   call: { readonly finalized: IntentSnapshot; readonly settled: LandedTrade },
@@ -40,10 +42,13 @@ async function countOnce(
   const atMs = parts.clock.now();
   const landing = { order, snapshot: finalized, settled, isBooked: false, atMs, signal };
   const write = await landedFillWrite(parts, landing);
-  const counted =
-    write === undefined
-      ? err("order_refused" as const)
-      : await parts.orders.recordLandedFill(write, { signal });
+  if (write === undefined) {
+    return { order, counted: err("order_refused") };
+  }
+  const counted = await parts.orders.recordLandedFill(write, { signal });
+  if (counted.ok) {
+    parts.publish(orderFillPush(write.fill, order.agentId));
+  }
   return { order, counted };
 }
 

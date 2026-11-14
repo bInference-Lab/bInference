@@ -1,9 +1,10 @@
 import type { AssetRef, UsdPrice } from "@binference/chain";
 import type { Id, JsonValue, Ratio } from "@binference/core";
-import type { OrderRequest } from "@binference/protocol";
+import { type OrderFillPush, orderFillPushSchema, type OrderRequest } from "@binference/protocol";
 import type { IntentRecord } from "../intents/intent-record.js";
 import { testCoin, testToken } from "../intents/test-intents.js";
 import type { TestEngine, TestEngineOptions } from "../operations/test-engine.js";
+import type { EnginePush } from "../pushes/engine-push.js";
 import type { FillPrice } from "./fill-orders.js";
 import type { OrderFillRecord } from "./order-fill.js";
 import type { OrderRecord } from "./order-record.js";
@@ -48,6 +49,18 @@ export async function activeOrder(test: TestEngine, request: OrderRequest): Prom
 /** The notices the engine sent, oldest first. */
 export function noticesOf(test: TestEngine): readonly JsonValue[] {
   return test.pushes.filter(({ topic }) => topic === "notice").map(({ data }) => data);
+}
+
+/**
+ * The `order/filled` and `order/skipped` pushes among `pushes`, in order, each read as the protocol
+ * reads it.
+ */
+export function fillPushesOf(
+  pushes: readonly EnginePush[],
+): readonly { readonly kind: string; readonly data: OrderFillPush }[] {
+  return pushes
+    .filter(({ kind }) => kind === "order/filled" || kind === "order/skipped")
+    .map(({ kind, data }) => ({ kind, data: orderFillPushSchema.parse(data) }));
 }
 
 /** An order's fill rows, the newest first. */

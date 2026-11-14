@@ -15,7 +15,7 @@ import { testCoin, testToken } from "../intents/test-intents.js";
 import { testChains } from "../operations/test-engine.js";
 import type { IntentStore } from "../ports.js";
 import { isOverCount, landedFillWrite } from "./fill-landed.js";
-import { fillPrices, fillRowsOf } from "./test-fills.js";
+import { fillPrices, fillPushesOf, fillRowsOf } from "./test-fills.js";
 import { activeOrderOf, fillOnce, liveFillsOf, startLiveFills } from "./test-live-fills.js";
 import { storedOrder } from "./test-orders.js";
 
@@ -73,6 +73,11 @@ describe("a live fill whose step was dropped", () => {
     expect(rows.map(({ outcome, intentId }) => [outcome, intentId])).toStrictEqual([
       ["filled", fill],
       ["skipped", fill],
+    ]);
+    const pushed = fillPushesOf([...bench.test.pushes, ...bench.pushes]);
+    expect(pushed.map(({ kind, data }) => [kind, data.fill.fill])).toStrictEqual([
+      ["order/skipped", rows[1]?.id],
+      ["order/filled", rows[0]?.id],
     ]);
     expect(after).toBe("inactive");
     expect(await liveFillsOf(bench)).toHaveLength(1);

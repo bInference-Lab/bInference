@@ -2,7 +2,7 @@ import type { Id } from "@binference/core";
 import { describe, expect, it } from "vitest";
 import { driveUntil, eventsOf, flush } from "../executor/test-executor.js";
 import type { OrderStore } from "./ports.js";
-import { fillRowsOf } from "./test-fills.js";
+import { fillPushesOf, fillRowsOf } from "./test-fills.js";
 import {
   activeOrderOf,
   executorNotices,
@@ -43,6 +43,10 @@ describe("a live fill whose trade cannot be valued", () => {
     );
     const rows = await fillRowsOf(bench.test, order.id);
     expect(rows.map(({ outcome }) => outcome)).toStrictEqual(["filled"]);
+    const pushed = fillPushesOf([...bench.test.pushes, ...bench.pushes]);
+    expect(pushed.map(({ kind, data }) => [kind, data.fill.fill])).toStrictEqual([
+      ["order/filled", rows[0]?.id],
+    ]);
     const settled = (await liveFillsOf(bench)).find((record) => record.id === id);
     expect(settled?.state).toBe("reconciled");
   });

@@ -163,6 +163,23 @@ describe("the relay to the owner's chat", () => {
     expect(test.events).toStrictEqual(["settle confirmed", "chat closed"]);
   });
 
+  it("sends nothing to the owner's chat for an order's fill and skip pushes", async () => {
+    const test = setUp();
+    const order = "ord_0190f1c2-3a4b-7c5d-8e6f-000000000001";
+    const fill = "fil_0190f1c2-3a4b-7c5d-8e6f-000000000001";
+    const row = { fill, intent, outcome: "filled", at: nowMs };
+    test.relay.start();
+    test.relay.relay({ topic: "order", kind: "order/filled", data: { order, agent, fill: row } });
+    test.relay.relay({
+      topic: "order",
+      kind: "order/skipped",
+      data: { order, agent, fill: { ...row, outcome: "skipped", reason: "nothing_to_sell" } },
+    });
+    await test.relay.idle();
+    await test.relay.close();
+    expect(test.events).toStrictEqual(["send all", "chat closed"]);
+  });
+
   it("sends what waited for the owner once the owner pairs", async () => {
     const test = setUp([{ kind: "noOwner" }]);
     test.relay.start();

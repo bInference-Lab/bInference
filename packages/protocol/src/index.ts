@@ -165,6 +165,7 @@ export * from "./views/chat-push.schema.js";
 export * from "./views/chat-deleted-push.schema.js";
 export * from "./views/notice-view.schema.js";
 export * from "./views/limits-view.schema.js";
+export * from "./views/order-fill-push.schema.js";
 export * from "./views/order-view.schema.js";
 export * from "./views/pnl-card-view.schema.js";
 export { balanceViewSchema, portfolioViewSchema } from "./views/portfolio-view.schema.js";

@@ -5,6 +5,7 @@ import { quoteDocument } from "../intents/intent-documents.schema.js";
 import type { LateLanding } from "../intents/late-landing.js";
 import { announceOrder, fillOrderOf, fillRuleOf } from "../orders/fill-ends.js";
 import { landedFillWrite } from "../orders/fill-landed.js";
+import { orderFillPush } from "../orders/order-fill-view-of.js";
 import type { OrderFillWrite } from "../orders/order-fill.js";
 import { orderPush } from "../orders/order-view-of.js";
 import type { TransactionRecord } from "../wallet-queue/transaction-record.js";
@@ -173,7 +174,11 @@ async function linkLanding(
   const linked = await parts.stores.intents.recordLandedLate(write, { signal });
   const intentId = landing.intentId;
   if (linked.ok) {
-    await announceCount(run, order === undefined ? { intentId } : { intentId, order });
+    const agent = dropped.record.agentId;
+    await announceCount(
+      run,
+      order === undefined ? { intentId, agent } : { intentId, agent, order },
+    );
     await announceRuleCount(run, alert);
     return;
   }
@@ -184,11 +189,15 @@ async function linkLanding(
   parts.log.warn("executor.landed_late_linked", { intentId, errorCode: linked.error });
 }
 
-// The owner hears a late fill counted on its order; a count past the order's most fills is an
-// error the owner's alarm on the row names too.
+// The owner hears a late fill counted on its order, and every surface its row; a count past the
+// order's most fills is an error the owner's alarm on the row names too.
 async function announceCount(
   run: ExecutionRun,
-  counted: { readonly intentId: Id<"int">; readonly order?: OrderFillWrite },
+  counted: {
+    readonly intentId: Id<"int">;
+    readonly agent: Id<"agt">;
+    readonly order?: OrderFillWrite;
+  },
 ): Promise<void> {
   const { order, intentId } = counted;
   if (order === undefined) {
@@ -200,6 +209,7 @@ async function announceCount(
   if (stored !== undefined) {
     publish(orderPush(stored, "order/changed"));
   }
+  publish(orderFillPush(order.fill, counted.agent));
   const isOver = stored?.maxFills !== undefined && stored.fills > stored.maxFills;
   parts.log[isOver ? "error" : "info"]("executor.landed_late_counted", { intentId });
   await announceOrder({ orders, clock, publish }, order.fill.orderId, signal);

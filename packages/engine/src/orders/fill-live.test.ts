@@ -15,7 +15,7 @@ import { testAccount, testCall } from "../operations/test-engine.js";
 import type { IntentStore } from "../ports.js";
 import { moveOrder } from "./order-machine.js";
 import type { OrderStore } from "./ports.js";
-import { eightyCents, fillRowsOf, wholeToken } from "./test-fills.js";
+import { eightyCents, fillPushesOf, fillRowsOf, wholeToken } from "./test-fills.js";
 import {
   activeOrderOf,
   executorNotices,
@@ -79,6 +79,10 @@ describe("an auto order's live fill", () => {
     expect(after).toMatchObject({ state: "filled", fills: 1 });
     expect(rows).toMatchObject([{ outcome: "filled", intentId: id }]);
     expect(rows[0]?.announcedAtMs).toBeDefined();
+    const pushed = fillPushesOf([...bench.test.pushes, ...bench.pushes]);
+    expect(pushed.map(({ kind, data }) => [kind, data.fill.fill])).toStrictEqual([
+      ["order/filled", rows[0]?.id],
+    ]);
     expect(again).toBe("inactive");
     expect(await liveFillsOf(bench)).toHaveLength(1);
     expect(bench.signed).toHaveLength(1);

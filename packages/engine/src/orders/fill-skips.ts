@@ -4,6 +4,7 @@ import type { CapUse } from "./copy-fills.js";
 import { announceOrder, type CancelFillParts, skipRowOf } from "./fill-ends.js";
 import type { OrderFillsParts } from "./fill-orders.js";
 import { agentWideReasons } from "./fill-pacing.js";
+import { orderFillPush } from "./order-fill-view-of.js";
 import type { OrderFillReason } from "./order-fill.js";
 import type { OrderRecord } from "./order-record.js";
 
@@ -45,9 +46,9 @@ function agentWideTells(state: FillState, skipped: Skip): boolean | undefined {
 }
 
 /**
- * Stores a skip of an order's fill before any intent, with its notice in the same write, and
- * tells the owner (decision 0197); the order stays as it is. A copy order's skip names its leader
- * as the agent's address book does.
+ * Stores a skip of an order's fill before any intent, with its notice in the same write, pushes
+ * its row, and tells the owner (decision 0197); the order stays as it is. A copy order's skip
+ * names its leader as the agent's address book does.
  */
 export async function skipFill(
   parts: OrderFillsParts,
@@ -72,7 +73,8 @@ export async function skipFill(
     ...(cap === undefined ? {} : { cap }),
   };
   const row = await skipRowOf(rowParts(parts), call);
-  await parts.orders.recordFill(row, { signal });
+  const stored = await parts.orders.recordFill(row, { signal });
+  parts.publish(orderFillPush(stored, order.agentId));
   await announceOrder(parts, order.id, signal);
   return "skipped";
 }
