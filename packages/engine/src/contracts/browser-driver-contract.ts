@@ -87,6 +87,38 @@ const missesSelector: Check = async ({ driver, page }) => {
 const refuses: Check = async ({ driver, refusedUrl }) => {
   const went = await driver.run({ action: "navigate", url: refusedUrl }, { signal });
   assert.deepEqual(went, { ok: false, error: "address_refused" });
+  const opened = await driver.run({ action: "open", url: refusedUrl }, { signal });
+  assert.deepEqual(opened, { ok: false, error: "address_refused" });
+};
+
+const keepsTabs: Check = async ({ driver, page }) => {
+  await driver.run({ action: "navigate", url: page.url }, { signal });
+  const opened = await driver.run({ action: "open", url: page.url }, { signal });
+  assert.ok(opened.ok);
+  const { tabs } = opened.value.view;
+  assert.ok(tabs !== undefined);
+  assert.equal(tabs.length, 2);
+  const [first, second] = tabs;
+  assert.ok(first !== undefined);
+  assert.ok(second !== undefined);
+  const focused = await driver.run({ action: "focus", tab: first.tab }, { signal });
+  assert.ok(focused.ok);
+  assert.equal(focused.value.view.tab?.tab, first.tab);
+  const closed = await driver.run({ action: "close", tab: first.tab }, { signal });
+  assert.ok(closed.ok);
+  assert.deepEqual(
+    closed.value.view.tabs?.map(({ tab }) => tab),
+    [second.tab],
+  );
+  const gone = await driver.run({ action: "focus", tab: first.tab }, { signal });
+  assert.deepEqual(gone, { ok: false, error: "tab_not_found" });
+};
+
+const stopsOnRequest: Check = async ({ driver, page }) => {
+  await driver.run({ action: "navigate", url: page.url }, { signal });
+  const stopped = await driver.run({ action: "stop" }, { signal });
+  assert.deepEqual(stopped, { ok: true, value: { view: { running: false } } });
+  assert.equal(driver.isRunning(), false);
 };
 
 const checks: readonly (readonly [string, Check])[] = [
@@ -96,7 +128,9 @@ const checks: readonly (readonly [string, Check])[] = [
   ["answers a problem for a ref no element holds", missesRef],
   ["reads the page's prose and takes a PNG screenshot", readsAndShoots],
   ["answers a problem at once for a selector no element matches", missesSelector],
-  ["refuses an address its check refuses", refuses],
+  ["refuses an address its check refuses, in a tab or a new one", refuses],
+  ["opens a new tab, focuses and closes one by its id, and refuses an id no tab holds", keepsTabs],
+  ["stops the browser on a stop request", stopsOnRequest],
 ];
 
 /** The contract every `BrowserDriver` adapter passes; each check stops its browser at its end. */

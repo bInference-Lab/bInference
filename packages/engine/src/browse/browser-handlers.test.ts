@@ -1,4 +1,4 @@
-import { idSchema } from "@binference/core";
+import { err, idSchema } from "@binference/core";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
 import type { BrowserRequest } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
@@ -102,6 +102,23 @@ describe("the agent's browser", () => {
       maxBytes: 100,
     });
     expect(read.ok).toBe(true);
+  });
+
+  it("answers unwritable for a capture the workspace refuses, or in an engine with no file tools", async () => {
+    const refusing: MachineFiles = { ...createMemoryFiles(), write: async () => err("unwritable") };
+    const turns = createRunningTurns({ clock: createManualClock(0) });
+    turns.startRuntime(idSchema("tok").parse(runtime.credential));
+    const driver = createFakeBrowserDriver({ pages: {} });
+    const unfiled = createBrowserHandlers({
+      browser: { driver, settings: () => ({ enabled: true, evaluate: true }) },
+      turns,
+      clock: createManualClock(0),
+      random: createSeededRandom(1),
+    })["browser/run"];
+    expect([
+      await setUp({ files: refusing }).run({ action: "screenshot" }),
+      await unfiled(testCall({ agent: testAgent, request: { action: "pdf" } }, runtime)),
+    ]).toStrictEqual([err("file.unwritable"), err("file.unwritable")]);
   });
 
   it("saves a PDF with its own extension", async () => {

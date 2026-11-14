@@ -1,4 +1,4 @@
-import { idSchema } from "@binference/core";
+import { err, idSchema } from "@binference/core";
 import { createManualClock, createSeededRandom } from "@binference/core/testing";
 import { maxImageBytes } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
@@ -100,6 +100,11 @@ describe("the owner's screen", () => {
       error: "screen.too_large",
     });
     expect(await setUp({ files: "none" }).capture()).toStrictEqual({
+      ok: false,
+      error: "file.unwritable",
+    });
+    const refusing: MachineFiles = { ...createMemoryFiles(), write: async () => err("unwritable") };
+    expect(await setUp({ files: refusing }).capture()).toStrictEqual({
       ok: false,
       error: "file.unwritable",
     });

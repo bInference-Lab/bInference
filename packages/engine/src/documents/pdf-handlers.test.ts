@@ -65,8 +65,10 @@ function setUp(options: { readonly reader?: PdfReader; readonly noSource?: boole
     args: Partial<EngineCall<"pdf/read">["args"]>,
     caller = testCallers.runtime,
   ) => handlers["pdf/read"](testCall({ agent: testAgent, ...args }, caller));
-  const picture = async (args: Omit<EngineCall<"pdf/pageImage">["args"], "agent">) =>
-    handlers["pdf/pageImage"](testCall({ agent: testAgent, ...args }, testCallers.runtime));
+  const picture = async (
+    args: Omit<EngineCall<"pdf/pageImage">["args"], "agent">,
+    caller = testCallers.runtime,
+  ) => handlers["pdf/pageImage"](testCall({ agent: testAgent, ...args }, caller));
   return { read, picture, clock };
 }
 
@@ -159,6 +161,16 @@ describe("pdf/pageImage", () => {
     const last = await picture({ document, page: 1, offset: imagePartBytes });
     expect(last).toMatchObject({ ok: true, value: { offset: imagePartBytes } });
     expect(await picture({ document, page: 1 })).toStrictEqual({ ok: false, error: "pdf.gone" });
+  });
+
+  it("answers a page's picture to the runtime the engine runs now alone", async () => {
+    const { read, picture } = setUp({ reader: bigPictureReader });
+    const document = documentOf(await read({ url: "https://example.com/report.pdf" }));
+    expect(await picture({ document, page: 1 }, testCallers.cli)).toStrictEqual({
+      ok: false,
+      error: "auth.scope",
+    });
+    expect(await picture({ document, page: 1 })).toMatchObject({ ok: true, value: { offset: 0 } });
   });
 
   it("refuses a page with no picture, and a document no longer held", async () => {
