@@ -85,6 +85,16 @@ describe("defineTool", () => {
     );
   });
 
+  it.each(["__proto__", "constructor", "prototype"])(
+    "refuses a field named %s, which the JSON value check would drop or no schema take",
+    async (key) => {
+      const text = `{"${key}":{"x":1},"amountBase":"1","reason":"r"}`;
+      await expect(runPrepared(defineTool(swapSpec).prepare(text))).resolves.toBe(
+        "refused: not run: the arguments of swap name a field __proto__, constructor or prototype, which no tool takes",
+      );
+    },
+  );
+
   it.each([
     [
       `{"amountBase":"1","reason":${"[".repeat(2_000)}${"]".repeat(2_000)}}`,

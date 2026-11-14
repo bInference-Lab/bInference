@@ -1,5 +1,5 @@
 /** Why a JSON text's shape is refused before it is parsed. */
-export type JsonShapeProblem = "too_deep" | "duplicate_key";
+export type JsonShapeProblem = "too_deep" | "duplicate_key" | "reserved_key";
 
 /**
  * The deepest nesting of objects and arrays binference reads from outside JSON (decision 0417).
@@ -74,18 +74,28 @@ function keyOf(literal: string): string {
   }
 }
 
-// Adds a key to its object's keys; false when the object already had it.
-function addKey(keys: Set<string>, literal: string): boolean {
+// The keys a copy into a plain object turns into something else: there `__proto__` sets the
+// prototype in place of a field (`jsonValueSchema` drops it), so a strict schema never sees it,
+// and `constructor` and `prototype` name what every object already has.
+const reservedKeys: ReadonlySet<string> = new Set(["__proto__", "constructor", "prototype"]);
+
+// Adds a key to its object's keys: a reserved key, or one the object already had, is a problem.
+function addKey(keys: Set<string>, literal: string): JsonShapeProblem | undefined {
   const key = keyOf(literal);
+  if (reservedKeys.has(key)) {
+    return "reserved_key";
+  }
   const isNew = !keys.has(key);
   keys.add(key);
-  return isNew;
+  return isNew ? undefined : "duplicate_key";
 }
 
 /**
  * Scans a JSON text once, skipping strings, for what a parse would hide or could not survive:
- * brackets nested deeper than `maxDepth`, and a key written twice in one object, which a parse
- * resolves silently to its last value. Text that is not JSON is left for the parse to refuse.
+ * brackets nested deeper than `maxDepth`, a key written twice in one object, which a parse
+ * resolves silently to its last value, and a key `__proto__`, `constructor` or `prototype`, which
+ * a copy into a plain object turns into its prototype or a method in place of a field. Text that
+ * is not JSON is left for the parse to refuse.
  */
 export function jsonShapeProblem(text: string, maxDepth: number): JsonShapeProblem | undefined {
   // One entry per open bracket: an object's keys so far, or none for an array.
@@ -99,7 +109,7 @@ export function jsonShapeProblem(text: string, maxDepth: number): JsonShapeProbl
     const literal = text.slice(index, end + 1);
     index = end;
     last = '"';
-    return isKey && !addKey(keys, literal) ? "duplicate_key" : undefined;
+    return isKey ? addKey(keys, literal) : undefined;
   };
   const readStructure = (char: string): JsonShapeProblem | undefined => {
     if (char === "{" || char === "[") {

@@ -124,6 +124,7 @@ const problemTexts: Readonly<Record<ArgumentsProblem, string>> = {
   too_large: `are longer than ${String(maxArgumentsChars)} characters`,
   too_deep: `are nested deeper than ${String(maxJsonDepth)} levels`,
   duplicate_key: "name a field twice",
+  reserved_key: "name a field __proto__, constructor or prototype, which no tool takes",
   unsafe_number:
     "hold an integer past 2^53 not written as plain digits; write amounts as decimal strings",
 };

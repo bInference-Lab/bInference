@@ -18,6 +18,7 @@ export type ArgumentsProblem =
   | "too_large"
   | "too_deep"
   | "duplicate_key"
+  | "reserved_key"
   | "unsafe_number";
 
 /** What the parser's reviver sees of a value's own text (ECMAScript's JSON.parse source text). */
@@ -61,7 +62,8 @@ function parsed(text: string): Result<JsonValue, ArgumentsProblem> {
  * Parses a tool call's arguments (runtime spec, section 5.2). An integer past 2^53 written as
  * plain digits becomes a string of those exact digits; one written any other way is
  * `unsafe_number`, never rounded. Text over {@link maxArgumentsChars}, nesting past
- * `maxJsonDepth` (decision 0417) and a key written twice in one object are refused before the parse.
+ * `maxJsonDepth` (decision 0417), a key written twice in one object and a key `__proto__`,
+ * `constructor` or `prototype`, which no schema would see, are refused before the parse.
  * Empty text is an empty object, as models send for a tool with no arguments. Nothing here throws.
  */
 export function parseArgumentsJson(text: string): Result<JsonValue, ArgumentsProblem> {

@@ -38,4 +38,18 @@ describe("jsonShapeProblem", () => {
     expect(jsonShapeProblem(String.raw`{"ab": 1, "\u0061b": 2}`, 4)).toBe("duplicate_key");
     expect(jsonShapeProblem('{"a": {"a": 1}, "b": [{"a": 2}]}', 4)).toBeUndefined();
   });
+
+  it.each([
+    '{"__proto__": {"x": 1}, "a": 2}',
+    String.raw`{"__proto__": 1}`,
+    '{"a": [{"constructor": 1}]}',
+    '{"a": {"prototype": "x"}}',
+  ])("finds a key a copy would make a prototype or a method: %s", (text) => {
+    expect(jsonShapeProblem(text, 4)).toBe("reserved_key");
+  });
+
+  it("takes those words as values and inside other keys", () => {
+    const text = '{"a": "__proto__", "my_constructor": ["prototype"]}';
+    expect(jsonShapeProblem(text, 4)).toBeUndefined();
+  });
 });
