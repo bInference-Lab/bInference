@@ -1173,9 +1173,11 @@ These close the choices an engineer would otherwise make alone. Each is a rule.
 - Lists page with an opaque cursor. Idempotency keys are kept 24 hours. Enforcer: engine tests with
   a fake `Clock`.
 - One protocol version number. Changes inside a version are additive only; a removal or a meaning
-  change bumps the version, and the engine serves the previous version for one stable release.
-  Enforcer: `check:protocol-compat` (the protocol's JSON Schema against the committed snapshot: only
-  additions inside a version); a test against the previous version.
+  change bumps the version, and the engine serves the previous version for one stable release. A
+  row the engine leaves unserved as not built (`unservedOperations`) may narrow its scope inside a
+  version, since no client can rely on it: fewer callers in some case and more in none. Enforcer:
+  `check:protocol-compat` (the protocol's JSON Schema against the committed snapshot: only
+  additions, and such a narrower scope, inside a version); a test against the previous version.
 
 <a id="section-24-2"></a>
 

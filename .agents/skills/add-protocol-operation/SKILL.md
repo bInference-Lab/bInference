@@ -48,7 +48,8 @@ In `packages/protocol/src/operations/<domain>-operations.schema.ts`:
 ## 4. Compatibility
 
 Inside a protocol version, changes are additive: new operations, optional fields, push kinds and
-error codes. Then:
+error codes. A row the engine leaves unserved as not built may also narrow its scope, since no
+client can rely on it. Then:
 
 ```sh
 pnpm check:protocol-compat --write

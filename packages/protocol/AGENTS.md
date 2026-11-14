@@ -16,8 +16,10 @@ Rules for this package:
 - Optional fields use `.exactOptional()`: on the wire a missing field is absent, never `null`.
 - Inside a version, changes are additive only: new operations, new optional fields, new push
   kinds, new error codes. `pnpm check:protocol-compat` compares `describeProtocol()` with
-  `snapshots/v<version>.generated.json` and fails anything else. After an addition, run it with
-  `--write` and commit the snapshot. A removal or a change of meaning raises `protocolVersion`.
+  `snapshots/v<version>.generated.json` and fails anything else, but a narrower scope on a row
+  the CLI's `unservedOperations` names as not built: no client can rely on such a row. After an
+  addition, run it with `--write` and commit the snapshot. A removal or a change of meaning raises
+  `protocolVersion`.
 - An error code the spec adds goes into `protocolErrorCodes`; surfaces map each code to a message.
 - An operation is one row in the table of its `src/operations/*-operations.schema.ts` file: its
   name, exactly one scope, the flags of its kind (`readFlags`, `writeFlags`, `localWriteFlags`

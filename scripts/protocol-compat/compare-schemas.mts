@@ -1,8 +1,11 @@
 import { isDeepStrictEqual } from "node:util";
 
-/** How one part of the protocol differs from its snapshot. Inside a version, only `added` passes. */
+/**
+ * How one part of the protocol differs from its snapshot. Inside a version, only `added` passes,
+ * and `narrowed`, a narrower scope on a row the engine leaves unserved as not built.
+ */
 export interface SchemaChange {
-  readonly kind: "added" | "removed" | "changed";
+  readonly kind: "added" | "narrowed" | "removed" | "changed";
   /** The schema and the path inside it, such as `frame/open.client.kind`. */
   readonly where: string;
   readonly what: string;

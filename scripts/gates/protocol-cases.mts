@@ -11,6 +11,7 @@ interface SourceEdit {
 const byeFile = "packages/protocol/src/frames/bye-frame.schema.ts";
 const pushFile = "packages/protocol/src/frames/push-frame.schema.ts";
 const versionFile = "packages/protocol/src/versions/protocol-version.ts";
+const settingsFile = "packages/protocol/src/operations/settings-operations.schema.ts";
 const message = "  message: z.string(),\n";
 
 const removeMessage: SourceEdit = { file: byeFile, from: message, to: "" };
@@ -44,11 +45,34 @@ function edited(repo: string, edits: readonly SourceEdit[]): Record<string, stri
   return files;
 }
 
+// `ledger/export` and `config/read` are rows the engine leaves unserved as not built;
+// `ledger/list` is served.
+const narrowUnbuilt: SourceEdit = {
+  file: settingsFile,
+  from: '    name: "ledger/export",\n    scope: "read",\n',
+  to: '    name: "ledger/export",\n    scope: "admin",\n',
+};
+const narrowServed: SourceEdit = {
+  file: settingsFile,
+  from: '    name: "ledger/list",\n    scope: "read",\n',
+  to: '    name: "ledger/list",\n    scope: "admin",\n',
+};
+const widenUnbuilt: SourceEdit = {
+  file: settingsFile,
+  from: '    name: "config/read",\n    scope: "admin",\n',
+  to: '    name: "config/read",\n    scope: "read",\n',
+};
+const requireUnbuiltField: SourceEdit = {
+  file: settingsFile,
+  from: "    args: z.strictObject({ ...ledgerRange, mode: agentModeSchema.exactOptional() }),\n",
+  to: "    args: z.strictObject({ ...ledgerRange, mode: agentModeSchema }),\n",
+};
+
 const compat = ["pnpm", "check:protocol-compat"];
 const write = [...compat, "--write"];
 
-/** Cases for check:protocol-compat: inside a version, only additions pass. */
-export function protocolCases(repo: string): readonly GateCase[] {
+// Inside a version, only additions pass, and a raised version starts a snapshot of its own.
+function versionCases(repo: string): readonly GateCase[] {
   return [
     {
       name: "a field removed from a frame inside a version fails check:protocol-compat",
@@ -88,4 +112,65 @@ export function protocolCases(repo: string): readonly GateCase[] {
       ],
     },
   ];
+}
+
+// A narrower scope passes only on a row the engine leaves unserved as not built; a wider one, or
+// any other change to such a row, fails with why.
+function scopeCases(repo: string): readonly GateCase[] {
+  return [
+    {
+      name: "a narrower scope on an unbuilt row passes check:protocol-compat once --write records it",
+      files: edited(repo, [narrowUnbuilt]),
+      steps: [
+        {
+          command: compat,
+          expect: "fail",
+          output: [/call\/ledger\/export: "scope" changes from "read" to "admin", which narrows/],
+        },
+        { command: write, expect: "pass" },
+        { command: compat, expect: "pass" },
+      ],
+    },
+    {
+      name: "a narrower scope on a served row fails check:protocol-compat",
+      files: edited(repo, [narrowServed]),
+      steps: [
+        {
+          command: write,
+          expect: "fail",
+          output: [/call\/ledger\/list: only a row the engine leaves unserved as not built may/],
+        },
+      ],
+    },
+    {
+      name: "a wider scope on an unbuilt row fails check:protocol-compat",
+      files: edited(repo, [widenUnbuilt]),
+      steps: [
+        {
+          command: write,
+          expect: "fail",
+          output: [/call\/config\/read: the change widens who may call it/],
+        },
+      ],
+    },
+    {
+      name: "another change to an unbuilt row's shape fails check:protocol-compat",
+      files: edited(repo, [narrowUnbuilt, requireUnbuiltField]),
+      steps: [
+        {
+          command: write,
+          expect: "fail",
+          output: [/call\/ledger\/export: a row the engine leaves unserved as not built changes/],
+        },
+      ],
+    },
+  ];
+}
+
+/**
+ * Cases for check:protocol-compat: inside a version, only additions pass, and a narrower scope on a
+ * row the engine leaves unserved as not built.
+ */
+export function protocolCases(repo: string): readonly GateCase[] {
+  return [...versionCases(repo), ...scopeCases(repo)];
 }
