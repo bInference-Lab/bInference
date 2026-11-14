@@ -7,6 +7,7 @@ import type { CommandRun } from "../program/command-run.js";
 import { accessFindings } from "./access-findings.js";
 import type { CheckFinding } from "./check-finding.js";
 import { fixedConfigFinding } from "./config-migration.js";
+import type { EngineReach } from "./engine-reach.js";
 import { configFinding, engineFinding, unlockFinding } from "./install-findings.js";
 import { modelImagesFinding } from "./model-images-finding.js";
 import { modelPriceFinding } from "./model-price-finding.js";
@@ -72,6 +73,8 @@ export interface CheckRun {
   readonly host: CliHost;
   readonly fix: boolean;
   readonly signal: AbortSignal;
+  /** How the findings reach the engine; the CLI's sign-in over IPC when absent. */
+  readonly reach?: EngineReach;
 }
 
 /**
@@ -82,21 +85,26 @@ export interface CheckRun {
 export async function checkFindings(run: CheckRun): Promise<readonly CheckFinding[]> {
   const { host, fix, signal } = run;
   const platform = platformOf(host);
-  const install = { host, platform, signal };
+  const install = {
+    host,
+    platform,
+    signal,
+    ...(run.reach === undefined ? {} : { reach: run.reach }),
+  };
   const config = await (fix ? fixedConfigFinding(install) : configFinding(install));
   const access = await accessFindings({ platform, fix, signal });
   const unlock = config.config === undefined ? [] : [unlockFinding(config.config, platform)];
   const prices = config.config === undefined ? [] : [modelPriceFinding(config.config)];
   // Before every check that reaches out, which then goes by the owner's proxy as the engine does.
-  const proxy = await proxyFindings({ host, platform, signal }, config.config);
-  const reach = await modelReachFinding({ host, platform, signal }, config.config);
+  const proxy = await proxyFindings(install, config.config);
+  const reach = await modelReachFinding(install, config.config);
   const images = modelImagesFinding(config.config);
-  const engine = await engineFinding({ host, platform, signal });
-  const rpc = await rpcFindings({ host, platform, signal }, config.config);
-  const roles = await roleWalletFindings({ host, platform, signal });
-  const remote = await remoteFindings({ host, platform, signal }, config.config);
-  const sandbox = await pluginSandboxFinding({ host, platform, signal });
-  const wall = await shellWallFinding({ host, platform, signal });
+  const engine = await engineFinding(install);
+  const rpc = await rpcFindings(install, config.config);
+  const roles = await roleWalletFindings(install);
+  const remote = await remoteFindings(install, config.config);
+  const sandbox = await pluginSandboxFinding(install);
+  const wall = await shellWallFinding(install);
   return [
     config.finding,
     ...access,

@@ -7,7 +7,7 @@ import type { CliHost } from "../program/cli-host.js";
 import { systemDefaults } from "../program/system-defaults.js";
 import type { CheckFinding } from "./check-finding.js";
 import { configIssueMessages } from "./config-issue-messages.js";
-import { connectEngine, type EngineConnection } from "./connect-engine.js";
+import { type EngineReach, type EngineReading, reachOf } from "./engine-reach.js";
 
 /** The config as it loads, when it does, and the finding of `config.valid`. */
 export interface ConfigCheck {
@@ -20,6 +20,8 @@ export interface InstallCheck {
   readonly host: CliHost;
   readonly platform: Platform;
   readonly signal: AbortSignal;
+  /** How a finding reaches the engine; the CLI's sign-in over IPC when absent. */
+  readonly reach?: EngineReach;
 }
 
 /**
@@ -90,7 +92,7 @@ function engineProblem(problem: EngineProblem): CheckFinding {
 
 // Not running is a warning, since a check may run before `start`; a refusal is a problem.
 function unreachableFinding(
-  connection: Exclude<EngineConnection, { readonly ok: true }>,
+  connection: Exclude<EngineReading, { readonly ok: true }>,
 ): CheckFinding {
   if (connection.reason === "not_running") {
     const values = { folder: connection.folder };
@@ -123,7 +125,7 @@ function faultFinding(error: ErrorOptions["cause"]): CheckFinding {
 }
 
 async function reachEngine(options: InstallCheck): Promise<CheckFinding> {
-  const connection = await connectEngine(options.host, options.signal);
+  const connection = await reachOf(options)(options.signal);
   if (!connection.ok) {
     return unreachableFinding(connection);
   }

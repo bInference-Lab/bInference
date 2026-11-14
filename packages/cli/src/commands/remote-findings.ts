@@ -3,7 +3,7 @@ import type { BinferenceConfig } from "../config/schema/config.schema.js";
 import { readRemoteView } from "../remote/read-remote-view.js";
 import type { CheckFinding } from "./check-finding.js";
 import type { CliMessage } from "./config-issue-messages.js";
-import { connectEngine } from "./connect-engine.js";
+import { reachOf } from "./engine-reach.js";
 import type { InstallCheck } from "./install-findings.js";
 
 // The problems `remote.serve` fails, in the order its lines print.
@@ -16,7 +16,7 @@ const serveProblems: readonly (readonly [RemoteProblem, string])[] = [
 
 // The running engine's own view, read at the ports it started with; none while it does not run.
 async function engineView(options: InstallCheck): Promise<RemoteView | undefined> {
-  const connection = await connectEngine(options.host, options.signal);
+  const connection = await reachOf(options)(options.signal);
   if (!connection.ok) {
     return undefined;
   }

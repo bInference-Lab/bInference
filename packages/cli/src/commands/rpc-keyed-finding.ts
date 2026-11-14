@@ -1,7 +1,7 @@
 import type { ChainRef } from "@binference/chain";
 import type { BinferenceConfig } from "../config/schema/config.schema.js";
 import type { CheckFinding } from "./check-finding.js";
-import { connectEngine } from "./connect-engine.js";
+import { reachOf } from "./engine-reach.js";
 import type { InstallCheck } from "./install-findings.js";
 import { hasPolledChain, rpcPushedOf } from "./rpc-pushed-finding.js";
 
@@ -22,7 +22,7 @@ function publicOnlyChains(config: BinferenceConfig): readonly ChainRef[] {
 // The live auto orders with a price trigger the running engine holds, counted on its first page;
 // none when no engine answers.
 async function liveOrders(options: InstallCheck): Promise<number | undefined> {
-  const connection = await connectEngine(options.host, options.signal);
+  const connection = await reachOf(options)(options.signal);
   if (!connection.ok) {
     return undefined;
   }

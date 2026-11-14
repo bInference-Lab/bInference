@@ -3,7 +3,7 @@ import { engineDebugSwitch, type SandboxFailure } from "@binference/plugin-host"
 import { builtPluginPrograms, checkPluginSandbox } from "../compose/plugin-sandbox.js";
 import { readPluginLock } from "../plugins/plugin-lock.js";
 import type { CheckFinding } from "./check-finding.js";
-import { connectEngine } from "./connect-engine.js";
+import { reachOf } from "./engine-reach.js";
 import type { InstallCheck } from "./install-findings.js";
 
 const check = "plugins.sandbox";
@@ -13,7 +13,7 @@ const checkTimeoutMs = 30_000;
 // The running engine's debug-signal switch, as its `engine/status` says; an engine that does not
 // run is taken to start as the service and the image start it, with the switch.
 async function engineArgsOf(run: InstallCheck): Promise<readonly string[]> {
-  const connection = await connectEngine(run.host, run.signal);
+  const connection = await reachOf(run)(run.signal);
   if (!connection.ok) {
     return [engineDebugSwitch];
   }

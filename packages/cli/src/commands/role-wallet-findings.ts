@@ -1,7 +1,7 @@
 import type { WalletRole } from "@binference/chain";
 import type { WalletView } from "@binference/protocol";
 import type { CheckFinding } from "./check-finding.js";
-import { connectEngine } from "./connect-engine.js";
+import { reachOf } from "./engine-reach.js";
 import type { InstallCheck } from "./install-findings.js";
 
 /** The check ids and message keys of one wallet role's findings. */
@@ -99,7 +99,7 @@ export function roleWalletCallsOf(
 
 // Every wallet the running engine holds; none when no engine answers.
 async function listedWallets(options: InstallCheck): Promise<readonly WalletView[] | undefined> {
-  const connection = await connectEngine(options.host, options.signal);
+  const connection = await reachOf(options)(options.signal);
   if (!connection.ok) {
     return undefined;
   }
