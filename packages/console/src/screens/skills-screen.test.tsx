@@ -74,6 +74,14 @@ describe("the skills screen", () => {
     expect(within(installed).queryByText("planted")).toBeNull();
   });
 
+  it("shows no waiting skills heading while no workspace skill waits", async () => {
+    const engine = fakeClient({ ...skillsAnswers, "skill/list": () => ({ items: [] }) });
+    renderSignedIn(<SkillsScreen />, { client: engine.client });
+    await settle();
+    expect(screen.getByRole("heading", { name: "Installed skills" })).toBeDefined();
+    expect(screen.queryByRole("heading", { name: "Waiting workspace skills" })).toBeNull();
+  });
+
   it("accepts a waiting skill at the hash the list read, after asking once more", async () => {
     const engine = fakeClient(skillsAnswers);
     renderSignedIn(<SkillsScreen />, { client: engine.client });

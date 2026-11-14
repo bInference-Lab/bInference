@@ -2,14 +2,14 @@ import { useAgents } from "../connection/use-agents";
 import { useText } from "../i18n/console-text";
 import { InstalledSkills } from "../skills/installed-skills";
 import { ProposalItem } from "../skills/proposal-item";
-import { usePendingProposals } from "../skills/use-skill-review";
+import { useAnySkillWaiting, usePendingProposals } from "../skills/use-skill-review";
 import { WaitingSkills } from "../skills/waiting-skills";
 import { ScreenState } from "./screen-state";
 
 /**
  * The skills the agents propose and the workspace skills that wait (decision 0408): each pending
- * skill proposal with its findings, its changes, Apply and Reject; then each agent's waiting
- * skills with Accept. Nothing here applies without the owner's press. Below them, the skills the
+ * skill proposal with its findings, its changes, Apply and Reject; then, while any wait, each
+ * agent's waiting skills with Accept. Nothing here applies without the owner's press. Below them, the skills the
  * agents can load and where each came from (decision 0207).
  */
 export function SkillsScreen(): React.JSX.Element {
@@ -17,6 +17,7 @@ export function SkillsScreen(): React.JSX.Element {
   const proposals = usePendingProposals();
   const agents = useAgents()?.filter((agent) => agent.archivedAt === undefined) ?? [];
   const items = proposals.data?.items ?? [];
+  const isAnyWaiting = useAnySkillWaiting(agents);
   return (
     <section className="flex flex-col gap-4">
       <h1 className="text-lg font-semibold">{text("console.skills.title")}</h1>
@@ -35,7 +36,9 @@ export function SkillsScreen(): React.JSX.Element {
           ))}
         </ul>
       )}
-      <h2 className="text-base font-semibold">{text("console.skills.waitingList")}</h2>
+      {isAnyWaiting ? (
+        <h2 className="text-base font-semibold">{text("console.skills.waitingList")}</h2>
+      ) : null}
       {agents.map((agent) => (
         <WaitingSkills key={agent.agent} agent={agent.agent} />
       ))}

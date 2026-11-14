@@ -76,6 +76,15 @@ export function useWaitingSkills(
   });
 }
 
+/** Whether a workspace skill of any of these agents waits for the owner to accept its files. */
+export function useAnySkillWaiting(agents: readonly AgentView[]): boolean {
+  const { client } = useEngine();
+  return useQueries({
+    queries: agents.map(({ agent }) => agentSkills(client, agent)),
+    combine: (lists) => lists.some((list) => list.data?.some(({ held }) => held === true) === true),
+  });
+}
+
 /**
  * The skills the agents can load (decision 0207): the bundled and installed ones, which
  * `skill/list` answers without an agent, then each agent's own workspace skills that load, by name.
