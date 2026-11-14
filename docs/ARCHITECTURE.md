@@ -188,7 +188,7 @@ binference/                         MIT, pnpm + Turborepo, Node 26.1+, TypeScrip
     i18n/         @binference/i18n       en + zh messages, glossary, formatters, checks
     cli/          binference             the `binference` command and the composition root
   plugins/        first-party venues and data: pancakeswap, kyberswap, okx, flap, fourmeme, lista,
-                  stakehub, across, relay, lifi, binance-agent-os, goplus, honeypot-is,
+                  stakehub, across, relay, binance-agent-os, goplus, honeypot-is,
                   dexscreener, geckoterminal, codex, spaceid, erc8004, geniusfun, brew,
                   binance-agents
   skills/         bundled SKILL.md playbooks (section 5)
@@ -350,16 +350,16 @@ or waits for the turn to end (`after`). Cancelling a turn never cancels a confir
 
 **Propose tools** (each creates an intent in the engine and a card; none signs):
 
-| Tool                        | Covers                                                                                                                           |
-| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `swap`                      | Any token pair, exact input or a percent of a position                                                                           |
-| `buy`, `sell`               | Launchpad-aware: the Flap Portal and Genius.fun's curves while on the curve, pools after migration                               |
-| `send`                      | BNB or BEP-20 to an address or a `.bnb` name, subject to the send level                                                          |
-| `approval_revoke`           | Revoke old allowances                                                                                                            |
-| `order_create`              | An auto order: limit, TP/SL, trailing, DCA or a copy-trade rule ([decision 0004](DECISIONS.md#d0004))                            |
-| `stake`, `unstake`, `claim` | Native BNB staking (StakeHub), slisBNB                                                                                           |
-| `bridge`                    | Across, Relay, LI.FI, as a cross-chain send to an address-book entry or the rescue address ([decision 0067](DECISIONS.md#d0067)) |
-| `cex_order` (plugin)        | Binance spot and convert orders through Agent OS; futures and margin off by default                                              |
+| Tool                        | Covers                                                                                                                       |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `swap`                      | Any token pair, exact input or a percent of a position                                                                       |
+| `buy`, `sell`               | Launchpad-aware: the Flap Portal and Genius.fun's curves while on the curve, pools after migration                           |
+| `send`                      | BNB or BEP-20 to an address or a `.bnb` name, subject to the send level                                                      |
+| `approval_revoke`           | Revoke old allowances                                                                                                        |
+| `order_create`              | An auto order: limit, TP/SL, trailing, DCA or a copy-trade rule ([decision 0004](DECISIONS.md#d0004))                        |
+| `stake`, `unstake`, `claim` | Native BNB staking (StakeHub), slisBNB                                                                                       |
+| `bridge`                    | Across and Relay, as a cross-chain send to an address-book entry or the rescue address ([decision 0067](DECISIONS.md#d0067)) |
+| `cex_order` (plugin)        | Binance spot and convert orders through Agent OS; futures and margin off by default                                          |
 
 **Control tools:** `order_cancel` (braking, so no confirmation), `notes_write` (labelled memory),
 `workspace_write` and `first_chat_end` (the owner's strategy and persona, and the first chat's end;
