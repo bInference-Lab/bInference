@@ -1,6 +1,6 @@
 import type { AssetRef } from "@binference/chain";
 import type { Clock, Http, HttpDownload, Random, SecretStore } from "@binference/core";
-import type { BreakerSource, Engine } from "@binference/engine";
+import type { BreakerSource, Engine, IdempotencyStore } from "@binference/engine";
 import type {
   ProgramExit,
   RunWithinOptions,
@@ -170,4 +170,11 @@ export interface CliHost {
    * Left out, as the entry file leaves it, no breaker ever holds a self-hosted install.
    */
   readonly testBreaker?: BreakerSource;
+  /**
+   * Only the crash suite's engine sets it: wraps the store the protocol server keeps each write's
+   * idempotency key in, so a forced stop can land after a write's key is marked started and before
+   * its result is stored (decision 0437). Left out, as the entry file leaves it, the server keeps
+   * its keys in the engine's own store.
+   */
+  readonly testIdempotency?: (store: IdempotencyStore) => IdempotencyStore;
 }

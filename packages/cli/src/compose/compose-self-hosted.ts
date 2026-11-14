@@ -250,8 +250,7 @@ function composeServing(opening: Opening, opened: Opened, wiring: Wiring) {
   const bot = opened.bot === undefined ? undefined : botParts(opened.bot, stores, telegram);
   return composeEngine(
     {
-      ...ownPartsOf(custody, host),
-      stores,
+      ...ownPartsOf(custody, host, stores),
       prices: parts.prices,
       riskSources: selfHostedRiskSources(host.http),
       marketReads: selfHostedMarketReads(wiring.sources, host.clock),
