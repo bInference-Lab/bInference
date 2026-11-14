@@ -26,6 +26,12 @@ export interface OrderFillView {
   readonly intent?: ProtocolId<"intent">;
   readonly outcome: "filled" | "skipped";
   readonly reason?: string;
+  /**
+   * The values a skip's reason words take, as text, such as `copy_daily_cap`'s `used` and `cap` in
+   * dollars; absent when the reason takes none, or the row kept none because the owner was not
+   * told of the skip.
+   */
+  readonly reasonValues?: Readonly<Record<string, string>>;
   readonly at: number;
 }
 
@@ -55,12 +61,30 @@ export interface OrderView {
   readonly endReason?: OrderEndReason;
   readonly createdAt: number;
   readonly changedAt: number;
-  /** Each fill and skipped fill, newest first; `order/get` carries it, lists leave it out. */
+  /**
+   * The newest fills and skipped fills, at most 50, newest first; `order/get` carries it, lists
+   * leave it out.
+   */
   readonly fillHistory?: readonly OrderFillView[];
+  /** Set by `order/get` when the order has fills and skips older than its `fillHistory`. */
+  readonly fillHistoryMore?: true;
 }
 
 /** Parses an order state, the `order/list` filter. */
 export const orderStateSchema: z.ZodType<OrderState, string> = z.enum(orderStates);
+
+/** Parses one fill or skipped fill of an auto order. */
+export const orderFillViewSchema: z.ZodType<OrderFillView> = z.object({
+  fill: protocolIdSchema("orderFill"),
+  intent: protocolIdSchema("intent").exactOptional(),
+  outcome: z.enum(["filled", "skipped"]),
+  reason: z
+    .string()
+    .regex(/^[a-z][a-z_]*$/)
+    .exactOptional(),
+  reasonValues: z.record(z.string(), z.string()).exactOptional(),
+  at: epochMsSchema,
+});
 
 /** Parses an order view. */
 export const orderViewSchema: z.ZodType<OrderView> = z.object({
@@ -80,18 +104,6 @@ export const orderViewSchema: z.ZodType<OrderView> = z.object({
   endReason: z.enum(["position_closed"]).exactOptional(),
   createdAt: epochMsSchema,
   changedAt: epochMsSchema,
-  fillHistory: z
-    .array(
-      z.object({
-        fill: protocolIdSchema("orderFill"),
-        intent: protocolIdSchema("intent").exactOptional(),
-        outcome: z.enum(["filled", "skipped"]),
-        reason: z
-          .string()
-          .regex(/^[a-z][a-z_]*$/)
-          .exactOptional(),
-        at: epochMsSchema,
-      }),
-    )
-    .exactOptional(),
+  fillHistory: z.array(orderFillViewSchema).exactOptional(),
+  fillHistoryMore: z.literal(true).exactOptional(),
 });

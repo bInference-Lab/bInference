@@ -628,7 +628,7 @@ Workspace files: `RULES.md`, `PERSONA.md`, `OWNER.md`, `STRATEGY.md`, `NOTES.md`
 | Operation               | Scope     | Write | Local | Args → result                                                                                                                |
 | ----------------------- | --------- | ----- | ----- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `order/create`          | `propose` | ✓     |       | `OrderRequest` (section 8.2) → `OrderView` awaiting its one card ([decision 0004](../DECISIONS.md#d0004))                    |
-| `order/get`             | `read`    |       |       | `{ order }` → `OrderView` with fills                                                                                         |
+| `order/get`             | `read`    |       |       | `{ order }` → `OrderView` with its newest 50 fills and skips (section 8.3)                                                   |
 | `order/list`            | `read`    |       |       | paging, `{ agent?, state? }` → orders with `assets` (section 8.3)                                                            |
 | `order/cancel`          | `propose` | ✓     |       | `{ order }` → `OrderView` (braking: no card)                                                                                 |
 | `alert/create`          | `propose` | ✓     |       | `{ agent, condition, wake?, expiresAt? }` → `AlertView` (no transaction, no card; section 8.4)                               |
@@ -1781,6 +1781,12 @@ carry `assets: Record<AssetRef, AssetInfo>` once, instead of repeating metadata.
   position another exit emptied. `OrderView.intent?` is the `autoOrder` intent that carries its
   card, `paper?` its mode and `outsideContent?` the proposing turn's mark; `state` may be `paused`
   while its agent is frozen ([decision 0189](../DECISIONS.md#d0189)). `AlertView` carries `wake`, `fires` and `expiresAt?` (section 8.4).
+- `order/get` adds `OrderView.fillHistory`: the order's newest 50 fill and skip rows, newest
+  first, each an `OrderFillView` `{ fill, intent?, outcome, reason?, reasonValues?, at }`, and
+  `fillHistoryMore: true` when older rows exist. A skip's `reasonValues` are the values its
+  reason's words take, as text, such as `copy_daily_cap`'s `used` and `cap` in dollars, kept from
+  the notice the owner was told; a skip the owner was not told of keeps none. Lists leave
+  `fillHistory` out.
 - `OrderView`, `AlertView`, `ScheduleView`, `WalletView`, `AgentView`, `LimitsView`: the stored
   fields of spec 3 with ids and times as section 1 sets. `WalletView.chainName` names the chain
   its `address` is on, such as BNB Smart Chain, and `WalletView.explorerLink` the address's page

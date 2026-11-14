@@ -5949,6 +5949,15 @@
                           "type": "string",
                           "pattern": "^[a-z][a-z_]*$"
                         },
+                        "reasonValues": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {
+                            "type": "string"
+                          }
+                        },
                         "at": {
                           "type": "integer",
                           "minimum": 0,
@@ -5961,6 +5970,10 @@
                         "at"
                       ]
                     }
+                  },
+                  "fillHistoryMore": {
+                    "type": "boolean",
+                    "const": true
                   }
                 },
                 "required": [
@@ -28519,6 +28532,15 @@
                     "type": "string",
                     "pattern": "^[a-z][a-z_]*$"
                   },
+                  "reasonValues": {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  },
                   "at": {
                     "type": "integer",
                     "minimum": 0,
@@ -28531,6 +28553,10 @@
                   "at"
                 ]
               }
+            },
+            "fillHistoryMore": {
+              "type": "boolean",
+              "const": true
             }
           },
           "required": [
@@ -29436,6 +29462,15 @@
                     "type": "string",
                     "pattern": "^[a-z][a-z_]*$"
                   },
+                  "reasonValues": {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  },
                   "at": {
                     "type": "integer",
                     "minimum": 0,
@@ -29448,6 +29483,10 @@
                   "at"
                 ]
               }
+            },
+            "fillHistoryMore": {
+              "type": "boolean",
+              "const": true
             }
           },
           "required": [
@@ -30377,6 +30416,15 @@
                           "type": "string",
                           "pattern": "^[a-z][a-z_]*$"
                         },
+                        "reasonValues": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {
+                            "type": "string"
+                          }
+                        },
                         "at": {
                           "type": "integer",
                           "minimum": 0,
@@ -30389,6 +30437,10 @@
                         "at"
                       ]
                     }
+                  },
+                  "fillHistoryMore": {
+                    "type": "boolean",
+                    "const": true
                   }
                 },
                 "required": [
@@ -31342,6 +31394,15 @@
                     "type": "string",
                     "pattern": "^[a-z][a-z_]*$"
                   },
+                  "reasonValues": {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "additionalProperties": {
+                      "type": "string"
+                    }
+                  },
                   "at": {
                     "type": "integer",
                     "minimum": 0,
@@ -31354,6 +31415,10 @@
                   "at"
                 ]
               }
+            },
+            "fillHistoryMore": {
+              "type": "boolean",
+              "const": true
             }
           },
           "required": [

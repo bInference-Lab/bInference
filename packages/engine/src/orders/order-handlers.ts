@@ -6,6 +6,7 @@ import { type EngineCall, type EngineHandler, proposerOf } from "../operations/e
 import { nextCursorOf, pageAfterOf } from "../operations/page-cursor.js";
 import { cancelOrder } from "./cancel-order.js";
 import { createOrder, type OrderParts } from "./create-order.js";
+import { orderFillViewOf } from "./order-fill-view-of.js";
 import type { OrderQuery, OrderRecord } from "./order-record.js";
 import { orderViewOf } from "./order-view-of.js";
 
@@ -32,8 +33,11 @@ function queryOf(args: EngineCall<"order/list">["args"]): Result<OrderQuery, Pro
   });
 }
 
+// The most fill and skip rows `order/get` answers (protocol spec, section 7.5).
+const fillHistoryRows = 50;
+
 // An order waiting for its answer shows the card version open now.
-async function viewOf(
+async function cardViewOf(
   parts: OrderParts,
   order: OrderRecord,
   signal: AbortSignal,
@@ -43,6 +47,25 @@ async function viewOf(
   }
   const snapshot = await parts.stored.snapshot(order.intentId, { signal });
   return orderViewOf(order, snapshot?.history.cards.at(-1)?.id);
+}
+
+// One order with its newest fill and skip rows, newest first, and whether older ones exist.
+async function viewOf(
+  parts: OrderParts,
+  order: OrderRecord,
+  signal: AbortSignal,
+): Promise<OrderView> {
+  const query = { orderId: order.id, limit: fillHistoryRows + 1 };
+  const [view, rows] = await Promise.all([
+    cardViewOf(parts, order, signal),
+    parts.orders.fills(query, { signal }),
+  ]);
+  const fillHistory = rows.slice(0, fillHistoryRows).map(orderFillViewOf);
+  return {
+    ...view,
+    fillHistory,
+    ...(rows.length > fillHistoryRows ? { fillHistoryMore: true } : {}),
+  };
 }
 
 async function listed(parts: OrderParts, call: EngineCall<"order/list">) {
@@ -67,10 +90,10 @@ async function listed(parts: OrderParts, call: EngineCall<"order/list">) {
 /**
  * Creates the auto order handlers: `order/create` stores an order awaiting its one card and
  * answers it with that card (decision 0189); `order/get` answers one order, with its open card
- * while it waits; `order/list` pages through the orders, oldest first, in one state or all, of one
- * agent or all, with the info of each token they trade, the registry's or what its proposal
- * stored of a token the registry does not list; `order/cancel` ends an order at once, with
- * no card (`cancelOrder`).
+ * while it waits and its newest 50 fill and skip rows, newest first; `order/list` pages through
+ * the orders, oldest first, in one state or all, of one agent or all, with the info of each token
+ * they trade, the registry's or what its proposal stored of a token the registry does not list;
+ * `order/cancel` ends an order at once, with no card (`cancelOrder`).
  */
 export function createOrderHandlers(parts: OrderParts): OrderHandlers {
   return {
