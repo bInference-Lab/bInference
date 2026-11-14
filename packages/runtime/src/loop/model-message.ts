@@ -1,5 +1,6 @@
 import type { JsonValue } from "@binference/core";
 import type { ImageContentType } from "@binference/protocol";
+import type { CallRepair } from "../repair/repair-call.js";
 import type { ResponseReplay } from "./model-event.js";
 
 /** A tool call as the model wrote it: its arguments are JSON text, parsed only by the tool box. */
@@ -8,6 +9,11 @@ export interface ToolCall {
   readonly id: string;
   readonly name: string;
   readonly argumentsText: string;
+  /**
+   * The call as binference read it after a repair (decision 0447): the turn runs or holds it, and
+   * the conversation carries it, by this name and these arguments. The transcript keeps both.
+   */
+  readonly repair?: CallRepair;
 }
 
 /** A message of the owner, or a settle or wake-up message, that a turn takes or that joins it. */

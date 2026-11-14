@@ -154,6 +154,45 @@ describe("messagesPayloadOf", () => {
     expect(payload.messages[1]).toStrictEqual({ role: "assistant", content });
   });
 
+  it("sends a kept call back as the conversation carries it, a repaired one as binference read it", () => {
+    const thinking = { type: "thinking", thinking: "", signature: "c2ln" };
+    const written = { type: "tool_use", id: "toolu_1", name: "Quote", input: {} };
+    const payload = payloadOf([
+      { role: "owner", text: "buy" },
+      {
+        ...agent("", [{ id: "toolu_1", name: "quote", argumentsText: '{"amount":"1"}' }]),
+        replay: { format: "messages", content: [thinking, written] },
+      },
+      result("toolu_1", "1 BNB"),
+    ]);
+    expect(payload.messages[1]).toStrictEqual({
+      role: "assistant",
+      content: [thinking, { ...written, name: "quote", input: { amount: "1" } }],
+    });
+  });
+
+  it("keeps a call as the model wrote it when a thinking block after it binds it", () => {
+    const thinking = { type: "thinking", thinking: "", signature: "c2ln" };
+    const first = { type: "tool_use", id: "toolu_1", name: "Quote", input: {} };
+    const second = { type: "tool_use", id: "toolu_2", name: "Quote", input: {} };
+    const calls = ["toolu_1", "toolu_2"].map((id) => ({
+      id,
+      name: "quote",
+      argumentsText: '{"amount":"1"}',
+    }));
+    const content = [thinking, first, { type: "redacted_thinking", data: "ZGF0YQ==" }, second];
+    const payload = payloadOf([
+      { role: "owner", text: "buy" },
+      { ...agent("", calls), replay: { format: "messages", content } },
+      result("toolu_1", "1 BNB"),
+      result("toolu_2", "1 BNB"),
+    ]);
+    expect(payload.messages[1]).toStrictEqual({
+      role: "assistant",
+      content: [...content.slice(0, 3), { ...second, name: "quote", input: { amount: "1" } }],
+    });
+  });
+
   it("writes a response again from its text and calls when its replay is not one it reads", () => {
     const payload = payloadOf([
       { role: "owner", text: "hi" },

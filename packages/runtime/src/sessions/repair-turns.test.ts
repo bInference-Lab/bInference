@@ -35,7 +35,9 @@ async function crashedSession(stores: AgentStores): Promise<void> {
     live(),
   );
   await cut.proposal({ call: swap, idempotencyKey: `${second}.2` }, live());
-  await cut.toolCall({ id: "c3", name: "quote", argumentsText: "{}" }, live());
+  // A repaired call's result names the tool binference read it as (decision 0447).
+  const repair = { name: "quote", argumentsText: "{}", steps: ["name_case", "fence"] } as const;
+  await cut.toolCall({ id: "c3", name: "QUOTE", argumentsText: "```\n{}\n```", repair }, live());
 }
 
 describe("repairUnfinishedTurns", () => {

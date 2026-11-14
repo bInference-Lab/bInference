@@ -2,6 +2,7 @@ import { replaceNul } from "@binference/core";
 import type { ToolCall } from "./model-message.js";
 import type { NotRunReason } from "./not-run.js";
 import { notRunText } from "./not-run.js";
+import { callAsRead } from "./repaired-calls.js";
 import type { ToolResultRecord } from "./turn-records.js";
 import type { TurnRun } from "./turn-run.js";
 
@@ -36,21 +37,22 @@ export async function recordResult(
   result: CallResult,
 ): Promise<void> {
   const text = replaceNul(result.text);
+  const read = callAsRead(call);
   await run.parts.journal.toolResult(
-    { callId: call.id, name: call.name, ...result, text },
+    { callId: call.id, name: read.name, ...result, text },
     run.writes,
   );
   run.messages.push({
     role: "tool",
     callId: call.id,
-    name: call.name,
+    name: read.name,
     text,
     isError: result.isError,
   });
   if (result.ran) {
-    run.tally.noteResult({ tool: call.name, isError: result.isError });
+    run.tally.noteResult({ tool: read.name, isError: result.isError });
   }
-  if (result.ran && run.loopGuard.see(call, text)) {
+  if (result.ran && run.loopGuard.see(read, text)) {
     run.tally.markLooped();
   }
   if (result.outside) {

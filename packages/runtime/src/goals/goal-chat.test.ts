@@ -88,6 +88,7 @@ async function startChat(replies: readonly ScriptedReply[], mode: NewMessageMode
             call.name.startsWith("goal_") || call.name === "progress_note"
               ? tools.prepare(call, seen)
               : reads.prepare(call, seen),
+          kindOf: (name) => tools.kindOf(name) ?? reads.kindOf(name),
         },
         instructions: "You are a test agent.",
         limits: turnLimits,

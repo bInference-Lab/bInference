@@ -108,6 +108,17 @@ describe("defineTool", () => {
     await expect(runPrepared(prepared)).resolves.toContain(why);
   });
 
+  it.each([
+    ["arguments that are not JSON", "{amountBase:", "arguments"],
+    ["arguments the schema refuses", '{"amountBase":1500,"reason":"r"}', "schema"],
+    ["arguments nested too deep", `{"reason":${"[".repeat(70)}${"]".repeat(70)}}`, "check"],
+    ["a field written twice", '{"amountBase":"1","amountBase":"2","reason":"r"}', "check"],
+    ["an integer past 2^53 not in plain digits", '{"amountBase":1e21,"reason":"r"}', "check"],
+    ["arguments too long", `{"reason":"${"x".repeat(70_000)}"}`, "check"],
+  ])("names why it refuses %s, which a repair reads", (_case, text, cause) => {
+    expect(defineTool(swapSpec).prepare(text)).toMatchObject({ ready: false, cause });
+  });
+
   it("refuses a call whose schema check throws, never throwing itself", async () => {
     const throwing = defineTool({
       ...swapSpec,

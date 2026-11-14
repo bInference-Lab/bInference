@@ -3,6 +3,7 @@ import { canMerge } from "./can-merge.js";
 import type { OwnerMessage } from "./model-message.js";
 import type { NotRunReason } from "./not-run.js";
 import { recordNotRun, recordRefused } from "./record-call.js";
+import { recordedRefusal } from "./repaired-calls.js";
 import { runProposal, runToolCall } from "./run-tool-call.js";
 import { haltOf } from "./turn-halt.js";
 import type { ReadyCall } from "./turn-records.js";
@@ -60,7 +61,8 @@ async function runOne(
 ): Promise<boolean> {
   const { prepared } = item;
   if (!prepared.ready) {
-    await recordRefused(run, item.call, prepared.text);
+    const refusal = recordedRefusal(run, item.call, prepared);
+    await recordRefused(run, refusal.call, refusal.text);
     return false;
   }
   if (prepared.asksOwner && (batch.proposes || run.tally.now().committed)) {

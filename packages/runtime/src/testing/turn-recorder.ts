@@ -13,7 +13,13 @@ import type {
 export type RecordedStep =
   | { readonly kind: "start"; readonly messages: readonly string[]; readonly outside: boolean }
   | { readonly kind: "response"; readonly text: string }
-  | { readonly kind: "call"; readonly id: string; readonly name: string }
+  | {
+      readonly kind: "call";
+      readonly id: string;
+      readonly name: string;
+      /** The name binference read after a repair, when the call was written with one. */
+      readonly repairedName?: string;
+    }
   | { readonly kind: "proposal"; readonly id: string; readonly key: string }
   | {
       readonly kind: "result";
@@ -84,7 +90,11 @@ type Write = (step: RecordedStep, signal: AbortSignal) => Promise<void>;
 function createJournal(note: Write): TurnJournal {
   return {
     response: async ({ text }, signal) => note({ kind: "response", text }, signal),
-    toolCall: async ({ id, name }, signal) => note({ kind: "call", id, name }, signal),
+    toolCall: async ({ id, name, repair }, signal) =>
+      note(
+        { kind: "call", id, name, ...(repair === undefined ? {} : { repairedName: repair.name }) },
+        signal,
+      ),
     proposal: async ({ call, idempotencyKey }, signal) =>
       note({ kind: "proposal", id: call.id, key: idempotencyKey }, signal),
     toolResult: async ({ callId, text, ran, outside }, signal) =>

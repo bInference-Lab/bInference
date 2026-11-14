@@ -32,12 +32,22 @@ async function refusesWithoutThrowing(harness: ToolBoxHarness): Promise<void> {
     assert.equal(refused.ready, false);
     assert.ok(!refused.ready && refused.text.length > 0);
   }
+  const causes = refusals.map((refused) => (refused.ready ? undefined : refused.cause));
+  assert.deepEqual(causes, ["name", "arguments"]);
+}
+
+async function answersEachKind(harness: ToolBoxHarness): Promise<void> {
+  const { box, call } = await harness.create();
+  const prepared = box.prepare(call);
+  assert.equal(box.kindOf(call.name), prepared.ready ? prepared.kind : undefined);
+  assert.equal(box.kindOf("no_such_tool"), undefined);
 }
 
 /**
  * The contract every {@link ToolBox} keeps (runtime spec, section 5.2): each tool is declared
- * once, a call that passes its check is ready, and an unknown tool or unreadable arguments are
- * refused with a text the model reads, never thrown.
+ * once, a call that passes its check is ready, an unknown tool or unreadable arguments are
+ * refused with a text the model reads and the cause a repair reads (decision 0447), never thrown,
+ * and each declared tool's kind is answered by its name.
  */
 export function toolBoxContract(harness: ToolBoxHarness): readonly ContractCheck[] {
   return [
@@ -46,8 +56,12 @@ export function toolBoxContract(harness: ToolBoxHarness): readonly ContractCheck
       run: async () => declaresAndReadies(harness),
     },
     {
-      name: "refuses an unknown tool and unreadable arguments with a text, never a throw",
+      name: "refuses an unknown tool and unreadable arguments with a text and a cause, never a throw",
       run: async () => refusesWithoutThrowing(harness),
+    },
+    {
+      name: "answers the kind of a declared tool by its name, and none for another",
+      run: async () => answersEachKind(harness),
     },
   ];
 }

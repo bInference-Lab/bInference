@@ -34,6 +34,7 @@ const noteBox = (() => {
   return {
     declarations: [note.declaration],
     prepare: (call: { readonly argumentsText: string }) => note.prepare(call.argumentsText),
+    kindOf: () => note.kind,
   };
 })();
 const alert: TestTool = { name: "alert_create", kind: "control" };

@@ -87,6 +87,17 @@ describe("turnModelsOf", () => {
     expect(picked?.models.map((model) => model.name)).toStrictEqual(["router/eyes"]);
   });
 
+  it("repairs the calls of the models repairToolCalls names, the chat model by its name", () => {
+    const listed = { ...models, repairToolCalls: ["router/main", "router/big"] };
+    const { main } = turnModelsOf({ agent: "agt_other" }, { models: listed }, parts);
+    expect(main.models.map((model) => model.repairsCalls === true)).toStrictEqual([true, false]);
+    const place = { agent: "agt_other", chatModel: "router/big" };
+    const chat = turnModelsOf(place, { models: listed }, parts).main;
+    expect(chat.models.map((model) => model.repairsCalls)).toStrictEqual([true]);
+    const unlisted = turnModelsOf({ agent: "agt_other" }, { models }, parts).main;
+    expect(unlisted.models.some((model) => model.repairsCalls === true)).toBe(false);
+  });
+
   it("has no vision model when neither the config nor the agent's pick names one", () => {
     expect(turnModelsOf({ agent: "agt_other" }, { models }, parts).vision).toBeUndefined();
   });

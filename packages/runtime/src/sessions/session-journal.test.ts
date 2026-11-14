@@ -103,6 +103,28 @@ describe("createSessionJournal", () => {
     ]);
   });
 
+  it("keeps a repaired call as the model wrote it and as binference read it, and loads it back as read", async () => {
+    const { stores } = await createMemoryAgentStores();
+    await openTurn(stores);
+    const journal = createSessionJournal(stores, { session, turn }, createManualClock(5));
+    const repair = { name: "portfolio", argumentsText: '{"page":2}', steps: ["fence"] } as const;
+    const call = { id: "r", name: "Portfolio", argumentsText: '```\n{"page":2}\n```', repair };
+    await journal.response({ text: "", reasoning: "" }, live().signal);
+    await journal.toolCall(call, live().signal);
+    const result = { callId: "r", name: "portfolio", text: "ok", isError: false, outside: false };
+    await journal.toolResult({ ...result, ran: true }, live().signal);
+    const events = await stores.transcript.events({ sessionId: session, limit: 10 }, live());
+    expect(events.find((event) => event.kind === "tool_call")?.content).toStrictEqual({
+      callId: "r",
+      name: "Portfolio",
+      arguments: '```\n{"page":2}\n```',
+      repair: { name: "portfolio", arguments: '{"page":2}', steps: ["fence"] },
+    });
+    expect(conversationOf(events)[0]).toMatchObject({
+      toolCalls: [{ id: "r", name: "portfolio", argumentsText: '{"page":2}' }],
+    });
+  });
+
   it("throws when a later start raised the fence, and writes nothing", async () => {
     const memory = await createMemoryAgentStores();
     await openTurn(memory.stores);

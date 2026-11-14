@@ -4,6 +4,7 @@ import { lookAtImage } from "../images/look-at-image.js";
 import type { ToolCall } from "./model-message.js";
 import { notRunText } from "./not-run.js";
 import { type CallResult, recordResult } from "./record-call.js";
+import { callAsRead } from "./repaired-calls.js";
 import { settleBy } from "./settle-by.js";
 import { createStopGrace } from "./stop-grace.js";
 import { haltOf } from "./turn-halt.js";
@@ -83,7 +84,7 @@ export async function executeCall(
   });
   const idempotencyKey = callKeyOf(run.turnId, numbered.ordinal);
   const context = contextOf(run, deadline.signal, idempotencyKey);
-  run.feed.tool(numbered.call.name);
+  run.feed.tool(callAsRead(numbered.call).name);
   const settled = await settleBy(async () => ready.run(context), {
     signal: deadline.signal,
     clock: run.parts.clock,

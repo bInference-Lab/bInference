@@ -495,7 +495,7 @@ content, so the tool's text tells the model to end its turn instead of polling i
   parsed to `bigint`.
 - A call that fails the check, or names no known tool, does not run: its result is the error with
   the schema's issues, so the model can correct it. A refused call never commits the turn. A
-  listed model's call may be repaired first, and a repaired propose or control call is held, never
+  listed model's call may be repaired first, and a repaired call that is not a read is held, never
   run (section 5.6).
 - The runtime fills the agent and the wallet; the model gives the terms and its reason, shown on the
   card as "agent says". A wallet outside the agent's own is refused
@@ -646,24 +646,29 @@ the chain, in the agent's own turns and its helpers'.
   nothing else is repaired.
 - **One pass.** The steps below run once, in this order, and give one candidate or none. The
   candidate goes through the tool box again: the same parser, limits, schema and address check
-  (section 5.4) as any call. Nothing is tried a second way.
+  (section 5.4) as any call. Nothing is tried a second way. Brackets nested past 64 levels, in the
+  text as written or once it is out of its fence or JSON string, end the repair before any step
+  walks them ([decision 0417](../DECISIONS.md#d0417)), and a candidate longer than 65,536
+  characters is no repair.
 - **Form steps**, on a call of any kind:
-  - `fence`: arguments in one code fence, with or without a language, give what is inside it;
+  - `fence`: arguments in one code fence whose first line is empty or a label of letters alone,
+    such as `json`, give what is inside it; a fence opened any other way ends the repair;
+  - `string_object`: arguments written as a JSON string that holds one object give that object;
   - `words_around`: text of at most 64 characters before or after the arguments, made only of
     letters, spaces and `.`, `:`, `_`, `-`, `/`, `<` or `>`, gives the one JSON object between,
     when there is exactly one; text with a digit, a quote, a brace or a square bracket ends the
     repair;
-  - `string_object`: arguments written as a JSON string that holds one object give that object;
   - `single_quotes`: each string in single quotes is written in double quotes, its characters
     unchanged; an escape JSON lacks, other than `\'`, ends the repair;
   - `trailing_comma`: a comma before a closing brace or bracket goes;
-  - `closed`: objects and lists left open when the text ends right after a whole value are
-    closed; text that ends inside a string, after a key, a colon or a comma, ends the repair;
+  - `closed`: objects and lists left open when the text ends right after a string, `true`,
+    `false`, `null` or a closed bracket are closed; text that ends inside a string, after a key, a
+    colon, a comma or an opening bracket, or on a number, which may be cut short, ends the repair;
   - `name_case`, `name_prefix`: a name in another case, or behind one of `functions`, `function`,
     `tools`, `tool` or `default_api` joined by `.`, `/` or `:`, gives the one declared tool it
     names, when exactly one fits.
-- **Value steps**, on a `read` or `machine` call only, for a field of an object under no `anyOf`,
-  `oneOf` or `allOf` in the tool's JSON Schema:
+- **Value steps**, on a `read` call only, for a field of an object under no `anyOf`, `oneOf` or
+  `allOf` in the tool's JSON Schema:
   - `integer_string`: a string of plain digits where the schema asks for an integer gives that
     integer, when it is below 2^53;
   - `null_optional`: `null` for a field the schema does not require and that takes no `null` leaves
@@ -672,33 +677,44 @@ the chain, in the agent's own turns and its helpers'.
   amount, address, asset or id changes form; a required field the model left out; a field the
   schema does not name, which is neither dropped nor renamed; a name that fits no declared tool, or
   two; a call written in the response's text; a call refused for its size, its depth, a key written
-  twice, an integer past 2^53 or an address only a note holds.
-- **A read or a machine call runs** with the repaired arguments, as any call does: beside other
-  reads when its tool allows, under its time limits, the shell's ask modes and walls, and the loop
-  guard, which compares the repaired arguments. Its result starts with the line "binference fixed
-  the form of this call before it ran (`<steps>`). Write plain JSON arguments with nothing around
-  them."
-- **A propose or a control call is held.** It never runs and never reaches the engine. Its result is
-  an error that never ran: "not run: binference fixed the form of this call before reading it
-  (`<steps>`), and a call that proposes or changes something never runs repaired. Nothing was sent.
-  If this is the call you meant, send it again exactly as below, with plain JSON arguments and
-  nothing around them; if not, write the call you meant.", then the tool's name and the arguments
-  as binference read them, as one line of JSON. The turn does not commit, and the next model call
+  twice, a key `__proto__`, `constructor` or `prototype`, an integer past 2^53 or an address only a
+  note holds.
+- **A read runs** with the repaired arguments, as any call does: beside other reads when its tool
+  allows, under its time limits and the loop guard, which compares the repaired arguments. A
+  plugin's or a listed MCP server's tool declared `read` is a read here too. Its result starts with
+  the line "binference fixed the form of this call before it ran (`<steps>`). Write plain JSON
+  arguments with nothing around them.", and a read of outside content marks the turn as any such
+  read does (section 5.4).
+- **Every other call is held.** A `propose`, `control` or `machine` call never runs and never
+  reaches the engine or its tool, since a wrong reading of a command, a file write or a request can
+  change things that cannot be undone. Its result is an error that never ran: "not run: binference
+  fixed the form of this call before reading it (`<steps>`), and only a call that reads runs
+  repaired. Nothing was sent or run. If this is the call you meant, send it again exactly as below,
+  with plain JSON arguments and nothing around them; if not, write the call you meant.", then the
+  tool's name and the arguments as binference read them, as one line of JSON, the whole cut at
+  12,000 characters as any result is (section 5.2). The turn does not commit, and the next model call
   follows. A call sent again in valid form is a new call, checked as written and never compared
   with the held one. A held call never counts as a held-back proposal (section 6.2), and an
   `ask_owner` beside it still runs, since no card asks the owner.
-- **A refused candidate.** A candidate the tool box refuses gets that refusal, after the line that
-  names the repair, and never runs.
-- **The hold limit.** A turn holds at most 3 calls. The next propose or control call a repair would
-  hold is refused as written, and a turn that has not committed ends after that batch with outcome
-  `loop` and the status line `turn.unreadableCalls` (spec 4, section 8.1). Repairs of reads and
-  machine calls have no limit of their own: the turn's 25 tool calls bound them.
+- **A refused candidate.** A candidate the tool box refuses gets that refusal after the line
+  "binference fixed the form of this call (`<steps>`), and the call it read is refused:", and never
+  runs.
+- **The hold limit.** A turn holds at most 3 calls. A held call counts when its batch records it
+  as held: one past the turn's 25 tool calls, or one a merge keeps from running, gets that result
+  and counts nothing. The next call to hold is refused and recorded as the model wrote it, and the
+  turn ends after that batch: with outcome `loop` and the status line `turn.unreadableCalls`
+  (spec 4, section 8.1); as a committed turn ends, when the batch proposed; and as a question ends
+  it, with that status line, when the batch asked the owner. Repairs of reads have no limit of
+  their own: the turn's 25 tool calls bound them.
 - **The record.** The `tool_call` event keeps the name and the arguments as the model wrote them;
   a repaired call's event adds `repair`, with the name and the arguments as binference read them
   and the steps. The conversation the model reads, in the turn and after a reload, carries a
-  repaired call by its repaired name and arguments; a refused call goes back as for any model. The
-  progress line names the repaired tool. A repair adds no new content and never sets or clears the
-  turn's mark (section 5.4).
+  repaired call by its repaired name and arguments, and so do a summary's lines; a refused call goes
+  back as for any model. A provider's kept replay, such as the Messages kind's (section 8.1),
+  carries it so too, except a call that a thinking block follows in the same response: that
+  block's signature binds the call as the model wrote it, so it goes back as written there. Its
+  result, its progress line and the result a restart gives it name the repaired tool. A repair
+  adds no new content and never sets or clears the turn's mark (section 5.4).
 
 <a id="section-6"></a>
 
@@ -1095,8 +1111,8 @@ Property and scripted-model tests hold these for every generated run:
    reason.
 9. Compaction never removes an identifier from what the model sees.
 10. A message that joins a turn never sits between a tool call and its result.
-11. No propose or control call runs from repaired arguments: a held call reaches neither its tool
-    nor the engine.
+11. No call but a read runs from repaired arguments: a held call reaches neither its tool nor the
+    engine.
 
 <a id="section-14"></a>
 
@@ -1109,8 +1125,8 @@ Property and scripted-model tests hold these for every generated run:
   marked.
 - Cards come from the stored intent, never from model text; propose arguments are typed, checked
   without coercion, and carry money as decimal strings.
-- A repair changes a call's form, never a value of a propose or control call, and never a string;
-  a repaired propose or control call is held for the model to send again, never sent.
+- A repair changes a call's form, never a value of a call that is not a read, and never a string;
+  a repaired call that is not a read is held for the model to send again, never sent or run.
 - The runtime fills the agent and the wallet; the model never picks them.
 - A deployer's token name reaches the model only through a tool that marks the turn.
 - No proposal is retried, after a failure or a restart.

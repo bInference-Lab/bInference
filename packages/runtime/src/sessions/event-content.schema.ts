@@ -1,5 +1,6 @@
 import { type JsonValue, jsonValueSchema } from "@binference/core";
 import { z } from "zod";
+import { type RepairStep, repairSteps } from "../repair/repair-step.js";
 
 // What each kind of transcript event holds in its `content`, as the runtime writes and reads it.
 // The transcript never changes, so a field added later is optional, and a stored event that no
@@ -33,13 +34,24 @@ export interface AgentTextContent {
   readonly replay?: { readonly format: "messages"; readonly content: JsonValue };
 }
 
-/** A tool call as the model wrote it; a proposal also keeps the key it is sent with. */
+/** A call as binference read it after a repair: its name, its arguments and the repair's steps. */
+export interface CallRepairContent {
+  readonly name: string;
+  readonly arguments: string;
+  readonly steps: readonly RepairStep[];
+}
+
+/**
+ * A tool call as the model wrote it; a proposal also keeps the key it is sent with, and a repaired
+ * call the form binference read it in (decision 0447).
+ */
 export interface ToolCallContent {
   readonly callId: string;
   readonly name: string;
   readonly arguments: string;
   readonly proposal?: true;
   readonly key?: string;
+  readonly repair?: CallRepairContent;
 }
 
 /** A tool call's result; `ran` is false for a call that never ran. */
@@ -95,6 +107,9 @@ export const toolCallContentSchema: z.ZodType<ToolCallContent> = z.object({
   arguments: z.string(),
   proposal: z.literal(true).exactOptional(),
   key: z.string().exactOptional(),
+  repair: z
+    .object({ name: z.string(), arguments: z.string(), steps: z.array(z.enum(repairSteps)) })
+    .exactOptional(),
 });
 
 /** Parses a tool result. */

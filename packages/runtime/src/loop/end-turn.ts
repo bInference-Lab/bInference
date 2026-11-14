@@ -1,6 +1,7 @@
 import { createDeadline } from "@binference/core";
 import type { TurnReport } from "./chat-turn.js";
 import { notRunText } from "./not-run.js";
+import { callAsRead } from "./repaired-calls.js";
 import { unknownProposal } from "./run-tool-call.js";
 import { settleBy } from "./settle-by.js";
 import { withoutShownText } from "./shown-text.js";
@@ -34,7 +35,8 @@ async function bestEffort(run: TurnRun, write: (signal: AbortSignal) => Promise<
 export async function answerOpenCalls(run: TurnRun): Promise<void> {
   for (const { call, proposal } of run.open()) {
     const text = proposal ? unknownProposal : notRunText("engine");
-    const result = { callId: call.id, name: call.name, text, isError: true, outside: false };
+    const { name } = callAsRead(call);
+    const result = { callId: call.id, name, text, isError: true, outside: false };
     // oxlint-disable-next-line eslint/no-await-in-loop -- results keep the calls' order
     await bestEffort(run, async (signal) =>
       run.parts.journal.toolResult({ ...result, ran: proposal }, signal),

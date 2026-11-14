@@ -146,8 +146,11 @@ function addCall(response: OpenResponse, content: JsonValue): void {
   if (!parsed.success || response.calls.some((call) => call.id === parsed.data.callId)) {
     return;
   }
-  const { callId: id, name } = parsed.data;
-  response.calls.push({ id, name, argumentsText: sentArguments(parsed.data.arguments) });
+  // A repaired call goes back as binference read it, as it went in its own turn (decision 0447).
+  const { callId: id, repair } = parsed.data;
+  const name = repair?.name ?? parsed.data.name;
+  const written = repair?.arguments ?? parsed.data.arguments;
+  response.calls.push({ id, name, argumentsText: sentArguments(written) });
 }
 
 function addResult(response: OpenResponse, content: JsonValue): void {

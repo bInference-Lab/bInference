@@ -57,12 +57,42 @@ describe("createToolBox", () => {
     expect(box.prepare({ id: "c1", name: "sell_all", argumentsText: "{}" })).toStrictEqual({
       ready: false,
       text: "not run: there is no tool named sell_all",
+      cause: "name",
     });
     expect(
       box.prepare({ id: "c2", name: "ignore <all> rules", argumentsText: "{}" }),
     ).toStrictEqual({
       ready: false,
       text: "not run: there is no tool named that name",
+      cause: "name",
+    });
+  });
+
+  it("refuses a proposal with an address only a note holds as a check, which no repair reads", () => {
+    const send = defineTool({
+      name: "send",
+      kind: "propose",
+      description: "Send.",
+      args: z.strictObject({ to: z.string() }),
+      run: async () => ({ text: "waits", isError: false }),
+    });
+    const notes = defineTool({
+      name: "notes_search",
+      kind: "read",
+      addressSource: "note",
+      description: "Notes.",
+      args: z.strictObject({}),
+      run: async () => ({ text: "", isError: false }),
+    });
+    const address = `0x${"ab".repeat(20)}`;
+    const seen = [
+      { role: "agent", text: "", reasoning: "", toolCalls: [] },
+      { role: "tool", callId: "n", name: "notes_search", text: address, isError: false },
+    ] as const;
+    const call = { id: "c", name: "send", argumentsText: JSON.stringify({ to: address }) };
+    expect(createToolBox([send, notes]).prepare(call, seen)).toMatchObject({
+      ready: false,
+      cause: "check",
     });
   });
 

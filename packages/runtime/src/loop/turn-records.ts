@@ -35,6 +35,11 @@ export interface ChainModel {
    * (decision 0227). Absent, it never gets an image.
    */
   readonly readsImages?: true;
+  /**
+   * `models.repairToolCalls` names the model: its malformed calls are repaired in form, and a
+   * repaired propose or control call is held (decision 0447). Absent, no call of it is repaired.
+   */
+  readonly repairsCalls?: true;
 }
 
 /** What a tool does, which decides how the loop runs it (runtime spec, section 5.1). */
@@ -155,10 +160,19 @@ export interface ReadyCall {
   run(context: ToolRunContext): Promise<ToolOutcome>;
 }
 
+/**
+ * Why the tool box refused a call: its name, arguments that are not JSON, or its schema, which a
+ * listed model's repair may read (decision 0447); or a `check` that is never repaired, such as the
+ * arguments' size, depth, a key written twice, an integer past 2^53 or an address only a note holds.
+ * The turn itself refuses a call `held`: one that is not a read, which a repair read (decision 0447).
+ */
+export type RefusalCause = "name" | "arguments" | "schema" | "check" | "held";
+
 /** A call the tool box refused: it never runs, and the model reads why. */
-interface RefusedCall {
+export interface RefusedCall {
   readonly ready: false;
   readonly text: string;
+  readonly cause: RefusalCause;
 }
 
 /** A call after the tool box checked it. */
@@ -267,6 +281,8 @@ export type TurnStatusLine =
   | { readonly line: "modelCallLimit" }
   /** The loop guard found the same call with the same result three times. */
   | { readonly line: "loop" }
+  /** A listed model's call would be held after the turn held 3 (decision 0447). */
+  | { readonly line: "unreadableCalls" }
   /** The agent's model budget of the day is spent: chat resumes at the owner's next midnight. */
   | { readonly line: "budget"; readonly resumesAt: number }
   /** The agent's turns of the last minute reached their quota: chat goes on at `resumesAt`. */

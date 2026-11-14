@@ -15,6 +15,20 @@ export type RepairStep =
   | "integer_string"
   | "null_optional";
 
+/** Every repair step, in the order a repair takes them. */
+export const repairSteps: readonly RepairStep[] = [
+  "name_prefix",
+  "name_case",
+  "fence",
+  "string_object",
+  "words_around",
+  "single_quotes",
+  "trailing_comma",
+  "closed",
+  "integer_string",
+  "null_optional",
+];
+
 /** Text after some repair steps, and the steps that changed it, in order. */
 export interface FixedText {
   readonly text: string;

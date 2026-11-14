@@ -1,10 +1,11 @@
 import type { Clock, Id, JsonValue } from "@binference/core";
 import type { EventDraft } from "@binference/store";
-import type { OwnerMessage } from "../loop/model-message.js";
+import type { OwnerMessage, ToolCall } from "../loop/model-message.js";
 import type { TurnJournal } from "../loop/ports.js";
 import { type AgentStores, written } from "./agent-stores.js";
 import type {
   AgentTextContent,
+  CallRepairContent,
   ImageContent,
   OwnerTextContent,
   SummaryContent,
@@ -44,17 +45,24 @@ export function ownerEvents(
   });
 }
 
-function callContent(
-  call: { readonly id: string; readonly name: string; readonly argumentsText: string },
-  key?: string,
-): JsonValue {
-  const content: ToolCallContent = {
+// A call as the model wrote it, with the form binference read it in after a repair (decision 0447).
+function callContent(call: ToolCall, key?: string): JsonValue {
+  const content: Omit<ToolCallContent, "repair"> = {
     callId: call.id,
     name: call.name,
     arguments: call.argumentsText,
     ...(key === undefined ? {} : { proposal: true, key }),
   };
-  return { ...content };
+  const { repair } = call;
+  if (repair === undefined) {
+    return { ...content };
+  }
+  const read: CallRepairContent = {
+    name: repair.name,
+    arguments: repair.argumentsText,
+    steps: repair.steps,
+  };
+  return { ...content, repair: { ...read, steps: [...read.steps] } };
 }
 
 type Writes<K extends keyof TurnJournal> = Pick<TurnJournal, K>;

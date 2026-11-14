@@ -62,8 +62,11 @@ export function testToolBox(tools: readonly TestTool[]): ToolBox {
     prepare(call) {
       const tool = byName.get(call.name);
       const args = parseArguments(call.argumentsText);
-      if (tool === undefined || args === undefined) {
-        return { ready: false, text: `refused ${call.name}` };
+      if (tool === undefined) {
+        return { ready: false, text: `refused ${call.name}`, cause: "name" };
+      }
+      if (args === undefined) {
+        return { ready: false, text: `refused ${call.name}`, cause: "arguments" };
       }
       const body = tool.run ?? (async () => ({ text: `ran ${tool.name}`, isError: false }));
       return {
@@ -75,6 +78,7 @@ export function testToolBox(tools: readonly TestTool[]): ToolBox {
         run: async (context) => body(context, args),
       };
     },
+    kindOf: (name) => byName.get(name)?.kind,
   };
 }
 
@@ -101,8 +105,15 @@ export interface TestTurnOptions {
   readonly turnId?: string;
   /** The turn's models in place of one model answering `replies`, made on the turn's clock. */
   readonly models?: (clock: ManualClock) => ModelChain;
-  /** The one model answering `replies`: its name, `test/model` when absent, and its price. */
-  readonly model?: { readonly name: string; readonly price?: ModelPrice };
+  /**
+   * The one model answering `replies`: its name, `test/model` when absent, its price, and whether
+   * its malformed calls are repaired (decision 0447).
+   */
+  readonly model?: {
+    readonly name: string;
+    readonly price?: ModelPrice;
+    readonly repairsCalls?: true;
+  };
   /** The turn's clock in place of a new one, such as one a chain's rests already use. */
   readonly clock?: ManualClock;
   /** The agent's live facts; a paper agent's, read at the turn's clock, when absent. */

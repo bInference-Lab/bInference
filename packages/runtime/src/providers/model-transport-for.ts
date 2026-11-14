@@ -128,11 +128,13 @@ export function modelChainFor(
   const chainModel = (model: { readonly ref: string | undefined; readonly place: ModelPlace }) => {
     const priced = model.ref === undefined ? undefined : modelPriceOf(model.ref, models);
     const reads = model.ref !== undefined && models.imageInput.includes(model.ref);
+    const repairs = model.ref !== undefined && models.repairToolCalls?.includes(model.ref) === true;
     return {
       name: model.ref ?? `${role}/none`,
       transport: transportOf(models, model, transportParts),
       ...(priced === undefined ? {} : { price: priced.price }),
       ...(reads ? { readsImages: true as const } : {}),
+      ...(repairs ? { repairsCalls: true as const } : {}),
     };
   };
   return createModelChain([chainModel(own), ...fallbacks.map(chainModel)], {

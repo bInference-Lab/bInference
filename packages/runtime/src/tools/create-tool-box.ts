@@ -27,7 +27,9 @@ function checkedProposal(
     return prepared;
   }
   const address = noteOnlyAddress(argumentsText, context.seen, context.tools);
-  return address === undefined ? prepared : { ready: false, text: noteAddressRefusal(address) };
+  return address === undefined
+    ? prepared
+    : { ready: false, text: noteAddressRefusal(address), cause: "check" };
 }
 
 /**
@@ -50,10 +52,11 @@ export function createToolBox(tools: readonly AgentTool[]): ToolBox {
     prepare(call, seen = []) {
       const tool = byName.get(call.name);
       if (tool === undefined) {
-        return { ready: false, text: unknownToolText(call.name) };
+        return { ready: false, text: unknownToolText(call.name), cause: "name" };
       }
       const prepared = tool.prepare(call.argumentsText);
       return checkedProposal(prepared, call.argumentsText, { seen, tools: addressTools });
     },
+    kindOf: (name) => byName.get(name)?.kind,
   };
 }

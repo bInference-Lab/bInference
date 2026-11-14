@@ -11,6 +11,7 @@ import type {
   ProposalRecord,
   ResponseRecord,
   SummaryRecord,
+  ToolKind,
   ToolResultRecord,
   TurnEndRecord,
   TurnRefusal,
@@ -56,6 +57,8 @@ export interface ToolBox {
    * which a proposal's addresses are checked against (decision 0206); without it, none is.
    */
   prepare(call: ToolCall, seen?: readonly ModelMessage[]): PreparedCall;
+  /** The kind of the declared tool of this name, or `undefined` when none has it. */
+  kindOf(name: string): ToolKind | undefined;
 }
 
 /**

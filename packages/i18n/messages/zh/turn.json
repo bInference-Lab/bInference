@@ -8,6 +8,7 @@
   "toolCallLimit": "已停止：本次回答已达到 25 次工具调用上限。请再次提问以继续。",
   "modelCallLimit": "已停止：本次回答已达到 40 次模型调用上限。请再次提问以继续。",
   "loop": "已停止：Agent 连续三次重复同一步骤。",
+  "unreadableCalls": "已停止：模型的调用需要修正，binference 已暂缓这些调用，均未执行。请让模型重新发送，或用 /ai 选择其他模型。",
   "failed.transient": "多次重试后模型服务商仍未回答。请稍后再试。",
   "failed.context": "此对话过长，无法继续。请发送 /clear 开始新对话；你的笔记和策略会保留。",
   "failed.auth": "模型服务商拒绝了密钥。请在本机运行 `binference check`。",

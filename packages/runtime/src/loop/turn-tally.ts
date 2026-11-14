@@ -31,6 +31,10 @@ interface TurnMarks {
   readonly resumesAt?: number;
   /** The loop guard found the same call with the same result three times. */
   readonly looped: boolean;
+  /** Calls held after a repair, each one the model read as held (decision 0447). */
+  readonly held: number;
+  /** A call to hold came after the turn held its most: the turn ends after its batch. */
+  readonly unreadable: boolean;
   /** The text of the last model response: the turn's final text. */
   readonly lastText: string;
   /** How the engine answered the turn's proposal: it waits for the owner, or was refused. */
@@ -62,6 +66,9 @@ export interface TurnTally {
   /** Marks the budget spent, with when it resumes when the engine said. */
   spendBudget(resumesAt?: number): void;
   markLooped(): void;
+  /** Counts a call held after a repair. */
+  hold(): void;
+  markUnreadable(): void;
   keepText(text: string): void;
   answerProposal(answer: ProposalAnswer): void;
   /** Keeps the line a tool's work gives the turn; a later one replaces it. */
@@ -110,6 +117,8 @@ const unstarted: TurnMarks = {
   attempts: 0,
   budgetSpent: false,
   looped: false,
+  held: 0,
+  unreadable: false,
   lastText: "",
   shown: [],
   spentMicros: 0n,
@@ -146,20 +155,41 @@ export function createTurnTally(options: { readonly outside: boolean }): TurnTal
     markLooped() {
       marks = { ...marks, looped: true };
     },
+    hold() {
+      marks = { ...marks, held: marks.held + 1 };
+    },
+    markUnreadable() {
+      marks = { ...marks, unreadable: true };
+    },
     keepText(lastText) {
       marks = { ...marks, lastText };
     },
     answerProposal(proposal) {
       marks = { ...marks, proposal };
     },
-    close(closingLine) {
-      marks = { ...marks, closingLine };
+    ...shownParts(
+      () => marks,
+      (next) => {
+        marks = next;
+      },
+    ),
+  };
+}
+
+// The parts that keep what tools gave the turn: a closing line, what they showed, their results.
+function shownParts(
+  now: () => TurnMarks,
+  set: (marks: TurnMarks) => void,
+): Pick<TurnTally, "close" | "show" | "noteResult"> {
+  return {
+    close: (closingLine) => {
+      set({ ...now(), closingLine });
     },
-    show(texts) {
-      marks = { ...marks, shown: withShown(marks.shown, texts) };
+    show: (texts) => {
+      set({ ...now(), shown: withShown(now().shown, texts) });
     },
-    noteResult(result) {
-      marks = noted(marks, result);
+    noteResult: (result) => {
+      set(noted(now(), result));
     },
   };
 }

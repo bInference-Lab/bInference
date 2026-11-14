@@ -86,7 +86,11 @@ describe("the tools of a helper's turn", () => {
   it("never runs a proposal a helper's model writes: the box holds no such tool", async () => {
     const box = helperToolBox(await fullParts());
     const swap = box.prepare({ id: "call_1", name: "swap", argumentsText: "{}" });
-    expect(swap).toStrictEqual({ ready: false, text: "not run: there is no tool named swap" });
+    expect(swap).toStrictEqual({
+      ready: false,
+      text: "not run: there is no tool named swap",
+      cause: "name",
+    });
     const start = box.prepare({ id: "call_2", name: "helper_start", argumentsText: "{}" });
     expect(start.ready).toBe(false);
   });

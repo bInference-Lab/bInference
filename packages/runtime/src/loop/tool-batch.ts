@@ -1,22 +1,20 @@
 import type { BatchCall, BatchEnd } from "./batch-call.js";
+import { checkedCall } from "./checked-call.js";
 import type { ToolCall } from "./model-message.js";
 import { recordNotRun } from "./record-call.js";
+import { preparedRepair } from "./repaired-calls.js";
 import { runOrderedBatch } from "./run-ordered-batch.js";
 import { runParallelBatch } from "./run-parallel-batch.js";
 import { haltOf } from "./turn-halt.js";
 import type { PreparedCall } from "./turn-records.js";
 import type { TurnRun } from "./turn-run.js";
 
-const unreadable = "not run: the arguments could not be read";
-
-// A tool box that throws, on arguments it did not expect, refuses that call and breaks nothing.
-// Every call of a batch is checked against the conversation before the batch runs.
+// Every call of a batch is checked against the conversation before the batch runs; a repaired
+// call is checked as binference read it (decision 0447).
 function prepared(run: TurnRun, call: ToolCall): PreparedCall {
-  try {
-    return run.parts.tools.prepare(call, run.messages);
-  } catch {
-    return { ready: false, text: unreadable };
-  }
+  return call.repair === undefined
+    ? checkedCall(run, call)
+    : preparedRepair(run, call, call.repair);
 }
 
 // Reads that allow it run together; a refused call has its result already and takes no part.

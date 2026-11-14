@@ -34,9 +34,12 @@ function agentLine(event: TranscriptEvent): EventLine | undefined {
 
 function callLine(event: TranscriptEvent): EventLine | undefined {
   const parsed = toolCallContentSchema.safeParse(event.content);
-  return parsed.success
-    ? { label: `agent calls ${parsed.data.name}`, text: parsed.data.arguments }
-    : undefined;
+  if (!parsed.success) {
+    return undefined;
+  }
+  // A repaired call reads as binference read it, as the conversation carries it (decision 0447).
+  const call = parsed.data.repair ?? parsed.data;
+  return { label: `agent calls ${call.name}`, text: call.arguments };
 }
 
 function resultLine(event: TranscriptEvent): EventLine | undefined {

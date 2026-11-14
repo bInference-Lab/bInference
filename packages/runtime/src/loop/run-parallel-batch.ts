@@ -1,12 +1,23 @@
 import type { BatchCall, BatchEnd } from "./batch-call.js";
 import { notRunText } from "./not-run.js";
 import { type CallResult, recordResult } from "./record-call.js";
+import { recordedRefusal } from "./repaired-calls.js";
 import { executeCall } from "./run-tool-call.js";
 import { haltOf } from "./turn-halt.js";
 import type { TurnRun } from "./turn-run.js";
 
 function refusedResult(text: string): CallResult {
   return { text, isError: true, outside: false, ran: false };
+}
+
+// A refused call as the batch records it, a held one counted toward the turn's most (decision
+// 0447), before any call is written.
+function asRecorded(run: TurnRun, item: BatchCall): BatchCall {
+  if (item.prepared.ready) {
+    return item;
+  }
+  const { call, text } = recordedRefusal(run, item.call, item.prepared);
+  return { ...item, call, prepared: { ...item.prepared, text } };
 }
 
 // A halted turn starts none of the batch's reads.
@@ -29,8 +40,9 @@ async function settle(run: TurnRun, item: BatchCall): Promise<CallResult> {
  */
 export async function runParallelBatch(
   run: TurnRun,
-  calls: readonly BatchCall[],
+  batch: readonly BatchCall[],
 ): Promise<BatchEnd> {
+  const calls = batch.map((item) => asRecorded(run, item));
   for (const item of calls) {
     // oxlint-disable-next-line eslint/no-await-in-loop -- calls are written in the model's order
     await run.parts.journal.toolCall(item.call, run.writes);

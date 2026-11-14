@@ -56,6 +56,7 @@ function throwingOn(name: string, tools: ToolBox): ToolBox {
       }
       return tools.prepare(call);
     },
+    kindOf: (tool) => tools.kindOf(tool),
   };
 }
 
@@ -159,6 +160,27 @@ describe("runToolBatch", () => {
     const { turn, recorder } = createTestTurn({
       replies: [callsReply([{ name: "broken" }, { name: "portfolio" }]), textReply("Ok.")],
       box,
+    });
+    await expect(turn.run()).resolves.toMatchObject({ outcome: "ok", modelCalls: 2 });
+    expect(results(recorder)).toStrictEqual([
+      ["broken", "not run: the arguments could not be read", false],
+      ["portfolio", "ran portfolio", true],
+    ]);
+  });
+
+  it("refuses a call whose check throws for a model listed for repair, and goes on", async () => {
+    const tools = testToolBox([
+      { name: "portfolio", kind: "read" },
+      { name: "broken", kind: "read" },
+    ]);
+    const box = throwingOn("broken", tools);
+    const { turn, recorder } = createTestTurn({
+      replies: [
+        callsReply([{ name: "broken", args: "```\n{}\n```" }, { name: "portfolio" }]),
+        textReply("Ok."),
+      ],
+      box,
+      model: { name: "local/qwen", repairsCalls: true },
     });
     await expect(turn.run()).resolves.toMatchObject({ outcome: "ok", modelCalls: 2 });
     expect(results(recorder)).toStrictEqual([

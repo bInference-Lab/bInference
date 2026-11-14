@@ -6,10 +6,9 @@ import type {
   Tool,
   ToolResultBlockParam,
 } from "@anthropic-ai/sdk/resources/messages";
-import type { ResponseReplay } from "../loop/model-event.js";
-import type { ModelMessage, ToolDeclaration } from "../loop/model-message.js";
+import type { ModelMessage, ToolCall, ToolDeclaration } from "../loop/model-message.js";
 import type { ModelRequest } from "../loop/turn-records.js";
-import { inputObjectOf, replayBlocksOf } from "./messages-replay.schema.js";
+import { inputObjectOf, type ReplayBlock, replayBlocksOf } from "./messages-replay.schema.js";
 
 /**
  * The most output tokens one call asks for (runtime spec, section 8.1): the gateway reserves them
@@ -21,25 +20,49 @@ const maxOutputTokens = 4_096;
 // cache tools, then the system prompt, then the messages, in that order.
 const mark = { type: "ephemeral" } as const;
 
-// A response the transport kept goes back exactly as it came, its thinking blocks' signatures
-// with it; one with no replay, or another format's, is written from its text and calls.
-function replayed(replay: ResponseReplay | undefined): ContentBlockParam[] | undefined {
-  if (replay?.format !== "messages") {
-    return undefined;
-  }
-  const blocks = replayBlocksOf(replay.content);
-  return blocks === undefined ? undefined : [...blocks];
-}
-
-function agentBlocks(entry: Extract<ModelMessage, { role: "agent" }>): ContentBlockParam[] {
-  const text: ContentBlockParam[] = entry.text === "" ? [] : [{ type: "text", text: entry.text }];
-  const calls = entry.toolCalls.map((call): ContentBlockParam => ({
+function toolUseOf(call: ToolCall): ContentBlockParam {
+  return {
     type: "tool_use",
     id: call.id,
     name: call.name,
     input: inputObjectOf(call.argumentsText),
-  }));
-  return replayed(entry.replay) ?? [...text, ...calls];
+  };
+}
+
+// A kept call goes back as the conversation carries it, a repaired one as binference read it and
+// a cut one with empty input (decisions 0447 and 0172), unless a thinking block follows it in the
+// response: that block's signature binds the call as the model wrote it.
+function asCarried(
+  blocks: readonly ReplayBlock[],
+  calls: readonly ToolCall[],
+): ContentBlockParam[] {
+  const lastThinking = blocks.findLastIndex(
+    (block) => block.type !== "text" && block.type !== "tool_use",
+  );
+  return blocks.map((block, index) => {
+    const call =
+      block.type === "tool_use" && index > lastThinking
+        ? calls.find((each) => each.id === block.id)
+        : undefined;
+    return call === undefined ? block : toolUseOf(call);
+  });
+}
+
+// A response the transport kept goes back as it came, its thinking blocks' signatures with it;
+// one with no replay, or another format's, is written from its text and calls.
+function replayed(
+  entry: Extract<ModelMessage, { role: "agent" }>,
+): ContentBlockParam[] | undefined {
+  if (entry.replay?.format !== "messages") {
+    return undefined;
+  }
+  const blocks = replayBlocksOf(entry.replay.content);
+  return blocks === undefined ? undefined : asCarried(blocks, entry.toolCalls);
+}
+
+function agentBlocks(entry: Extract<ModelMessage, { role: "agent" }>): ContentBlockParam[] {
+  const text: ContentBlockParam[] = entry.text === "" ? [] : [{ type: "text", text: entry.text }];
+  return replayed(entry) ?? [...text, ...entry.toolCalls.map(toolUseOf)];
 }
 
 function toolResult(entry: Extract<ModelMessage, { role: "tool" }>): ToolResultBlockParam {

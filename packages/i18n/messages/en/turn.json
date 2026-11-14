@@ -8,6 +8,7 @@
   "toolCallLimit": "Stopped: this answer reached its limit of 25 tool calls. Ask again to go on.",
   "modelCallLimit": "Stopped: this answer reached its limit of 40 model calls. Ask again to go on.",
   "loop": "Stopped: the agent repeated the same step three times.",
+  "unreadableCalls": "Stopped: binference held the model's calls that needed fixing and ran none of them. Ask the model to send them again, or pick another model with /ai.",
   "failed.transient": "The model provider did not answer, even after retries. Try again in a minute.",
   "failed.context": "This chat is too long to go on. Send /clear to start a new one; your notes and strategy stay.",
   "failed.auth": "The model provider refused the key. Run `binference check` on the machine.",

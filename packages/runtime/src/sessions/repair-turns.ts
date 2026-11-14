@@ -58,7 +58,9 @@ function openCallsOf(events: readonly TranscriptEvent[]): readonly OpenCall[] {
     if (call === false || !call.success || answered.has(call.data.callId)) {
       return [];
     }
-    const { callId, name } = call.data;
+    // A repaired call's result names the tool binference read it as (decision 0447).
+    const { callId, repair } = call.data;
+    const name = repair?.name ?? call.data.name;
     return [{ callId, name, proposal: call.data.proposal === true }];
   });
 }

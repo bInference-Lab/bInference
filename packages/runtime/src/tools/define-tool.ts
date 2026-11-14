@@ -1,7 +1,13 @@
 import { BinferenceError, type JsonValue, maxJsonDepth } from "@binference/core";
 import { z } from "zod";
 import type { ToolDeclaration } from "../loop/model-message.js";
-import type { PreparedCall, ToolKind, ToolOutcome, ToolRunContext } from "../loop/turn-records.js";
+import type {
+  PreparedCall,
+  RefusalCause,
+  ToolKind,
+  ToolOutcome,
+  ToolRunContext,
+} from "../loop/turn-records.js";
 import {
   type ArgumentsProblem,
   maxArgumentsChars,
@@ -129,8 +135,8 @@ const problemTexts: Readonly<Record<ArgumentsProblem, string>> = {
     "hold an integer past 2^53 not written as plain digits; write amounts as decimal strings",
 };
 
-function unreadable(name: string, why: string): PreparedCall {
-  return { ready: false, text: `not run: the arguments of ${name} ${why}` };
+function unreadable(name: string, why: string, cause: RefusalCause): PreparedCall {
+  return { ready: false, text: `not run: the arguments of ${name} ${why}`, cause };
 }
 
 // A schema check that throws, a refinement written wrong for one, refuses the call instead.
@@ -180,14 +186,15 @@ export function defineTool<Args>(spec: ToolSpec<Args>): AgentTool {
     prepare(argumentsText) {
       const json = parseArgumentsJson(argumentsText);
       if (!json.ok) {
-        return unreadable(spec.name, problemTexts[json.error]);
+        const cause = json.error === "not_json" ? "arguments" : "check";
+        return unreadable(spec.name, problemTexts[json.error], cause);
       }
       const result = checked(spec.args, json.value);
       if (result === undefined) {
-        return unreadable(spec.name, "could not be read");
+        return unreadable(spec.name, "could not be read", "check");
       }
       if (!result.success) {
-        return { ready: false, text: argumentsRefusal(spec.name, result.error) };
+        return { ready: false, text: argumentsRefusal(spec.name, result.error), cause: "schema" };
       }
       const args = result.data;
       const run = async (context: ToolRunContext): Promise<ToolOutcome> => {

@@ -5,6 +5,7 @@ import { canMerge } from "./can-merge.js";
 import type { OwnerMessage, ToolCall } from "./model-message.js";
 import type { ModelAnswer, ModelFault } from "./read-model-response.js";
 import { markTurn } from "./record-call.js";
+import { callAsRead, withRepairs } from "./repaired-calls.js";
 import { runCutOffBatch, runToolBatch } from "./tool-batch.js";
 import { endOfHalt, haltOf } from "./turn-halt.js";
 import type { ModelRequest, TurnStatusLine } from "./turn-records.js";
@@ -45,11 +46,12 @@ async function join(run: TurnRun, messages: readonly OwnerMessage[]): Promise<vo
 }
 
 // A call cut off at the output limit may hold half its arguments, which no provider reads back:
-// the conversation carries it with empty arguments, beside its "not run" result.
+// the conversation carries it with empty arguments, beside its "not run" result. A repaired call
+// goes back as binference read it (decision 0447).
 function sentBack(answer: ModelAnswer): readonly ToolCall[] {
   return answer.stop === "length"
     ? answer.toolCalls.map((call) => ({ ...call, argumentsText: "{}" }))
-    : answer.toolCalls;
+    : answer.toolCalls.map(callAsRead);
 }
 
 // What the model wrote stays in the transcript and the conversation, cut off or failed alike.
@@ -122,22 +124,38 @@ async function afterBatch(run: TurnRun, batch: BatchEnd): Promise<StepEnd> {
     return { outcome: "ok", status: committedStatus(run) };
   }
   if (batch.askedOwner) {
-    return ok;
+    return askedEnd(run);
   }
-  const { looped, budgetSpent } = run.tally.now();
-  if (looped) {
-    return { outcome: "loop", status: { line: "loop" } };
+  const limit = limitEnd(run, batch);
+  if (limit !== undefined) {
+    return limit;
   }
-  if (batch.reachedLimit) {
-    return { outcome: "loop", status: { line: "toolCallLimit" } };
-  }
-  if (budgetSpent) {
+  if (run.tally.now().budgetSpent) {
     return budgetEnd(run);
   }
   if (batch.joined.length === 0 && canMerge(run)) {
     await join(run, await run.parts.merge.take(run.writes));
   }
   return "next";
+}
+
+// A question to the owner ends the turn as it asked; the owner still reads when the batch held a
+// call past the turn's most (decision 0447).
+function askedEnd(run: TurnRun): LoopEnd {
+  return run.tally.now().unreadable ? { outcome: "ok", status: { line: "unreadableCalls" } } : ok;
+}
+
+// The limits a batch can reach, the loop guard's line first: the same call three times, the tool
+// call limit, a call a repair would hold past the turn's most (decision 0447).
+function limitEnd(run: TurnRun, batch: BatchEnd): LoopEnd | undefined {
+  const { looped, unreadable } = run.tally.now();
+  if (looped) {
+    return { outcome: "loop", status: { line: "loop" } };
+  }
+  if (batch.reachedLimit) {
+    return { outcome: "loop", status: { line: "toolCallLimit" } };
+  }
+  return unreadable ? { outcome: "loop", status: { line: "unreadableCalls" } } : undefined;
 }
 
 // Merge point 3: a response with no tool call would end the turn, unless messages wait to join.
@@ -188,7 +206,7 @@ export async function takeStep(run: TurnRun): Promise<StepEnd> {
     tail: await run.tail.text(run.writes),
     tools: run.parts.tools.declarations,
   });
-  const response = await callFitting(run, request);
+  const response = withRepairs(run, await callFitting(run, request));
   await keepResponse(run, response);
   return response.ok ? onAnswer(run, response) : endOfFault(run, response);
 }
