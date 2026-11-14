@@ -39,7 +39,8 @@ const accountOf = (n: number): AccountRef =>
 
 function txOf(block: number, n: number): TxHash {
   const hash = `0x${block.toString(16).padStart(32, "0")}${n.toString(16).padStart(32, "0")}`;
-  return isTxHash(hash) ? hash : assert.fail("not a hash");
+  assert.ok(isTxHash(hash), "not a hash");
+  return hash;
 }
 
 /** Launch `n` of creator `creator` at `block`, `block` days after the start. */

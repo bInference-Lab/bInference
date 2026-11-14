@@ -37,9 +37,9 @@ async function followsAlerts(subject: TrackedWalletSubject): Promise<void> {
 // A chain's tracked wallets are those whose account starts with its id exactly: no other case of
 // its letters, and no other character where its id has `_`.
 async function readsTheChainExactly(subject: TrackedWalletSubject): Promise<void> {
-  const chains = ["fake:a_c", "fake:a-c", "fake:A_c"];
-  await inOrder([...chains.keys()], async (n) => {
-    const account = accountRefSchema.parse(`${chains[n] ?? ""}:0x0000000${String(n)}`);
+  const chains = ["fake:a_c", "fake:a-c", "fake:A_c"] as const;
+  await inOrder([0, 1, 2] as const, async (n) => {
+    const account = accountRefSchema.parse(`${chains[n]}:0x0000000${String(n)}`);
     const alert = alertOf(subject, n + 1, { condition: { kind: "wallet", account } });
     assert.equal((await subject.alerts.create(alert, live())).ok, true);
   });

@@ -38,7 +38,8 @@ async function keepsOneInstallId(subject: KeyRaceSubject): Promise<void> {
 
 function txOf(n: number): TxHash {
   const hash = `0x${n.toString(16).padStart(64, "0")}`;
-  return isTxHash(hash) ? hash : assert.fail("not a hash");
+  assert.ok(isTxHash(hash), "not a hash");
+  return hash;
 }
 
 function bridgeOf(subject: KeyRaceSubject, n: number): BridgeDraft {

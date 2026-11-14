@@ -157,10 +157,8 @@ async function pagesEveryAlert(subject: WebhookRuleStoreSubject): Promise<void> 
       [accepted.at(-1), "accepted"],
     ],
   );
-  const rest = await store.events(
-    { ruleId: ruleId(1), before: repeat.event ?? 0, limit: 10 },
-    live(),
-  );
+  assert.ok(repeat.event !== undefined);
+  const rest = await store.events({ ruleId: ruleId(1), before: repeat.event, limit: 10 }, live());
   assert.deepEqual(rest, [
     {
       event: first,

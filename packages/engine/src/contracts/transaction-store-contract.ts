@@ -133,11 +133,13 @@ async function listsByNonce(subject: TransactionStoreSubject): Promise<void> {
   await subject.setState(third.id, "dropped");
   const refills = await inOrder([0, 9], async (n) => takeAndSave(subject, n, 5));
   const page = await store.list({ account: accounts[0], fromNonce: 6, limit: 4 }, live());
+  const [firstRefill, secondRefill] = refills;
+  assert.ok(firstRefill !== undefined && secondRefill !== undefined);
   const expected: readonly TransactionRecord[] = [
-    refills[0] ?? assert.fail("no first refill"),
+    firstRefill,
     { ...second, state: "dropped" },
     { ...third, state: "dropped" },
-    refills[1] ?? assert.fail("no second refill"),
+    secondRefill,
   ];
   assert.deepEqual(page, expected);
   assert.deepEqual(await store.list({ account: accounts[1], fromNonce: 0, limit: 10 }, live()), []);

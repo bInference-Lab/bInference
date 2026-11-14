@@ -13,15 +13,14 @@ import { fixtureId, inOrder, live } from "./store-fixtures.js";
 // The account of wallet condition `n`, which the alert checks name too.
 function leaderOf(n: number): AccountRef {
   const condition = walletCondition(n);
-  return condition.kind === "wallet" ? condition.account : assert.fail("not a wallet condition");
+  assert.ok(condition.kind === "wallet", "not a wallet condition");
+  return condition.account;
 }
 
 // Order `n`, a copy of leader `leader`, its caps past 64 bits.
 function copyDraft(subject: OrderStoreSubject, n: number, leader: number): OrderDraft {
   const draft = orderDraft(subject, n);
-  if (draft.request.kind !== "limit") {
-    return assert.fail("The fixture order is a limit order.");
-  }
+  assert.ok(draft.request.kind === "limit", "The fixture order is a limit order.");
   const { trigger: _trigger, worstPrice: _worst, kind: _kind, ...base } = draft.request;
   const request: OrderRequest = {
     ...base,
@@ -129,7 +128,8 @@ export async function pagesCopyBuysInWriteOrder(subject: OrderStoreSubject): Pro
   const query = { agentId, leader: leaderOf(1), fromMs: 0, limit: 1 };
   const [first] = await store.copyBuys(query, live());
   await landed(subject, { order: 2, version: 1, intent: 12, row: 39, kind: "buy", atMs });
-  const after = first?.id ?? assert.fail("Expected the first copy buy.");
+  assert.ok(first !== undefined, "Expected the first copy buy.");
+  const after = first.id;
 
   const next = await store.copyBuys({ ...query, after }, live());
 

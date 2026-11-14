@@ -15,7 +15,8 @@ async function pagesActivity(subject: TrackedWalletSubject): Promise<void> {
   const account = accountOf(1);
   const [newest, middle] = await subject.tracked.activity({ account, limit: 2 }, live());
   assert.equal(newest?.block, 13n);
-  const before = { atMs: middle?.atMs ?? 0, id: middle?.id ?? 0 };
+  assert.ok(middle !== undefined);
+  const before = { atMs: middle.atMs, id: middle.id };
   const rest = await subject.tracked.activity({ account, before, limit: 5 }, live());
   assert.deepEqual(
     rest.map(({ block }) => block),
@@ -43,7 +44,8 @@ async function listsTradesSince(subject: TrackedWalletSubject): Promise<void> {
     all.map(({ id }) => id),
     [first, second, third],
   );
-  const after = await subject.tracked.since({ account, afterId: first ?? 0, limit: 1 }, live());
+  assert.ok(first !== undefined);
+  const after = await subject.tracked.since({ account, afterId: first, limit: 1 }, live());
   assert.deepEqual(
     after.map(({ id }) => id),
     [second],
@@ -100,7 +102,8 @@ async function dropsRemovedTrades(subject: TrackedWalletSubject): Promise<void> 
     left.some(({ id }) => id === moved?.id),
     false,
   );
-  assert.equal((added?.id ?? 0) > (moved?.id ?? 0), true);
+  assert.ok(added !== undefined && moved !== undefined);
+  assert.equal(added.id > moved.id, true);
 }
 
 /** The tracked wallet store's checks of a wallet's stored trades. */

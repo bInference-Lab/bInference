@@ -53,14 +53,15 @@ export async function findsCardsByRef(subject: IntentStoreSubject): Promise<void
   const { store } = subject;
   const requotedAtMs = await requoteCard(subject);
   const first = cardOf(1, 1);
-  assert.deepEqual(await store.cardByRef(first.callbackRef ?? "", live()), {
+  const second = cardOf(1, 2);
+  assert.ok(first.callbackRef !== undefined && second.callbackRef !== undefined);
+  assert.deepEqual(await store.cardByRef(first.callbackRef, live()), {
     ...first,
     intentId,
     closedAtMs: requotedAtMs,
     closeReason: "replaced",
   });
-  const second = cardOf(1, 2);
-  assert.deepEqual(await store.cardByRef(second.callbackRef ?? "", live()), {
+  assert.deepEqual(await store.cardByRef(second.callbackRef, live()), {
     ...second,
     intentId,
   });

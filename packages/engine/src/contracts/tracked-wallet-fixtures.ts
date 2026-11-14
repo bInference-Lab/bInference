@@ -27,12 +27,14 @@ export const other: ChainRef = chainRefSchema.parse("fake:2");
 /** The account of fixture wallet `n`. */
 export function accountOf(n: number): AccountRef {
   const condition = walletCondition(n);
-  return condition.kind === "wallet" ? condition.account : assert.fail("no wallet condition");
+  assert.ok(condition.kind === "wallet", "no wallet condition");
+  return condition.account;
 }
 
 function txOf(n: number): TxHash {
   const hash = `0x${n.toString(16).padStart(64, "0")}`;
-  return isTxHash(hash) ? hash : assert.fail("not a hash");
+  assert.ok(isTxHash(hash), "not a hash");
+  return hash;
 }
 
 /** A sale of wallet `n` at `block`, at `block` seconds, its amount past 64 bits. */
@@ -59,14 +61,14 @@ export function readOf(
   span: readonly [number, number],
   extra: Partial<Omit<LeaderReadRecord, "from" | "to">> = {},
 ): LeaderReadRecord {
-  const [from, to] = span.map((block) => BigInt(block));
+  const [from, to] = [BigInt(span[0]), BigInt(span[1])];
   return {
     chain,
-    from: from ?? 0n,
-    to: to ?? 0n,
+    from,
+    to,
     toHash: `0x${span[1].toString(16).padStart(64, "0")}`,
     atMs: span[1] * 1_000,
-    wallets: [{ account: accountOf(1), sinceBlock: from ?? 0n, readFrom: from ?? 0n }],
+    wallets: [{ account: accountOf(1), sinceBlock: from, readFrom: from }],
     trades: [],
     overflows: [],
     ...extra,
