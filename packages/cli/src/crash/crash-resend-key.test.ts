@@ -78,21 +78,14 @@ async function changedIntents(client: ProtocolClient, since: number) {
   return page.items.map(({ intent }) => intent);
 }
 
-const beforeCard: ReadonlySet<IntentState> = new Set<IntentState>([
-  "proposed",
-  "checked",
-  "quoted",
-  "assessed",
-  "simulated",
-]);
-
-// The intent ended, or a stop cut it before its card: nothing moves it again.
+// The intent ended: nothing moves it again. One a stop cut before its card ended at the restart
+// (decision 0444).
 async function isIntentSettled(client: ProtocolClient, intent: ProtocolId<"intent"> | undefined) {
   if (intent === undefined) {
     return true;
   }
   const { state } = await client.call("intent/get", { intent }, call());
-  return isTerminalState(state) || beforeCard.has(state);
+  return isTerminalState(state);
 }
 
 const settledOrders: ReadonlySet<string> = new Set(["filled", "cancelled", "expired", "ended"]);
@@ -435,7 +428,7 @@ const cases: readonly ResendCase[] = [
       atKill: [swapAt("before_kill", "checked", 0)],
       resent: unknown,
       found: ["before_kill"],
-      settled: [swapAt("before_kill", "checked", 0)],
+      settled: [swapAt("before_kill", "cancelled", 0)],
       sends: { hashes: 0, nonces: 0 },
       isEachLanded: true,
       unmined: 0,
