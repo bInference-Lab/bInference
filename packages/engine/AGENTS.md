@@ -157,6 +157,13 @@ Rules for this package:
   A request it cannot route yet is a protocol error before anything is stored; every
   refusal after that is the intent's state. What it reads about wallets outside the store comes
   through `WalletFactsSource`, and a fact it cannot read fails closed (no rescue address).
+- The start ends every proposal a stop left before its card (`end-unfinished-proposals.ts`,
+  decision 0444): each intent in `proposed`, `checked`, `quoted`, `assessed` or `simulated`, live
+  or paper, moves to `cancelled` as `engine_stopping`, with no notice, before the queue takes any
+  intent or any order runs; an auto order's or a webhook rule's card ends its order or rule with
+  it, as a denied or expired card does. A fill and a token launch past `proposed` are left to their
+  own repairs. A running engine never calls it; a change to what it ends changes
+  `end-unfinished-proposals.property.test.ts`.
 - The execute step (`src/money-path/execute-confirmed.ts`) is the one place a confirmed intent
   goes on: a paper intent to the paper fill, a live one, a rescue in paper mode too (decision
   0100), to the `Executor` port. A paper intent never reaches the executor (spec 6, invariant 3);

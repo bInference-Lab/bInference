@@ -125,6 +125,13 @@ export interface Engine extends BridgeWork, StakeWork, PruneWork, BreakerWork {
    */
   readonly repairOrderFills: (options: { readonly signal: AbortSignal }) => Promise<number>;
   /**
+   * Cancels every proposal a stop left before its card, live or paper, as `engine_stopping`
+   * (decision 0444), but a fill and a token launch past `proposed`, which their own repairs end.
+   * The startup calls it before any intent is taken or any order runs; it answers how many it
+   * cancelled.
+   */
+  readonly endUnfinishedProposals: (options: { readonly signal: AbortSignal }) => Promise<number>;
+  /**
    * Tells each agent of a command it left running that the last stop of the engine lost before
    * its end could be told (decision 0409). The startup calls it once; it answers how many.
    */

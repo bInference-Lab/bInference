@@ -1,21 +1,12 @@
 import { type AssetRef, assetRefParts, type ChainRegistry } from "@binference/chain";
 import { type Clock, createDeadline, type Id } from "@binference/core";
-import type { IntentState } from "@binference/protocol";
 import type { IntentSnapshot, StoredIntents } from "../intents/create-stored-intents.js";
 import type { IntentRecord } from "../intents/intent-record.js";
+import { statesBeforeCard } from "../intents/transition-table.js";
 import type { IntentStore } from "../ports.js";
 import { fillOrderOf } from "./fill-ends.js";
 import type { OrderRecord } from "./order-record.js";
 import { isTriggerDisarmed } from "./price-triggers.js";
-
-// The states a fill passes through before its authorization confirms it.
-const beforeConfirmed: readonly IntentState[] = [
-  "proposed",
-  "checked",
-  "quoted",
-  "assessed",
-  "simulated",
-];
 
 const pageSize = 100;
 
@@ -50,7 +41,7 @@ export async function unfinishedFills(
   const { isPaper, agentId } = query;
   const isFill = query.isFill ?? ((snapshot: IntentSnapshot) => isOrderFill(query, snapshot));
   const { signal, after } = call;
-  const states = isPaper ? [...beforeConfirmed, "confirmed" as const] : beforeConfirmed;
+  const states = isPaper ? [...statesBeforeCard, "confirmed" as const] : statesBeforeCard;
   const listed = await stored.list(
     {
       states,

@@ -93,9 +93,10 @@ async function followBreakerFirst(
   return follow;
 }
 
-// What a stop left: the positions of paper fills, the rows of order fills, the launches' pins and
-// the agent's commands it lost.
+// What a stop left: the proposals before their cards (decision 0444), the positions of paper
+// fills, the rows of order fills, the launches' pins and the agent's commands it lost.
 async function repairAfterStop(composed: ComposedSelfHosted, signal: AbortSignal): Promise<void> {
+  await composed.endUnfinishedProposals({ signal });
   await composed.repairPaperFills({ signal });
   await composed.repairOrderFills({ signal });
   await composed.checkPins({ signal, isRepair: true });
@@ -236,8 +237,9 @@ function botChannelOf(
  * beside it, which stores each alert it accepts in the inbox; the keys open through the
  * unlock mode and start the signer and custody, or leave the engine locked with the reason
  * (decisions 0103 and 0117); every unfinished live intent is recovered by hash and nonce and holds
- * its place in its wallet's queue, and each recent paper fill a crash left without positions gets
- * them; the downtime re-check takes every auto order to check after the stop (decision 0266);
+ * its place in its wallet's queue, every proposal a stop left before its card is cancelled
+ * (decision 0444), and each recent paper fill a crash left without positions gets them; the
+ * downtime re-check takes every auto order to check after the stop (decision 0266);
  * once unlocked, the confirmed intents an earlier run left go to
  * the executor; the timer for work that waits for its time starts, the watch on `config.json5`
  * that reloads the settings (decision 0118), and after a start that found Privy out of reach, the

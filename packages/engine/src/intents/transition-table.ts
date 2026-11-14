@@ -51,13 +51,21 @@ export interface TransitionRule {
   readonly to: IntentState;
 }
 
-/** The states an intent leaves through `cancelled` while nothing of it is signed (spec 6). */
-export const statesBeforeSigning: readonly IntentState[] = [
+/**
+ * The states a proposal passes on its way to its card, or to its confirmation without one: nothing
+ * of it is signed and no card of it is shown (spec 6).
+ */
+export const statesBeforeCard: readonly IntentState[] = [
   "proposed",
   "checked",
   "quoted",
   "assessed",
   "simulated",
+];
+
+/** The states an intent leaves through `cancelled` while nothing of it is signed (spec 6). */
+export const statesBeforeSigning: readonly IntentState[] = [
+  ...statesBeforeCard,
   "awaiting_confirmation",
   "confirmed",
 ];

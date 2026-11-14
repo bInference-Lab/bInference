@@ -1,6 +1,8 @@
 import type { ChatRelay } from "../chat/chat-relay.js";
 import type { DowntimeCheck } from "../downtime/downtime-check.js";
 import type { StoredIntents } from "../intents/create-stored-intents.js";
+import { endUnfinishedProposals } from "../money-path/end-unfinished-proposals.js";
+import type { OrderParts } from "../orders/create-order.js";
 import { repairDcaPeriods } from "../orders/dca-repair.js";
 import type { OrderFills } from "../orders/fill-orders.js";
 import { repairOrderFills } from "../orders/repair-order-fills.js";
@@ -9,6 +11,7 @@ import type { PaperParts } from "../paper/paper-parts.js";
 import { repairPaperFills } from "../paper/repair-paper-fills.js";
 import type { ShellPart } from "../shell/engine-shell.js";
 import { repairRuleFills } from "../webhooks/repair-rule-fills.js";
+import type { WebhookRuleParts } from "../webhooks/webhook-rule-parts.js";
 import type { Engine, EngineOptions } from "./create-engine.js";
 import { breakerWorkOf } from "./engine-breaker.js";
 import { downtimeOf } from "./engine-downtime.js";
@@ -60,13 +63,17 @@ function orderRepairOf(
 
 /**
  * The engine's work the startup runs first, the repairs of what a stop left with the commands it
- * lost, and the downtime re-check after each stop and sleep (decision 0266).
+ * lost and the proposals it left before their cards (decision 0444), and the downtime re-check
+ * after each stop and sleep (decision 0266).
  */
 export function startupWorkOf(
   options: EngineOptions,
   parts: {
     readonly stored: StoredIntents;
     readonly fills: OrderFills;
+    /** The auto orders and webhook rules whose cards the start's end of proposals ends. */
+    readonly orders: OrderParts;
+    readonly rules: WebhookRuleParts;
     readonly paper: PaperParts;
     readonly check: DowntimeCheck;
     readonly relay: Pick<ChatRelay, "reportResume" | "stopHeld">;
@@ -75,14 +82,21 @@ export function startupWorkOf(
   },
 ): Pick<
   Engine,
-  "repairPaperFills" | "repairOrderFills" | "tellLostShellJobs" | "downtime" | "followBreaker"
+  | "repairPaperFills"
+  | "repairOrderFills"
+  | "endUnfinishedProposals"
+  | "tellLostShellJobs"
+  | "downtime"
+  | "followBreaker"
 > {
-  const { stored, fills, paper, check, relay, shell } = parts;
+  const { stored, fills, paper, check, relay, shell, orders, rules } = parts;
   return {
     ...breakerWorkOf(options, { stored, relay }),
     tellLostShellJobs: async (call) => shell.tellLost(call),
     repairPaperFills: paperRepairOf(options, { stored, paper }),
     repairOrderFills: orderRepairOf(options, { stored, fills, fence: check }),
+    endUnfinishedProposals: async (call) =>
+      endUnfinishedProposals({ stored, clock: options.clock, orders, rules }, call),
     downtime: downtimeOf(options, { check, relay }),
   };
 }
