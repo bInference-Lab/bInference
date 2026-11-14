@@ -27,3 +27,17 @@ const statesSchema = z.object({ states: z.array(z.string()) });
 export function readStates(body: unknown): readonly string[] {
   return statesSchema.parse(body).states;
 }
+
+const orderSchema = z.object({ order: z.string().check(z.regex(/^ord_/)) });
+
+/** Reads the control listener's answer to `/order`: the paper order it made, whose card waits. */
+export function readOrder(body: unknown): string {
+  return orderSchema.parse(body).order;
+}
+
+const stateSchema = z.object({ state: z.string() });
+
+/** Reads the control listener's answer to `/order?order=`: the order's state in the engine. */
+export function readState(body: unknown): string {
+  return stateSchema.parse(body).state;
+}

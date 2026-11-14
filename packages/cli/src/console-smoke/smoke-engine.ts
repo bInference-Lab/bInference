@@ -4,7 +4,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import process from "node:process";
 import { text } from "node:stream/consumers";
 import { accountRefSchema } from "@binference/chain";
-import { err, idSchema, type JsonValue } from "@binference/core";
+import { bpsSchema, err, idSchema, type JsonValue } from "@binference/core";
 import { createManualClock, createMemoryLogger, type ManualClock } from "@binference/core/testing";
 import { createRunningTurns, type RunningTurns } from "@binference/engine/chat";
 import type { EngineHandlerTable } from "@binference/engine/surfaces";
@@ -35,11 +35,11 @@ import { smokeAlertSchema, smokeEnvSchema } from "./smoke-engine.schema.js";
 // the fake chain, serving the built console on loopback, with the agent runtime on a scripted
 // model that reads images and proposes a paper swap when the owner chats, the owner's rescue
 // address in effect, its webhook listener on a free port, and a control listener beside it that
-// makes pairing links and paper swaps and sends alerts for the browser test. The runtime answers
-// the routed operations, such as the chat so far, as it does beside a self-hosted engine. The
-// engine's clock starts at the test's time and moves with the wall clock, and the runtime runs on
-// it, so its transcript keeps the engine's times. Like `src/main.ts`, it alone reads `process`.
-// Nothing here reaches the network.
+// makes pairing links, paper swaps and paper orders and sends alerts for the browser test. The
+// runtime answers the routed operations, such as the chat so far, as it does beside a self-hosted
+// engine. The engine's clock starts at the test's time and moves with the wall clock, and the
+// runtime runs on it, so its transcript keeps the engine's times. Like `src/main.ts`, it alone
+// reads `process`. Nothing here reaches the network.
 const env = smokeEnvSchema.parse(process.env);
 const live = (): { readonly signal: AbortSignal } => ({ signal: AbortSignal.timeout(10_000) });
 // The owner's rescue address on the fake chain, in effect since two days before the engine's time.
@@ -153,11 +153,36 @@ interface Served {
   readonly alerts: SmokeAlerts;
 }
 
-// Each control route: the owner's language, a pairing link, a paper swap that opens a card, an
-// alert to a rule's URL, the agent's intents' states and one intent's state.
+// A paper stop-loss that sells all the test token at $0.80; its card waits for the owner.
+const stopLoss = {
+  kind: "stopLoss",
+  agent,
+  token,
+  side: "sell",
+  size: { percentBps: bpsSchema.parse(10_000) },
+  trigger: { price: 800_000n },
+  reason: "Smoke",
+} as const;
+
+// `/order` makes the stop-loss and answers it; with `?order=`, it answers that order's state.
+async function orderAnswer(served: Served, url: URL): Promise<JsonValue> {
+  const { client } = served.skeleton;
+  const asked = url.searchParams.get("order");
+  if (asked === null) {
+    return { order: (await client.call("order/create", stopLoss, live())).order };
+  }
+  const order = protocolIdSchema("autoOrder").parse(asked);
+  return { state: (await client.call("order/get", { order }, live())).state };
+}
+
+// Each control route: the owner's language, a pairing link, a paper swap that opens a card, a
+// paper order, an alert to a rule's URL, the agent's intents' states and one intent's state.
 async function answerOf(served: Served, request: IncomingMessage): Promise<JsonValue> {
   const url = new URL(request.url ?? "/", "http://127.0.0.1");
   const { client } = served.skeleton;
+  if (url.pathname === "/order") {
+    return orderAnswer(served, url);
+  }
   if (url.pathname === "/alert") {
     // The rule's URL holds its secret, so it comes in the request's body, never its query.
     const alert = smokeAlertSchema.parse(JSON.parse(await text(request)));

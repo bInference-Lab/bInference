@@ -68,8 +68,9 @@ The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
   control listener the test drives; its agent runtime answers the routed operations on the engine's
   clock, as beside a self-hosted engine. It pairs a browser, confirms a paper card, reads the chat
   so far again after a reload, makes an alert rule whose alert the engine's webhook listener takes
-  and fills on paper, freezes and unfreezes on the safety screen, changes limits, and fails on any
-  error or warning the page logs. The safety tests (`safety.spec.ts`, `safety.zh.spec.ts`) run
-  last, since a freeze cancels the cards that wait and a lower limit stays. The control listener
+  and fills on paper, confirms and cancels a paper order on the auto orders screen, freezes and
+  unfreezes on the safety screen, changes limits, and fails on any error or warning the page logs.
+  The safety tests (`safety.spec.ts`, `safety.zh.spec.ts`) run last, since a freeze cancels the
+  cards that wait and a lower limit stays. The control listener
   sets the owner's language, which the signed-in console speaks, for the Chinese screenshots. It is
   not part of `pnpm test`; its screenshots go to `smoke-results/`, which git leaves out.
