@@ -10,7 +10,7 @@ import type { FakePrivy } from "@binference/custody-privy/testing";
 import { disclaimerVersion } from "@binference/i18n";
 import { readTextFile, writePrivateFile } from "@binference/platform";
 import { createTempFolder, type TempFolder } from "@binference/platform/testing";
-import type { IntentRequest, ProtocolId } from "@binference/protocol";
+import type { IntentRequest, OrderRequest, ProtocolId } from "@binference/protocol";
 import { type Address, getAddress, toHex } from "viem";
 import { z } from "zod";
 import {
@@ -26,6 +26,7 @@ import { connectClient, freePort, noPermissions } from "../e2e/test-host.js";
 import { createSystemClock } from "../runtime/system-clock.js";
 import type { CrashChain } from "./crash-chain.js";
 import { crashRelays } from "./crash-http.js";
+import { type KeyHold, keyHoldText } from "./crash-key-hold.js";
 import { crashUsdt, freshCrashFeeds, fundCrashUsdt } from "./crash-market.js";
 import { crashUsdtAsset } from "./crash-orders.js";
 import type { CrashServices } from "./crash-services.js";
@@ -111,13 +112,19 @@ export async function setUpCrashInstall(
 /**
  * Starts `binference start --foreground` on the install as a program of its own, and resolves
  * once it reported its state; an engine that ends first resolves too, its output then holding why.
+ * With `keyHold`, the engine holds that keyed write for good where it names.
  */
 export async function startCrashEngine(
   world: CrashWorld,
   install: CrashInstall,
-  run: { readonly signal: AbortSignal; readonly fills?: boolean; readonly chat?: boolean },
+  run: {
+    readonly signal: AbortSignal;
+    readonly fills?: boolean;
+    readonly chat?: boolean;
+    readonly keyHold?: KeyHold;
+  },
 ): Promise<SourceProgram> {
-  const { signal } = run;
+  const { signal, keyHold } = run;
   const engine = startSourceProgram({
     file: engineFile,
     args: [],
@@ -131,6 +138,7 @@ export async function startCrashEngine(
       CRASH_WEBHOOK_PORT: String(install.webhookPort),
       ...(run.fills === true ? { CRASH_FILLS: "1" } : {}),
       ...(run.chat === true ? { CRASH_CHAT: "1" } : {}),
+      ...(keyHold === undefined ? {} : { CRASH_KEY_HOLD: keyHoldText(keyHold) }),
       ...secretEnv(install.machine),
     },
     signal,
@@ -199,9 +207,11 @@ export type CrashOrderKind = "buy" | "sale";
 /** The USDT a sale run's wallet holds before its order: six dollars of it. */
 const crashSaleUsdt: bigint = 6n * 10n ** 18n;
 
-// The order of a run's kind: a limit buy of USDT with 0.01 BNB while it is at or below $2, or a
-// stop-loss that sells all the wallet's USDT once it falls to $2.
-function orderRequestOf(kind: CrashOrderKind, agent: ProtocolId<"agent">) {
+/**
+ * The order of a run's kind: a limit buy of USDT with 0.01 BNB while it is at or below $2, or a
+ * stop-loss that sells all the wallet's USDT once it falls to $2.
+ */
+export function orderRequestOf(kind: CrashOrderKind, agent: ProtocolId<"agent">): OrderRequest {
   return kind === "buy"
     ? ({
         kind: "limit",

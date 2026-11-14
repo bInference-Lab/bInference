@@ -16,6 +16,11 @@ export interface CrashEnv {
   readonly CRASH_FILLS?: "1";
   /** `1` when the run's agent runtime answers the owner's chat on a scripted model. */
   readonly CRASH_CHAT?: "1";
+  /**
+   * The keyed write the engine holds for good, `<op> <step>`, so the test kills it there
+   * (`crash-key-hold.ts`); none when absent.
+   */
+  readonly CRASH_KEY_HOLD?: string;
 }
 
 const loopback = z.url({ protocol: /^http$/, hostname: /^127\.0\.0\.1$/ });
@@ -29,4 +34,8 @@ export const crashEnvSchema: z.ZodType<CrashEnv> = z.object({
   CRASH_WEBHOOK_PORT: z.string().regex(/^[1-9]\d{0,4}$/),
   CRASH_FILLS: z.literal("1").exactOptional(),
   CRASH_CHAT: z.literal("1").exactOptional(),
+  CRASH_KEY_HOLD: z
+    .string()
+    .regex(/^[a-z]+\/[a-zA-Z]+ (?:marked|finishing)$/u)
+    .exactOptional(),
 });

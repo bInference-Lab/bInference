@@ -1,5 +1,5 @@
 {
-  "suiteSeconds": 0.1,
+  "suiteSeconds": 0.2,
   "files": {
     "packages/cli/src/crash/crash-bridges.test.ts": {
       "setupSeconds": 0.8,
@@ -292,6 +292,41 @@
           "name": "an engine killed at stored of its deposit during a bridge through Relay",
           "test": "sends each step once and books the bridge once",
           "seconds": 38.7
+        }
+      ]
+    },
+    "packages/cli/src/crash/crash-resend-key.test.ts": {
+      "setupSeconds": 16.7,
+      "killPoints": [
+        {
+          "name": "an engine killed once a confirmation's key is marked, before the write's result is stored",
+          "test": "answers the same key unknown and runs the write once",
+          "seconds": 12.7
+        },
+        {
+          "name": "an engine killed once a confirmation's swap landed, before the write's result is stored",
+          "test": "answers the same key unknown and runs the write once",
+          "seconds": 16.1
+        },
+        {
+          "name": "an engine killed once a live order opened its card, before the write's result is stored",
+          "test": "answers the same key unknown and runs the write once",
+          "seconds": 13.9
+        },
+        {
+          "name": "an engine killed once a proposal opened its card, before the write's result is stored",
+          "test": "answers the same key unknown and runs the write once",
+          "seconds": 12.9
+        },
+        {
+          "name": "an engine killed once a proposal's key is marked, before the write's result is stored",
+          "test": "answers the same key unknown and runs the write once",
+          "seconds": 14.9
+        },
+        {
+          "name": "an engine killed while a stored proposal simulates, before the write's result is stored",
+          "test": "answers the same key unknown and runs the write once",
+          "seconds": 12.1
         }
       ]
     },

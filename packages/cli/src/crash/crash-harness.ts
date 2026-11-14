@@ -10,6 +10,7 @@ import { createSystemClock } from "../runtime/system-clock.js";
 import { type KillPoint, serveCrashChain } from "./crash-chain.js";
 import type { CrashContext } from "./crash-context.js";
 import { installCrashFlap } from "./crash-flap.js";
+import type { KeyHold } from "./crash-key-hold.js";
 import { installCrashMarket } from "./crash-market.js";
 import { type CrashInstall, type CrashWorld, startCrashEngine } from "./crash-runs.js";
 import { serveCrashServices } from "./crash-services.js";
@@ -33,12 +34,17 @@ export interface CrashHarness {
   /** The state folders the file's runs made, removed after each run. */
   readonly folders: TempFolder[];
   /**
-   * Starts an engine on the install, with the crash prices that fire live orders when `fills` and
-   * a scripted agent runtime when `chat`, killed after the run if it still runs.
+   * Starts an engine on the install, with the crash prices that fire live orders when `fills`, a
+   * scripted agent runtime when `chat` and the keyed write it holds for good when `keyHold`, killed
+   * after the run if it still runs.
    */
   readonly startEngine: (
     install: CrashInstall,
-    options?: { readonly fills?: boolean; readonly chat?: boolean },
+    options?: {
+      readonly fills?: boolean;
+      readonly chat?: boolean;
+      readonly keyHold?: KeyHold;
+    },
   ) => Promise<SourceProgram>;
 }
 
@@ -92,8 +98,7 @@ export function useCrashHarness(
     folders,
     startEngine: async (install, options = {}) => {
       const signal = AbortSignal.timeout(engineBudgetMs);
-      const run = { signal, fills: options.fills === true, chat: options.chat === true };
-      const engine = await startCrashEngine(worldOf(), install, run);
+      const engine = await startCrashEngine(worldOf(), install, { ...options, signal });
       programs.push(engine);
       return engine;
     },

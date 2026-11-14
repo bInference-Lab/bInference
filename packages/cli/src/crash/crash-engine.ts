@@ -9,6 +9,7 @@ import { createSystemHttp } from "../runtime/system-http.js";
 import { createSystemRandom } from "../runtime/system-random.js";
 import { crashEnvSchema } from "./crash-engine.schema.js";
 import { crashDownload, crashHttp } from "./crash-http.js";
+import { holdingKeys, keyHoldOf } from "./crash-key-hold.js";
 import { crashTestOrders } from "./crash-orders.js";
 import { crashRelaySolver } from "./crash-relay.js";
 import { startCrashSigner } from "./crash-signer.js";
@@ -18,18 +19,22 @@ import { startCrashSigner } from "./crash-signer.js";
 // test's: the chain and relays, Privy, KyberSwap's, Flap's and Telegram's APIs on loopback and
 // what a test file routes there, with the crash suite's own Relay solver; the signer's service
 // with its hard rules in this process, on the agent key the engine hands it; and, for a run of
-// live order fills, the prices that fire them, and for a run of the owner's chat, an agent runtime
-// on a scripted model. Like `main.ts`, it alone reads `process`.
+// live order fills, the prices that fire them, for a run of the owner's chat, an agent runtime on a
+// scripted model, and for a run that cuts a keyed write, the store that holds it where the run
+// names. Like `main.ts`, it alone reads `process`.
 const env = crashEnvSchema.parse(process.env);
 const version = "crash";
 // The engine puts its own route in force at start; this one serves until it does.
 const http = createSystemHttp({ version, route: directRoute });
 const endpoints = { relays: env.CRASH_RELAYS, services: env.CRASH_SERVICES };
 const runtimeFile = fileURLToPath(new URL("./crash-runtime.ts", import.meta.url));
+const out = (text: string): void => {
+  process.stdout.write(text);
+};
 const host: CliHost = {
   argv: ["start", "--foreground", "--json", "--set", `engine.port=${env.CRASH_PORT}`],
   env: process.env,
-  out: (text) => process.stdout.write(text),
+  out,
   err: (text) => process.stderr.write(text),
   clock: createSystemClock(),
   random: createSystemRandom(),
@@ -58,6 +63,9 @@ const host: CliHost = {
           startNodeProgram({ args: [...process.execArgv, runtimeFile], parentEnv: {}, signal }),
       }
     : {}),
+  ...(env.CRASH_KEY_HOLD === undefined
+    ? {}
+    : { testIdempotency: holdingKeys(keyHoldOf(env.CRASH_KEY_HOLD), out) }),
 };
 process.exitCode = await runCli(host);
 await http.close();

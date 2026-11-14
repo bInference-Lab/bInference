@@ -72,8 +72,11 @@ Rules for this package:
   passes it on. A test file serves an outside API of its own, such as Across's, through the
   services' routes; only the crash engine sets the host's `testRelaySolver`, the key its Relay
   answers sign with (decision 0339). A run of any intent the owner proposes and confirms goes through
-  `crash-intent-runs.ts`, which kills the engine at the run's point and reads what it booked. Like
-  `src/main.ts`, the crash engine reads `process` itself. They run in `pnpm test:crash`, never in
+  `crash-intent-runs.ts`, which kills the engine at the run's point and reads what it booked. A
+  kill once a keyed write's key is marked, or once its work answered before its result is stored
+  (decision 0437), is placed by the host's `testIdempotency`, which only the crash engine sets
+  (`crash-key-hold.ts`): the write stops there for good and the engine says so on a line of its
+  own. Like `src/main.ts`, the crash engine reads `process` itself. They run in `pnpm test:crash`, never in
   `pnpm check`.
 - The image test in `src/image/` builds the Docker image from the repo root's `Dockerfile`
   (decision 0292) and runs the image's own `binference`. `image-edge.ts` serves the e2e fakes of

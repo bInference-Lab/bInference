@@ -1,5 +1,5 @@
 // oxlint-disable-next-line eslint/no-restricted-imports -- reads this package's own source, as the build bundles it; nothing ships it
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -48,5 +48,19 @@ describe("the shipped build", () => {
     );
 
     expect(setters).toStrictEqual([]);
+  });
+
+  it("lets only the crash suite's engine hold a write's key, so the shipped server never does", () => {
+    const files = readdirSync(source, { recursive: true, encoding: "utf8" }).filter((file) =>
+      /(?<!\.test)\.ts$/u.test(file),
+    );
+    const setters = files.filter((file) =>
+      /\btestIdempotency\s*:/u.test(readFileSync(join(source, file), "utf8")),
+    );
+
+    expect({ setters, shipped: setters.filter((file) => shipped.has(file)) }).toStrictEqual({
+      setters: [join("crash", "crash-engine.ts")],
+      shipped: [],
+    });
   });
 });
