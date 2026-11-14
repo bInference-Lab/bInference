@@ -1160,7 +1160,8 @@ Decided in decisions [0047](DECISIONS.md#d0047), [0048](DECISIONS.md#d0048),
 - **Startup order.** Lock, config, migrations (after a backup), integrity check, the breaker's
   state on Cloud ([section 30](#section-30)), signer, reconcile
   unfinished transactions by hash and nonce, take the auto orders to re-check after the stop,
-  record the positions of recent paper fills a crash left without them, resume orders and
+  record the positions of recent paper fills a crash left without them, cancel every proposal a
+  stop left before its card ([decision 0444](DECISIONS.md#d0444)), resume orders and
   watchers, then channels and the server. Until then every
   method answers "starting".
 - **Shutdown order, within 30 seconds.** Stop accepting intents, finish signing and broadcasts in

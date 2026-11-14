@@ -756,7 +756,17 @@ On startup ([ARCHITECTURE.md section 24](../ARCHITECTURE.md#section-24)), before
 6. A live order fill a stop left before its confirmation is cancelled unsigned, and its order
    records `fill_failed`; a confirmed one is the executor's, as any live intent
    ([decision 0210](../DECISIONS.md#d0210)).
-7. Every auto order active at the start is re-checked once, on the first price of its token read
+7. Every other intent a stop left in `proposed`, `checked`, `quoted`, `assessed` or `simulated`,
+   live or paper, moves to `cancelled` on `cancel_requested` with the cause `engine_stopping`,
+   before the queue takes any `confirmed` intent and before any order runs: nothing of it was
+   signed and no card of it was shown, so the owner gets no notice, and the proposer reads the end
+   in the intent list. An auto order's or a webhook rule's card ends its order or rule with it, as
+   a denied or expired card does. A fill is left to its own repair (item 6, and
+   [decision 0338](../DECISIONS.md#d0338) for a webhook rule's), and a token launch past
+   `proposed` to its pin check ([decision 0237](../DECISIONS.md#d0237)). A running engine never
+   does this; on bInference Cloud the worker that takes the install's lease does it at its start
+   ([decision 0444](../DECISIONS.md#d0444)).
+8. Every auto order active at the start is re-checked once, on the first price of its token read
    after the start, and the owner gets one `notice.resumed` when an order was checked; a sleep of
    the machine found while the engine runs is re-checked the same way. No fill runs on a price
    read before the latest resume (decisions [0266](../DECISIONS.md#d0266) to [0268](../DECISIONS.md#d0268)).
