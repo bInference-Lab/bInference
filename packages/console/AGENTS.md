@@ -32,6 +32,13 @@ The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this package:
   by the protocol's schema before it is sent; the engine decides whether it is stricter and
   applies at once, or looser and waits 24 hours (decision 0111). The gas reserve, set in each
   chain's coin, changes in the terminal only.
+- The auto orders screen (`src/orders/`, decision 0189) lists the open orders or those that ended,
+  live apart from paper, each in the line every surface names it with (`orderLineText`), with its
+  card while it waits and its newest fills and skips from `order/get`, a skip in its reason's
+  words with the values its row kept. Cancel order, asked once more in the page, runs
+  `order/cancel` with `propose`, and the engine's answer or refusal shows in its words. The active
+  alerts show below, each deleted through `alert/delete`, asked once more too. The screen loads
+  again on the `order` and `intent` topics, and the alerts on the `alert` topic.
 - The stack is React, Vite, Tailwind, shadcn on Base UI, TanStack Router and TanStack Query.
   Add a component with the shadcn CLI (`pnpm dlx shadcn@<version> add <name>` in this folder).
   `src/components/ui/` stays as the CLI writes it: lint, format, dead-code and duplicate checks

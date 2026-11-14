@@ -5,6 +5,7 @@ import { ConfirmationsScreen } from "../screens/confirmations-screen";
 import { ConsoleShell } from "../screens/console-shell";
 import { LedgerScreen } from "../screens/ledger-screen";
 import { LimitsScreen } from "../screens/limits-screen";
+import { OrdersScreen } from "../screens/orders-screen";
 import { PortfolioScreen } from "../screens/portfolio-screen";
 import { RulesScreen } from "../screens/rules-screen";
 import { SafetyScreen } from "../screens/safety-screen";
@@ -18,6 +19,7 @@ function buildRouter(basepath: string) {
     createRoute({ ...parent, path: "/chat", component: ChatScreen }),
     createRoute({ ...parent, path: "/portfolio", component: PortfolioScreen }),
     createRoute({ ...parent, path: "/ledger", component: LedgerScreen }),
+    createRoute({ ...parent, path: "/orders", component: OrdersScreen }),
     createRoute({ ...parent, path: "/limits", component: LimitsScreen }),
     createRoute({ ...parent, path: "/safety", component: SafetyScreen }),
     createRoute({ ...parent, path: "/rules", component: RulesScreen }),

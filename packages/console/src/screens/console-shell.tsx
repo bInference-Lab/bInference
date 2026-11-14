@@ -16,6 +16,7 @@ const sections = [
   { to: "/chat", key: "console.nav.chat" },
   { to: "/portfolio", key: "console.nav.portfolio" },
   { to: "/ledger", key: "console.nav.ledger" },
+  { to: "/orders", key: "console.nav.orders" },
   { to: "/limits", key: "console.nav.limits" },
   { to: "/safety", key: "console.nav.safety" },
   { to: "/rules", key: "console.nav.rules" },

@@ -39,8 +39,10 @@ binference refuses an order before its card when:
   curve, or a PancakeSwap pool that trades at least $1,000 of WBNB or a stablecoin
 - the agent is live (`order.live_fills_off`)
 
-`/orders` in Telegram lists the active orders with their triggers and fills. To cancel one, ask the
-agent; a cancel needs no card.
+`/orders` in Telegram lists the active orders with their triggers and fills. The console's Auto
+orders screen lists every order, open or ended, live apart from paper, with its fills and skips and
+why each skip happened. To cancel one, ask the agent, or press Cancel order on that screen and
+confirm once more there; a cancel needs no card and ends the order on every surface at once.
 
 ## How a fill runs
 
@@ -106,7 +108,8 @@ fill never runs on a price read before the stop. When it checked an order, you g
 ## Alerts
 
 An alert tells you when something happens, and never trades or opens a card. Ask the agent to set
-one; it is set at once, and you can ask the agent to remove it.
+one; it is set at once. To remove one, ask the agent, or delete it on the console's Auto orders
+screen, which lists the active alerts.
 
 - **Price alert.** A token reaches a price. It fires once.
 - **Wallet alert.** A wallet you follow trades. It fires on each trade.

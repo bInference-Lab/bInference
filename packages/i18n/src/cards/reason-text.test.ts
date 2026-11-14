@@ -13,4 +13,12 @@ describe("reasonText", () => {
     expect(reasonText(english, "daily_cap")).toBeUndefined();
     expect(reasonText(english, "no_such_reason")).toBeUndefined();
   });
+
+  it("says a reason whose words name values once it holds every one of them", () => {
+    const used = { used: "$40.00", cap: "$40.00" };
+    expect(reasonText(english, "copy_daily_cap", used)).toBe(
+      "it would pass this leader's daily cap ($40.00 of $40.00 used)",
+    );
+    expect(reasonText(english, "copy_daily_cap", { used: "$40.00" })).toBeUndefined();
+  });
 });
