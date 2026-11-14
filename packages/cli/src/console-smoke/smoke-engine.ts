@@ -4,9 +4,10 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import process from "node:process";
 import { text } from "node:stream/consumers";
 import { accountRefSchema } from "@binference/chain";
-import type { JsonValue } from "@binference/core";
+import { err, idSchema, type JsonValue } from "@binference/core";
 import { createManualClock, createMemoryLogger, type ManualClock } from "@binference/core/testing";
-import { createRunningTurns } from "@binference/engine/chat";
+import { createRunningTurns, type RunningTurns } from "@binference/engine/chat";
+import type { EngineHandlerTable } from "@binference/engine/surfaces";
 import {
   testAgent as agent,
   testCoin as coin,
@@ -16,8 +17,15 @@ import {
 } from "@binference/engine/testing";
 import { protocolIdSchema } from "@binference/protocol";
 import { callsReply, textReply } from "@binference/runtime/testing";
+import { createRoutedHandlers } from "../agent-runtime/routed-handlers.js";
+import type { RuntimeSupervisor } from "../agent-runtime/runtime-supervisor.js";
 import { openConsoleFiles } from "../compose/console-files.js";
-import { type Skeleton, skeletonCompositions, startSkeleton } from "../compose/test-skeleton.js";
+import {
+  type Skeleton,
+  type SkeletonParts,
+  skeletonCompositions,
+  startSkeleton,
+} from "../compose/test-skeleton.js";
 import { superviseRuntime } from "../e2e/runtime-machine.js";
 import { createSystemClock } from "../runtime/system-clock.js";
 import { type SmokeAlerts, startSmokeAlerts } from "./smoke-alerts.js";
@@ -27,9 +35,11 @@ import { smokeAlertSchema, smokeEnvSchema } from "./smoke-engine.schema.js";
 // the fake chain, serving the built console on loopback, with the agent runtime on a scripted
 // model that reads images and proposes a paper swap when the owner chats, the owner's rescue
 // address in effect, its webhook listener on a free port, and a control listener beside it that
-// makes pairing links and paper swaps and sends alerts for the browser test. The engine's clock
-// starts at the test's time and moves with the wall clock. Like `src/main.ts`, it alone reads
-// `process`. Nothing here reaches the network.
+// makes pairing links and paper swaps and sends alerts for the browser test. The runtime answers
+// the routed operations, such as the chat so far, as it does beside a self-hosted engine. The
+// engine's clock starts at the test's time and moves with the wall clock, and the runtime runs on
+// it, so its transcript keeps the engine's times. Like `src/main.ts`, it alone reads `process`.
+// Nothing here reaches the network.
 const env = smokeEnvSchema.parse(process.env);
 const live = (): { readonly signal: AbortSignal } => ({ signal: AbortSignal.timeout(10_000) });
 // The owner's rescue address on the fake chain, in effect since two days before the engine's time.
@@ -82,6 +92,28 @@ async function followWallClock(clock: ManualClock, stop: AbortSignal): Promise<v
   }
 }
 
+/** The routed operations' handlers, and where they find the runtime once it runs. */
+interface RoutedToRuntime {
+  readonly handlers: EngineHandlerTable;
+  readonly runtime: { supervisor?: RuntimeSupervisor };
+}
+
+// The routed operations reach the runtime the supervisor keeps, as the self-hosted root's do
+// (`composeRuntime`): `runtime.unavailable` until it begins.
+function routedToRuntime(parts: SkeletonParts, turns: RunningTurns): RoutedToRuntime {
+  const runtime: { supervisor?: RuntimeSupervisor } = {};
+  const handlers = createRoutedHandlers(
+    async (request, signal) =>
+      runtime.supervisor === undefined
+        ? err("runtime.unavailable")
+        : runtime.supervisor.route(request, signal),
+    turns,
+    async (asked, signal) =>
+      parts.stores.agentInbox.openSession(idSchema("agt").parse(asked), { signal }),
+  );
+  return { handlers, runtime };
+}
+
 async function startEngine(): Promise<Skeleton> {
   const logger = createMemoryLogger({ subsystem: "smoke" });
   const consoleFiles = await openConsoleFiles(env.SMOKE_CONSOLE, { logger, ...live() });
@@ -91,7 +123,10 @@ async function startEngine(): Promise<Skeleton> {
   const http = { host: "127.0.0.1", port: Number(env.SMOKE_PORT) };
   const turns = createRunningTurns({ clock: createManualClock(0) });
   const browser = { http, consoleFiles };
-  const skeleton = await startSkeleton(selfHosted.parts(), { browser, turns, owner });
+  const parts = selfHosted.parts();
+  const routed = routedToRuntime(parts, turns);
+  const { handlers } = routed;
+  const skeleton = await startSkeleton(parts, { browser, turns, owner, handlers });
   const stopClock = new AbortController();
   const clockFollows = followWallClock(skeleton.clock, stopClock.signal);
   await skeleton.parts.stores.install.changeRescue(rescue, live());
@@ -99,7 +134,8 @@ async function startEngine(): Promise<Skeleton> {
   await skeleton.client.call("approval/set", { agent, mode: "manual" }, live());
   await skeleton.client.call("portfolio/resetPaper", { agent }, live());
   const engine = { ...skeleton, stores: skeleton.parts.stores, server: skeleton.composed.server };
-  const runtime = superviseRuntime(engine, { turns, script });
+  const runtime = superviseRuntime(engine, { turns, script, clock: skeleton.clock });
+  routed.runtime.supervisor = runtime;
   return {
     ...skeleton,
     close: async () => {

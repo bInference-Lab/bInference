@@ -162,13 +162,20 @@ export function superviseRuntime(
     readonly script: RuntimeScript;
     /** Each runtime the supervisor started, so a test reads what its models were asked. */
     readonly started?: InProcessRuntime[];
+    /**
+     * The clock the runtime runs on, such as the engine's own, so the times its transcript keeps
+     * read as the engine's; a manual clock of its own that stands still when absent.
+     */
+    readonly clock?: Clock;
   },
 ): RuntimeSupervisor {
   const { access } = engine.stores;
   const { replies, price, readsImages, visionReplies, database, listedMcpHttp } = parts.script;
+  const { clock } = parts;
   const supervisor = createRuntimeSupervisor({
     start: async () => {
       const runtime = startInProcessRuntime({
+        ...(clock === undefined ? {} : { clock }),
         replies,
         ...(price === undefined ? {} : { price }),
         ...(readsImages === undefined ? {} : { readsImages }),
