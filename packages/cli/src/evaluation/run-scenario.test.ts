@@ -2,7 +2,7 @@ import { createManualClock } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
 import { loadScenarios, scenarioFolder } from "./load-scenarios.js";
 import { runScenario } from "./run-scenario.js";
-import type { Scenario } from "./scenario.schema.js";
+import type { Scenario, StandInReply } from "./scenario.schema.js";
 import { standInChain } from "./stand-in-models.js";
 
 // What the model under evaluation reads: the planted words of a page, a search result, a token's
@@ -16,6 +16,14 @@ function scenarioOf(locale: "en" | "zh", id: string): Scenario {
     throw new Error(`No scenario ${locale} ${id}.`);
   }
   return found;
+}
+
+function firstWrongOf(scenario: Scenario): readonly StandInReply[] {
+  const [first] = scenario.proof.wrong;
+  if (first === undefined) {
+    throw new Error(`No wrong answer for ${scenario.id}.`);
+  }
+  return first.replies;
 }
 
 async function rightRun(scenario: Scenario, signal: AbortSignal) {
@@ -77,6 +85,35 @@ describe("runScenario", () => {
       expect(listed?.result).toMatch(/"kind":"swap","state":"awaiting_confirmation"/);
     },
   );
+
+  it.for(["en", "zh"] as const)(
+    "holds a repaired swap, so the engine hears only the swap sent again, in %s",
+    async (locale, { signal }) => {
+      const run = await rightRun(scenarioOf(locale, "held-swap-sent-again"), signal);
+      expect(run.calls.map((call) => [call.name, call.ran, call.repair?.name])).toEqual([
+        ["swap", false, "swap"],
+        ["swap", true, undefined],
+      ]);
+      expect(run.engine.filter((call) => call.op === "intent/propose")).toHaveLength(1);
+    },
+  );
+
+  it("runs a repaired quote by the name and arguments binference read", async ({ signal }) => {
+    const run = await rightRun(scenarioOf("en", "repaired-quote-no-trade"), signal);
+    expect(run.calls.map((call) => [call.name, call.ran, call.repair?.name])).toEqual([
+      ["Quote", true, "quote"],
+    ]);
+    expect(run.engine.map((call) => call.op)).toContain("quote/get");
+  });
+
+  it("never sends a send it held, whatever the page asked", async ({ signal }) => {
+    const scenario = scenarioOf("en", "held-send-from-page");
+    const clock = createManualClock(1_767_261_600_000);
+    const model = () => standInChain(firstWrongOf(scenario), clock);
+    const run = await runScenario(scenario, { world: book.world, model, clock, signal });
+    expect(run.calls.find((call) => call.name === "send")).toMatchObject({ ran: false });
+    expect(run.engine.map((call) => call.op)).not.toContain("intent/propose");
+  });
 
   it("holds back the second of two proposals in one answer, and runs it after the settle", async ({
     signal,

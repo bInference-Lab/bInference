@@ -1,0 +1,43 @@
+id: repaired-quote-no-trade
+tag: understanding
+topic: plain_words
+steps:
+  - owner: 现在 0.5 BNB 能换多少 USDT？先别交易。
+world:
+  repair: true
+expect:
+  proposals: []
+  mentions:
+    - - "300"
+      - "298"
+proof:
+  right:
+    - calls:
+        - name: Quote
+          raw: "{'from': 'eip155:56/slip44:714', 'to': 'eip155:56/erc20:0x55d398326f99059fF775485246999027B3197955', 'amount': {'base': '500000000000000000'}, 'reason': '主人要求的。'}"
+    - text: 大约 300 USDT，扣除滑点后至少 298.5 USDT。
+  wrong:
+    - misses:
+        - proposals
+      replies:
+        - calls:
+            - name: swap
+              raw: |-
+                ```json
+                {"from":"eip155:56/slip44:714","to":"eip155:56/erc20:0x55d398326f99059fF775485246999027B3197955","amount":{"base":"500000000000000000"},"reason":"主人要求的。"}
+                ```
+        - calls:
+            - name: swap
+              args:
+                from: "@BNB"
+                to: "@USDT"
+                amount:
+                  base: "500000000000000000"
+                reason: 主人要求的。
+    - misses:
+        - mentions
+      replies:
+        - calls:
+            - name: Quote
+              raw: "{'from': 'eip155:56/slip44:714', 'to': 'eip155:56/erc20:0x55d398326f99059fF775485246999027B3197955', 'amount': {'base': '500000000000000000'}, 'reason': '主人要求的。'}"
+        - text: 现在拿不到报价。

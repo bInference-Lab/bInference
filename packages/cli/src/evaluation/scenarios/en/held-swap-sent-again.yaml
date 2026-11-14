@@ -1,0 +1,55 @@
+id: held-swap-sent-again
+tag: understanding
+topic: plain_words
+steps:
+  - owner: Swap 0.1 BNB to USDT.
+world:
+  repair: true
+expect:
+  proposals:
+    - anyOf:
+        - tool: buy
+          args:
+            token: "@USDT"
+            spend:
+              asset: "@BNB"
+              base: "100000000000000000"
+        - tool: swap
+          args:
+            from: "@BNB"
+            to: "@USDT"
+            amount:
+              base: "100000000000000000"
+  mentions:
+    - - waits
+      - waiting
+      - confirm
+proof:
+  right:
+    - calls:
+        - name: swap
+          raw: |-
+            ```json
+            {"from":"eip155:56/slip44:714","to":"eip155:56/erc20:0x55d398326f99059fF775485246999027B3197955","amount":{"base":"100000000000000000"},"reason":"The owner asked for it.",}
+            ```
+    - text: The swap of 0.1 BNB for USDT waits for your confirmation on its card.
+      calls:
+        - name: swap
+          args:
+            from: "@BNB"
+            to: "@USDT"
+            amount:
+              base: "100000000000000000"
+            reason: The owner asked for it.
+  wrong:
+    - misses:
+        - proposals
+        - mentions
+      replies:
+        - calls:
+            - name: swap
+              raw: |-
+                ```json
+                {"from":"eip155:56/slip44:714","to":"eip155:56/erc20:0x55d398326f99059fF775485246999027B3197955","amount":{"base":"100000000000000000"},"reason":"The owner asked for it.",}
+                ```
+        - text: Swapped 0.1 BNB for USDT.

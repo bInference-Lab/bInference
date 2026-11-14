@@ -35,6 +35,26 @@ export interface ModelReport {
   readonly skipped: readonly string[];
   /** It meets the bar. */
   readonly passes: boolean;
+  /**
+   * The run listed the model for call repair (`--repair`, decision 0447): it passes or misses the
+   * bar as any run does, and no model becomes a default from it.
+   */
+  readonly repair: boolean;
+  /** Each language's calls the model wrote that were repaired, and of those, the ones never run. */
+  readonly repairs: readonly RepairTally[];
+}
+
+/** One language's repaired calls over every run, and of those, the ones that never ran. */
+interface RepairTally {
+  readonly locale: Locale;
+  readonly repaired: number;
+  readonly held: number;
+}
+
+/** What a report says besides its scores: what the run left out, and whether it lists for repair. */
+interface ReportNotes {
+  readonly skipped: readonly string[];
+  readonly repair: boolean;
 }
 
 const locales: readonly Locale[] = ["en", "zh"];
@@ -62,18 +82,36 @@ function tallyOf(scores: readonly ScenarioScore[], locale: Locale, tag: Scenario
   };
 }
 
-/** A model's report from its scenarios' runs, and the scenarios its run left out. */
+function repairTallyOf(scores: readonly ScenarioScore[], locale: Locale): RepairTally {
+  const runs = scores.filter((score) => score.locale === locale).flatMap((score) => score.runs);
+  return {
+    locale,
+    repaired: runs.reduce((sum, run) => sum + run.repairs.repaired, 0),
+    held: runs.reduce((sum, run) => sum + run.repairs.held, 0),
+  };
+}
+
+/** A model's report from its scenarios' runs, what its run left out, and whether it repaired. */
 export function reportOf(
   model: string,
   scenarios: readonly ScenarioScore[],
-  skipped: readonly string[],
+  notes: ReportNotes,
 ): ModelReport {
   const tallies = locales.flatMap((locale) => tags.map((tag) => tallyOf(scenarios, locale, tag)));
   const runs = scenarios.flatMap((score) => score.runs);
   const unsafe = runs.some((run) => run.misses.some((miss) => safetyChecks.has(miss.check)));
   const errored = runs.some((run) => run.status === "errored");
   const passes = runs.length > 0 && !unsafe && !errored && tallies.every(meetsBar);
-  return { model, tallies, scenarios, skipped, passes };
+  const repairs = locales.map((locale) => repairTallyOf(scenarios, locale));
+  return {
+    model,
+    tallies,
+    scenarios,
+    skipped: notes.skipped,
+    passes,
+    repair: notes.repair,
+    repairs,
+  };
 }
 
 function percent(part: number, whole: number): string {
@@ -97,17 +135,24 @@ function runLines(score: ScenarioScore): readonly string[] {
   });
 }
 
+function repairCell(report: ModelReport, locale: Locale): readonly string[] {
+  const tally = report.repairs.find((each) => each.locale === locale);
+  return tally === undefined || tally.repaired === 0
+    ? []
+    : [`repaired ${String(tally.repaired)} calls, ${String(tally.held)} of them never ran`];
+}
+
+function headingOf(report: ModelReport): string {
+  const listed = report.repair ? " (calls repaired with --repair; never a default from it)" : "";
+  return `${report.model}${listed}: ${report.passes ? "meets the bar" : "misses the bar"}`;
+}
+
 /** The report as lines of English text for the terminal. */
 export function reportLines(report: ModelReport): readonly string[] {
   const rows = locales.map((locale) => {
     const cells = report.tallies.filter((tally) => tally.locale === locale).map(cellOf);
-    return `  ${locale}: ${cells.join("; ")}`;
+    return `  ${locale}: ${[...cells, ...repairCell(report, locale)].join("; ")}`;
   });
   const skipped = report.skipped.length === 0 ? [] : [`  skipped: ${report.skipped.join(", ")}`];
-  return [
-    `${report.model}: ${report.passes ? "meets the bar" : "misses the bar"}`,
-    ...rows,
-    ...report.scenarios.flatMap(runLines),
-    ...skipped,
-  ];
+  return [headingOf(report), ...rows, ...report.scenarios.flatMap(runLines), ...skipped];
 }

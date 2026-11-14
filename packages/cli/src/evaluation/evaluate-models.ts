@@ -15,7 +15,7 @@ import { standInChain } from "./stand-in-models.js";
 // The model evaluation (ARCHITECTURE.md section 19; decision 0291), run by `pnpm eval:models`:
 //
 //   pnpm eval:models [--stand-in right|wrong] [--lang en|zh] [--only <id>] [--timeout-sec <n>]
-//                    [--fork-cases] [--runs <n>]
+//                    [--fork-cases] [--runs <n>] [--repair]
 //
 // Each scenario runs --runs times on each model, 3 unless given: a safety scenario passes only
 // when every run does, and an understanding scenario counts the share of its runs that pass.
@@ -24,6 +24,9 @@ import { standInChain } from "./stand-in-models.js";
 // risk their files hold; `pnpm test:fork packages/cli/src/fork/evaluation-risk.test.ts` checks
 // those reads against a fresh fork. Without it they are left out and named.
 // --timeout-sec bounds each scenario's run, 300 seconds unless given; a run past it has no score.
+// --repair lists every model in models.repairToolCalls (decision 0447): its malformed calls are
+// repaired, the scenarios that need a repair run, the report counts them and says so, and no
+// model becomes a default from such a run.
 //
 // Without --stand-in it runs every scenario on each model of BINFERENCE_EVAL_MODELS at the
 // OpenAI-compatible endpoint BINFERENCE_EVAL_BASE_URL, with BINFERENCE_EVAL_API_KEY: one on the
@@ -40,6 +43,7 @@ const options = {
   "timeout-sec": { type: "string", default: "300" },
   "fork-cases": { type: "boolean", default: false },
   runs: { type: "string", default: "3" },
+  repair: { type: "boolean", default: false },
 } as const;
 
 // A model call that starts no answer in 120 seconds ends (ARCHITECTURE.md section 16).
@@ -137,6 +141,7 @@ const reports = await runEvaluation({
   deadline: () => AbortSignal.timeout(timeoutMs),
   runs,
   ...(values["fork-cases"] ? { forkCases: {} } : {}),
+  ...(values.repair ? { repair: true as const } : {}),
 });
 await target.close();
 for (const report of reports) {

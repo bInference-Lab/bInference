@@ -16,7 +16,7 @@ function eventsOf(reply: StandInReply, index: number) {
   const calls = (reply.calls ?? []).map((call, at) => ({
     id: `call_${String(index + 1)}_${String(at + 1)}`,
     name: call.name,
-    args: call.args,
+    args: "raw" in call ? call.raw : call.args,
   }));
   return calls.length === 0 ? textReply(reply.text ?? "") : callsReply(calls, reply.text ?? "");
 }

@@ -26,6 +26,15 @@ export interface RunCall {
   readonly result: string;
   /** Its result is outside content. */
   readonly outside: boolean;
+  /** The call as binference read it after a repair (decision 0447): its tool and arguments. */
+  readonly repair?: RunCallRepair;
+}
+
+/** A repaired call's tool and arguments, as binference read them. */
+interface RunCallRepair {
+  readonly name: string;
+  readonly text: string;
+  readonly args?: JsonValue;
 }
 
 /** What one scenario's run did, for the scorer. */
@@ -49,8 +58,23 @@ export interface RunParts {
   readonly world: SharedWorld;
   /** The model under evaluation for this scenario. */
   readonly model: (scenario: Scenario) => ModelChain;
+  /**
+   * The run lists the model in `models.repairToolCalls` for every scenario (`--repair`), as a
+   * scenario whose world says `repair` does for itself (decision 0447).
+   */
+  readonly repair?: true;
   readonly clock: Clock;
   readonly signal: AbortSignal;
+}
+
+// The model under evaluation, listed for call repair when the run or the scenario says so.
+function modelOf(scenario: Scenario, parts: RunParts): ModelChain {
+  const chain = parts.model(scenario);
+  if (parts.repair !== true && scenario.world.repair !== true) {
+    return chain;
+  }
+  const models = chain.models.map((model) => ({ ...model, repairsCalls: true as const }));
+  return { ...chain, models };
 }
 
 // The scenarios' time: 1 January 2026, 10:00 UTC; and the agent's one wallet.
@@ -106,9 +130,21 @@ function callsOf(events: readonly TranscriptEvent[]): readonly RunCall[] {
     .map((event) => runCallOf(event, results.get(textOf(event.content, "callId"))));
 }
 
+// The form binference read a repaired call in, as the transcript keeps it.
+function repairOf(call: TranscriptEvent): RunCallRepair | undefined {
+  const repair = fieldOf(call.content, "repair");
+  if (repair === undefined) {
+    return undefined;
+  }
+  const text = textOf(repair, "arguments");
+  const args = parsed(text);
+  return { name: textOf(repair, "name"), text, ...(args === undefined ? {} : { args }) };
+}
+
 function runCallOf(call: TranscriptEvent, result: TranscriptEvent | undefined): RunCall {
   const text = textOf(call.content, "arguments");
   const args = parsed(text);
+  const repair = repairOf(call);
   return {
     name: textOf(call.content, "name"),
     text,
@@ -117,6 +153,7 @@ function runCallOf(call: TranscriptEvent, result: TranscriptEvent | undefined): 
     isError: result !== undefined && fieldOf(result.content, "isError") === true,
     result: result === undefined ? "" : textOf(result.content),
     outside: result?.outside === true,
+    ...(repair === undefined ? {} : { repair }),
   };
 }
 
@@ -197,7 +234,7 @@ export async function runScenario(scenario: Scenario, parts: RunParts): Promise<
   const chat = await startEvaluationChat({
     agent,
     locale: scenario.locale,
-    models: parts.model(scenario),
+    models: modelOf(scenario, parts),
     vision: visionChain(
       images.map((name) => scenario.world.images?.[name] ?? ""),
       clock,

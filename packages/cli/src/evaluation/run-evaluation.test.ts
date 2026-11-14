@@ -85,21 +85,27 @@ function flaky(wrongRuns: ReadonlyMap<string, ReadonlySet<number>>): EvaluatedMo
   };
 }
 
-const understanding = seed.filter((scenario) => scenario.tag === "understanding");
+// The understanding scenarios a run without --repair runs.
+const understanding = seed.filter(
+  (scenario) => scenario.tag === "understanding" && scenario.world.repair !== true,
+);
 
 describe("runEvaluation", () => {
-  it("passes the right answers in both languages and leaves the fork scenarios out by name", async ({
+  it("passes the right answers in both languages and leaves the fork and repair scenarios out by name", async ({
     signal,
   }) => {
     const report = await reportOf(plan([right], book.scenarios, signal));
     expect(report.passes).toBe(true);
     expect(report.tallies.filter((tally) => tally.passed !== tally.total)).toEqual([]);
-    expect(report.skipped).toEqual([
-      "en blocked-sale-on-fork (needs --fork-cases)",
-      "en high-tax-on-fork (needs --fork-cases)",
-      "zh blocked-sale-on-fork (needs --fork-cases)",
-      "zh high-tax-on-fork (needs --fork-cases)",
-    ]);
+    expect(report.skipped).toEqual(
+      ["en", "zh"].flatMap((locale) => [
+        `${locale} blocked-sale-on-fork (needs --fork-cases)`,
+        `${locale} held-send-from-page (needs --repair)`,
+        `${locale} held-swap-sent-again (needs --repair)`,
+        `${locale} high-tax-on-fork (needs --fork-cases)`,
+        `${locale} repaired-quote-no-trade (needs --repair)`,
+      ]),
+    );
   });
 
   it("runs the fork scenarios on the risk the fork reads", async ({ signal }) => {
@@ -173,6 +179,50 @@ describe("runEvaluation", () => {
       expect.objectContaining({ locale: "en", tag: "safety", passed: 23, total: 23 }),
     );
     expect(report.passes).toBe(false);
+  });
+
+  it("lists every model for repair with --repair, counts its repaired calls and says so", async ({
+    signal,
+  }) => {
+    const malformed: EvaluatedModel = {
+      name: "fenced",
+      chain: () =>
+        standInChain(
+          [
+            { calls: [{ name: "Portfolio", raw: "```\n{}\n```" }] },
+            { text: "You hold 1.5 BNB and 200 USDT." },
+          ],
+          clock,
+        ),
+    };
+    const run = {
+      ...plan([malformed], englishNamed("usdt-balance"), signal),
+      repair: true as const,
+    };
+    const report = await reportOf(run);
+    expect(report).toMatchObject({ repair: true });
+    expect(report.repairs).toContainEqual({ locale: "en", repaired: 1, held: 0 });
+    const lines = reportLines(report).join("\n");
+    expect(lines).toContain("fenced (calls repaired with --repair; never a default from it)");
+    expect(lines).toContain("repaired 1 calls, 0 of them never ran");
+  });
+
+  it("leaves a scenario that needs a repair out of a run without --repair, and names it", async ({
+    signal,
+  }) => {
+    const held = englishNamed("held-swap-sent-again");
+    const without = await reportOf(plan([right], held, signal));
+    expect(without).toMatchObject({ scenarios: [], passes: false });
+    expect(without.skipped).toStrictEqual(["en held-swap-sent-again (needs --repair)"]);
+    const repaired = await reportOf({ ...plan([right], held, signal), repair: true as const });
+    expect(repaired.scenarios.map((score) => score.id)).toStrictEqual(["held-swap-sent-again"]);
+    expect(repaired.skipped).toStrictEqual([]);
+  });
+
+  it("repairs no call of a run without --repair", async ({ signal }) => {
+    const report = await reportOf(plan([right], englishNamed("usdt-balance"), signal));
+    expect(report).toMatchObject({ repair: false });
+    expect(report.repairs).toContainEqual({ locale: "en", repaired: 0, held: 0 });
   });
 
   it("fails a model on one safety miss in an understanding scenario", async ({ signal }) => {

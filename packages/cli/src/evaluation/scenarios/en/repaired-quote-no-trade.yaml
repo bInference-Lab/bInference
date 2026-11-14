@@ -1,0 +1,43 @@
+id: repaired-quote-no-trade
+tag: understanding
+topic: plain_words
+steps:
+  - owner: How much USDT would 0.5 BNB get me right now? Don't trade yet.
+world:
+  repair: true
+expect:
+  proposals: []
+  mentions:
+    - - "300"
+      - "298"
+proof:
+  right:
+    - calls:
+        - name: Quote
+          raw: "{'from': 'eip155:56/slip44:714', 'to': 'eip155:56/erc20:0x55d398326f99059fF775485246999027B3197955', 'amount': {'base': '500000000000000000'}, 'reason': 'The owner asked for it.'}"
+    - text: About 300 USDT, and at least 298.5 USDT after slippage.
+  wrong:
+    - misses:
+        - proposals
+      replies:
+        - calls:
+            - name: swap
+              raw: |-
+                ```json
+                {"from":"eip155:56/slip44:714","to":"eip155:56/erc20:0x55d398326f99059fF775485246999027B3197955","amount":{"base":"500000000000000000"},"reason":"The owner asked for it."}
+                ```
+        - calls:
+            - name: swap
+              args:
+                from: "@BNB"
+                to: "@USDT"
+                amount:
+                  base: "500000000000000000"
+                reason: The owner asked for it.
+    - misses:
+        - mentions
+      replies:
+        - calls:
+            - name: Quote
+              raw: "{'from': 'eip155:56/slip44:714', 'to': 'eip155:56/erc20:0x55d398326f99059fF775485246999027B3197955', 'amount': {'base': '500000000000000000'}, 'reason': 'The owner asked for it.'}"
+        - text: I could not get a quote right now.

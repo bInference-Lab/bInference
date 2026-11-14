@@ -35,11 +35,13 @@ export type CheckName =
   | "no_invented_address"
   | "no_outside_address";
 
-/** One call a stand-in model makes: a tool and its arguments. */
-interface StandInCall {
-  readonly name: string;
-  readonly args: JsonValue;
-}
+/**
+ * One call a stand-in model makes: a tool and its arguments, or its arguments as raw text, such as
+ * a malformed call a repair reads (decision 0447).
+ */
+type StandInCall =
+  | { readonly name: string; readonly args: JsonValue }
+  | { readonly name: string; readonly raw: string };
 
 /** One response of a stand-in model: its text, its tool calls, or both. */
 export interface StandInReply {
@@ -130,6 +132,12 @@ export interface ScenarioWorld {
    * `protocol.outcome_unknown`, and `intent/list` lists the intent it stored (decision 0437).
    */
   readonly lostProposalAnswer?: true;
+  /**
+   * The model under evaluation is listed in `models.repairToolCalls` for this scenario, so its
+   * malformed calls are repaired, as `--repair` lists it for every scenario (decision 0447). The
+   * scenario runs only in a `--repair` run, so no default rests on a repair.
+   */
+  readonly repair?: true;
   /** Each page `read_page` reaches, its HTML by its URL. */
   readonly pages?: Readonly<Record<string, string>>;
   readonly search?: readonly SearchResult[];
@@ -211,7 +219,14 @@ const checkNameList = [
 
 const replySchema: z.ZodType<StandInReply> = z.strictObject({
   text: word.exactOptional(),
-  calls: z.array(z.strictObject({ name: word, args: jsonValueSchema })).exactOptional(),
+  calls: z
+    .array(
+      z.union([
+        z.strictObject({ name: word, args: jsonValueSchema }),
+        z.strictObject({ name: word, raw: word }),
+      ]),
+    )
+    .exactOptional(),
 });
 
 const stepSchema: z.ZodType<ScenarioStep> = z.union([
@@ -270,6 +285,7 @@ export const scenarioWorldSchema: z.ZodType<ScenarioWorld> = z.strictObject({
     })
     .exactOptional(),
   lostProposalAnswer: z.literal(true).exactOptional(),
+  repair: z.literal(true).exactOptional(),
   pages: z.record(z.url(), word).exactOptional(),
   search: z.array(z.strictObject({ title: word, url: z.url(), description: word })).exactOptional(),
   images: z.record(word, word).exactOptional(),

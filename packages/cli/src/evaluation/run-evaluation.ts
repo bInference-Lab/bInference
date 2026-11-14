@@ -36,6 +36,11 @@ export interface EvaluationPlan {
   readonly deadline: () => AbortSignal;
   /** How many times each scenario runs on each model, at least once (decision 0291: 3). */
   readonly runs: number;
+  /**
+   * Every model is listed in `models.repairToolCalls` (`--repair`, decision 0447): the scenarios
+   * that need a repair run only then, its report says so, and no model becomes a default from it.
+   */
+  readonly repair?: true;
 }
 
 async function untilAbort(signal: AbortSignal): Promise<never> {
@@ -75,7 +80,8 @@ async function runOne(
 ): Promise<ScenarioRun> {
   const deadline = plan.deadline();
   const signal = AbortSignal.any([plan.signal, deadline]);
-  const parts = { world: plan.world, model: model.chain, clock: plan.clock, signal };
+  const listed = plan.repair === true ? { repair: true as const } : {};
+  const parts = { world: plan.world, model: model.chain, clock: plan.clock, signal, ...listed };
   try {
     return await Promise.race([
       runScenario(await withForkRisk(scenario, plan), parts),
@@ -108,17 +114,26 @@ function knownAddresses(world: SharedWorld): ReadonlySet<string> {
   return new Set(found.map((address) => address.toLowerCase()));
 }
 
+// What a plan lacks to run a scenario: a fork, or call repair, which a run that may pick a default
+// never has (decision 0447).
+function missingFor(scenario: Scenario, plan: EvaluationPlan): string | undefined {
+  if (scenario.fork !== undefined && plan.forkCases === undefined) {
+    return "--fork-cases";
+  }
+  return scenario.world.repair === true && plan.repair !== true ? "--repair" : undefined;
+}
+
 /**
- * Runs every scenario `runs` times on every model, one run at a time, and scores each run. A scenario that needs a
- * fork is left out, and named, when the plan has no fork.
+ * Runs every scenario `runs` times on every model, one run at a time, and scores each run. A
+ * scenario that needs a fork is left out, and named, when the plan has no fork; one that needs call
+ * repair, when the plan does not repair.
  */
 export async function runEvaluation(plan: EvaluationPlan): Promise<readonly ModelReport[]> {
-  const needsFork = (scenario: Scenario): boolean =>
-    scenario.fork !== undefined && plan.forkCases === undefined;
-  const runnable = plan.scenarios.filter((scenario) => !needsFork(scenario));
-  const skipped = plan.scenarios
-    .filter(needsFork)
-    .map((scenario) => `${scenario.locale} ${scenario.id} (needs --fork-cases)`);
+  const runnable = plan.scenarios.filter((scenario) => missingFor(scenario, plan) === undefined);
+  const skipped = plan.scenarios.flatMap((scenario) => {
+    const missing = missingFor(scenario, plan);
+    return missing === undefined ? [] : [`${scenario.locale} ${scenario.id} (needs ${missing})`];
+  });
   const known = knownAddresses(plan.world);
   const reports: ModelReport[] = [];
   for (const model of plan.models) {
@@ -127,7 +142,7 @@ export async function runEvaluation(plan: EvaluationPlan): Promise<readonly Mode
       // oxlint-disable-next-line eslint/no-await-in-loop -- one run at a time, so a provider's rate limit and the machine's load stay low
       scores.push(await scoreOf(scenario, model, { plan, known }));
     }
-    reports.push(reportOf(model.name, scores, skipped));
+    reports.push(reportOf(model.name, scores, { skipped, repair: plan.repair === true }));
   }
   return reports;
 }
