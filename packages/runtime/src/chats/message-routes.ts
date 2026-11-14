@@ -8,7 +8,7 @@ import type {
 } from "@binference/store";
 import { z } from "zod";
 import type { RouteLine, RouteReplyLine } from "../control/control-line.schema.js";
-import { toolCallContentSchema } from "../sessions/event-content.schema.js";
+import { ownerTextContentSchema, toolCallContentSchema } from "../sessions/event-content.schema.js";
 
 /** What `chat/messages` reads: the sessions and their transcripts in `agent.sqlite`. */
 export interface MessageRouteParts {
@@ -37,6 +37,16 @@ function textOf(event: TranscriptEvent): string | undefined {
   return content.success ? content.data.text : undefined;
 }
 
+// How many images the owner sent with an owner's message; none for any other event.
+function imagesOf(event: TranscriptEvent): { readonly images?: number } {
+  if (event.role !== "owner" || event.kind !== "text") {
+    return {};
+  }
+  const owned = ownerTextContentSchema.safeParse(event.content);
+  const images = owned.success ? owned.data.images : undefined;
+  return images === undefined ? {} : { images };
+}
+
 function viewOf(event: TranscriptEvent): MessageView {
   const text = textOf(event);
   const view = {
@@ -46,6 +56,7 @@ function viewOf(event: TranscriptEvent): MessageView {
     kind: event.kind,
     at: event.atMs,
     ...(text === undefined ? {} : { text }),
+    ...imagesOf(event),
   };
   return event.turnId === undefined ? view : { ...view, turn: event.turnId };
 }
@@ -105,10 +116,10 @@ export function isMessagesRoute(
 /**
  * Answers `chat/messages` from `agent.sqlite` (runtime spec, section 10): a page of one of the
  * agent's sessions, oldest first after the cursor, each event as a message with its role, kind,
- * time and turn, and its text (a tool call as its name and arguments, an image with none). The
- * cursor is the last message's `seq`; `next` names it when the page is full. A session the agent
- * does not hold reads as no message; args that break the operation's schema, or a cursor no page
- * gave, fail `protocol.bad_args`.
+ * time and turn, and its text (a tool call as its name and arguments, an image with none); an
+ * owner's message says how many images it held. The cursor is the last message's `seq`; `next`
+ * names it when the page is full. A session the agent does not hold reads as no message; args that
+ * break the operation's schema, or a cursor no page gave, fail `protocol.bad_args`.
  */
 export async function answerMessagesRoute(
   route: RouteLine & { readonly op: MessagesOp },

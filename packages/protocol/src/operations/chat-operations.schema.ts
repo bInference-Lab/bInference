@@ -38,6 +38,8 @@ interface ChatMessageView {
   readonly role: "owner" | "agent" | "tool" | "system";
   readonly kind: "text" | "tool_call" | "tool_result" | "image" | "summary";
   readonly text?: string;
+  /** How many images the owner sent with an owner's message; their bytes are never kept. */
+  readonly images?: number;
   readonly at: number;
 }
 
@@ -216,6 +218,7 @@ export const chatOperations: OperationTable<ChatOperationShapes> = {
         role: z.enum(["owner", "agent", "tool", "system"]),
         kind: z.enum(["text", "tool_call", "tool_result", "image", "summary"]),
         text: z.string().exactOptional(),
+        images: z.int().positive().exactOptional(),
         at: epochMsSchema,
       }),
     ),

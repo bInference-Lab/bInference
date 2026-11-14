@@ -110,6 +110,26 @@ describe("the chat screen", () => {
     ]);
   });
 
+  it("says how many images the owner sent with a message the chat so far holds", async () => {
+    const owned = { role: "owner", kind: "text", text: "Buy the token on this chart" };
+    const engine = fakeClient(
+      chatAnswers({
+        "chat/messages": () => ({
+          items: [
+            { ...kept(1, owned), images: 1 },
+            kept(2, { role: "system", kind: "image", text: "A rising line." }),
+          ],
+        }),
+      }),
+    );
+    renderSignedIn(<ChatScreen />, { client: engine.client });
+    await settle();
+    const log = screen.getByRole("log", { name: "Chat with main" });
+    expect([...log.children].map((entry) => entry.textContent)).toStrictEqual([
+      "You: Buy the token on this chart1 image",
+    ]);
+  });
+
   it("streams the agent's running turn, then shows its answer and its status lines", async () => {
     const engine = fakeClient(chatAnswers());
     renderSignedIn(<ChatScreen />, { client: engine.client });

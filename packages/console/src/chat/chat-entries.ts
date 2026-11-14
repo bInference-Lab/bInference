@@ -157,10 +157,11 @@ function isSaid(message: TranscriptMessage): boolean {
 }
 
 /**
- * The chat in order: the transcript's text messages of the owner and the agent that hold words,
- * each status line, chart and set of images after the last message of its turn, then what the page
- * heard or sent that the transcript does not hold yet, in the order it came. An answer leaves the
- * live lines once its turn's answer is in the transcript, and an owner's message once its text is.
+ * The chat in order: the transcript's text messages of the owner and the agent that hold words, an
+ * owner's with how many images it held, each status line, chart and set of images after the last
+ * message of its turn, then what the page heard or sent that the transcript does not hold yet, in
+ * the order it came. An answer leaves the live lines once its turn's answer is in the transcript,
+ * and an owner's message once its text is.
  */
 export function chatEntries(
   transcript: readonly TranscriptMessage[],
@@ -183,10 +184,12 @@ export function chatEntries(
   );
   const entries: ChatEntry[] = [];
   said.forEach((message) => {
+    const { images } = message;
     entries.push({
       kind: message.role === "owner" ? "owner" : "answer",
       id: `seq ${String(message.seq)}`,
       text: message.text ?? "",
+      ...(images === undefined ? {} : { images }),
     });
     if (message.turn !== undefined && lastOfTurn.get(message.turn) === message.seq) {
       entries.push(...placed.filter((line) => line.turn === message.turn).map(entryOf));

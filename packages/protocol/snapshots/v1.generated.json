@@ -35546,6 +35546,11 @@
                   "text": {
                     "type": "string"
                   },
+                  "images": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  },
                   "at": {
                     "type": "integer",
                     "minimum": 0,

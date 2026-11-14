@@ -1,4 +1,5 @@
 import { idSchema, type JsonValue } from "@binference/core";
+import type { EventDraft } from "@binference/store";
 import {
   createMemoryAgentDatabase,
   createMemorySessionStore,
@@ -7,12 +8,14 @@ import {
 } from "@binference/store/testing";
 import { describe, expect, it } from "vitest";
 import type { RouteReplyLine } from "../control/control-line.schema.js";
+import { ownerEvents } from "../sessions/session-journal.js";
 import { answerMessagesRoute, type MessageRouteParts } from "./message-routes.js";
 
 const agent = "agt_0190f1c2-3a4b-7c5d-8e6f-000000000001";
 const otherAgent = "agt_0190f1c2-3a4b-7c5d-8e6f-000000000002";
 const session = "ses_0190f1c2-3a4b-7c5d-8e6f-000000000001";
 const otherSession = "ses_0190f1c2-3a4b-7c5d-8e6f-000000000002";
+const turn = idSchema("trn").parse("trn_0190f1c2-3a4b-7c5d-8e6f-000000000001");
 const live = () => ({ signal: new AbortController().signal });
 
 // One event as the runtime appends it: its role and kind, then its content and time.
@@ -28,8 +31,8 @@ function event(
 }
 
 // A session of the agent with an owner's message, the agent's call and its result, the agent's
-// reply and an image, and a session of another agent.
-async function transcriptOn(): Promise<MessageRouteParts> {
+// reply, an image and the events a test adds, and a session of another agent.
+async function transcriptOn(added: readonly EventDraft[] = []): Promise<MessageRouteParts> {
   const database = createMemoryAgentDatabase();
   const fence = await createMemoryWriterFence(database).raise(live());
   const sessions = createMemorySessionStore(database);
@@ -47,6 +50,8 @@ async function transcriptOn(): Promise<MessageRouteParts> {
     },
     live(),
   );
+  const start = { sessionId: idSchema("ses").parse(session), startedAtMs: 15, fence };
+  await sessions.startTurn({ id: turn, ...start, outsideContent: false }, live());
   await transcript.append(
     {
       sessionId: idSchema("ses").parse(session),
@@ -65,6 +70,7 @@ async function transcriptOn(): Promise<MessageRouteParts> {
         ),
         event({ role: "agent", kind: "text" }, { text: "Your BNB is up 2%.", reasoning: "" }, 23),
         event({ role: "owner", kind: "image" }, { upload: "upload-1" }, 24),
+        ...added,
       ],
     },
     live(),
@@ -103,6 +109,30 @@ describe("the routed chat/messages", () => {
           { session, seq: 3, role: "tool", kind: "tool_result", text: "1 BNB", at: 22 },
           { session, seq: 4, role: "agent", kind: "text", text: "Your BNB is up 2%.", at: 23 },
           { session, seq: 5, role: "owner", kind: "image", at: 24 },
+        ],
+      },
+    });
+  });
+
+  it("says how many images the owner sent with a message, as a turn keeps it", async () => {
+    const sent = { id: "msg_3", text: "This chart", outside: true, images: ["up-1", "up-2"] };
+    const parts = await transcriptOn(ownerEvents([sent], { turn, atMs: 25 }));
+    const page = await messages(parts, { agent, session, cursor: "5" });
+    expect(page).toStrictEqual({
+      t: "routeReply",
+      id: "r1",
+      result: {
+        items: [
+          {
+            session,
+            turn,
+            seq: 6,
+            role: "owner",
+            kind: "text",
+            text: "This chart",
+            images: 2,
+            at: 25,
+          },
         ],
       },
     });
