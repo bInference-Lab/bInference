@@ -16,7 +16,11 @@ import { afterEach, describe, expect, it } from "vitest";
 import { z } from "zod";
 import { ipcWebSocket } from "../commands/connect-engine.js";
 import { engineEndpoint, platformOf } from "../compose/engine-locations.js";
-import { type UnservedReason, unservedOperations } from "../compose/unserved-operations.js";
+import {
+  cloudUnservedOperations,
+  type UnservedReason,
+  unservedOperations,
+} from "../compose/unserved-operations.js";
 import type { InitMachine } from "./init-fixtures.js";
 import { connectClient, hostOn } from "./test-host.js";
 import { createRunningEngines } from "./unlock-fixtures.js";
@@ -208,6 +212,11 @@ describe("the operations the self-hosted engine serves", () => {
     const replacements = replacementsOf(unservedOperations);
     expect(replacements.map((name) => [name, found.get(name)])).toStrictEqual(
       replacements.map((name) => [name, "served"]),
+    );
+    // What a Cloud root leaves unserved, the self-hosted engine serves.
+    const cloudOnlyUnserved = callable.filter((name) => cloudUnservedOperations.has(name));
+    expect(cloudOnlyUnserved.map((name) => [name, found.get(name)])).toStrictEqual(
+      cloudOnlyUnserved.map((name) => [name, "served"]),
     );
   });
 

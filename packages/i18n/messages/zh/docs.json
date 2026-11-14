@@ -43,6 +43,7 @@
   "operations.transport.ipc": "仅 IPC",
   "operations.responder.engine": "引擎",
   "operations.responder.runtime": "Agent 运行时",
+  "operations.responder.selfHostedOnly": "引擎，仅限自托管安装",
   "operations.unserved.notBuilt": "暂无：尚未实现",
   "operations.unserved.inCli": "无：由命令行在不经过引擎的情况下完成",
   "operations.unserved.replaced": "无：请改用 {operation}",

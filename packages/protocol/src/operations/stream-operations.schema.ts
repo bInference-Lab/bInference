@@ -4,6 +4,12 @@ import { type PushTopic, pushTopicSchema } from "../frames/push-frame.schema.js"
 import { type Empty, emptyArgsSchema, emptyResultSchema } from "../values/empty.schema.js";
 import { type FileTicket, fileTicketSchema } from "../views/file-ticket.schema.js";
 import {
+  logLevelSchema,
+  maxRecentLogLines,
+  type RecentLogView,
+  recentLogViewSchema,
+} from "../views/log-line-view.schema.js";
+import {
   type ImageContentType,
   imageContentTypeSchema,
   maxImageBytes,
@@ -29,6 +35,12 @@ interface SubscribeView {
   readonly resync?: readonly PushTopic[];
 }
 
+/** The args of `log/recent`: how many of the newest lines, and the lowest level kept. */
+interface RecentLogArgs {
+  readonly limit?: number;
+  readonly level?: LogLevel;
+}
+
 /** The upload, push and log stream operations of protocol spec section 7.9. */
 export interface StreamOperationShapes {
   readonly "upload/start": { readonly args: UploadArgs; readonly result: FileTicket };
@@ -46,6 +58,8 @@ export interface StreamOperationShapes {
     readonly result: Empty;
   };
   readonly "log/unfollow": { readonly args: Empty; readonly result: Empty };
+  /** The newest lines of the engine log, kept by the support bundle's field rules. */
+  readonly "log/recent": { readonly args: RecentLogArgs; readonly result: RecentLogView };
 }
 
 /** The upload, push and log stream operations, by name. */
@@ -95,5 +109,15 @@ export const streamOperations: OperationTable<StreamOperationShapes> = {
     scope: "admin",
     args: emptyArgsSchema,
     result: emptyResultSchema,
+  },
+  "log/recent": {
+    ...readFlags,
+    name: "log/recent",
+    scope: "admin",
+    args: z.strictObject({
+      limit: z.int().min(1).max(maxRecentLogLines).exactOptional(),
+      level: logLevelSchema.exactOptional(),
+    }),
+    result: recentLogViewSchema,
   },
 };

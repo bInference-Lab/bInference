@@ -263,6 +263,21 @@ export const streamExamples: { readonly [N in keyof StreamOperationShapes]: Wire
   "push/unsubscribe": { args: { topics: ["intent"] }, result: empty },
   "log/follow": { args: { level: "warn" }, result: empty },
   "log/unfollow": { args: empty, result: empty },
+  "log/recent": {
+    args: { limit: 200, level: "info" },
+    result: {
+      items: [
+        {
+          time: "2026-11-14T08:00:00.000Z",
+          level: "warn",
+          subsystem: "engine.orders",
+          event: "order.skipped",
+          fields: { orderId: ids.order, reason: "late", host: "[omitted]" },
+        },
+      ],
+      omitted: 1,
+    },
+  },
 };
 
 /** An example call of every Binance Agent operation. */

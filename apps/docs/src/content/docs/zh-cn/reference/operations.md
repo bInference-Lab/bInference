@@ -537,6 +537,7 @@ description: "引擎协议的每个操作：调用所需的权限范围、操作
 | --- | --- | --- | --- | --- |
 | `log/follow` | `admin` | 订阅 | 任何连接 | 暂无：尚未实现 |
 | `log/unfollow` | `admin` | 订阅 | 任何连接 | 暂无：尚未实现 |
+| `log/recent` | `admin` | 读取 | 任何连接 | 引擎，仅限自托管安装 |
 
 ## `binanceAgent`
 

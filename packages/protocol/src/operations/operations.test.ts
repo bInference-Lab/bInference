@@ -217,6 +217,7 @@ const specTable = [
   ["push/unsubscribe", "read", "subscribe"],
   ["log/follow", "admin", "subscribe"],
   ["log/unfollow", "admin", "subscribe"],
+  ["log/recent", "admin", ""],
   ["binanceAgent/list", "read", ""],
   ["binanceAgent/connect", "admin", "write local"],
   ["binanceAgent/timeline", "read", ""],
@@ -259,7 +260,7 @@ function isFiledUnderItsName(name: OperationName): boolean {
 describe("operations", () => {
   it("lists every operation of the spec, each with exactly one scope and its columns", () => {
     const table = operationNames.map(rowOf);
-    expect(table).toHaveLength(220);
+    expect(table).toHaveLength(221);
     expect(table.toSorted(byName)).toStrictEqual(specTable.toSorted(byName));
   });
 

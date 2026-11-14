@@ -1,6 +1,6 @@
 import type { Formatter } from "@binference/i18n";
 import { type Operation, operations, protocolVersion } from "@binference/protocol";
-import { unservedOperations } from "binference";
+import { cloudUnservedOperations, unservedOperations } from "binference";
 import { code, type ReferencePage, table } from "./reference-page.mjs";
 
 function scopeText(operation: Operation, formatter: Formatter): string {
@@ -17,12 +17,14 @@ function scopeText(operation: Operation, formatter: Formatter): string {
   return `${own}; ${instead}`;
 }
 
-// Who answers a call: the protocol's responder, or no one for an operation the engine leaves
-// unserved.
+// Who answers a call: the protocol's responder, on a self-hosted install only for an operation a
+// Cloud root leaves unserved, or no one for an operation the engine leaves unserved.
 function responderText(operation: Operation, formatter: Formatter): string {
   const reason = unservedOperations.get(operation.name);
   if (reason === undefined) {
-    return formatter.message(`docs.operations.responder.${operation.answeredBy}`);
+    return cloudUnservedOperations.has(operation.name)
+      ? formatter.message("docs.operations.responder.selfHostedOnly")
+      : formatter.message(`docs.operations.responder.${operation.answeredBy}`);
   }
   if (reason.kind === "replaced") {
     return formatter.message("docs.operations.unserved.replaced", { operation: code(reason.by) });

@@ -936,6 +936,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | plugin listing rule                         | 插件上架规则             | A profile part                 |
 | listing key                                 | 上架签名密钥             | In KMS; signs listings         |
 | revocation list                             | 撤销列表                 | Revoked listings               |
+| self-hosted (install)                       | 自托管                   | The owner runs it              |
 
 ### Trading
 

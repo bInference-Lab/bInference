@@ -43,6 +43,7 @@
   "operations.transport.ipc": "IPC only",
   "operations.responder.engine": "engine",
   "operations.responder.runtime": "agent runtime",
+  "operations.responder.selfHostedOnly": "engine, on a self-hosted install only",
   "operations.unserved.notBuilt": "no one yet: not built",
   "operations.unserved.inCli": "no one: the CLI does it without the engine",
   "operations.unserved.replaced": "no one: use {operation} instead",

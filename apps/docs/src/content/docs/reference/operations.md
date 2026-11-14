@@ -537,6 +537,7 @@ Every operation of the engine protocol, version 1, by domain. A client calls an 
 | --- | --- | --- | --- | --- |
 | `log/follow` | `admin` | subscription | any connection | no one yet: not built |
 | `log/unfollow` | `admin` | subscription | any connection | no one yet: not built |
+| `log/recent` | `admin` | read | any connection | engine, on a self-hosted install only |
 
 ## `binanceAgent`
 

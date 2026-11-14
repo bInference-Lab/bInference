@@ -51,3 +51,26 @@ const unserved: readonly (readonly [OperationName, UnservedReason])[] = [
  * change that adds it or named here.
  */
 export const unservedOperations: ReadonlyMap<string, UnservedReason> = new Map(unserved);
+
+/**
+ * Why a Cloud root leaves unserved an operation the self-hosted engine serves: it reads the machine
+ * the engine runs on, such as its log file, and an install on bInference Cloud has none of its own.
+ */
+export interface CloudUnservedReason {
+  readonly kind: "own_machine";
+}
+
+const ownMachine: CloudUnservedReason = { kind: "own_machine" };
+
+const cloudUnserved: readonly (readonly [OperationName, CloudUnservedReason])[] = [
+  ["log/recent", ownMachine],
+];
+
+/**
+ * The operations the self-hosted engine serves and a Cloud root leaves unserved, by name, each with
+ * why (decision 0446). The operations reference marks each as answered on a self-hosted install
+ * only, and the served-operations test holds the self-hosted engine to serving each.
+ */
+export const cloudUnservedOperations: ReadonlyMap<string, CloudUnservedReason> = new Map(
+  cloudUnserved,
+);

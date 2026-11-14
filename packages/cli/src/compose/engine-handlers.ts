@@ -7,9 +7,11 @@ import type { ComposedRuntime } from "./compose-runtime.js";
 import { composeSkillOperations } from "./compose-skills.js";
 import { composeUpdateOperations } from "./compose-updates.js";
 import { composeConfigChange } from "./config-change.js";
+import { engineLogFile } from "./engine-locations.js";
 import { createEngineOperations } from "./engine-operations.js";
 import type { EngineRestart } from "./engine-restart.js";
 import { type HealthSignal, startHealthProbe } from "./health-signals.js";
+import { createLogOperations } from "./log-operations.js";
 import { createModelOperations } from "./model-operations.js";
 import type { Opened, Opening } from "./open-engine-parts.js";
 import { composeRemoteOperations } from "./remote-operations.js";
@@ -63,7 +65,7 @@ function configHandlersOf(
 /**
  * The engine's own operations: its status with the health signals, its stop, its unlock, a new
  * pairing link for the owner's bot, the backups, the skills, the change of `config.json5`, remote
- * access, the update check, and the models each agent uses.
+ * access, the update check, the models each agent uses, and the engine log's recent lines.
  */
 export function engineHandlers(
   opening: Opening,
@@ -105,6 +107,7 @@ export function engineHandlers(
     ...composeSkillOperations(opening, opened, (push) => wiring.jobs.publish(push)),
     ...configHandlersOf(opening, opened, (push) => wiring.jobs.publish(push)),
     ...composeUpdateOperations(opening, opened),
+    ...createLogOperations({ file: engineLogFile(opening.platform) }),
     ...createModelOperations({
       models: wiring.models,
       agents: opened.stores.agents,

@@ -228,7 +228,9 @@ Rules for this package:
   works while the engine is stopped. It never opens a key, a database or the keychain. An engine
   log line passes only by the field rules of `src/logging/report-log-line.ts`, which
   `readRecentLogLines` applies to the newest lines; every other value passes `redactReportJson`.
-  A new log field needs its rule there, or the bundle shows it as `[omitted]`.
+  A new log field needs its rule there, or the bundle shows it as `[omitted]`. `log/recent`
+  (`src/compose/log-operations.ts`, decision 0446) answers the console from the same reader, served
+  by the self-hosted root only (`cloudUnservedOperations`).
 - Updates live in `src/updates/` (decisions 0355 and 0356). The engine's daily check reads npm's
   dist-tags and a release's notes through `host.http`, tells the owner once per release in
   `updates/announced.json`, and posts the opt-in counts while telemetry is on; tests point npm at
