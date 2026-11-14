@@ -146,19 +146,27 @@ function heardOwnerLines(
   return heard;
 }
 
+// A text message of the owner or the agent with words in it: a reply whose model only called a
+// tool keeps an empty text in the transcript.
+function isSaid(message: TranscriptMessage): boolean {
+  return (
+    message.kind === "text" &&
+    (message.role === "owner" || message.role === "agent") &&
+    (message.text ?? "").trim() !== ""
+  );
+}
+
 /**
- * The chat in order: the transcript's text messages of the owner and the agent, each status line,
- * chart and set of images after the last message of its turn, then what the page heard or sent that the transcript does
- * not hold yet, in the order it came. An answer leaves the live lines once its turn's answer is in
- * the transcript, and an owner's message once its text is.
+ * The chat in order: the transcript's text messages of the owner and the agent that hold words,
+ * each status line, chart and set of images after the last message of its turn, then what the page
+ * heard or sent that the transcript does not hold yet, in the order it came. An answer leaves the
+ * live lines once its turn's answer is in the transcript, and an owner's message once its text is.
  */
 export function chatEntries(
   transcript: readonly TranscriptMessage[],
   live: readonly LiveLine[],
 ): readonly ChatEntry[] {
-  const said = transcript.filter(
-    (message) => message.kind === "text" && (message.role === "owner" || message.role === "agent"),
-  );
+  const said = transcript.filter(isSaid);
   const answered = new Set<string>(
     said.flatMap((message) =>
       message.role === "agent" && message.turn !== undefined ? [message.turn] : [],

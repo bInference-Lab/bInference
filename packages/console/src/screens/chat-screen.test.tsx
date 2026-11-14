@@ -23,6 +23,18 @@ function said(seq: number, role: string, text: string) {
   return { session, turn, seq, role, kind, text, at: seq };
 }
 
+const nextTurn = "trn_0190f1c2-3a4b-7c5d-8e6f-000000000002";
+
+// One event of the open session exactly as the runtime's `chat/messages` reads it from its
+// transcript: its role, kind and text, in its turn, at the engine's time.
+function kept(
+  seq: number,
+  event: { readonly role: string; readonly kind: string; readonly text: string },
+  inTurn: string = turn,
+) {
+  return { session, turn: inTurn, seq, ...event, at: 1_800_000_000_000 + seq };
+}
+
 // A character no reader sees, which the console writes out.
 const hidden = String.fromCodePoint(0x200b);
 
@@ -71,6 +83,31 @@ describe("the chat screen", () => {
       agent,
       limit: 200,
     });
+  });
+
+  it("draws no bubble for a reply that only called a tool", async () => {
+    // As the runtime keeps a turn whose model called a tool and wrote nothing: the reply's empty
+    // text, its call and the call's result, then the answer of the turn that followed.
+    const engine = fakeClient(
+      chatAnswers({
+        "chat/messages": () => ({
+          items: [
+            kept(1, { role: "owner", kind: "text", text: "Buy the token on this chart" }),
+            kept(2, { role: "agent", kind: "text", text: "" }),
+            kept(3, { role: "agent", kind: "tool_call", text: 'swap {"reason":"Breakout"}' }),
+            kept(4, { role: "tool", kind: "tool_result", text: "A card waits for the owner." }),
+            kept(5, { role: "agent", kind: "text", text: "The card is open." }, nextTurn),
+          ],
+        }),
+      }),
+    );
+    renderSignedIn(<ChatScreen />, { client: engine.client });
+    await settle();
+    const log = screen.getByRole("log", { name: "Chat with main" });
+    expect([...log.children].map((entry) => entry.textContent)).toStrictEqual([
+      "You: Buy the token on this chart",
+      "main: The card is open.",
+    ]);
   });
 
   it("streams the agent's running turn, then shows its answer and its status lines", async () => {
