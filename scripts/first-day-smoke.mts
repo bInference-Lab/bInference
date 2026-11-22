@@ -12,7 +12,12 @@ import { join } from "node:path";
 import process from "node:process";
 import { parseArgs } from "node:util";
 import { z } from "zod";
-import { runOneLiner, serveRelease } from "./install/one-liner.mjs";
+import {
+  oneLinerRefusesThisOs,
+  refusalProblems,
+  runOneLiner,
+  serveRelease,
+} from "./install/one-liner.mjs";
 import { stageInstallScripts } from "./release/install-scripts.mjs";
 import { packPackage } from "./release/pack-release.mjs";
 import { readWorkspace } from "./release/workspace-manifests.mjs";
@@ -27,7 +32,9 @@ import { runCommand, runCommandShown } from "./run-command.mjs";
 // variables, start, a paper trade by chat, status, update to B, uninstall. Stand-ins for
 // launchctl, systemctl and loginctl come first on PATH and log any call, which fails the run.
 // With --privy real the day runs on Privy's dev app and ends by removing what it made there;
-// otherwise on the fake. It touches nothing outside its folders.
+// otherwise on the fake. On an OS the install script does not install on yet, Linux among them
+// (decision 0449), the day is its install step alone, `refused` when the one-liner stops with its
+// macOS-only line before any download. It touches nothing outside its folders.
 
 const usage =
   "Usage: pnpm first-day:smoke [--pack-only] [--packed <folder>] [--privy fake|real]. With no " +
@@ -121,7 +128,8 @@ function writeGuard(): string {
 }
 
 // The one-liner as the install guide prints it, installing A, with no Node on PATH; init waits
-// for the driver, which times it as a step of its own. The sources' state goes beside its run.
+// for the driver, which times it as a step of its own. The sources' state goes beside its run,
+// and the paths the loopback was asked for.
 async function installA(folder: string, scratch: string): Promise<void> {
   const manifest = z
     .object({ files: z.object({ from: z.string() }) })
@@ -136,7 +144,7 @@ async function installA(folder: string, scratch: string): Promise<void> {
     const run = await runOneLiner(files.base, scratch, { withNode: false, env });
     const seconds = Math.round((performance.now() - started) / 100) / 10;
     console.log(run.output.trimEnd().replaceAll(/^/gm, "  | "));
-    const outcome = { ...run, seconds, sources: sourcesState() };
+    const outcome = { ...run, seconds, sources: sourcesState(), asked: files.requests() };
     writeFileSync(join(scratch, "one-liner.json"), JSON.stringify(outcome));
   } finally {
     await files.close();
@@ -167,12 +175,37 @@ function writeReport(stepsFile: string): boolean {
   return steps.data.steps.every((step) => step.outcome !== "failed");
 }
 
+// The day on an OS the install script refuses: its install step alone, `refused` when the
+// one-liner stopped as it should, else `failed` with what went wrong.
+function writeRefusedDay(scratch: string, stepsFile: string, privy: Ask["privy"]): void {
+  const run = z
+    .looseObject({
+      status: z.number(),
+      output: z.string(),
+      command: z.string().optional(),
+      seconds: z.number(),
+      asked: z.array(z.string()),
+    })
+    .parse(JSON.parse(readFileSync(join(scratch, "one-liner.json"), "utf8")));
+  const problems = refusalProblems(
+    { status: run.status, output: run.output, command: run.command },
+    run.asked,
+  );
+  const outcome = problems.length === 0 ? "refused" : "failed";
+  const steps = [{ step: "install", seconds: run.seconds, outcome, problems }];
+  writeFileSync(stepsFile, JSON.stringify({ privy, steps }));
+}
+
 async function runDay(folder: string, privy: Ask["privy"]): Promise<boolean> {
   const scratch = mkdtempSync(join(tmpdir(), "bnd-"));
   const guard = writeGuard();
   const stepsFile = join(scratch, "steps.json");
   try {
     await installA(folder, scratch);
+    if (oneLinerRefusesThisOs) {
+      writeRefusedDay(scratch, stepsFile, privy);
+      return writeReport(stepsFile);
+    }
     const node = ["node", "--conditions=@binference/source", "--import", "tsx", driver];
     const line = [...node, folder, scratch, guard, stepsFile, privy];
     const status = runCommandShown(line, { cwd: root });

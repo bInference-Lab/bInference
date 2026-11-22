@@ -4,7 +4,14 @@ import { join } from "node:path";
 import process from "node:process";
 import { parseArgs } from "node:util";
 import { oneByOne } from "./bridge-chains/one-by-one.mjs";
-import { type OneLinerRun, runOneLiner, serveRelease, versionOf } from "./install/one-liner.mjs";
+import {
+  oneLinerRefusesThisOs,
+  type OneLinerRun,
+  refusalProblems,
+  runOneLiner,
+  serveRelease,
+  versionOf,
+} from "./install/one-liner.mjs";
 import { readPackedManifest } from "./release/release-plan.mjs";
 
 // The install one-liner's smoke test (decision 0357) on the folder a release:dry run wrote, which
@@ -18,6 +25,10 @@ import { readPackedManifest } from "./release/release-plan.mjs";
 //                 launcher prints the version, and init --yes starts
 //   fresh Node    with --fresh-node, no Node on PATH: the pinned Node from nodejs.org, checked
 //                 by its pin, then the same install
+//
+// On an OS the script does not install on yet, Linux among them (decision 0449), it runs one case
+// in their place: with this Node on PATH, the one-liner stops with its macOS-only line and fetches
+// nothing but itself.
 //
 // init --yes gets no answers, so it stops at the first one with its refusal line and exit code,
 // which the installer must pass on: that proves the installed binference ran init. It never runs
@@ -93,7 +104,15 @@ if (binference === undefined) {
   console.error(`install:smoke: ${folder} holds no packed binference.`);
   process.exit(1);
 }
-const cases: readonly SmokeCase[] = [
+const refusedCases: readonly SmokeCase[] = [
+  {
+    name: "the one-liner stops before any download, since it installs on macOS only",
+    withNode: true,
+    loopbackMirror: true,
+    check: refusalProblems,
+  },
+];
+const installCases: readonly SmokeCase[] = [
   {
     name: "a wrong Node hash stops before unpacking",
     withNode: false,
@@ -117,6 +136,7 @@ const cases: readonly SmokeCase[] = [
       ]
     : []),
 ];
+const cases = oneLinerRefusesThisOs ? refusedCases : installCases;
 
 async function runCase(release: string, item: SmokeCase): Promise<boolean> {
   const scratch = mkdtempSync(join(tmpdir(), "binference-install-smoke-"));

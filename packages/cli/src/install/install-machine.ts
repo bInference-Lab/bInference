@@ -31,7 +31,9 @@ const callSchema = z.object({
 /**
  * A scratch machine for the install script: a home and a state folder of its own, a PATH of
  * system tools with no Node on it, and stand-ins that record each call: npm, the binference it
- * installs, and on demand a Node, curl, uname, sysctl or ldd.
+ * installs, and on demand a Node, curl, sysctl or ldd. Its `uname` reports macOS on this machine's
+ * processor, whatever OS runs the test, since the script installs on macOS only (decision 0449);
+ * a test names another system through `standIn`.
  */
 export interface InstallMachine {
   readonly home: string;
@@ -43,7 +45,7 @@ export interface InstallMachine {
   readonly path: string;
   /** Puts a Node of this version on PATH: it reports its own file and runs this Node. */
   useNode(version: string): Promise<void>;
-  /** A pinned Node a run left before, for this machine's OS and CPU, in the data folder. */
+  /** A pinned Node a run left before, for macOS on this machine's CPU, in the data folder. */
   leavePinnedNode(version: string): Promise<string>;
   /** A program on PATH that runs `script`, an ES module, in place of the system's. */
   standIn(name: string, script: string): Promise<void>;
@@ -117,6 +119,13 @@ writeFileSync(join(folder, "dist", "main.mjs"), ${JSON.stringify(binferenceStand
 `;
 }
 
+// uname as macOS answers it on this machine's processor: Darwin for -s, the processor for -m.
+function unameStandIn(): string {
+  const { cpu } = readSystemFacts();
+  const machine = cpu === "x64" ? "x86_64" : cpu;
+  return `console.log(process.argv[2] === "-m" ? ${JSON.stringify(machine)} : "Darwin");\n`;
+}
+
 // A Node that reports itself as \`self\` at \`version\` and runs everything else with this Node.
 function nodeStandIn(self: string, version: string): string {
   return `import { spawnSync } from "node:child_process";
@@ -158,6 +167,7 @@ export async function createInstallMachine(script: string): Promise<InstallMachi
   const data = join(at("home"), ".local", "share", "binference");
   const path = `${at("bin")}:${at("tools")}`;
   await writeStandInProgram(at("bin"), "npm", npmStandIn(log));
+  await writeStandInProgram(at("bin"), "uname", unameStandIn());
   return {
     home: at("home"),
     bin: at("bin"),
@@ -166,8 +176,8 @@ export async function createInstallMachine(script: string): Promise<InstallMachi
     useNode: async (version) =>
       writeStandInProgram(at("bin"), "node", nodeStandIn(join(at("bin"), "node"), version)),
     leavePinnedNode: async (version) => {
-      const { os, cpu } = readSystemFacts();
-      const node = join(data, "node", `node-v${version}-${os}-${cpu}`);
+      const { cpu } = readSystemFacts();
+      const node = join(data, "node", `node-v${version}-darwin-${cpu}`);
       const bin = join(node, "bin");
       mkdirSync(bin, { recursive: true });
       await writeStandInProgram(bin, "node", nodeStandIn(join(bin, "node"), version));

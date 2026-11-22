@@ -65,7 +65,7 @@ function unameStandIn(system: string, cpu: string): string {
   return `console.log(process.argv[2] === "-m" ? ${JSON.stringify(cpu)} : ${JSON.stringify(system)});`;
 }
 
-describe.skipIf(!standInProgramsRun)("the macOS and Linux install script", () => {
+describe.skipIf(!standInProgramsRun)("the macOS install script", () => {
   it(
     "stops at a Node archive whose SHA-256 is not the pin, before unpacking it",
     slow,
@@ -77,9 +77,7 @@ describe.skipIf(!standInProgramsRun)("the macOS and Linux install script", () =>
       expect(run.stderr).toContain("nothing was installed");
       expect(server.requests()).toEqual([
         expect.stringMatching(
-          new RegExp(
-            `^/v${pinnedVersion}/node-v${pinnedVersion}-(darwin|linux)-(x64|arm64)\\.tar\\.gz$`,
-          ),
+          new RegExp(`^/v${pinnedVersion}/node-v${pinnedVersion}-darwin-(x64|arm64)\\.tar\\.gz$`),
         ),
       ]);
       expect(existsSync(join(machine.data, "node"))).toBe(false);
@@ -126,24 +124,46 @@ describe.skipIf(!standInProgramsRun)("the macOS and Linux install script", () =>
     ]);
   });
 
-  it("sends a Linux on musl to its own packages for Node", slow, async () => {
-    await machine.standIn("uname", unameStandIn("Linux", "x86_64"));
-    await machine.standIn("ldd", 'console.error("musl libc (x86_64)"); process.exit(1);');
+  it.each(["Linux", "FreeBSD"])(
+    "stops on %s before it downloads anything, since it supports macOS only",
+    slow,
+    async (system) => {
+      await machine.standIn("uname", unameStandIn(system, "x86_64"));
+      await machine.useNode("26.10.0");
 
-    const run = await machine.run([], { BINFERENCE_NODE_MIRROR: server.base });
+      const run = await machine.run([], {
+        BINFERENCE_NODE_MIRROR: server.base,
+        BINFERENCE_INSTALL_PACKAGE: `${server.base}/binference.tgz`,
+      });
+
+      expect(run.status).toBe(1);
+      expect(run.stderr).toContain(
+        "binference supports macOS for now; Linux comes in a later release. Nothing was installed.",
+      );
+      expect(server.requests()).toEqual([]);
+      expect(machine.calls()).toEqual([]);
+      expect(existsSync(machine.data)).toBe(false);
+    },
+  );
+
+  it("says it supports macOS only in Chinese when the locale is Chinese", slow, async () => {
+    await machine.standIn("uname", unameStandIn("Linux", "x86_64"));
+
+    const run = await machine.run([], { LANG: "zh_CN.UTF-8" });
 
     expect(run.status).toBe(1);
-    expect(run.stderr).toContain("this Linux uses musl");
-    expect(server.requests()).toEqual([]);
+    expect(run.stderr).toContain("macOS");
+    expect(run.stderr).not.toContain("supports macOS for now");
+    expect(run.stderr).toMatch(/\p{Script=Han}/u);
   });
 
   it("refuses a processor Node builds nothing for", slow, async () => {
-    await machine.standIn("uname", unameStandIn("Linux", "riscv64"));
+    await machine.standIn("uname", unameStandIn("Darwin", "i386"));
 
     const run = await machine.run([], { BINFERENCE_NODE_MIRROR: server.base });
 
     expect(run.status).toBe(1);
-    expect(run.stderr).toContain("do not cover the riscv64 processor");
+    expect(run.stderr).toContain("do not cover the i386 processor");
   });
 
   it("replaces a Node older than the floor binference needs", slow, async () => {

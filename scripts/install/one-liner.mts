@@ -37,6 +37,28 @@ export interface OneLinerSetting {
 
 const windows = readSystemFacts().os === "win32";
 
+/**
+ * Whether the one-liner refuses this OS: `install.sh` installs on macOS only (decision 0449), and
+ * Windows runs `install.ps1`, which installs there as before.
+ */
+export const oneLinerRefusesThisOs: boolean = !windows && readSystemFacts().os !== "darwin";
+
+/**
+ * What is wrong with a run of the one-liner on an OS it refuses, given the paths the loopback was
+ * asked for: it must end 1 with the macOS-only line, having fetched nothing but the script.
+ */
+export function refusalProblems(run: OneLinerRun, asked: readonly string[]): readonly string[] {
+  const fetched = asked.filter((path) => path !== "/install.sh");
+  return [
+    ...(run.status === 1 ? [] : [`it ended with ${String(run.status)}, not 1`]),
+    ...(run.output.includes("binference supports macOS for now")
+      ? []
+      : ["it never said binference supports macOS for now"]),
+    ...(fetched.length === 0 ? [] : [`it asked the loopback for ${fetched.join(", ")}`]),
+    ...(run.command === undefined ? [] : ["it installed binference"]),
+  ];
+}
+
 // The OS's own folders, with no Node in them, so the script finds no Node unless a run adds one.
 function systemPath(): readonly string[] {
   const root = process.env["SystemRoot"] ?? "C:\\Windows";

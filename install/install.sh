@@ -1,8 +1,9 @@
 #!/bin/sh
-# Installs binference on macOS and Linux: Node 26 when this machine has no Node 26.1 or later,
-# then the binference package from npm into a folder of the owner's, a `binference` launcher that
-# runs it with that Node, then `binference init`. It never asks for root and never edits a shell
-# startup file. Run it with --help for its flags and variables.
+# Installs binference on macOS: Node 26 when this machine has no Node 26.1 or later, then the
+# binference package from npm into a folder of the owner's, a `binference` launcher that runs it
+# with that Node, then `binference init`. It never asks for root and never edits a shell startup
+# file. Run it with --help for its flags and variables. Its Linux steps wait for Linux to return
+# (decision 0449): on any other system it stops before it downloads anything.
 set -eu
 
 # The Node release this script installs, and the SHA-256 of each archive it may fetch, from
@@ -43,8 +44,8 @@ fail() {
 usage() {
   say "Usage: install.sh [--beta] [--yes] [--skip-init] [--help]
 
-Installs Node 26 when this machine lacks it, then the binference package from npm, then runs
-binference init. It never asks for root.
+Installs Node 26 when this Mac lacks it, then the binference package from npm, then runs
+binference init. It never asks for root. binference supports macOS for now.
 
   --beta       Install from the beta channel instead of stable.
   --yes        Run binference init --yes, which asks nothing; init takes its answers from the
@@ -56,8 +57,8 @@ BINFERENCE_INSTALL_SKIP_INIT=1, BINFERENCE_NODE_MIRROR (an https:// Node downloa
 pinned checksums still decide), BINFERENCE_INSTALL_PACKAGE (a local tarball, for tests only)." \
     "用法：install.sh [--beta] [--yes] [--skip-init] [--help]
 
-在本机缺少 Node 26 时安装它，然后从 npm 安装 binference 包，再运行 binference init。
-它从不要求 root 权限。
+在这台 Mac 缺少 Node 26 时安装它，然后从 npm 安装 binference 包，再运行 binference init。
+它从不要求 root 权限。binference 目前只支持 macOS。
 
   --beta       从 beta 渠道安装，而不是 stable。
   --yes        运行 binference init --yes，不提任何问题；init 从 BINFERENCE_INIT_* 变量或
@@ -169,6 +170,15 @@ find_node() {
     return 0
   fi
   return 1
+}
+
+# Releases support macOS only for now (decision 0449), so any other system stops here, before a
+# download, with nothing installed.
+require_macos() {
+  if [ "$(uname -s)" != Darwin ]; then
+    fail "binference supports macOS for now; Linux comes in a later release. Nothing was installed." \
+      "binference 目前只支持 macOS；Linux 将在之后的版本中支持。没有安装任何内容。"
+  fi
 }
 
 platform() {
@@ -404,6 +414,7 @@ main() {
   unattended=$(switch_value BINFERENCE_INSTALL_YES "${BINFERENCE_INSTALL_YES:-}")
   skip_init=$(switch_value BINFERENCE_INSTALL_SKIP_INIT "${BINFERENCE_INSTALL_SKIP_INIT:-}")
   read_flags "$@"
+  require_macos
   if [ -z "${HOME:-}" ]; then
     fail "HOME is not set, so there is no folder of yours to install into. Set HOME, then run the installer again." \
       "HOME 未设置，因此没有属于你的文件夹可以安装。请设置 HOME，然后再次运行安装脚本。"
