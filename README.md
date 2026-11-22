@@ -96,6 +96,8 @@ curl -fsSL https://binference.io/install.sh | sh -s -- --beta
 
 The script installs Node 26 when your Mac needs it, then bInference, then runs `binference init`, which sets it up. [Get started](apps/docs/src/content/docs/guides/getting-started.md) walks you from the setup to your first trade.
 
+What each release changed for owners is in the [changelog](CHANGELOG.md).
+
 The self-hosted agent charges no fees.
 
 ## Contributing

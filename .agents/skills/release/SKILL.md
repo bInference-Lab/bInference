@@ -32,6 +32,10 @@ release without them, and packs them into the `binference` package as `binferenc
 ["Stop-loss orders fill within one block of their price."]
 ```
 
+Write the release's entry in `CHANGELOG.md` and `CHANGELOG.zh.md` too, under a `## <version>`
+heading, such as `## 2026.11.0-beta.1`: what it does for owners and its known limits. The dry run
+refuses a stable or beta release whose version has no heading in both.
+
 ## 3. Dry-run it from master
 
 On a clean checkout of the `master` commit you will tag:
@@ -41,7 +45,7 @@ pnpm release:dry v2026.11.0-beta.1
 ```
 
 It refuses a tag outside calver, a tree with changes, a tag that names another commit, a release
-without its notes for owners and a
+without its notes for owners or its changelog heading, and a
 version that is not newer. It reads each package on npm before it builds: it refuses a version npm
 holds already (unless the tag names HEAD, as on a run that publishes again) or one not newer than
 every version npm holds, prints each package's dist-tags, and names the packages whose first

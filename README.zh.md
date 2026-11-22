@@ -96,6 +96,8 @@ curl -fsSL https://binference.io/install.sh | sh -s -- --beta
 
 脚本会在你的 Mac 需要时安装 Node 26，然后安装 bInference，再运行 `binference init` 完成设置。[开始使用](apps/docs/src/content/docs/zh-cn/guides/getting-started.md)带你从设置走到第一笔交易。
 
+每个版本对所有者有影响的变化见[更新日志](CHANGELOG.zh.md)。
+
 自托管的 Agent 不收取任何费用。
 
 ## 参与贡献

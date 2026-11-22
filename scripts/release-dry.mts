@@ -3,6 +3,7 @@ import { join } from "node:path";
 import process from "node:process";
 import { parseArgs } from "node:util";
 import type { ReleaseNotes } from "@binference/protocol";
+import { changelogProblems } from "./release/changelog.mjs";
 import { packedReadmeFindings } from "./release/check-readmes.mjs";
 import {
   installScriptType,
@@ -227,6 +228,10 @@ function dryRunRelease(root: string, ask: Extract<DryRunAsk, { kind: "release" }
   const ownerNotes = readOwnerNotes(root, release.version);
   if (!ownerNotes.ok) {
     return fail(`the release's notes for owners are not ready:\n${ownerNotes.problems.join("\n")}`);
+  }
+  const changelog = changelogProblems(root, release.version);
+  if (changelog.length > 0) {
+    return fail(changelog.join("\n"));
   }
   checkRegistry(root, release, point);
   const packed = packAll(root, {
