@@ -42,8 +42,12 @@ pnpm release:dry v2026.11.0-beta.1
 
 It refuses a tag outside calver, a tree with changes, a tag that names another commit, a release
 without its notes for owners and a
-version that is not newer. It builds, packs the four public packages, runs the style guard over
-each packed README, stages the two install scripts with a `.sha256` beside each, writes
+version that is not newer. It reads each package on npm before it builds: it refuses a version npm
+holds already (unless the tag names HEAD, as on a run that publishes again) or one not newer than
+every version npm holds, prints each package's dist-tags, and names the packages whose first
+publish needs `NPM_BOOTSTRAP_TOKEN`. When npm does not answer, it warns and goes on. It builds,
+packs the four public packages, runs the style guard over each packed README, stages the two
+install scripts with a `.sha256` beside each, writes
 `SHA256SUMS` over the tarballs and the scripts, installs the packed files into an empty project outside
 the repository, checks that every file their manifests name is there and `binference --version`,
 writes npm's CycloneDX SBOM of that install and the notes from the commit subjects, and runs

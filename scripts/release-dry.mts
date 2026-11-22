@@ -17,7 +17,13 @@ import {
   readInstallSbom,
   type PackedRelease,
 } from "./release/packed-install.mjs";
-import { commitsSince, dirtyTreeProblem, releasePoint } from "./release/release-git.mjs";
+import { readRegistryPreflight } from "./release/registry-preflight.mjs";
+import {
+  commitsSince,
+  dirtyTreeProblem,
+  type ReleasePoint,
+  releasePoint,
+} from "./release/release-git.mjs";
 import { releaseNotes } from "./release/release-notes.mjs";
 import {
   manifestFile,
@@ -189,6 +195,24 @@ function packedOf(files: readonly PackedFile[]): ReleaseManifest["packages"] {
   return files.map(({ name, file, bytes, sha256 }) => ({ name, file, bytes, sha256 }));
 }
 
+// What npm holds for each package, read before anything is built: a version npm holds already, or
+// one not newer than every version it holds, stops the dry run; a registry that does not answer
+// only warns.
+function checkRegistry(root: string, release: ReleaseTag, { tagged }: ReleasePoint): void {
+  const packages = publishedPackages(root);
+  const found = readRegistryPreflight(root, { version: release.version, tagged, packages });
+  for (const warning of found.warnings) {
+    console.warn(`release:dry: warning: ${warning}`);
+  }
+  if (found.problems.length > 0) {
+    fail(found.problems.join("\n"));
+  }
+  console.log("release:dry: what npm holds:");
+  for (const line of found.lines) {
+    console.log(`  ${line}`);
+  }
+}
+
 function dryRunRelease(root: string, ask: Extract<DryRunAsk, { kind: "release" }>): void {
   const { release } = ask;
   const point = releasePoint(root, release);
@@ -204,6 +228,7 @@ function dryRunRelease(root: string, ask: Extract<DryRunAsk, { kind: "release" }
   if (!ownerNotes.ok) {
     return fail(`the release's notes for owners are not ready:\n${ownerNotes.problems.join("\n")}`);
   }
+  checkRegistry(root, release, point);
   const packed = packAll(root, {
     version: release.version,
     isNightly: false,
