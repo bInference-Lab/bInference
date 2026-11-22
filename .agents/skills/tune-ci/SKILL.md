@@ -21,14 +21,14 @@ three operating systems. Count before you add.
 | `packed.yml`   | nightly 00:37 UTC, by hand                       | the Node pins and both packs on Linux; the smoke, one-liner and first day on 3 OSes         |
 | `image.yml`    | nightly 01:13 UTC, by hand                       | the Docker image suite on Linux amd64                                                       |
 | `nightly.yml`  | nightly 02:17 UTC, a full run on Sunday          | Stryker in 20 shards with saved results                                                     |
-| `release.yml`  | a pushed `v*` tag (dry), by hand to publish      | `pnpm release:dry`, the smoke on 3 OSes, the two-platform image; npm and GitHub's release   |
+| `release.yml`  | a pushed `v*` tag (dry), by hand to publish      | `pnpm release:dry` and the smoke on macOS (decision 0449); npm and GitHub's release         |
 
 A push to `master` starts 12 jobs, 13 with the mutation job; a night starts 45, and Monday adds
 the weekly CodeQL run. Each pushed commit
 has its own concurrency group, so runs on `master` never cancel or replace each other, and the
 nightly suites never cancel either. The nightly workflows start at different times so their jobs
-do not queue behind each other. A release tag starts 5 jobs in `release.yml`, and a publish run 7
-(decisions 0353 and 0354); none restores a cache.
+do not queue behind each other. A release tag starts 2 jobs in `release.yml`, and a publish run 4
+(decisions 0353, 0354 and 0449); none restores a cache.
 
 `check:pr` is no CI job: the merger runs it on the branch's range before the merge, as
 `pnpm check:pr master..<branch>`, with `--title` and `--body <file>` for a squash merge.

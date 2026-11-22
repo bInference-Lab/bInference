@@ -1,10 +1,10 @@
 name: Release
 
 # A release from its tag (decision 0353). A pushed tag runs it dry: the build, the packed npm
-# tarballs with their checksums, SBOM and notes, the smoke jobs on three OSes (decision 0354) and
-# the two-platform image, with nothing published and every artifact kept on the run. Publishing
-# runs only by hand, with `publish` on, from a tag signed by a key in .github/release-signers that
-# master holds.
+# tarballs with their checksums, SBOM and notes, and the smoke job on macOS (decisions 0354 and
+# 0449), with nothing published and every artifact kept on the run. The release supports macOS
+# only, so it builds no image until Linux returns (decision 0449). Publishing runs only by hand,
+# with `publish` on, from a tag signed by a key in .github/release-signers that master holds.
 on:
   push:
     tags: ["v*"]
@@ -15,11 +15,11 @@ on:
         required: true
         type: string
       publish:
-        description: Publish to npm, the image registry and the GitHub release. Off is a dry run.
+        description: Publish to npm and the GitHub release. Off is a dry run.
         type: boolean
         default: false
       scratch:
-        description: A test run. npm gets the dist-tag scratch, the image only its version tag, and the GitHub release stays a draft.
+        description: A test run. npm gets the dist-tag scratch, and the GitHub release stays a draft.
         type: boolean
         default: false
 
@@ -114,10 +114,10 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-  # The built-package smoke test (decision 0354) on the tarballs the publish job gets, on Linux,
-  # macOS and Windows: they install into an empty project, then the installed binference sets up,
-  # starts, trades on paper by chat with the e2e fakes and stops. npm publishes only when all three
-  # pass.
+  # The built-package smoke test (decision 0354) on the tarballs the publish job gets, on macOS,
+  # the one OS the release supports (decision 0449): they install into an empty project, then the
+  # installed binference sets up, starts, trades on paper by chat with the e2e fakes and stops. npm
+  # publishes only when it passes. Linux and Windows rows come back with their OS.
   smoke:
     name: Packed install (${{ matrix.os }})
     needs: prepare
@@ -126,7 +126,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [macos-latest]
     defaults:
       run:
         shell: bash
@@ -200,7 +200,7 @@ jobs:
           path: release-files
 
       # Only a stable or beta release from its tag publishes, never a nightly pack (decision
-      # 0354); a refusal here stops the image and the GitHub release too.
+      # 0354); a refusal here stops the GitHub release too.
       - name: Check the release may publish
         run: node scripts/release-publish-check.mts release-files
 
@@ -223,78 +223,9 @@ jobs:
             npm publish "./$file" --access public --provenance --tag "$dist_tag"
           done
 
-  # Built from the tagged source for both platforms, with BuildKit's SBOM and provenance
-  # attestations; pushed only when publishing, after npm.
-  image:
-    name: Image (linux/amd64, linux/arm64)
-    needs: [prepare, npm]
-    if: ${{ !cancelled() && needs.prepare.result == 'success' && (needs.npm.result == 'success' || needs.npm.result == 'skipped') }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    # Pushing to GitHub's registry; a dry run never logs in.
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - name: Check out the tag
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: refs/tags/${{ env.TAG }}
-          persist-credentials: false
-
-      - name: Get the artifacts
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: release-${{ needs.prepare.outputs.version }}
-          path: release-files
-
-      - name: Image tags
-        id: tags
-        run: |
-          set -euo pipefail
-          image="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/binference"
-          if [ "$SCRATCH" = "true" ]; then
-            names="$(jq -r '.imageTags[0]' release-files/release.json)"
-          else
-            names="$(jq -r '.imageTags[]' release-files/release.json)"
-          fi
-          {
-            echo "tags<<EOF"
-            for name in $names; do echo "$image:$name"; done
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
-
-      - name: Set up Buildx
-        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
-
-      - name: Log in to GitHub's registry
-        if: env.PUBLISH == 'true'
-        uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ github.token }}
-
-      - name: Build
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-        with:
-          context: .
-          platforms: linux/amd64,linux/arm64
-          push: ${{ env.PUBLISH == 'true' }}
-          sbom: true
-          provenance: mode=max
-          tags: ${{ steps.tags.outputs.tags }}
-          labels: |
-            org.opencontainers.image.version=${{ needs.prepare.outputs.version }}
-            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-            org.opencontainers.image.revision=${{ github.sha }}
-
   github-release:
     name: GitHub release
-    needs: [prepare, npm, image]
+    needs: [prepare, npm]
     if: inputs.publish == true
     runs-on: ubuntu-latest
     timeout-minutes: 10

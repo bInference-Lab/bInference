@@ -1,6 +1,6 @@
 ---
 name: release
-description: Cuts a binference release on the beta or stable channel, from the dry run through the signed tag to the publish run by hand. Use when asked to release, publish to npm, push the image or prepare a release tag.
+description: Cuts a binference release on the beta or stable channel, from the dry run through the signed tag to the publish run by hand. Use when asked to release, publish to npm or prepare a release tag.
 ---
 
 # Cut a release
@@ -13,8 +13,9 @@ them. Publishing needs the owner's word every time.
 
 - Calver `YYYY.M.PATCH`, the year and month of the release, no leading zeros. The tag is the
   version with a `v`.
-- Beta: `v2026.11.0-beta.1`, then `-beta.2`, publishing to npm's `beta` dist-tag and the image's
-  `beta` tag. Stable: `v2026.11.0`, publishing to `latest` on both.
+- Beta: `v2026.11.0-beta.1`, then `-beta.2`, publishing to npm's `beta` dist-tag. Stable:
+  `v2026.11.0`, publishing to `latest`. Releases support macOS only and publish no image until
+  Linux returns (decision 0449).
 - The version must be newer than every release tag in the repository, as npm orders versions: a
   beta comes before the stable release it leads to. A mistake ships as the next patch, never as a
   second try at the same version.
@@ -49,8 +50,8 @@ writes npm's CycloneDX SBOM of that install and the notes from the commit subjec
 `npm publish --dry-run` on each tarball. It publishes nothing. Read
 `reports/release/<version>/notes.md`. A breaking change must have its `Breaking:` paragraph.
 
-Then run the built-package smoke on the same files, which the workflow runs on Linux, macOS and
-Windows (decision 0354): the installed `binference` sets up, starts, trades on paper by chat and
+Then run the built-package smoke on the same files, which the workflow runs on macOS (decisions
+0354 and 0449): the installed `binference` sets up, starts, trades on paper by chat and
 stops, in about half a minute. It needs the network for BNB Smart Chain's RPCs and KyberSwap.
 
 ```sh
@@ -70,19 +71,19 @@ git tag -v v2026.11.0-beta.1
 
 The key is an SSH key listed in `.github/release-signers`, with git's `gpg.format` set to `ssh`
 and `gpg.ssh.allowedSignersFile` pointing at that file for the check. Push the tag only on the owner's word;
-the push starts `release.yml` as a dry run, which builds the image for both platforms too. Read
+the push starts `release.yml` as a dry run. Read
 its summary and its checksums: they must match your local dry run's.
 
 ## 5. Publish by hand
 
 Only with the owner's word: run `release.yml` by hand with `tag` and `publish` on. The run checks
 the tag's signature and that `master` holds it, then waits for the `release` environment's
-approval. npm publishes the dry run's tarballs through trusted publishing, the image goes to
-`ghcr.io`, and the GitHub release gets the notes, tarballs, `SHA256SUMS` and the SBOM. A run that
-stops halfway runs again: the npm job skips a version npm holds already.
+approval. npm publishes the dry run's tarballs through trusted publishing, and the GitHub release
+gets the notes, tarballs, `SHA256SUMS` and the SBOM. A run that stops halfway runs again: the npm
+job skips a version npm holds already.
 
-`scratch` on is a test: npm's `scratch` dist-tag, only the version's image tag, a draft GitHub
-release. The version it uses is gone for good.
+`scratch` on is a test: npm's `scratch` dist-tag and a draft GitHub release. The version it uses is
+gone for good.
 
 Then host the install scripts (decision 0357), only with the owner's word: copy `install.sh`,
 `install.ps1` and their `.sha256` files from the dry run's folder to binference.io, unchanged.

@@ -183,9 +183,6 @@ function report(packed: PackedOut, manifest: ReleaseManifest): void {
   listFiles(packed);
   console.log(`  SHA256SUMS, ${manifest.sbom}, ${manifest.notes}, ${manifestFile}`);
   console.log(`npm: each package at ${manifest.version}, dist-tag ${manifest.npmTag}.`);
-  console.log(
-    `Image: binference:${manifest.imageTags.join(", binference:")} (linux/amd64, linux/arm64).`,
-  );
 }
 
 function packedOf(files: readonly PackedFile[]): ReleaseManifest["packages"] {
