@@ -1,0 +1,189 @@
+.scene {
+  position: relative;
+  z-index: 2;
+  height: 470vh;
+}
+.stage {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  display: grid;
+  place-items: center;
+  perspective: 1900px;
+  overflow: hidden;
+}
+.slot {
+  position: absolute;
+  left: max(5vw, 28px);
+  bottom: 12svh;
+  height: min(24svh, 220px);
+}
+.says {
+  position: absolute;
+  top: clamp(74px, 12svh, 130px);
+  left: 0;
+  right: 0;
+  text-align: center;
+  height: 1.2em;
+  font-size: clamp(28px, 3.6vw, 52px);
+  letter-spacing: -0.035em;
+  font-weight: 280;
+}
+.say {
+  position: absolute;
+  inset: 0;
+  opacity: calc(
+    clamp(0, calc((var(--p, 0) - var(--a)) * 16), 1) *
+      (1 - clamp(0, calc((var(--p, 0) - var(--b)) * 16), 1))
+  );
+}
+.say b {
+  font-weight: 600;
+}
+.flip {
+  position: relative;
+  width: min(600px, calc(100% - 44px));
+  margin-top: 9svh;
+  transform-style: preserve-3d;
+  --rise: clamp(0, calc(var(--p, 0) * 7), 1);
+  --turn: clamp(0, calc((var(--p, 0) - 0.68) * 6.5), 1);
+  transform: translateY(calc((1 - var(--rise)) * 52svh)) rotateX(calc((1 - var(--rise)) * 64deg))
+    rotateY(calc(var(--turn) * 180deg)) scale(calc(0.8 + var(--rise) * 0.2));
+}
+.face {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  background: var(--ink-2);
+  border: 1px solid var(--line);
+  border-radius: 30px;
+  padding: 34px 38px 30px;
+}
+.head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 650;
+  font-size: 18px;
+}
+.head i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--gold);
+}
+.action {
+  margin-top: 16px;
+  font-size: clamp(20px, 2.2vw, 27px);
+  letter-spacing: -0.022em;
+  font-weight: 500;
+}
+.rows {
+  margin-top: 22px;
+  display: grid;
+  gap: 2px;
+}
+.row {
+  --k: clamp(0, calc((var(--p, 0) - var(--o)) * 22), 1);
+  display: grid;
+  grid-template-columns: 26px 74px 1fr;
+  align-items: center;
+  padding: 9px 0;
+  font-size: 16px;
+  opacity: calc(0.16 + var(--k) * 0.84);
+}
+.row span:nth-of-type(1) {
+  color: var(--mute);
+}
+.tick {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: var(--gain);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.tick path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: calc(1 - var(--k));
+}
+.keys {
+  position: relative;
+  margin-top: 26px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  --press: clamp(0, calc((var(--p, 0) - 0.54) * 40), 1);
+  --ripple: clamp(0, calc((var(--p, 0) - 0.55) * 11), 1);
+}
+.keys span {
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 15px;
+  font-weight: 600;
+  background: var(--ink-3);
+}
+.keys .yes {
+  background: color-mix(in srgb, var(--gold) calc(var(--press) * 100%), #2b3139);
+  color: color-mix(in srgb, var(--ink) calc(var(--press) * 100%), #fff);
+  transform: scale(calc(1 - var(--press) * 0.05));
+}
+.ring {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: calc(50% - 5px);
+  height: 52px;
+  border-radius: 15px;
+  border: 1.5px solid var(--gold);
+  transform: scale(calc(1 + var(--ripple) * 0.5), calc(1 + var(--ripple) * 1.6));
+  opacity: calc(var(--press) * (1 - var(--ripple)));
+}
+.back {
+  position: absolute;
+  inset: 0;
+  transform: rotateY(180deg);
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  text-align: center;
+  gap: 14px;
+}
+.done {
+  width: 76px;
+  height: 76px;
+  fill: none;
+  stroke: var(--gain);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  margin-bottom: 10px;
+}
+.done circle {
+  stroke-dasharray: 1;
+  stroke-dashoffset: calc(1 - clamp(0, calc((var(--p, 0) - 0.8) * 9), 1));
+  transform: rotate(-90deg);
+  transform-origin: center;
+}
+.done path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: calc(1 - clamp(0, calc((var(--p, 0) - 0.87) * 11), 1));
+}
+.big {
+  font-size: clamp(26px, 3.4vw, 40px);
+  letter-spacing: -0.035em;
+  font-weight: 560;
+}
+@media (max-width: 900px) {
+  .slot {
+    display: none;
+  }
+  .face {
+    padding: 26px 22px;
+  }
+  .row {
+    grid-template-columns: 24px 58px 1fr;
+    font-size: 14px;
+  }
+}

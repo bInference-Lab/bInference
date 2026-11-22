@@ -17,6 +17,9 @@ The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this folder:
   its drawing `draw-agent.ts`; a change to any of them changes its test. A section places an
   `AgentSlot` where the agent stands and may give it a short order through `useAgent()`; an order
   ends when the agent moves to another slot.
+- Scroll scenes read their progress as `--p` from `Scene` (`src/motion/scene.tsx`), which one loop
+  in `scene-loop.ts` eases for every scene. Motion lives in CSS on `--p`, not in JavaScript per
+  frame, and every scene rests when the reader prefers reduced motion.
 - Next.js finds pages, layouts and `next.config.ts` by their default export, the one place it is
   allowed. `pnpm typecheck` checks the app; its build does not.
 - `pnpm --filter @binference/web dev` serves it on port 4819 with Next.js telemetry off

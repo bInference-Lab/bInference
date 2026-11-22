@@ -7,7 +7,7 @@ import zh from "../../../../packages/i18n/messages/zh/web.json" with { type: "js
 export type Locale = "en" | "zh";
 
 /** A key of the i18n `web` area. */
-type WordKey = keyof typeof en;
+export type WordKey = keyof typeof en;
 
 const catalogs: Readonly<Record<Locale, Readonly<Record<WordKey, string>>>> = { en, zh };
 const intlLocale: Readonly<Record<Locale, string>> = { en: "en", zh: "zh-Hans" };

@@ -1,11 +1,16 @@
 import { AgentProvider } from "../agent/agent-context";
 import { AgentStage } from "../agent/agent-stage";
+import { CardScene } from "../sections/card-scene";
+import { Day } from "../sections/day";
 import { Gate } from "../sections/gate";
 import { Hero } from "../sections/hero";
 import { Install } from "../sections/install";
 import { SiteFooter } from "../sections/site-footer";
 import { SiteNav } from "../sections/site-nav";
+import { Takeover } from "../sections/takeover";
+import { Tools } from "../sections/tools";
 import { type Locale, wordsFor, type Words } from "../words/words";
+import { dayEntries, takeoverIdeas, toolList } from "./section-words";
 
 const otherLanguage: Readonly<
   Record<Locale, { readonly locale: Locale; readonly href: string; readonly lang: string }>
@@ -19,7 +24,7 @@ function Nav(props: { readonly words: Words }): React.JSX.Element {
   const other = otherLanguage[words.locale];
   return (
     <SiteNav
-      links={[]}
+      links={[{ href: "#day", label: words.text("nav.day") }]}
       start={words.text("nav.start")}
       other={{
         href: other.href,
@@ -53,6 +58,20 @@ export function Landing(props: { readonly locale: Locale }): React.JSX.Element {
       <Nav words={words} />
       <main>
         <Hero words={words} />
+        <Takeover ideas={takeoverIdeas(words)} />
+        <Day
+          words={{
+            title: words.rich("day.title"),
+            example: words.text("day.example"),
+            label: words.text("status.day"),
+          }}
+          entries={dayEntries(words)}
+        />
+        <Tools
+          words={{ title: words.split("tools.title"), label: words.text("status.tools") }}
+          tools={toolList(words)}
+        />
+        <CardScene words={words} />
         <Install words={words} />
       </main>
       <SiteFooter words={words} />

@@ -1,0 +1,105 @@
+.day {
+  position: relative;
+  z-index: 2;
+  height: 560vh;
+}
+.stage {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  display: grid;
+  grid-template-columns: 1fr 1.05fr;
+  align-items: center;
+  gap: 56px;
+}
+.dial {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+.slot {
+  height: min(40svh, 380px);
+}
+.dial svg {
+  position: absolute;
+  width: min(74svh, 640px);
+  height: min(74svh, 640px);
+  overflow: visible;
+}
+.dial svg circle {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 1;
+}
+.dial svg .arc {
+  stroke: var(--gold);
+  stroke-width: 1.5;
+  stroke-dasharray: 1;
+  stroke-dashoffset: calc(1 - var(--p, 0));
+  transform: rotate(-90deg);
+  transform-origin: center;
+}
+.dial svg line {
+  stroke: #3a414a;
+  stroke-width: 1;
+}
+.clock {
+  position: absolute;
+  bottom: -2px;
+  font: 500 15px var(--mono);
+  color: var(--gold);
+  letter-spacing: 0.04em;
+}
+.title {
+  margin-bottom: 8px;
+}
+.example {
+  font: 12px var(--mono);
+  color: #59606a;
+  margin-bottom: 30px;
+}
+.entry {
+  --k: clamp(0, calc((var(--p, 0) - var(--a)) * 22), 1);
+  display: grid;
+  grid-template-columns: 62px 1fr;
+  gap: 18px;
+  padding: 15px 0;
+  border-top: 1px solid var(--line);
+  opacity: calc(0.16 + var(--k) * 0.84);
+  transform: translateX(calc((1 - var(--k)) * 18px));
+}
+.entry time {
+  font: 500 14px var(--mono);
+  color: var(--gold);
+  padding-top: 3px;
+}
+.entry p {
+  font-size: clamp(16px, 1.5vw, 20px);
+  line-height: 1.35;
+}
+@media (max-width: 900px) {
+  .stage {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    align-content: center;
+  }
+  .dial {
+    height: 32svh;
+  }
+  .slot {
+    height: 20svh;
+  }
+  .dial svg {
+    width: 30svh;
+    height: 30svh;
+  }
+  .entry {
+    padding: 9px 0;
+  }
+  .entry p {
+    font-size: 14px;
+  }
+  .example {
+    margin-bottom: 12px;
+  }
+}

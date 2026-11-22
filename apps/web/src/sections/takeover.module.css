@@ -1,0 +1,73 @@
+.takeover {
+  position: relative;
+  z-index: 2;
+  height: 430vh;
+}
+.stage {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  overflow: hidden;
+}
+.layer {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  --grow1: clamp(0, calc((var(--p, 0) - 0.2) * 4), 1);
+  --grow2: clamp(0, calc((var(--p, 0) - 0.6) * 4), 1);
+}
+.l1 {
+  background: var(--ink);
+  color: #fff;
+  --dot: var(--gold);
+}
+.l2 {
+  background: var(--gold);
+  color: var(--ink);
+  --dot: var(--ink);
+  clip-path: circle(calc(var(--grow1) * var(--grow1) * 165vmax) at var(--ox, 50%) var(--oy, 50%));
+}
+.l3 {
+  background: var(--ink);
+  color: #fff;
+  --dot: var(--gold);
+  clip-path: circle(calc(var(--grow2) * var(--grow2) * 165vmax) at var(--ox, 50%) var(--oy, 50%));
+}
+.idea h2 {
+  font-size: clamp(64px, 13.4vw, 210px);
+  font-weight: 680;
+  letter-spacing: -0.06em;
+  line-height: 0.9;
+  white-space: nowrap;
+}
+.idea h2 i {
+  display: inline-block;
+  width: 0.17em;
+  height: 0.17em;
+  border-radius: 50%;
+  margin-left: 0.035em;
+  background: var(--dot);
+}
+.idea p {
+  margin-top: 34px;
+  padding: 0 22px;
+  font-size: clamp(19px, 1.8vw, 26px);
+  font-weight: 450;
+  opacity: 0.66;
+}
+.l1 .idea {
+  transform: scale(calc(1 + var(--p, 0) * 0.35));
+}
+.l2 .idea {
+  transform: scale(
+    calc(
+      0.86 + clamp(0, calc((var(--p, 0) - 0.2) * 2.4), 1) * 0.14 + max(0, calc(var(--p, 0) - 0.6)) *
+        0.35
+    )
+  );
+}
+.l3 .idea {
+  transform: scale(calc(0.86 + clamp(0, calc((var(--p, 0) - 0.6) * 2.4), 1) * 0.14));
+}
