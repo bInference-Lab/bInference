@@ -1,12 +1,12 @@
 .hero {
   position: relative;
   z-index: 2;
-  min-height: calc(100svh - 48px);
+  min-height: 100svh;
   display: grid;
   align-content: center;
   justify-items: center;
   text-align: center;
-  padding: 16px 0 64px;
+  padding: 72px 0 64px;
 }
 .slot {
   height: clamp(220px, 39svh, 390px);

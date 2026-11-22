@@ -1,7 +1,7 @@
 "use client";
 
 import { useTaps } from "../agent/agent-context";
-import styles from "./site-nav.module.css";
+import styles from "./tally.module.css";
 
 /** The tap counter: every tap counted, and the zero that matters. */
 export function Tally(props: {

@@ -1,0 +1,14 @@
+.tally {
+  display: flex;
+  gap: 16px;
+  font: 500 12px var(--mono);
+  color: var(--mute);
+  white-space: nowrap;
+}
+.tally b {
+  color: var(--text);
+  font-weight: 600;
+}
+.zero b {
+  color: var(--gain);
+}

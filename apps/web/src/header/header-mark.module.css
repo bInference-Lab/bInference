@@ -1,0 +1,64 @@
+.mark {
+  height: 30px;
+  width: auto;
+  overflow: visible;
+  flex: none;
+}
+.body {
+  fill: var(--gold);
+  color: var(--gold);
+}
+.body pattern rect,
+.mark pattern rect {
+  fill: var(--gold);
+}
+.outline {
+  fill: none;
+  stroke: var(--gold);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+  opacity: 0.55;
+  stroke-dasharray: 1;
+}
+.needle {
+  fill: var(--gold);
+}
+.core {
+  fill: var(--gold);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: blink 7s ease-in-out infinite;
+}
+@keyframes blink {
+  0%,
+  92%,
+  100% {
+    transform: none;
+  }
+  95% {
+    transform: scaleY(0.12);
+  }
+}
+
+/* The mark draws itself in once the reader opens the page: the outline first, then the lines. */
+.outline {
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 1.6s var(--ease-out) 1.2s;
+}
+.body,
+.needle,
+.core {
+  transition: clip-path 1.2s var(--ease-out) 2s;
+  clip-path: inset(0 0 0 0);
+}
+:global(body:not(.open)) .outline {
+  stroke-dashoffset: 1;
+}
+:global(body:not(.open)) .body,
+:global(body:not(.open)) .needle,
+:global(body:not(.open)) .core {
+  clip-path: inset(0 0 100% 0);
+}
+.mark:hover .core {
+  animation-duration: 0.9s;
+}

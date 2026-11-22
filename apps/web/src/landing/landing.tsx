@@ -1,5 +1,6 @@
 import { AgentProvider } from "../agent/agent-context";
 import { AgentStage } from "../agent/agent-stage";
+import { SiteHeader } from "../header/site-header";
 import { Assembly } from "../sections/assembly";
 import { Boundary } from "../sections/boundary";
 import { CardScene } from "../sections/card-scene";
@@ -9,7 +10,6 @@ import { Hero } from "../sections/hero";
 import { Install } from "../sections/install";
 import { Playground } from "../sections/playground";
 import { SiteFooter } from "../sections/site-footer";
-import { SiteNav } from "../sections/site-nav";
 import { SourceWall } from "../sections/source-wall";
 import { Takeover } from "../sections/takeover";
 import { Tools } from "../sections/tools";
@@ -30,16 +30,17 @@ const otherLanguage: Readonly<
   zh: { locale: "en", href: "/", lang: "en" },
 };
 
-function Nav(props: { readonly words: Words }): React.JSX.Element {
+function Header(props: { readonly words: Words }): React.JSX.Element {
   const { words } = props;
   const other = otherLanguage[words.locale];
   return (
-    <SiteNav
-      links={[
+    <SiteHeader
+      chapters={[
         { href: "#day", label: words.text("nav.day") },
         { href: "#play", label: words.text("nav.talk") },
         { href: "#readme", label: words.text("nav.source") },
       ]}
+      chaptersLabel={words.text("nav.label")}
       start={words.text("nav.start")}
       other={{
         href: other.href,
@@ -70,7 +71,7 @@ export function Landing(props: { readonly locale: Locale }): React.JSX.Element {
           watching: words.text("status.watching"),
         }}
       />
-      <Nav words={words} />
+      <Header words={words} />
       <main>
         <Hero words={words} />
         <Takeover ideas={takeoverIdeas(words)} />
