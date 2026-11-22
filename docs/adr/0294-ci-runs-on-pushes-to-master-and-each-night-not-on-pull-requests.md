@@ -1,6 +1,6 @@
 # 0294. CI runs on pushes to master and each night, not on pull requests
 
-Status: Accepted
+Status: Amended by 0453
 
 ## Context
 

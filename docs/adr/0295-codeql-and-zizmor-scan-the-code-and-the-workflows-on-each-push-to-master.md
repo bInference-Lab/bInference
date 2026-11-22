@@ -1,6 +1,6 @@
 # 0295. CodeQL and zizmor scan the code and the workflows on each push to master
 
-Status: Accepted
+Status: Amended by 0453
 
 ## Context
 

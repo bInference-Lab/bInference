@@ -1,6 +1,6 @@
 # 0359. The first-day smoke runs the owner's first day on every OS each night
 
-Status: Accepted
+Status: Amended by 0453
 
 Accepted by the tech lead on 2026-11-04, with Privy's dev app only on a run by hand that removes
 what it made there.

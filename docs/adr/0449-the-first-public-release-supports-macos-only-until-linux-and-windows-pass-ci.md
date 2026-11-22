@@ -1,6 +1,6 @@
 # 0449. The first public release supports macOS only until Linux and Windows pass CI
 
-Status: Accepted
+Status: Amended by 0453
 
 Accepted by the owner on 2026-11-22.
 
