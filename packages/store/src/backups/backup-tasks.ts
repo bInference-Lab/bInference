@@ -80,11 +80,28 @@ function recordOf(row: Selectable<BackupTables["backups"]>): BackupRecord {
   };
 }
 
-/** Every backup, oldest first, then by id, in the caller's transaction. */
+/**
+ * Every backup, oldest first, then by id, in the caller's transaction. The backup before a
+ * migration lists them on a database an older release left, so it names only columns of
+ * `oldestUpdatedEngineSchemaVersion`.
+ */
 export function listBackups(database: StoreConnection): readonly BackupRecord[] {
   const { kysely, execute } = createSyncKysely<EngineTables>(database);
   const { rows } = execute(
-    kysely.selectFrom("backups").selectAll().orderBy("created_at").orderBy("id"),
+    kysely
+      .selectFrom("backups")
+      .select([
+        "id",
+        "path",
+        "bytes",
+        "kind",
+        "created_at",
+        "verified_at",
+        "file_sha256",
+        "header_sha256",
+      ])
+      .orderBy("created_at")
+      .orderBy("id"),
   );
   return rows.map(recordOf);
 }

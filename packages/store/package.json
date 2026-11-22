@@ -30,6 +30,9 @@
     },
     "./newer-schema": {
       "@binference/source": "./src/sqlite/past-this-build.worker.ts"
+    },
+    "./older-schema": {
+      "@binference/source": "./src/sqlite/older-install.worker.ts"
     }
   },
   "scripts": {

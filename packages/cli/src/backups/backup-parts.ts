@@ -12,7 +12,8 @@ export interface BackupParts {
    * whether a migration is ahead.
    */
   readonly engineDatabase: Pick<DatabaseHandle, "vacuumInto" | "schemaVersion" | "latestVersion">;
-  readonly install: Pick<InstallStore, "installId" | "read">;
+  /** Never `read`: the backup before a migration reads a database an older release left. */
+  readonly install: Pick<InstallStore, "installId" | "readBackupFacts">;
   readonly backups: BackupStore;
   readonly permissions: FilePermissions;
   readonly clock: Clock;

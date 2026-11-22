@@ -1,6 +1,14 @@
 import { idSchema } from "@binference/core";
 import type { BackupKind } from "@binference/engine/backups";
 import type { TempFolder } from "@binference/platform/testing";
+import {
+  createSqliteBackupStore,
+  createSqliteInstallStore,
+  engineWorker,
+  knownSchemaVersions,
+  openDatabase,
+} from "@binference/store";
+import { writeOlderInstall } from "@binference/store/older-schema";
 import { afterEach, describe, expect, it } from "vitest";
 import { testOwnerKey } from "../backups/backup-fixtures.js";
 import { backupMachine, type MachineOptions } from "../backups/backup-machine.js";
@@ -10,6 +18,8 @@ import { backUpBeforeMigration, missedNight } from "./compose-backups.js";
 
 const folders: TempFolder[] = [];
 const signal = (): AbortSignal => new AbortController().signal;
+// Store workers run the TypeScript source, as in the store's own tests.
+const execArgv = ["--conditions=@binference/source", "--import", "tsx"];
 const config = configSchema.parse({
   version: currentConfigVersion,
   telegram: { botToken: { fromEnv: "TEST_BOT_TOKEN" } },
@@ -38,6 +48,36 @@ describe("the backup before a migration", () => {
     expect(backups.map((backup) => [backup.kind, backup.verifiedAtMs !== undefined])).toStrictEqual(
       [["before_migration", true]],
     );
+  });
+
+  it("backs up the engine database an older release left", { timeout: 60_000 }, async () => {
+    const owner = await testOwnerKey();
+    const machine = await backupMachine(folders, {});
+    const file = machine.parts.stateFolder.engineDatabase;
+    const version = knownSchemaVersions().engine - 1;
+    writeOlderInstall(file, { version, ownerKeyPublic: owner.publicKey });
+    const database = await openDatabase({ file, worker: engineWorker, execArgv, signal: signal() });
+    const backups = createSqliteBackupStore(database);
+    const parts = {
+      ...machine.parts,
+      engineDatabase: database,
+      install: createSqliteInstallStore(database),
+      backups,
+      workerExecArgv: execArgv,
+    };
+
+    try {
+      const outcome = await backUpBeforeMigration(parts, config, signal());
+      const taken = await backups.list({ signal: signal() });
+
+      expect(outcome).toStrictEqual({ ok: true, value: undefined });
+      expect(taken.map((backup) => [backup.kind, backup.verifiedAtMs !== undefined])).toStrictEqual(
+        [["before_migration", true]],
+      );
+      expect(database.schemaVersion).toBe(version);
+    } finally {
+      await database.close();
+    }
   });
 
   it("takes none for a new database or one at this build's version", async () => {

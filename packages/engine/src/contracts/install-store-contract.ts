@@ -3,6 +3,7 @@ import { type AccountRef, accountRefSchema } from "@binference/chain";
 import type { ContractCheck } from "@binference/core/testing";
 import { looseningWaitMs } from "../policy/send-level-change.js";
 import { attachChecks } from "./install-attach-checks.js";
+import { backupFactsChecks } from "./install-backup-checks.js";
 import { disclaimerChecks } from "./install-disclaimer-checks.js";
 import { rescueReachChecks } from "./install-reach-checks.js";
 import {
@@ -299,6 +300,7 @@ export function installStoreContract(harness: InstallStoreHarness): readonly Con
     ),
     ...walletChecks(create),
     ...attachChecks(create),
+    ...backupFactsChecks(create),
     ...disclaimerChecks(create),
     ...rescueReachChecks(create),
     checkOn("refuses every call on an aborted signal", create, refusesAbortedCalls),

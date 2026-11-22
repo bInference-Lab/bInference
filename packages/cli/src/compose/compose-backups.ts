@@ -13,7 +13,7 @@ import type { Opening } from "./open-engine-parts.js";
 /** What backups of one engine are taken from: its database, install and backup records. */
 export interface BackupSources {
   readonly database: BackupParts["engineDatabase"];
-  readonly install: Pick<InstallStore, "installId" | "read">;
+  readonly install: Pick<InstallStore, "installId" | "readBackupFacts">;
   readonly backups: BackupStore;
 }
 
@@ -90,7 +90,7 @@ export async function backUpBeforeMigration(
  * has nothing a backup could seal, so it misses none.
  */
 export async function missedNight(parts: BackupParts, signal: AbortSignal): Promise<boolean> {
-  const { custody } = await parts.install.read({ signal });
+  const { custody } = await parts.install.readBackupFacts({ signal });
   if (custody === undefined) {
     return false;
   }

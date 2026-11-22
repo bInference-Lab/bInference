@@ -2,7 +2,7 @@ import { randomBytes } from "node:crypto";
 import { basename, join } from "node:path";
 import { BinferenceError, createIdSource, err, ok, type Result } from "@binference/core";
 import type { BackupFailure, BackupKind, BackupRecord } from "@binference/engine/backups";
-import type { InstallFacts } from "@binference/engine/install";
+import type { InstallBackupFacts } from "@binference/engine/install";
 import {
   ensurePrivateFolder,
   fileSize,
@@ -36,7 +36,9 @@ export interface BackupRun {
 interface Taking {
   readonly parts: BackupParts;
   readonly run: BackupRun;
-  readonly facts: InstallFacts & { readonly custody: NonNullable<InstallFacts["custody"]> };
+  readonly facts: InstallBackupFacts & {
+    readonly custody: NonNullable<InstallBackupFacts["custody"]>;
+  };
   readonly record: BackupRecord;
   readonly installId: Parameters<typeof backupFileName>[0]["installId"];
 }
@@ -180,7 +182,7 @@ async function pruneAside(parts: BackupParts, nowMs: number, signal: AbortSignal
 
 async function begin(parts: BackupParts, run: BackupRun): Promise<Taking | undefined> {
   const { signal } = run;
-  const facts = await parts.install.read({ signal });
+  const facts = await parts.install.readBackupFacts({ signal });
   const { custody } = facts;
   if (custody === undefined) {
     return undefined;

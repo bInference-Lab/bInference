@@ -265,6 +265,38 @@ export const installFactsSchema: z.ZodType<InstallFacts> = z.strictObject({
   wallets: z.array(walletRecordSchema),
 });
 
+/**
+ * What a backup reads of the install (keys spec, section 7): the custody's app and the keys it is
+ * sealed to, when this machine attached, and each wallet's Privy id, archived ones too, oldest
+ * first. A backup before a migration reads it from a database an older release left, so a store
+ * reads it from the columns every schema an update starts from holds.
+ */
+export interface InstallBackupFacts {
+  readonly custody?: Pick<
+    CustodyRecord,
+    "appId" | "ownerKeyPublic" | "sealKeyPublic" | "attachedAtMs"
+  >;
+  readonly wallets: readonly Pick<WalletRecord, "custodyWalletId" | "archivedAtMs">[];
+}
+
+/** Parses what a backup reads of the install. */
+export const installBackupFactsSchema: z.ZodType<InstallBackupFacts> = z.strictObject({
+  custody: z
+    .strictObject({
+      appId: shortTextSchema,
+      ownerKeyPublic: publicKeySchema,
+      sealKeyPublic: publicKeySchema.exactOptional(),
+      attachedAtMs: epochMsSchema,
+    })
+    .exactOptional(),
+  wallets: z.array(
+    z.strictObject({
+      custodyWalletId: shortTextSchema,
+      archivedAtMs: epochMsSchema.exactOptional(),
+    }),
+  ),
+});
+
 /** The install's id, proposed with the time the install began, for when it has none yet. */
 export interface InstallIdProposal {
   readonly id: Id<"ins">;

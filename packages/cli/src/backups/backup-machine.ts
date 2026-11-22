@@ -5,7 +5,7 @@ import {
   createMemoryLogger,
   createSeededRandom,
 } from "@binference/core/testing";
-import type { InstallFacts, InstallStore, WalletRecord } from "@binference/engine/install";
+import type { InstallBackupFacts, InstallStore } from "@binference/engine/install";
 import { createMemoryBackupStore } from "@binference/engine/testing";
 import {
   ensurePrivateFolder,
@@ -25,43 +25,21 @@ export const installId: Id<"ins"> = idSchema("ins").parse(
 export const nowMs: number = Date.parse("2026-10-12T03:30:00Z");
 const signal = (): AbortSignal => new AbortController().signal;
 
-function walletOf(n: number, archivedAtMs?: number): WalletRecord {
-  const wallet = {
-    id: idSchema("wal").parse(`wal_0190f1c2-3a4b-7c5d-8e6f-00000000000${String(n)}`),
-    agentId: idSchema("agt").parse("agt_0190f1c2-3a4b-7c5d-8e6f-000000000001"),
-    family: "evm",
-    custody: "privy" as const,
-    custodyWalletId: `privy-wallet-${String(n)}`,
-    policyId: `privy-policy-${String(n)}`,
-    signerId: "agent-quorum",
-    address: `0x${String(n).repeat(40)}`,
-    label: `wallet ${String(n)}`,
-    createdAtMs: n,
-    ceiling: { policyId: "p", policy: [], perTxNativeBase: 1n, readAtMs: n },
-  };
-  return archivedAtMs === undefined ? wallet : { ...wallet, archivedAtMs };
-}
-
-function installOf(ownerKeyPublic: string | undefined): Pick<InstallStore, "installId" | "read"> {
-  const facts: InstallFacts = {
-    wallets: [walletOf(1), walletOf(2, 5)],
+function installOf(
+  ownerKeyPublic: string | undefined,
+): Pick<InstallStore, "installId" | "readBackupFacts"> {
+  const facts: InstallBackupFacts = {
+    wallets: [
+      { custodyWalletId: "privy-wallet-1" },
+      { custodyWalletId: "privy-wallet-2", archivedAtMs: 5 },
+    ],
     ...(ownerKeyPublic === undefined
       ? {}
-      : {
-          custody: {
-            provider: "privy",
-            appId: "privy-app",
-            ownerQuorumId: "owner-quorum",
-            ownerKeyPublic,
-            agentQuorumId: "agent-quorum",
-            agentKeyPublic: "YWdlbnQ=",
-            attachedAtMs: 1,
-          },
-        }),
+      : { custody: { appId: "privy-app", ownerKeyPublic, attachedAtMs: 1 } }),
   };
   return {
     installId: async () => Promise.resolve(installId),
-    read: async () => Promise.resolve(facts),
+    readBackupFacts: async () => Promise.resolve(facts),
   };
 }
 

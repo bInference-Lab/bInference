@@ -2,6 +2,7 @@ import type { InstallStore } from "@binference/engine/install";
 import { bindTask, type StoreHost } from "../tasks/store-host.js";
 import type { TaskRunner } from "../tasks/store-task.js";
 import { attachTask, setSealKeyTask } from "./attach-task.js";
+import { readBackupFactsTask } from "./backup-facts-task.js";
 import { tellBreakerTask } from "./breaker-told-task.js";
 import { acceptDisclaimerTask } from "./disclaimer-task.js";
 import {
@@ -21,6 +22,7 @@ import { keepRescueReachTask } from "./rescue-reach-task.js";
 export const installTasks: readonly TaskRunner[] = [
   installIdTask,
   readInstallTask,
+  readBackupFactsTask,
   setUpInstallTask,
   changeRescueTask,
   cancelRescueChangeTask,
@@ -38,6 +40,7 @@ export const installTasks: readonly TaskRunner[] = [
 /** The {@link InstallStore} on `engine.sqlite`: each call runs one store task. */
 export function createSqliteInstallStore(host: StoreHost): InstallStore {
   const read = bindTask(host, readInstallTask);
+  const readBackupFacts = bindTask(host, readBackupFactsTask);
   const clearRescue = bindTask(host, clearRescueCeilingTask);
   const keepRescue = bindTask(host, keepRescueCeilingTask);
   const keepReach = bindTask(host, keepRescueReachTask);
@@ -46,6 +49,7 @@ export function createSqliteInstallStore(host: StoreHost): InstallStore {
   return {
     installId: bindTask(host, installIdTask),
     read: async (options) => read(null, options),
+    readBackupFacts: async (options) => readBackupFacts(null, options),
     setUp: bindTask(host, setUpInstallTask),
     changeRescue: bindTask(host, changeRescueTask),
     cancelRescueChange: bindTask(host, cancelRescueChangeTask),

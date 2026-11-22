@@ -26,6 +26,7 @@ import type { DisclaimerStore } from "./install/disclaimer-record.js";
 import type {
   CeilingUpdate,
   CustodyKeyStore,
+  InstallBackupFacts,
   InstallFacts,
   InstallIdProposal,
   InstallSetup,
@@ -581,6 +582,12 @@ export interface InstallStore extends CustodyKeyStore, DisclaimerStore, RescueRe
   installId(proposal: InstallIdProposal, options: StoreCall): Promise<Id<"ins">>;
   /** The custody, the rescue address and a new one that waits, and every wallet, archived too. */
   read(options: StoreCall): Promise<InstallFacts>;
+  /**
+   * What a backup reads of the install, as `read` holds it. It answers on every schema an update
+   * starts from, before the migration that follows the backup; `read` answers only on this
+   * build's schema.
+   */
+  readBackupFacts(options: StoreCall): Promise<InstallBackupFacts>;
   /**
    * Writes a setup in one transaction: the custody, the rescue address with any pending change
    * cleared, every earlier wallet archived, and the new wallet with its ceiling. An install that

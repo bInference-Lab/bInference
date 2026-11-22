@@ -3,6 +3,7 @@ import type { DisclaimerAcceptance } from "../install/disclaimer-record.js";
 import type {
   AgentKeyAttachment,
   CeilingUpdate,
+  InstallBackupFacts,
   InstallFacts,
   InstallSetup,
   SealKeyRecord,
@@ -113,6 +114,27 @@ function factsOf(state: InstallState): InstallFacts {
     ...(rescueReach === undefined ? {} : { rescueReach }),
     ...(disclaimer === undefined ? {} : { disclaimer }),
     wallets,
+  };
+}
+
+// What a backup reads of the install, wallets in the order `read` answers them.
+function backupFactsOf({ custody, wallets }: InstallState): InstallBackupFacts {
+  return {
+    ...(custody === undefined
+      ? {}
+      : {
+          custody: {
+            appId: custody.appId,
+            ownerKeyPublic: custody.ownerKeyPublic,
+            ...(custody.sealKeyPublic === undefined
+              ? {}
+              : { sealKeyPublic: custody.sealKeyPublic }),
+            attachedAtMs: custody.attachedAtMs,
+          },
+        }),
+    wallets: wallets.map(({ custodyWalletId, archivedAtMs }) =>
+      archivedAtMs === undefined ? { custodyWalletId } : { custodyWalletId, archivedAtMs },
+    ),
   };
 }
 
@@ -264,6 +286,18 @@ function breakerParts(breakerMark: MemoryBreakerMark) {
   };
 }
 
+// The install's reads, each of the state `held` holds when it is called.
+function readParts(
+  held: { readonly state: InstallState },
+  breakerMark: MemoryBreakerMark,
+): Pick<InstallStore, "read" | "readBackupFacts"> {
+  return {
+    read: async (call) =>
+      memoryCall(call, () => structuredClone({ ...factsOf(held.state), ...breakerMark.facts() })),
+    readBackupFacts: async (call) => memoryCall(call, () => backupFactsOf(held.state)),
+  };
+}
+
 /** Creates an empty in-memory {@link InstallStore} for tests. */
 export function createMemoryInstallStore(): MemoryInstallStore {
   const held: { state: InstallState } = { state: { wallets: [] } };
@@ -288,8 +322,7 @@ export function createMemoryInstallStore(): MemoryInstallStore {
     frozenAt: () => held.state.frozenAtMs,
     ...breakerParts(breakerMark),
     walletNow: (id) => structuredClone(held.state.wallets.find((wallet) => wallet.id === id)),
-    read: async (call) =>
-      memoryCall(call, () => structuredClone({ ...factsOf(held.state), ...breakerMark.facts() })),
+    ...readParts(held, breakerMark),
     setUp: async (setup, call) =>
       memoryCall(call, () => written(setUp(held.state, structuredClone(setup)), update)),
     changeRescue: async (change, call) => memoryCall(call, () => rescueChange(write, change)),

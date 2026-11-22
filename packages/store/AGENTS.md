@@ -57,6 +57,10 @@ Rules for this package:
   own answer when it is taken. On Postgres a write that meets a unique violation runs again once
   from its first read, and only that read turns the rerun into the port's answer (decision 0413).
 - `pnpm check:store` enforces these rules.
+- A task the backup before a migration runs (`installIdTask`, `readBackupFactsTask` and the
+  `backups` table's tasks) reads a database an older release left, so it names only columns of
+  `oldestUpdatedEngineSchemaVersion`; `backups/older-schema-backup.test.ts` runs each on every
+  schema from that one to this build's last but one.
 - Tests that start workers pass `execArgv` with `--conditions=@binference/source` and
   `--import tsx`, so the workers run the TypeScript source. They close every handle before they
   delete a file: Windows refuses to delete a file a connection holds.
