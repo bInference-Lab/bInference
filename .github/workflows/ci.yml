@@ -2,7 +2,8 @@ name: CI
 
 # Pushes to master and runs by hand only (decision 0294): a branch push or a pull request starts
 # no run. A maintainer pushes several merged branches at once, and every gate runs on the
-# pushed tip.
+# pushed tip. While the release supports macOS alone (decision 0449), the OS rows run on macOS
+# only; each Linux and Windows row returns with its OS (decision 0453).
 on:
   push:
     branches: [master]
@@ -11,11 +12,10 @@ on:
 permissions:
   contents: read
 
-# One group per commit: a run on master never cancels or replaces another, and a run by hand on
-# the same commit waits for the first.
+# One run per ref: a newer push to master cancels the run of the older one (decision 0453).
 concurrency:
-  group: ci-${{ github.sha }}
-  cancel-in-progress: false
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   TURBO_TELEMETRY_DISABLED: "1"
@@ -29,7 +29,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        # ubuntu-latest and windows-latest return here with their OS (decision 0453).
+        os: [macos-latest]
     steps:
       - name: Check out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -74,9 +75,11 @@ jobs:
         run: pnpm check
 
   # The store's Postgres tests (*.postgres.test.ts) against the oldest Postgres it supports, in a
-  # service container pinned by digest. The server trusts connections from the runner only.
+  # service container pinned by digest. The server trusts connections from the runner only. By
+  # hand only, since Cloud does not ship (decision 0453).
   postgres:
     name: Postgres store
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     services:
@@ -123,7 +126,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        # ubuntu-latest and windows-latest return here with their OS (decision 0453).
+        os: [macos-latest]
     steps:
       - name: Check out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -193,7 +197,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        # ubuntu-latest and windows-latest return here with their OS (decision 0453).
+        os: [macos-latest]
     steps:
       - name: Check out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

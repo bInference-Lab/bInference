@@ -1,11 +1,10 @@
 name: Image suite
 
-# The Docker image built from master and run end to end, every night and on demand: its user,
-# health check and volume, setup without prompts, a paper trade and `docker stop`
-# (decision 0293). Linux amd64 only; the job holds no key.
+# The Docker image built from master and run end to end, by hand: its user, health check and
+# volume, setup without prompts, a paper trade and `docker stop` (decision 0293). Linux amd64
+# only; the job holds no key. The image runs Linux, so its nightly run returns with Linux
+# (decision 0453).
 on:
-  schedule:
-    - cron: "13 1 * * *"
   workflow_dispatch:
 
 permissions:

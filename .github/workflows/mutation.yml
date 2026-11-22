@@ -1,14 +1,8 @@
 name: Mutation
 
-# Pushes to master that touch the money core, and runs by hand (decision 0294). The packages here
-# are the rows that config/package-graph.json marks for mutation testing.
+# Runs by hand only (decision 0453); the nightly covers every file. The packages here are the rows
+# that config/package-graph.json marks for mutation testing.
 on:
-  push:
-    branches: [master]
-    paths:
-      - packages/engine/**
-      - packages/signer/**
-      - stryker.config.mjs
   workflow_dispatch:
     inputs:
       base:
@@ -19,7 +13,7 @@ on:
 permissions:
   contents: read
 
-# One group per commit: each push mutates its own changes, so a newer push never cancels it.
+# One group per commit: each run mutates its own changes, so a newer run never cancels it.
 concurrency:
   group: mutation-${{ github.sha }}
   cancel-in-progress: false
@@ -27,8 +21,8 @@ concurrency:
 env:
   TURBO_TELEMETRY_DISABLED: "1"
   DO_NOT_TRACK: "1"
-  # A push can carry many branches. Stryker mutates at most this many of the changed files, those
-  # with the most changed lines, and stops at STRYKER_MINUTES; the nightly covers what is left.
+  # The range can carry many branches. Stryker mutates at most this many of the changed files,
+  # those with the most changed lines, and stops at STRYKER_MINUTES; the nightly covers the rest.
   MUTATE_MAX_FILES: "12"
   STRYKER_MINUTES: "45"
 
@@ -57,13 +51,13 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
 
-      - name: The pushed range's base
+      - name: The range's base
         id: base
         uses: ./.github/actions/pushed-base
         with:
-          before: ${{ github.event_name == 'push' && github.event.before || inputs.base }}
+          before: ${{ inputs.base }}
 
-      # Only the source files the push changes are mutated, never a whole package: without a base
+      # Only the source files the range changes are mutated, never a whole package: without a base
       # nothing is, and the nightly covers every file.
       - name: Changed source files
         id: changed
@@ -73,7 +67,7 @@ jobs:
           set -euo pipefail
           if [ -z "$BASE" ]; then
             echo "files=" >> "$GITHUB_OUTPUT"
-            printf '## Mutation testing\n\nThe push names no earlier commit in this history (a first or forced push), so this job mutates nothing; the nightly run covers every source file.\n' >> "$GITHUB_STEP_SUMMARY"
+            printf '## Mutation testing\n\nThe base names no earlier commit in this history, so this job mutates nothing; the nightly run covers every source file.\n' >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
           ranked="$(git diff --numstat --no-renames --diff-filter=AM "$BASE" HEAD -- 'packages/engine/src/*.ts' 'packages/signer/src/*.ts' |
@@ -82,7 +76,7 @@ jobs:
           left="$(printf '%s\n' "$ranked" | sed -n "$((MUTATE_MAX_FILES + 1)),\$p" | cut -f2)"
           echo "files=$files" >> "$GITHUB_OUTPUT"
           if [ -z "$files" ]; then
-            printf '## Mutation testing\n\nThe push changes no source file of engine or signer, so nothing is mutated.\n' >> "$GITHUB_STEP_SUMMARY"
+            printf '## Mutation testing\n\nThe range changes no source file of engine or signer, so nothing is mutated.\n' >> "$GITHUB_STEP_SUMMARY"
           elif [ -n "$left" ]; then
             {
               printf '## Files left to the nightly run\n\nStryker mutates the %s changed files with the most changed lines. The nightly run covers these:\n\n' "$MUTATE_MAX_FILES"

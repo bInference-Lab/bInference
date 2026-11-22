@@ -11,24 +11,23 @@ three operating systems. Count before you add.
 
 ## 1. Know what runs
 
-| Workflow       | When                                             | Jobs                                                                                        |
-| -------------- | ------------------------------------------------ | ------------------------------------------------------------------------------------------- |
-| `ci.yml`       | each push to `master`, by hand                   | `pnpm check`, OS adapters and the service smoke on 3 OSes; commit messages; audit and scans |
-| `codeql.yml`   | each push to `master`, Monday 05:37 UTC, by hand | CodeQL's security queries on the TypeScript and JavaScript sources, on Linux                |
-| `mutation.yml` | a `master` push touching engine, signer; by hand | Stryker on up to 12 changed files, 45 minutes at most                                       |
-| `fork.yml`     | nightly 03:41 UTC, by hand                       | the fork suite on Linux                                                                     |
-| `crash.yml`    | nightly 04:23 UTC, by hand                       | the crash suite on 3 OSes, `BINFERENCE_CRASH_RUNS` runs per kill point                      |
-| `packed.yml`   | nightly 00:37 UTC, by hand                       | the Node pins and both packs on Linux; the smoke, one-liner and first day on 3 OSes         |
-| `image.yml`    | nightly 01:13 UTC, by hand                       | the Docker image suite on Linux amd64                                                       |
-| `nightly.yml`  | nightly 02:17 UTC, a full run on Sunday          | Stryker in 20 shards with saved results                                                     |
-| `release.yml`  | a pushed `v*` tag (dry), by hand to publish      | `pnpm release:dry` and the smoke on macOS (decision 0449); npm and GitHub's release         |
+| Workflow       | When                                        | Jobs                                                                                          |
+| -------------- | ------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `ci.yml`       | each push to `master`, by hand              | `pnpm check`, OS adapters and the service smoke on macOS; commits and scans; Postgres by hand |
+| `codeql.yml`   | Monday 05:37 UTC, by hand                   | CodeQL's security queries on the TypeScript and JavaScript sources, on Linux                  |
+| `mutation.yml` | by hand                                     | Stryker on up to 12 files changed since a base, 45 minutes at most                            |
+| `fork.yml`     | nightly 03:41 UTC, by hand                  | the fork suite on Linux                                                                       |
+| `crash.yml`    | nightly 04:23 UTC, by hand                  | the crash suite in 7 parts on macOS, `BINFERENCE_CRASH_RUNS` runs per kill point              |
+| `packed.yml`   | nightly 00:37 UTC, by hand                  | the Node pins and both packs on Linux; the smoke, one-liner and first day on macOS            |
+| `image.yml`    | by hand                                     | the Docker image suite on Linux amd64                                                         |
+| `nightly.yml`  | nightly 02:17 UTC, a full run on Sunday     | Stryker in 20 shards with saved results                                                       |
+| `release.yml`  | a pushed `v*` tag (dry), by hand to publish | `pnpm release:dry` and the smoke on macOS (decision 0449); npm and GitHub's release           |
 
-A push to `master` starts 12 jobs, 13 with the mutation job; a night starts 45, and Monday adds
-the weekly CodeQL run. Each pushed commit
-has its own concurrency group, so runs on `master` never cancel or replace each other, and the
-nightly suites never cancel either. The nightly workflows start at different times so their jobs
-do not queue behind each other. A release tag starts 2 jobs in `release.yml`, and a publish run 4
-(decisions 0353, 0354 and 0449); none restores a cache.
+A push to `master` starts 5 jobs; a night starts 33, and Monday adds the weekly CodeQL run
+(decision 0453). A newer push to `master` cancels the CI run of the older one, while the nightly
+suites never cancel. The nightly workflows start at different times so their jobs do not queue
+behind each other. A release tag starts 2 jobs in `release.yml`, and a publish run 4 (decisions
+0353, 0354 and 0449); none restores a cache.
 
 `check:pr` is no CI job: the merger runs it on the branch's range before the merge, as
 `pnpm check:pr master..<branch>`, with `--title` and `--body <file>` for a squash merge.
@@ -64,9 +63,10 @@ gh run view <run-id> --log-failed
 - `actions/checkout` keeps `persist-credentials: false`.
 - No secret reaches a job that runs code from a pull request. The fork and crash suites hold no
   key and must stay that way.
-- `pnpm check` and the OS jobs run on Linux, macOS and Windows (rule OS-6 of
-  `docs/ENGINEERING.md`). A job that reads no OS behavior, such as a scan or the commit message check, runs on
-  Linux alone: macOS and Windows minutes cost more.
+- `pnpm check` and the OS jobs run on macOS while the release supports macOS alone (decisions
+  0449 and 0453); a Linux or Windows row returns to each OS matrix with its OS, under rule OS-6 of
+  `docs/ENGINEERING.md`. A job that reads no OS behavior, such as a scan or the commit message
+  check, runs on Linux alone: macOS and Windows minutes cost more.
 - A change to Windows-specific code runs CI by hand on its branch (`workflow_dispatch`), or its
   tests on Windows, before the push that merges it: CI on `master` sees it only after the merge.
 - A red `master` run stops the line: nothing else is pushed until the fix is.

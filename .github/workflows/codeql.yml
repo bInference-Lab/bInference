@@ -1,10 +1,8 @@
 name: CodeQL
 
-# GitHub's code scanning on the TypeScript and JavaScript sources (decision 0295): on each push to
-# master, by hand, and once a week, so new queries also reach code that has not changed.
+# GitHub's code scanning on the TypeScript and JavaScript sources (decision 0295): once a week, so
+# new queries also reach code that has not changed, and by hand (decision 0453).
 on:
-  push:
-    branches: [master]
   schedule:
     - cron: "37 5 * * 1"
   workflow_dispatch:

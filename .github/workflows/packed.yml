@@ -2,12 +2,13 @@ name: Packed install
 
 # The built-package smoke test from master, every night and on demand (decision 0354): the four
 # npm packages packed once by pnpm release:dry --pack-only at a nightly version nothing publishes,
-# then installed from their tarballs into an empty project on Linux, macOS and Windows, where the
-# installed binference sets up with init --yes, starts, makes a paper trade by chat on the
-# synthetic Bot API with a scripted model, and stops. Nothing is published and no job holds a key;
+# then installed from their tarballs into an empty project on macOS, where the installed
+# binference sets up with init --yes, starts, makes a paper trade by chat on the synthetic Bot API
+# with a scripted model, and stops. Nothing is published and no job holds a key;
 # quotes come from BNB Smart Chain's public RPCs and KyberSwap's API. The same packed files also
-# go through the install one-liner on the three OSes (decision 0357), and the owner's whole first
-# day runs on two more packed releases (decision 0359).
+# go through the install one-liner (decision 0357), and the owner's whole first day runs on two
+# more packed releases (decision 0359). The rows run on macOS alone; Linux and Windows return as
+# rows with their OS (decision 0453).
 on:
   schedule:
     - cron: "37 0 * * *"
@@ -132,7 +133,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        # ubuntu-latest and windows-latest return here with their OS (decision 0453).
+        os: [macos-latest]
     steps:
       - name: Check out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -174,7 +176,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        # ubuntu-latest and windows-latest return here with their OS (decision 0453).
+        os: [macos-latest]
     steps:
       - name: Check out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -218,7 +221,8 @@ jobs:
       fail-fast: false
       max-parallel: ${{ inputs.privy == 'real' && 1 || 3 }}
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        # ubuntu-latest and windows-latest return here with their OS (decision 0453).
+        os: [macos-latest]
     steps:
       - name: Check out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
