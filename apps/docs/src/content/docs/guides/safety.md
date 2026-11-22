@@ -170,8 +170,9 @@ is frozen, the rescue under way and the rescue address.
 
 ## Rescue
 
-A rescue moves everything out of every agent wallet to your rescue address: each registry token,
-each token a wallet holds a position in, then the BNB above the gas reserve. It sells nothing. It
+A rescue moves what every agent wallet holds to your rescue address, but the gas reserve: each
+registry token, each token a wallet holds a position in, then the BNB above the gas reserve, 0.002
+BNB by default (`defaults.limits.gasReserve`), which stays in the wallet. It sells nothing. It
 works while frozen and in paper mode too, where it moves the real funds.
 
 Open it with `binference rescue`, `/rescue` in Telegram or Open the rescue card on the Safety

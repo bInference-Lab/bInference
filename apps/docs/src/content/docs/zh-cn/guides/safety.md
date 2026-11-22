@@ -119,7 +119,7 @@ binference limit set limits.perTradeUsd=50 limits.rollingDayUsd=300
 
 ## 紧急转出
 
-紧急转出会把每个 Agent 钱包中的全部资产转到你的紧急转出地址：每个注册表代币、钱包持有仓位的每个代币，最后是网络费预留之外的 BNB。它不卖出任何资产。冻结期间和模拟模式下它同样可用，在模拟模式下它转出的是真实资金。
+紧急转出会把每个 Agent 钱包中除网络费预留外的资产转到你的紧急转出地址：每个注册表代币、钱包持有仓位的每个代币，最后是网络费预留之外的 BNB。网络费预留默认为 0.002 BNB（`defaults.limits.gasReserve`），会留在钱包中。它不卖出任何资产。冻结期间和模拟模式下它同样可用，在模拟模式下它转出的是真实资金。
 
 用 `binference rescue`、Telegram 中的 `/rescue`，或控制台或 Mini App「安全」页面上的「打开紧急转出卡片」打开它，然后确认卡片。模拟失败的转账会被跳过，每一步最多重试 3 次。[`rescue`](/zh-cn/reference/notices/#rescue) 通知会告诉你它已开始。
 

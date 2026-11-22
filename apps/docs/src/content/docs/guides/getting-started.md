@@ -124,9 +124,9 @@ or send `/paper` in Telegram.
 - **Freeze** stops at once: send `/freeze` in Telegram, or run `binference freeze`. Every open card
   and every action not yet signed is cancelled, and auto orders pause. To unfreeze, run
   `binference unfreeze` and confirm the card it opens.
-- **Rescue** moves everything in every agent wallet to your rescue address: send `/rescue` in
-  Telegram, or run `binference rescue`, then confirm its card. It works while frozen and in paper
-  mode too, where it moves the real funds.
+- **Rescue** moves what every agent wallet holds to your rescue address, but the 0.002 BNB it
+  keeps for network fees: send `/rescue` in Telegram, or run `binference rescue`, then confirm its
+  card. It works while frozen and in paper mode too, where it moves the real funds.
 
 ## Next
 

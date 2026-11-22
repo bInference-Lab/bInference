@@ -91,7 +91,7 @@ binference limit set limits.perTradeUsd=50
 ## 冻结和紧急转出
 
 - **冻结**立即停止一切：在 Telegram 中发送 `/freeze`，或运行 `binference freeze`。每张打开的卡片和每个尚未签名的操作都会被取消，自动订单暂停。要解除冻结，请运行 `binference unfreeze` 并确认它打开的卡片。
-- **紧急转出**把每个 Agent 钱包中的一切转到你的紧急转出地址：在 Telegram 中发送 `/rescue`，或运行 `binference rescue`，然后确认它的卡片。冻结时和模拟模式下也能使用，在模拟模式下它转移的是真实资金。
+- **紧急转出**把每个 Agent 钱包中除留作网络手续费的 0.002 BNB 外的资产转到你的紧急转出地址：在 Telegram 中发送 `/rescue`，或运行 `binference rescue`，然后确认它的卡片。冻结时和模拟模式下也能使用，在模拟模式下它转移的是真实资金。
 
 ## 接下来
 
