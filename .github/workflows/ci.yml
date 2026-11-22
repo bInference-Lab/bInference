@@ -73,8 +73,9 @@ jobs:
       # The checks that compare with a base (the decision lock, the migration lock, the size
       # baseline) compare with master before this push; without one, with the parent commit.
       # Turborepo drops cache entries older than 7 days as it starts, so the saved cache stays
-      # bounded. The tasks are pnpm check's own less its test task, so a gate added there runs
-      # here; Turborepo 2.11 has no flag that leaves one task out.
+      # bounded. The tasks are pnpm check's own less its test task and its gate self-test, which
+      # jobs of their own run, so a gate added there runs here; Turborepo 2.11 has no flag that
+      # leaves one task out.
       - name: pnpm check without its tests
         id: check
         env:
@@ -83,10 +84,11 @@ jobs:
         run: |
           tasks="$(node -p '
             const [tool, verb, ...words] = require("./package.json").scripts.check.split(" ");
-            if (tool !== "turbo" || verb !== "run" || !words.includes("test")) {
-              throw new Error("pnpm check is no longer turbo run with a test task: update ci.yml.");
+            const own = ["test", "check:gates"];
+            if (tool !== "turbo" || verb !== "run" || !own.every((task) => words.includes(task))) {
+              throw new Error("pnpm check is no longer turbo run with test and check:gates: update ci.yml.");
             }
-            words.filter((word) => word !== "test").join(" ");
+            words.filter((word) => !own.includes(word)).join(" ");
           ')"
           read -ra task_list <<< "$tasks"
           pnpm exec turbo run "${task_list[@]}"
@@ -97,6 +99,63 @@ jobs:
         if: >-
           !cancelled() && steps.turbo-cache.outputs.cache-hit != 'true' &&
           (steps.check.outcome == 'success' || steps.check.outcome == 'failure')
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .turbo/cache
+          key: ${{ steps.turbo-cache.outputs.cache-primary-key }}
+
+  # pnpm check's gate self-test, check:gates, apart from the other gates: it runs its cases in
+  # parallel shards of its own, so beside lint and typecheck it shared the runner's 3 cores and
+  # 7 GB with them. Its Turborepo cache is its own, keyed on its inputs (turbo.json), so a push
+  # that changes no gate script or config takes its result from the cache.
+  gates:
+    name: check:gates, the gate self-test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        # ubuntu-latest and windows-latest return here with their OS (decision 0453).
+        os: [macos-latest]
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - name: Set up Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "26.10.0"
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Restore the Turborepo cache
+        id: turbo-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .turbo/cache
+          key: turbo-gates-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-${{ github.sha }}
+          restore-keys: |
+            turbo-gates-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}-
+            turbo-gates-${{ runner.os }}-
+
+      - name: check:gates
+        id: gates
+        env:
+          TURBO_CACHE_MAX_AGE: 7d
+        run: pnpm exec turbo run check:gates
+
+      # Also after a failed run, never after a cancel, as in the check job.
+      - name: Save the Turborepo cache
+        if: >-
+          !cancelled() && steps.turbo-cache.outputs.cache-hit != 'true' &&
+          (steps.gates.outcome == 'success' || steps.gates.outcome == 'failure')
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .turbo/cache
