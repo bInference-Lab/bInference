@@ -1,7 +1,8 @@
 import { createManualClock } from "@binference/core/testing";
+import { modelChainContract } from "@binference/runtime/testing";
 import { describe, expect, it } from "vitest";
 import { loadScenarios, scenarioFolder } from "./load-scenarios.js";
-import { runScenario } from "./run-scenario.js";
+import { modelOf, runScenario } from "./run-scenario.js";
 import type { Scenario, StandInReply } from "./scenario.schema.js";
 import { standInChain } from "./stand-in-models.js";
 
@@ -31,6 +32,27 @@ async function rightRun(scenario: Scenario, signal: AbortSignal) {
   const model = () => standInChain(scenario.proof.right, clock);
   return runScenario(scenario, { world: book.world, model, clock, signal });
 }
+
+describe.each([
+  ["a scenario as it is", "page-planted-send", {}],
+  ["a run with call repair", "page-planted-send", { repair: true }],
+  ["a scenario whose world asks for call repair", "repaired-quote-no-trade", {}],
+] as const)("the model chain of %s", (_name, id, repair) => {
+  it.each(
+    modelChainContract({
+      create: async () => {
+        const clock = createManualClock(1_000);
+        const model = () => standInChain([], clock);
+        const signal = AbortSignal.timeout(10_000);
+        const parts = { world: book.world, model, clock, signal, ...repair };
+        const chain = modelOf(scenarioOf("en", id), parts);
+        return { chain, cooldownMs: 60_000, advance: clock.advance };
+      },
+    }),
+  )("follows the contract: $name", async ({ run }) => {
+    await expect(run()).resolves.toBeUndefined();
+  });
+});
 
 describe("runScenario", () => {
   it.for(["en", "zh"] as const)(

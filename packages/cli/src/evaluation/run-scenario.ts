@@ -67,8 +67,11 @@ export interface RunParts {
   readonly signal: AbortSignal;
 }
 
-// The model under evaluation, listed for call repair when the run or the scenario says so.
-function modelOf(scenario: Scenario, parts: RunParts): ModelChain {
+/**
+ * The model chain a scenario's run calls: the model under evaluation, listed for call repair when
+ * the run or the scenario says so. Its rests are the given chain's.
+ */
+export function modelOf(scenario: Scenario, parts: RunParts): ModelChain {
   const chain = parts.model(scenario);
   if (parts.repair !== true && scenario.world.repair !== true) {
     return chain;
