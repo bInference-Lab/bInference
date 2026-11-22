@@ -172,8 +172,9 @@ jobs:
     # The owner approves each publish here; npm's trusted publisher names this workflow and
     # environment.
     environment: release
-    # The OIDC token npm's trusted publishing exchanges for a one-time publish; no npm token is
-    # stored anywhere.
+    # The OIDC token npm's trusted publishing exchanges for a one-time publish, and which signs
+    # each package's provenance. A package npm never held publishes once with the environment's
+    # bootstrap token instead (decision 0451).
     permissions:
       contents: read
       id-token: write
@@ -205,22 +206,43 @@ jobs:
         run: node scripts/release-publish-check.mts release-files
 
       # The same bytes the dry run packed and summed. A version npm already holds is left as it
-      # is, so a run that stopped halfway can run again.
+      # is, so a run that stopped halfway can run again. A package npm holds publishes through
+      # trusted publishing alone; a package npm never held publishes once with the bootstrap
+      # token, which only that publish reads, through a user config of its own (decision 0451).
       - name: Publish
         working-directory: release-files
         env:
           VERSION: ${{ needs.prepare.outputs.version }}
+          NPM_BOOTSTRAP_TOKEN: ${{ secrets.NPM_BOOTSTRAP_TOKEN }}
         run: |
           set -euo pipefail
           sha256sum --check SHA256SUMS
           dist_tag="$(jq -r .npmTag release.json)"
           if [ "$SCRATCH" = "true" ]; then dist_tag=scratch; fi
+          # The file names the token's variable, never its value.
+          bootstrap_config="$RUNNER_TEMP/bootstrap.npmrc"
+          printf '%s\n' "//registry.npmjs.org/:_authToken=\${NPM_BOOTSTRAP_TOKEN}" > "$bootstrap_config"
           jq -r '.packages[] | "\(.name) \(.file)"' release.json | while read -r name file; do
             if npm view "$name@$VERSION" version > /dev/null 2>&1; then
               echo "$name@$VERSION is on npm already."
               continue
             fi
-            npm publish "./$file" --access public --provenance --tag "$dist_tag"
+            if answer="$(npm view "$name" name --json --loglevel=silent)"; then
+              npm publish "./$file" --access public --provenance --tag "$dist_tag"
+              continue
+            fi
+            code="$(jq -r '.error.code? // empty' <<< "$answer" 2> /dev/null || true)"
+            if [ "$code" != "E404" ]; then
+              echo "::error::npm could not be read for $name (${code:-no answer}), so its route is unknown: trusted publishing or a first publish. Run this workflow again once npm answers."
+              exit 1
+            fi
+            if [ -z "$NPM_BOOTSTRAP_TOKEN" ]; then
+              echo "::error::$name is not on npm yet, and its first publish needs the secret NPM_BOOTSTRAP_TOKEN, which the release environment lacks. Add an npm token that may publish $name as that secret, then run this workflow again (decision 0451)."
+              exit 1
+            fi
+            echo "$name is new on npm: it publishes once with the bootstrap token (decision 0451)."
+            npm publish "./$file" --access public --provenance --tag "$dist_tag" \
+              --userconfig "$bootstrap_config"
           done
 
   github-release:

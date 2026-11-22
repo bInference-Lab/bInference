@@ -6,8 +6,8 @@ description: Cuts a binference release on the beta or stable channel, from the d
 # Cut a release
 
 A release reaches owners who run it next to their money, and npm never lets a version go once it
-is out. Decisions 0063, 0352 and 0353 set the rules; `release.yml` and `pnpm release:dry` enforce
-them. Publishing needs the owner's word every time.
+is out. Decisions 0063, 0352, 0353 and 0451 set the rules; `release.yml` and `pnpm release:dry`
+enforce them. Publishing needs the owner's word every time.
 
 ## 1. Pick the version
 
@@ -78,9 +78,19 @@ its summary and its checksums: they must match your local dry run's.
 
 Only with the owner's word: run `release.yml` by hand with `tag` and `publish` on. The run checks
 the tag's signature and that `master` holds it, then waits for the `release` environment's
-approval. npm publishes the dry run's tarballs through trusted publishing, and the GitHub release
-gets the notes, tarballs, `SHA256SUMS` and the SBOM. A run that stops halfway runs again: the npm
-job skips a version npm holds already.
+approval. npm publishes the dry run's tarballs, and the GitHub release gets the notes, tarballs,
+`SHA256SUMS` and the SBOM. A run that stops halfway runs again: the npm job skips a version npm
+holds already.
+
+The npm job reads each package on npm before it publishes it (decision 0451). A package npm holds
+publishes through trusted publishing alone. A package npm has never held publishes once with
+`NPM_BOOTSTRAP_TOKEN`, a secret of the `release` environment: an npm granular access token that
+may publish packages of the `@binference` scope, with the shortest expiry npm offers. Without the
+secret the job stops before that package and names it; add the secret and run it again. After the
+first publish, for each new package on npmjs.com: set its trusted publisher (repository
+`bInference-Lab/bInference`, workflow `release.yml`, environment `release`), turn on "Require
+two-factor authentication and disallow tokens", then delete the token on npm and the secret in
+the `release` environment.
 
 `scratch` on is a test: npm's `scratch` dist-tag and a draft GitHub release. The version it uses is
 gone for good.
@@ -94,8 +104,11 @@ Windows; until then, host `install.sh` alone.
 
 ## 6. Never
 
-- Publish from a laptop, or with an npm token or a registry login. Only `release.yml` publishes,
-  through trusted publishing and provenance.
+- Publish from a laptop, or with a registry login. Only `release.yml` publishes, with provenance:
+  through trusted publishing, or once per package npm never held with `NPM_BOOTSTRAP_TOKEN`
+  (decision 0451).
+- Publish a package npm holds with a token, or keep `NPM_BOOTSTRAP_TOKEN` once every package has
+  its trusted publisher.
 - Publish an unsigned tag, a tag signed by a key `.github/release-signers` does not list, or a tag
   `master` does not hold.
 - Move, delete or reuse a pushed release tag, or unpublish a version.
