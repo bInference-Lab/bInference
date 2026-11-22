@@ -91,15 +91,21 @@ function dependencyCases(repo: string): readonly GateCase[] {
       { "pnpm-workspace.yaml": workspace.replace(/^ {2}typescript: /m, "  typescript: ^") },
       ["check:deps-policy", /pins typescript to \^/],
     ),
+    // The workspace may hold no exclusion at all, so the case plants one of its own.
     failingCase(
       "an age exclusion past its removal date fails check:deps-policy",
       {
         "pnpm-workspace.yaml": workspace.replace(
-          /remove after \d{4}-\d{2}-\d{2}/,
-          "remove after 2026-01-01",
+          /^minimumReleaseAgeStrict: true$/m,
+          [
+            "minimumReleaseAgeStrict: true",
+            "minimumReleaseAgeExclude:",
+            "  # A planted security fix newer than seven days; remove after 2026-01-01",
+            "  - planted-package",
+          ].join("\n"),
         ),
       },
-      ["check:deps-policy", /was due for removal on 2026-01-01/],
+      ["check:deps-policy", /exclusion planted-package was due for removal on 2026-01-01/],
     ),
   ];
 }
