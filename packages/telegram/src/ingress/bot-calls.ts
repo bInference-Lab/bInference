@@ -133,7 +133,6 @@ function sendOptionsOf(target: ReplyTarget, options: SendOptions) {
       ? {}
       : { reply_parameters: { message_id: options.replyTo, allow_sending_without_reply: true } }),
     ...(options.buttons === undefined ? {} : markupOf(options.buttons)),
-    link_preview_options: { is_disabled: true },
   };
 }
 

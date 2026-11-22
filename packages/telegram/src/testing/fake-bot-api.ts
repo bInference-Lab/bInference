@@ -11,6 +11,7 @@ import {
 } from "./fake-chat.js";
 import { createFakeMenus, type FakeMenu, type FakeMenus } from "./fake-commands.js";
 import { createFakeFiles, type FakeFile, type FakeFiles } from "./fake-files.js";
+import { showsLinkPreview } from "./fake-previews.js";
 import type { FakeTopic } from "./fake-topics.js";
 import { readFakeBody } from "./fake-uploads.js";
 import { downloadOverFetch, httpOverFetch } from "./fetch-http.js";
@@ -63,6 +64,11 @@ export interface FakePress {
 export interface FakeCall {
   readonly method: string;
   readonly chatId?: number;
+  /**
+   * Set on a message sent or edited whose text holds a web link while its link previews are on:
+   * Telegram shows the linked page's preview under it.
+   */
+  readonly linkPreview?: true;
 }
 
 /** The `fetch` grammY calls: its own types name an untyped package, so it is spelled out here. */
@@ -240,7 +246,8 @@ async function requestOf(
   const [bot = "", method = ""] = new URL(url).pathname.split("/").slice(-2);
   const body = await readFakeBody(init);
   const chatId = chatSchema.safeParse(JSON.parse(body)).data?.chat_id;
-  const call = { method, ...(chatId === undefined ? {} : { chatId }) };
+  const preview = showsLinkPreview(method, body) ? { linkPreview: true as const } : {};
+  const call = { method, ...(chatId === undefined ? {} : { chatId }), ...preview };
   return { call, bot, url, body, signal: init?.signal };
 }
 

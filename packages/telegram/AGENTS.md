@@ -128,7 +128,9 @@ Rules for this package:
 - Every grammY `Api` the package calls has its token's throttler installed
   (`createBotThrottlers().install(api)`). It paces each chat, bounds each attempt to 30 seconds
   and owns every 429 wait, so callers pass only a signal and never retry a 429 themselves.
-  `getUpdates` passes through: the poller owns its waits.
+  `getUpdates` passes through: the poller owns its waits. The same install puts
+  `noLinkPreviews` on the `Api`, so no message the bot sends or edits shows a link preview; no
+  call sets `link_preview_options` itself.
 - Its public API is what `src/index.ts` exports. The owner and card copy stores it reads and
   writes, `OwnerStore` and `CardCopyStore`, are store ports of `@binference/engine/surfaces`, with
   their contract suites and fakes in `@binference/engine/testing`. The contract suites of

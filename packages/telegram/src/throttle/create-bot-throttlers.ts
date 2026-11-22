@@ -1,13 +1,15 @@
 import { BinferenceError } from "@binference/core";
 import { sha256Hex } from "@binference/engine";
 import type { Api, Transformer } from "grammy";
+import { noLinkPreviews } from "../api/no-link-previews.js";
 import { type BotThrottlerOptions, createBotThrottler } from "./create-bot-throttler.js";
 
 /** The process's throttlers: one per bot token, shared by every grammY `Api` of that token. */
 export interface BotThrottlers {
   /**
-   * Installs the throttler of the Api's bot token on it; a second install on the same Api does
-   * nothing. Throws `telegram.too_many_bots` past 16 tokens.
+   * Installs the throttler of the Api's bot token on it, and turns link previews off on every
+   * message it sends or edits, so no card, receipt, notice or answer shows a page's preview; a
+   * second install on the same Api does nothing. Throws `telegram.too_many_bots` past 16 tokens.
    */
   install(api: Api): void;
 }
@@ -37,6 +39,7 @@ export function createBotThrottlers(options: BotThrottlerOptions): BotThrottlers
       }
       throttlers.set(key, throttler);
       throttled.add(api);
+      api.config.use(noLinkPreviews);
       api.config.use(throttler);
     },
   };

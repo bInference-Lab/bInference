@@ -60,6 +60,23 @@ describe("the bot throttlers", () => {
     expect(botApi.calls()).toStrictEqual([{ method: "sendMessage", chatId: ownerId }]);
   });
 
+  it("turn link previews off for every message the bot sends or edits", async () => {
+    const { botApi, throttlers, apiFor, clock } = setUp();
+    const api = apiFor(fakeBotToken);
+    throttlers.install(api);
+    const link = "https://bscscan.com/tx/0x1";
+    const sent = await api.sendMessage(ownerId, `Sent · ${link}`);
+    const edit = api.editMessageText(ownerId, sent.message_id, `Done · ${link}`, {
+      parse_mode: "HTML",
+    });
+    await clock.advance(1_000);
+    await edit;
+    expect(botApi.calls()).toStrictEqual([
+      { method: "sendMessage", chatId: ownerId },
+      { method: "editMessageText", chatId: ownerId },
+    ]);
+  });
+
   it("refuse a seventeenth bot token and keep serving the sixteen", () => {
     const { throttlers, apiFor } = setUp();
     const tokens = Array.from({ length: 15 }, (_, index) => `70123${String(index)}:token`);

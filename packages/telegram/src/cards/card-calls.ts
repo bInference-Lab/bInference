@@ -23,7 +23,7 @@ interface Call {
 
 /** The Bot API calls cards make, with their faults mapped. */
 export interface CardCalls {
-  /** Sends a card in HTML with its buttons, with no link preview; answers its message id. */
+  /** Sends a card in HTML with its buttons; answers its message id. */
   send(card: CardMessage, call: Call): Promise<number>;
   /**
    * Edits a card message into its receipt and removes its buttons. A message Telegram no longer
@@ -44,7 +44,6 @@ export function createCardCalls(api: Api): CardCalls {
           card.html,
           {
             parse_mode: "HTML",
-            link_preview_options: { is_disabled: true },
             reply_markup: {
               inline_keyboard: [
                 card.buttons.map((button) => ({ text: button.text, callback_data: button.data })),

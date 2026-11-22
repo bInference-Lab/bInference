@@ -21,8 +21,7 @@ async function editInto(
 ): Promise<void> {
   const { api, clock } = parts;
   const edit = async (text: string, mode: "html" | "plain"): Promise<void> => {
-    const format = mode === "html" ? { parse_mode: "HTML" as const } : {};
-    const options = { ...format, link_preview_options: { is_disabled: true } };
+    const options = mode === "html" ? { parse_mode: "HTML" as const } : {};
     await resendUnsent(
       async () =>
         callBotApi("editMessageText", signal, async (sent) =>

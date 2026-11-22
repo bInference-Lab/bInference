@@ -23,8 +23,7 @@ async function sendText(
   message: { readonly chatId: number; readonly text: string; readonly mode: "html" | "plain" },
   call: Call,
 ): Promise<{ readonly message_id: number }> {
-  const format = message.mode === "html" ? { parse_mode: "HTML" as const } : {};
-  const options = { ...format, link_preview_options: { is_disabled: true } };
+  const options = message.mode === "html" ? { parse_mode: "HTML" as const } : {};
   return resendUnsent(
     async () =>
       callBotApi("sendMessage", call.signal, async (signal) =>

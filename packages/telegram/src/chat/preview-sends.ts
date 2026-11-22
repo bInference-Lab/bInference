@@ -63,8 +63,7 @@ async function previewCall(
 ): Promise<number> {
   const { api } = preview.parts;
   const { chatId } = preview;
-  const format = text.mode === "html" ? { parse_mode: "HTML" as const } : {};
-  const options = { ...format, link_preview_options: { is_disabled: true } };
+  const options = text.mode === "html" ? { parse_mode: "HTML" as const } : {};
   const signal = previewSignal(preview.life);
   const { messageId } = preview.showing;
   if (messageId === undefined) {
