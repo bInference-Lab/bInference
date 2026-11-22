@@ -35,14 +35,16 @@ async function sendText(
 
 /**
  * Sends one message of Telegram HTML to a chat, again up to 3 tries while it provably never left
- * (decision 0373); it waits out the chat's pace and any 429, as an answer does.
+ * (decision 0373); it waits out the chat's pace and any 429, as an answer does. Answers the
+ * message's id.
  */
 export async function sendHtml(
   parts: AnswerSendParts,
   message: { readonly chatId: number; readonly html: string },
   call: Call,
-): Promise<void> {
-  await sendText(parts, { chatId: message.chatId, text: message.html, mode: "html" }, call);
+): Promise<number> {
+  const html = { chatId: message.chatId, text: message.html, mode: "html" } as const;
+  return (await sendText(parts, html, call)).message_id;
 }
 
 /**

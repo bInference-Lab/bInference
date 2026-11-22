@@ -72,6 +72,11 @@ function setUp(passes: OutboxPass[] = [], settling?: CardSettling) {
       events.push(`chat ${push.kind}`);
       return Promise.resolve();
     },
+    cardShown: () => undefined,
+    cardClosed: async (closed) => {
+      events.push(`card closed ${closed}`);
+      return Promise.resolve();
+    },
     idle: async () => Promise.resolve(),
     close: () => {
       events.push("chat closed");
@@ -137,6 +142,22 @@ describe("the relay to the owner's chat", () => {
     await test.relay.idle();
     expect(test.events).toStrictEqual(["send all", "send all"]);
     await test.relay.close();
+  });
+
+  it("tells the agent's replies a card closed for good, and not one a new version replaced", async () => {
+    const test = setUp([], sending);
+    const closed = (reason: string) =>
+      ({ topic: "intent", kind: "card/closed", data: { intent, card: card(1), reason } }) as const;
+    test.relay.relay(closed("replaced"));
+    test.relay.relay(closed("confirmed"));
+    await test.relay.idle();
+    await test.relay.close();
+    expect(test.events).toStrictEqual([
+      "settle confirmed",
+      `card closed ${intent}`,
+      "settle confirmed",
+      "chat closed",
+    ]);
   });
 
   it("turns a bridge's card into its receipt on its way once its deposit is final", async () => {

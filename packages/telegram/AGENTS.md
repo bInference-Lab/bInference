@@ -103,6 +103,9 @@ Rules for this package:
   preview. A message of the answer whose send provably never left goes again through
   `resendUnsent`, 3 tries at most (decision 0373); an answer Telegram refuses leaves the status
   message saying so, and a turn that ends with nothing for the owner gets `telegram.chat.noAnswer`.
+  A status line that says the turn's card waits (`turn.proposalWaits`, `turn.moreProposals`) is
+  kept by the cards shown while the turn ran (`src/chat/waiting-lines.ts`) and deleted once one
+  of them closes for good, so it never outlives its card.
 - A fast command's button carries `bnf1:t:h:<limit>` (a `/limits` button halves that limit) or
   `bnf1:l:s:<en|zh>` (a `/lang` button sets `owner.locale` through `config/change`, decision 0134) or `bnf1:r:<m|t>:<choice>` (a `/replies` button sets one key of `telegram.replies`,
   decision 0377), the only settings the chat changes at once, or `bnf1:k:<a|r|c>:<id>` (a

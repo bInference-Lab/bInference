@@ -438,6 +438,25 @@ describe("the agent's answers in Telegram", () => {
     expect(botApi.sent().map(({ text }) => text.length)).toStrictEqual([3_999, 1_999]);
   });
 
+  it("removes the line that a card waits once that card closes, and sends none for one closed", async () => {
+    const { botApi, clock, replies } = await setUp();
+    const intent = "int_0190f1c2-3a4b-7c5d-8e6f-0123456789ab";
+    const waits = push("chat/status", { agent, turn, statusKey: "turn.proposalWaits" });
+    await replies.show(started, live);
+    replies.cardShown(intent);
+    const shown = replies.show(waits, live);
+    await clock.advance(0);
+    await shown;
+    const [line] = botApi.messages();
+    const closed = replies.cardClosed(intent, live);
+    await clock.advance(1_000);
+    await closed;
+    await replies.show(waits, live);
+    expect(line?.text).toContain("Waiting for your answer on its card");
+    expect(botApi.deleted()).toStrictEqual([{ chatId: ownerId, messageId: line?.messageId }]);
+    expect(botApi.messages()).toStrictEqual([]);
+  });
+
   it("shows a status line in italics after the answer", async () => {
     const { botApi, clock, replies } = await setUp();
     const line = push("chat/status", {

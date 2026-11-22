@@ -11,10 +11,11 @@ import type { Call, Parts, TurnShowing } from "./chat-replies-parts.js";
 import { startTyping } from "./chat-typing.js";
 import { showCredentialRequest } from "./credential-message.js";
 import { createGoalMessages } from "./goal-message.js";
-import { otherReplyOf } from "./other-reply.js";
+import { noteOtherReply } from "./other-reply.js";
 import { reasoningHtmlOf } from "./reasoning-html.js";
 import { isShownPush, type ShownPush, showShown } from "./shown-push.js";
 import { createStatusMessage, type StatusMessage, type StatusParts } from "./status-message.js";
+import { createWaitingLines } from "./waiting-lines.js";
 
 /** Shows the agent's replies in the owner's chat: a status message while it works, then its answer. */
 export interface ChatReplies {
@@ -27,6 +28,13 @@ export interface ChatReplies {
     push: { readonly kind: string; readonly data: JsonValue },
     options: { readonly signal: AbortSignal },
   ): Promise<void>;
+  /** Hears that a card opened in the owner's chat, which a running turn's waiting line waits on. */
+  cardShown(intent: string): void;
+  /**
+   * Hears that an intent's card closed: each line that said it waits for the owner's answer goes,
+   * so none outlives its card (spec 4, section 8.1).
+   */
+  cardClosed(intent: string, options: { readonly signal: AbortSignal }): Promise<void>;
   /** Resolves once every send, edit and removal of a status message in flight is done. */
   idle(): Promise<void>;
   /** Stops refreshing every status message; a removal that waits goes at once. */
@@ -197,15 +205,18 @@ function statusLine(parts: Parts, push: StatusPush): string {
   return words(parts, push.statusKey, shown);
 }
 
+// A line that says the turn's card waits goes once the card closes, and not at all when it closed
+// first.
 async function status(parts: Parts, push: StatusPush, call: Call): Promise<void> {
   const showing = parts.turns.get(keyOf(push));
   const chatId = showing?.chatId ?? (await ownerChat(parts, call));
   if (showing !== undefined) {
     showing.reply.isGiven = true;
   }
-  if (chatId !== undefined) {
+  if (chatId !== undefined && !parts.waiting.isAnswered(push.statusKey, keyOf(push))) {
     const line = await named(parts, { agent: push.agent, text: statusLine(parts, push) }, call);
-    await sendHtml(parts.options, { chatId, html: statusHtmlOf(line) }, call);
+    const messageId = await sendHtml(parts.options, { chatId, html: statusHtmlOf(line) }, call);
+    parts.waiting.keep(push.statusKey, keyOf(push), { chatId, messageId });
   }
 }
 
@@ -308,18 +319,6 @@ async function ended(parts: Parts, push: EndedPush, call: Call): Promise<void> {
   await sendHtml(parts.options, { chatId: showing.chatId, html: escapeHtml(text) }, call);
 }
 
-// An agent's question, or its launch draft, is a reply of its running turn, which another part of
-// the bot shows.
-function noteOtherReply(parts: Parts, push: { readonly kind: string; readonly data: JsonValue }) {
-  const reply = otherReplyOf(push);
-  for (const [key, showing] of reply === undefined ? [] : parts.turns) {
-    const { agent, turn } = reply ?? { agent: "" };
-    if (showing.agent === agent && (turn === undefined || key === `${agent} ${turn}`)) {
-      showing.reply.isGiven = true;
-    }
-  }
-}
-
 /**
  * Creates the agent's replies in the owner's chat (ARCHITECTURE.md section 12, decisions 0371 and
  * 0373 to 0377). The typing indicator shows while a turn runs. In the `progress` reply mode a
@@ -340,6 +339,7 @@ export function createChatReplies(options: ChatRepliesOptions): ChatReplies {
     formatter: () => formatters(options.display()),
     turns: new Map(),
     removals: new Map(),
+    waiting: createWaitingLines(createBotCalls(options.api), options.logger),
   };
   const goals = createGoalMessages({ options, formatter: parts.formatter });
   return {
@@ -353,6 +353,8 @@ export function createChatReplies(options: ChatRepliesOptions): ChatReplies {
       await goals.show(given, call);
       noteOtherReply(parts, given);
     },
+    cardShown: (intent) => parts.waiting.shown(intent, parts.turns.keys()),
+    cardClosed: async (intent, call) => parts.waiting.closed(intent, call),
     async idle() {
       const turns = [...parts.turns.values()].map(async (showing) => showing.status.idle());
       await Promise.all([...turns, ...parts.removals.keys(), goals.idle()]);

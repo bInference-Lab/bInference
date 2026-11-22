@@ -52,6 +52,8 @@ type RelayWork =
       readonly intent: Id<"int">;
       /** Settle only a receipt that shows how a live intent stands, as a bridge on its way. */
       readonly onlyLive?: true;
+      /** The card closed for good, so the agent's line that it waits goes (spec 4, section 8.1). */
+      readonly closes?: true;
     }
   | { readonly kind: "deliver"; readonly through?: Id<"ntc"> }
   | { readonly kind: "chat"; readonly push: EnginePush };
@@ -69,7 +71,11 @@ const openedSchema: z.ZodType<CardVersionRef> = z.object({
   intent: idSchema("int"),
   card: idSchema("crd"),
 });
-const movedSchema = z.object({ intent: idSchema("int"), state: z.string().optional() });
+const movedSchema = z.object({
+  intent: idSchema("int"),
+  state: z.string().optional(),
+  reason: z.string().optional(),
+});
 const storedNoticeSchema = z.object({ id: idSchema("ntc") });
 const deliverAll: RelayWork = { kind: "deliver" };
 // The moves after which a confirmed card's receipt shows more: a paper fill, a bridge's final
@@ -105,7 +111,10 @@ function settles(kind: string, state: string | undefined): boolean {
 
 // A final deposit is a bridge on its way (spec 6, section 8); any other intent's receipt says
 // nothing new there, so its card is left as it is.
-function settleWorkOf(intent: Id<"int">, state: string | undefined): RelayWork {
+function settleWorkOf(
+  intent: Id<"int">,
+  state: string | undefined,
+): Extract<RelayWork, { readonly kind: "settle" }> {
   return state === "finalized"
     ? { kind: "settle", intent, onlyLive: true }
     : { kind: "settle", intent };
@@ -124,9 +133,13 @@ function cardWorkOf(push: EnginePush): RelayWork | undefined {
     return opened.success ? { kind: "show", ref: opened.data } : undefined;
   }
   const moved = movedSchema.safeParse(push.data);
-  return moved.success && settles(push.kind, moved.data.state)
-    ? settleWorkOf(moved.data.intent, moved.data.state)
-    : undefined;
+  if (!moved.success || !settles(push.kind, moved.data.state)) {
+    return undefined;
+  }
+  // A card a new version replaced still waits for the owner, as that version.
+  const closes = push.kind === "card/closed" && moved.data.reason !== "replaced";
+  const work = settleWorkOf(moved.data.intent, moved.data.state);
+  return closes ? { ...work, closes } : work;
 }
 
 // A Confirm or Cancel pressed in Telegram turns the pressed card into its receipt itself; how a
@@ -144,6 +157,7 @@ async function show(context: TelegramRelayContext, ref: CardVersionRef, call: Ca
     return;
   }
   const shown = await context.cards.show(showing, call);
+  context.chat.cardShown(ref.intent);
   if (!shown.ok) {
     context.logger.info("telegram.card_not_shown", {
       intentId: ref.intent,
@@ -157,6 +171,9 @@ async function settle(
   work: Extract<RelayWork, { kind: "settle" }>,
   call: Call,
 ) {
+  if (work.closes === true) {
+    await context.chat.cardClosed(work.intent, call);
+  }
   const settling = await context.showings.settled(work.intent, call);
   const isShown = work.onlyLive !== true || settling?.live !== undefined;
   if (settling !== undefined && isShown && !isTelegramAnswer(settling)) {

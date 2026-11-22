@@ -143,12 +143,12 @@ describe.each(skeletonCompositions)(
             report,
           ].toSorted(byText),
         );
+        // The line that the card waits goes with the status message once the card is answered.
         expect(botApi.messages().map(({ text, buttons }) => ({ text, buttons }))).toStrictEqual([
           { text: `${icons.paper} Paper fill: 0.000000000001 FAKE → 2 TKN`, buttons: [] },
-          { text: `${icons.waiting} Waiting for your answer on its card`, buttons: [] },
           { text: report, buttons: [] },
         ]);
-        expect(botApi.deleted()).toHaveLength(1);
+        expect(botApi.deleted()).toHaveLength(2);
       },
     );
   },

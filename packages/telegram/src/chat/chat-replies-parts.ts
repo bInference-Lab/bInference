@@ -3,6 +3,7 @@ import type { BotCalls } from "../ingress/bot-calls.js";
 import type { ChatRepliesOptions, ReplySettings } from "./chat-replies-options.js";
 import type { ChatTyping } from "./chat-typing.js";
 import type { StatusMessage } from "./status-message.js";
+import type { WaitingLines } from "./waiting-lines.js";
 
 /** One running turn in the owner's chat: its chat and its status message. */
 export interface TurnShowing {
@@ -32,4 +33,6 @@ export interface Parts {
   readonly turns: Map<string, TurnShowing>;
   /** The status messages that wait for their time to go, by their removal. */
   readonly removals: Map<Promise<void>, StatusMessage>;
+  /** The lines that say a card waits for the owner, which go once it closes. */
+  readonly waiting: WaitingLines;
 }
