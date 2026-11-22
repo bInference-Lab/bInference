@@ -380,8 +380,9 @@ baseline (section 18).
 
 ## 5. Naming
 
-- Files and folders: kebab-case (`wallet-queue.ts`). Enforcer: Oxlint `unicorn/filename-case`
-  (`kebabCase`); folders: `check:layout`.
+- Files and folders: kebab-case (`wallet-queue.ts`); a Next.js route group keeps its parentheses
+  around a kebab-case name (`(zh)`). Enforcer: Oxlint `unicorn/filename-case` (`kebabCase`);
+  folders: `check:layout`.
 - Types and interfaces: PascalCase, no `I` prefix (`Signer`, not `ISigner`). Enforcer:
   `guards/no-interface-prefix` and `guards/type-pascal-case` (Oxlint's `eslint/id-match` refuses a
   look-ahead pattern, so it cannot single out the prefix).

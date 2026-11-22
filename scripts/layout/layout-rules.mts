@@ -23,6 +23,8 @@ function read(repo: RepoView, file: string): string {
 }
 
 const kebabCase = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+// A Next.js route group names a folder in parentheses, such as the landing site's `(zh)`.
+const routeGroup = /^\([a-z0-9]+(?:-[a-z0-9]+)*\)$/;
 const bannedNames = /^(?:utils|helpers|common|misc|shared)(?:\.[a-z]+)+$/;
 
 /** Folders are kebab-case; no file is a grab bag such as utils.ts. */
@@ -30,7 +32,13 @@ export function namingProblems(repo: RepoView): LayoutProblem[] {
   const folders = new Set(repo.files.flatMap((file) => dirname(file).split("/").filter(Boolean)));
   return [
     ...[...folders]
-      .filter((folder) => folder !== "." && !folder.startsWith(".") && !kebabCase.test(folder))
+      .filter(
+        (folder) =>
+          folder !== "." &&
+          !folder.startsWith(".") &&
+          !kebabCase.test(folder) &&
+          !routeGroup.test(folder),
+      )
       .map((folder) => problem("folder-name", `Folder ${folder} is not kebab-case.`)),
     ...repo.files
       .filter((file) => bannedNames.test(basename(file)))
@@ -150,11 +158,11 @@ function scriptsOf(manifest: string): Readonly<Record<string, string>> {
   );
 }
 
-/** Tests sit beside the code in a package's src folder, and nowhere else. */
+/** Tests sit beside the code in a package's or an app's src folder, and nowhere else. */
 export function testProblems(repo: RepoView): LayoutProblem[] {
   return repo.files
     .filter((file) => /\.(?:test|spec)\.[cm]?[jt]sx?$/.test(file))
-    .filter((file) => !/^(?:packages|plugins)\/[^/]+\/src\//.test(file))
+    .filter((file) => !/^(?:packages|plugins|apps)\/[^/]+\/src\//.test(file))
     .map((file) => problem("test-location", `${file}: tests live beside the code in src/.`));
 }
 
