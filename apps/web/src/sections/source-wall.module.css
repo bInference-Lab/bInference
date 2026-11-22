@@ -1,0 +1,117 @@
+@property --sx {
+  syntax: "<length-percentage>";
+  inherits: true;
+  initial-value: 30%;
+}
+@property --sy {
+  syntax: "<length-percentage>";
+  inherits: true;
+  initial-value: 40%;
+}
+.readme {
+  position: relative;
+  z-index: 2;
+  min-height: 92svh;
+  display: grid;
+  align-content: center;
+  text-align: center;
+  overflow: clip;
+  border-top: 1px solid var(--line);
+}
+.walls {
+  position: absolute;
+  inset: 0;
+  -webkit-mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, transparent 52%, #000 100%);
+  mask-image: radial-gradient(ellipse 50% 50% at 50% 50%, transparent 52%, #000 100%);
+}
+.wall {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 40px;
+  padding: 0 28px;
+  font: 12.5px/1.75 var(--mono);
+  color: #23282f;
+  text-align: left;
+}
+.wall pre {
+  margin: 0;
+  font: inherit;
+  white-space: pre;
+  overflow: hidden;
+  animation: crawl 90s linear infinite;
+}
+.wall pre:nth-child(2) {
+  animation-duration: 120s;
+}
+.wall pre:nth-child(3) {
+  animation-duration: 75s;
+}
+@keyframes crawl {
+  to {
+    transform: translateY(-50%);
+  }
+}
+.lit {
+  color: #d5d9de;
+  -webkit-mask-image: radial-gradient(
+    circle 210px at var(--sx) var(--sy),
+    #000 0,
+    #000 30%,
+    transparent 100%
+  );
+  mask-image: radial-gradient(
+    circle 210px at var(--sx) var(--sy),
+    #000 0,
+    #000 30%,
+    transparent 100%
+  );
+  animation: roam 16s ease-in-out infinite alternate;
+}
+.lit[data-roam="off"] {
+  animation: none;
+}
+@keyframes roam {
+  0% {
+    --sx: 12%;
+    --sy: 30%;
+  }
+  35% {
+    --sx: 30%;
+    --sy: 78%;
+  }
+  65% {
+    --sx: 82%;
+    --sy: 24%;
+  }
+  100% {
+    --sx: 90%;
+    --sy: 74%;
+  }
+}
+.front {
+  position: relative;
+}
+.title {
+  font-size: clamp(56px, 9vw, 132px);
+  letter-spacing: -0.05em;
+  line-height: 0.97;
+  font-weight: 290;
+  margin-bottom: 28px;
+}
+.title b {
+  font-weight: 640;
+}
+.front p {
+  max-width: 560px;
+  margin: 0 auto;
+}
+@media (max-width: 900px) {
+  .wall {
+    grid-template-columns: 1fr;
+  }
+  .wall pre:nth-child(n + 2) {
+    display: none;
+  }
+}

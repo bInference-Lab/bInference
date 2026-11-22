@@ -10,6 +10,9 @@ describe("wordsFor", () => {
     expect(renderToStaticMarkup(<p>{words.rich("gate.line")}</p>)).toBe(
       "<p><b>Nothing moves</b> until you tap.</p>",
     );
+    expect(renderToStaticMarkup(<p>{words.rich("assembly.final")}</p>)).toBe(
+      '<p>One agent. <b class="gold">Yours.</b></p>',
+    );
   });
 
   it("gives plain text without its tags", () => {

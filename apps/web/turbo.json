@@ -12,7 +12,11 @@
         "next-run.mjs",
         "package.json",
         "tsconfig.json",
-        "$TURBO_ROOT$/packages/i18n/messages/*/web.json"
+        "$TURBO_ROOT$/packages/i18n/messages/*/web.json",
+        "$TURBO_ROOT$/packages/engine/src/policy/check-policy.ts",
+        "$TURBO_ROOT$/packages/engine/src/policy/rescue-change.ts",
+        "$TURBO_ROOT$/packages/engine/src/policy/send-level-change.ts",
+        "$TURBO_ROOT$/packages/engine/src/wallet-queue/lowest-free-nonce.ts"
       ],
       "outputs": [".next/**", "!.next/cache/**", "!.next/dev/**"]
     }

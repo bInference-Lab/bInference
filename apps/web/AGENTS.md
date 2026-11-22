@@ -5,7 +5,9 @@ Simplified Chinese at `/zh`, built with Next.js ([decision 0452](../../docs/DECI
 
 The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this folder:
 
-- Every page is prerendered: no server code runs at request time.
+- Every page is prerendered: no server code runs at request time. The source behind "Read me" is
+  read from the engine's files at build time (`src/sections/source-files.ts`); a file it names is
+  also an input of the build in `turbo.json`.
 - Every word a person sees lives in `packages/i18n/messages/{en,zh}/web.json` and is formatted on
   the server by `src/words/words.tsx`, with the tags `b`, `light`, `gold`, `br` and `dot`. Client
   components get their words as props, never import the catalogs.

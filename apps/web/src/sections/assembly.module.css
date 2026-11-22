@@ -1,0 +1,193 @@
+.assembly {
+  position: relative;
+  z-index: 2;
+  height: 540vh;
+}
+.stage {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  --q: clamp(0, calc(var(--p, 0) * 1.42), 1);
+  --loose: calc(1 - var(--q));
+}
+.orbits {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  perspective: 1200px;
+  opacity: calc(0.25 + var(--loose) * 0.75);
+}
+.orbits i {
+  grid-area: 1 / 1;
+  position: relative;
+  width: var(--s);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 1px solid rgb(255 255 255 / 0.13);
+  transform: rotateX(74deg) rotateZ(0deg);
+  animation: orbit var(--t) linear infinite;
+}
+.orbits i::after {
+  content: "";
+  position: absolute;
+  top: -3px;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  margin-left: -3px;
+  border-radius: 50%;
+  background: var(--gold);
+}
+.orbits i:nth-child(1) {
+  --s: 72vmin;
+  --t: 38s;
+}
+.orbits i:nth-child(2) {
+  --s: 104vmin;
+  --t: 64s;
+  animation-direction: reverse;
+}
+.orbits i:nth-child(3) {
+  --s: 142vmin;
+  --t: 96s;
+}
+@keyframes orbit {
+  to {
+    transform: rotateX(74deg) rotateZ(360deg);
+  }
+}
+.head {
+  position: absolute;
+  top: 12svh;
+  left: 0;
+  right: 0;
+  text-align: center;
+  opacity: calc(1 - var(--p, 0) * 9);
+}
+.rig {
+  perspective: 1300px;
+  height: min(46svh, 470px);
+  aspect-ratio: 480 / 644;
+  translate: 0 -2svh;
+}
+.space {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transform: rotateX(calc(var(--my, 0) * -14deg * (0.2 + var(--loose)) + var(--loose) * 8deg))
+    rotateY(calc(var(--mx, 0) * 22deg * (0.2 + var(--loose)) + var(--loose) * -26deg));
+}
+.part {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  fill: none;
+  stroke: #dfe3e8;
+  stroke-width: 1.6;
+  transform: translate3d(
+      calc(var(--dx) * var(--loose) * var(--spread, 1)),
+      calc(var(--dy) * var(--loose) * var(--spread, 1)),
+      calc(var(--dz) * var(--loose))
+    )
+    rotate(calc(var(--r, 0deg) * var(--loose)));
+  transition: stroke 0.5s var(--ease);
+}
+.part > * {
+  vector-effect: non-scaling-stroke;
+}
+.gold {
+  stroke: var(--gold);
+}
+.assembly[data-step="1"] .model,
+.assembly[data-step="2"] .engine,
+.assembly[data-step="3"] .signer,
+.assembly[data-step="4"] .you {
+  stroke: var(--gold);
+  stroke-width: 2.6;
+}
+.assembly[data-step="1"] .part:not(.model),
+.assembly[data-step="2"] .part:not(.engine),
+.assembly[data-step="3"] .part:not(.signer) {
+  stroke: #4a515a;
+}
+.part {
+  opacity: calc(1 - max(0, calc(var(--p, 0) - 0.74)) * 5);
+}
+/* The agent itself takes the parts' place once they lock: its slot opens only then. */
+.end {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: calc(100% * min(1, max(0, calc((var(--p, 0) - 0.8) * 1000))));
+}
+.says {
+  position: absolute;
+  bottom: 9svh;
+  left: 0;
+  right: 0;
+  text-align: center;
+  height: 3.4em;
+}
+.say {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity 0.6s var(--ease),
+    transform 0.6s var(--ease);
+  font-size: clamp(26px, 3.3vw, 46px);
+  letter-spacing: -0.03em;
+  font-weight: 300;
+  padding: 0 22px;
+}
+.say b {
+  font-weight: 650;
+}
+.say small {
+  display: block;
+  margin-top: 10px;
+  font-size: 16px;
+  color: var(--mute);
+  font-weight: 400;
+}
+.assembly[data-step="1"] .say:nth-child(1),
+.assembly[data-step="2"] .say:nth-child(2),
+.assembly[data-step="3"] .say:nth-child(3) {
+  opacity: 1;
+  transform: none;
+}
+.assembly[data-step="4"] .say:nth-child(4) {
+  transform: none;
+  opacity: calc(1 - max(0, calc(var(--p, 0) - 0.84)) * 14);
+}
+.final {
+  position: absolute;
+  bottom: 8svh;
+  left: 0;
+  right: 0;
+  text-align: center;
+  opacity: calc(max(0, calc(var(--p, 0) - 0.88)) * 9);
+}
+.final h2 {
+  font-size: clamp(44px, 6.2vw, 92px);
+  font-weight: 280;
+  letter-spacing: -0.05em;
+}
+.final h2 b {
+  font-weight: 650;
+}
+@media (max-width: 900px) {
+  .rig {
+    height: min(34svh, 320px);
+    --spread: 0.42;
+  }
+}

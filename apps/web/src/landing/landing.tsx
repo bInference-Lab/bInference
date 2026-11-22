@@ -1,16 +1,27 @@
 import { AgentProvider } from "../agent/agent-context";
 import { AgentStage } from "../agent/agent-stage";
+import { Assembly } from "../sections/assembly";
+import { Boundary } from "../sections/boundary";
 import { CardScene } from "../sections/card-scene";
 import { Day } from "../sections/day";
 import { Gate } from "../sections/gate";
 import { Hero } from "../sections/hero";
 import { Install } from "../sections/install";
+import { Playground } from "../sections/playground";
 import { SiteFooter } from "../sections/site-footer";
 import { SiteNav } from "../sections/site-nav";
+import { SourceWall } from "../sections/source-wall";
 import { Takeover } from "../sections/takeover";
 import { Tools } from "../sections/tools";
 import { type Locale, wordsFor, type Words } from "../words/words";
-import { dayEntries, takeoverIdeas, toolList } from "./section-words";
+import {
+  boundaryWords,
+  dayEntries,
+  demoRuns,
+  playgroundWords,
+  takeoverIdeas,
+  toolList,
+} from "./section-words";
 
 const otherLanguage: Readonly<
   Record<Locale, { readonly locale: Locale; readonly href: string; readonly lang: string }>
@@ -24,7 +35,11 @@ function Nav(props: { readonly words: Words }): React.JSX.Element {
   const other = otherLanguage[words.locale];
   return (
     <SiteNav
-      links={[{ href: "#day", label: words.text("nav.day") }]}
+      links={[
+        { href: "#day", label: words.text("nav.day") },
+        { href: "#play", label: words.text("nav.talk") },
+        { href: "#readme", label: words.text("nav.source") },
+      ]}
       start={words.text("nav.start")}
       other={{
         href: other.href,
@@ -72,6 +87,10 @@ export function Landing(props: { readonly locale: Locale }): React.JSX.Element {
           tools={toolList(words)}
         />
         <CardScene words={words} />
+        <Playground words={playgroundWords(words)} runs={demoRuns(words)} />
+        <SourceWall words={words} />
+        <Boundary words={boundaryWords(words)} />
+        <Assembly words={words} />
         <Install words={words} />
       </main>
       <SiteFooter words={words} />
