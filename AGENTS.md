@@ -104,7 +104,7 @@ rules are in [docs/ENGINEERING.md](docs/ENGINEERING.md#section-19) section 19.
 - One reason to exist. If the subject needs "and" to join two unrelated changes, split it.
 - Everything that reason needs: code, tests, TSDoc, English and Chinese messages, docs, the config
   migration, the ADR. Callers move and the old path is deleted in the same commit.
-- Green on its own on Linux, macOS and Windows, and revertable alone.
+- Green on its own on each OS CI runs (macOS alone today, decision 0453), and revertable alone.
 - Apart, each in its own commit: a refactor or rename a feature needs (first), formatting-only
   changes, one dependency update, an unrelated fix found on the way.
 - Together: a migration and the code that needs it; generated files and their cause.
@@ -184,5 +184,6 @@ Skills live in `.agents/skills/`. Run the first two on every change, in this ord
 1. The behavior is tested at the cheapest layer that proves it.
 2. Public exports carry TSDoc; new user-facing words exist in English and Chinese.
 3. A config change has its migration; a load-bearing decision has its ADR.
-4. `pnpm check` passes. CI runs it on Linux, macOS and Windows on each push to `master`, never on a
-   branch or pull request, so prove a Windows-specific path on Windows before the merge.
+4. `pnpm check` passes. CI runs it on macOS on each push to `master` while the release supports macOS
+   alone (decision 0453), never on a branch or pull request, so prove an OS-specific path on its OS
+   before the merge.
