@@ -2,6 +2,7 @@ import { join } from "node:path";
 import { listFolderFiles, readTextFile, writePrivateFile } from "@binference/platform";
 import { fakeBotToken } from "@binference/telegram/testing";
 import { afterEach, describe, expect, it } from "vitest";
+import { proxyUrlWith } from "../config/secrets/test-proxy-url.js";
 import { newOwnerKey, runOn, secretEnv, storedInstall } from "./init-fixtures.js";
 import { testModelKey } from "./model-fixtures.js";
 import { noPermissions, testSystem, type TestMachine } from "./test-host.js";
@@ -121,7 +122,7 @@ describe("binference report", () => {
       await seedConfig(machine.folder);
       const env = {
         ...secretEnv(machine),
-        TEST_PROXY: `http://ana:${seeded.proxyPassword}@proxy.example.com:3128`,
+        TEST_PROXY: proxyUrlWith("ana", seeded.proxyPassword, "proxy.example.com:3128"),
       };
       expect(await engines.start(machine, { env })).toMatchObject({ state: "ready" });
       const wallet = await walletOf(machine);

@@ -8,6 +8,7 @@ import { loadConfig } from "../load-config.js";
 import { currentConfigVersion } from "../migrations/config-migrations.js";
 import type { ConfigOutcome } from "../validate-config.js";
 import { createSecretReader } from "./secret-reader.js";
+import { proxyUrlWith } from "./test-proxy-url.js";
 
 // No redaction pattern matches this value, so only the code under test can keep it hidden.
 const secret = "correct-horse-battery-staple-4417";
@@ -95,7 +96,7 @@ describe("secrets in logs and errors", () => {
 
   it("keeps a proxy read from its source, password included, out of its route", async () => {
     const proxyReader = createSecretReader({
-      env: { TEST_PROXY: `http://owner:${secret}@proxy.owner.test:3128` },
+      env: { TEST_PROXY: proxyUrlWith("owner", secret, "proxy.owner.test:3128") },
       keychain: createMemorySecretStore({}),
       homeDir: "/srv/owner",
       clock: createManualClock(0),

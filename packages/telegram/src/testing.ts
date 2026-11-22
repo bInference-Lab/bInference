@@ -16,7 +16,12 @@ export { ownerCallsContract } from "./contracts/owner-calls-contract.js";
 export type { OwnerCallsHarness, OwnerCallsSubject } from "./contracts/owner-calls-contract.js";
 export { createFakeCardAnswers } from "./fakes/fake-card-answers.js";
 export type { FakeCardAnswers, FakeCardAnswersOptions } from "./fakes/fake-card-answers.js";
-export { createFakeBotApi, fakeBotToken, fakeBotUsername } from "./testing/fake-bot-api.js";
+export {
+  createFakeBotApi,
+  fakeBotApiBase,
+  fakeBotToken,
+  fakeBotUsername,
+} from "./testing/fake-bot-api.js";
 export type { FakeFile } from "./testing/fake-files.js";
 export type {
   FakeBotApi,

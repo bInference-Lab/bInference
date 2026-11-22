@@ -1,8 +1,8 @@
-import { fakeBotToken } from "@binference/telegram/testing";
+import { fakeBotApiBase } from "@binference/telegram/testing";
 import { describe, expect, it, vi } from "vitest";
 import { createSmokeBot } from "./smoke-bot.js";
 
-const pollUrl = `https://api.telegram.org/bot${fakeBotToken}/getUpdates`;
+const pollUrl = `${fakeBotApiBase}/getUpdates`;
 const minute = 60_000;
 
 describe("the smoke's synthetic Bot API", () => {

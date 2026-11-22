@@ -10,6 +10,7 @@ import { createMemoryLogger } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
 import type { NetworkConfig } from "../config/schema/operations.schema.js";
 import type { SecretReader } from "../config/secrets/secret-reader.js";
+import { proxyUrlWith } from "../config/secrets/test-proxy-url.js";
 import { createSystemHttp, type OutboundSwitch } from "../runtime/system-http.js";
 import { openProxyCell, type ProxyCellOptions } from "./proxy-cell.js";
 
@@ -166,7 +167,7 @@ describe("openProxyCell", () => {
       const cell = await openProxyCell(
         {
           network: () => ({ proxy: { fromEnv: "PROXY" }, noProxy: [] }),
-          secrets: readerOf({ PROXY: `http://owner:${password}@127.0.0.1:1` }),
+          secrets: readerOf({ PROXY: proxyUrlWith("owner", password, "127.0.0.1:1") }),
           outbound: http,
           http,
           logger,

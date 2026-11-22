@@ -7,6 +7,7 @@ import {
   startStandInProxy,
 } from "@binference/platform/testing";
 import { afterEach, describe, expect, it } from "vitest";
+import { proxyUrlWith } from "../config/secrets/test-proxy-url.js";
 import { runCli } from "../program/run-cli.js";
 import { createSystemHttp, type OutboundSwitch, type SystemHttp } from "../runtime/system-http.js";
 import { createScriptedPrompter } from "../term/scripted-prompter.js";
@@ -168,7 +169,7 @@ describe("binference init --proxy", () => {
     const recorded = recordedOutbound();
     const run = await initWith(machine, {
       argv: [],
-      env: { BINFERENCE_INIT_PROXY: `http://owner:${password}@proxy.owner.test:3128` },
+      env: { BINFERENCE_INIT_PROXY: proxyUrlWith("owner", password, "proxy.owner.test:3128") },
       outbound: recorded.outbound,
     });
     expect(run.code).toBe(1);

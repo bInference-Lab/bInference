@@ -8,6 +8,7 @@ import { z } from "zod";
 import { checkFindings } from "../commands/check-command.js";
 import { createCheckOperations } from "../compose/check-operations.js";
 import { createClosers } from "../compose/closers.js";
+import { proxyUrlWith } from "../config/secrets/test-proxy-url.js";
 import { runCli } from "../program/run-cli.js";
 import { createFakeModelProvider, testModelId, testModelKey } from "./model-fixtures.js";
 import {
@@ -92,7 +93,7 @@ async function plantedMachine(): Promise<TestMachine> {
   const machine = await machines.create(nowMs);
   const proxyFile = join(machine.folder, "proxy-url");
   const signal = new AbortController().signal;
-  const proxy = `http://owner:${planted.proxyPassword}@proxy.owner.test:3128`;
+  const proxy = proxyUrlWith("owner", planted.proxyPassword, "proxy.owner.test:3128");
   await writePrivateFile(proxyFile, proxy, { permissions: noPermissions, signal });
   const extra = [
     '  engine: { unlock: { mode: "file" } },',
