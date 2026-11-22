@@ -43,8 +43,7 @@ path of a larger one; the console plays it.
 `models.speech` names what speaks:
 
 - a speech model on an `openai` provider; `speech.voice` picks one of its voices, `alloy` by default
-- `local`, the machine's own voice on macOS; `speech.voice` picks one of its voices, such as
-  `Samantha`. On Linux and Windows, `local` is refused.
+- `local`, the Mac's own voice; `speech.voice` picks one of its voices, such as `Samantha`
 
 Telegram sends a voice note, the console plays it, and the terminal chat prints where it is saved,
 under `media/speech/<date>/`.
@@ -83,16 +82,13 @@ app, so the agent tells you what to do there. Each screenshot is saved under `me
 and the agent shows it to you when you ask. What the screen shows is outside content, and the agent
 never repeats a password, a key or a recovery phrase it sees.
 
-- **macOS** asks for the permission the first time, and no screenshot is taken until you allow it.
-  Open System Settings, Privacy and Security, Screen Recording, and turn on the program the agent
-  names: the Node program binference runs on, or the terminal app that started binference. Then
-  restart binference with `binference stop` and `binference start`.
-- **Linux** needs a desktop session and one of `grim`, `gnome-screenshot` or `scrot`.
-- **Windows** takes the screenshot with a fixed PowerShell script.
+macOS asks for the permission the first time, and no screenshot is taken until you allow it. Open
+System Settings, Privacy and Security, Screen Recording, and turn on the program the agent names:
+the Node program binference runs on, or the terminal app that started binference. Then restart
+binference with `binference stop` and `binference start`.
 
-A machine with no screen, such as a server or a container, has nothing to look at. A screenshot
-over 5 MiB is made smaller before the agent reads it; `gnome-screenshot` cannot make one smaller,
-so there such a screenshot is refused.
+A machine with no screen, such as a server, has nothing to look at. A screenshot over 5 MiB is made
+smaller before the agent reads it.
 
 ## See also
 

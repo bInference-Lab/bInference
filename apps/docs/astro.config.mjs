@@ -16,8 +16,9 @@ function group(key, items) {
 }
 
 // The guides by group, each by its slug: Starlight shows each page's title in the reader's
-// language.
-const start = ["guides/install", "guides/docker-vps"];
+// language. The Docker guide is a draft, left out of the build, until Linux returns (decision
+// 0449).
+const start = ["guides/install", "guides/getting-started"];
 const features = [
   "guides/chat",
   "guides/safety",

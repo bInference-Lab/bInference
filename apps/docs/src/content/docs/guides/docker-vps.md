@@ -1,6 +1,7 @@
 ---
 title: Run binference on a server with Docker
 description: Set up the binference image on a Linux server, keep it private, back it up, update it and unlock it after a restart.
+draft: true
 ---
 
 This guide runs binference in Docker on a Linux server you rent, such as a VPS. The engine keeps

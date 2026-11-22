@@ -8,10 +8,10 @@ binference 是一个开源的 AI Agent，在 BNB Smart Chain 上替所有者交�
 
 ## 安装
 
-binference 需要 Node 26.1 或更高版本。
+binference 目前只支持 macOS，需要 Node 26.1 或更高版本。
 
 ```sh
-npm install --global binference
+npm install --global binference@beta
 binference --version
 ```
 

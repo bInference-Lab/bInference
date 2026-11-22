@@ -73,9 +73,6 @@ Disable the plugin to bring auto mode back.
   get the [`pluginSandboxOff`](/reference/notices/#pluginsandboxoff) notice.
 - Before each start, binference checks that the plugin's files are still the ones you added.
 
-In Docker, plugins run under a user of their own; the [Docker guide](/guides/docker-vps/) shows how
-to start the container for it.
-
 ## Skills
 
 A skill is a playbook in the Agent Skills format (`SKILL.md`) that the agent opens when a task

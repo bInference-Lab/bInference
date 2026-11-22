@@ -103,22 +103,17 @@ Agent 随 bInference 一起成长：bInference 路线图上的每项能力都会
 - 每个新 Agent 都从模拟模式开始，使用虚拟资金和真实报价。
 - Telegram 中的 `/freeze` 或控制台中的「冻结」立即停止一切。`/rescue` 或控制台中的紧急转出卡片把全部资金转回你自己的钱包。
 
-## 安装 <img src=".github/assets/logos/apple.png" width="20" height="20" alt="macOS">&nbsp;<img src=".github/assets/logos/windows.png" width="20" height="20" alt="Windows">&nbsp;<img src=".github/assets/logos/linux.png" width="20" height="20" alt="Linux">&nbsp;<img src=".github/assets/logos/docker.png" width="20" height="20" alt="Docker">
+## 安装 <img src=".github/assets/logos/apple.png" width="20" height="20" alt="macOS">
 
-macOS 和 Linux：
+bInference 目前只支持 macOS；Linux 和 Windows 将在之后的版本中支持。在“终端”中运行：
 
 ```bash
-curl -fsSL https://binference.io/install.sh | sh
-binference init
+curl -fsSL https://binference.io/install.sh | sh -s -- --beta
 ```
 
-在 Windows 上，于 PowerShell 中运行：
+脚本会在你的 Mac 需要时安装 Node 26，然后安装 bInference，再运行 `binference init` 完成设置。[开始使用](apps/docs/src/content/docs/zh-cn/guides/getting-started.md)带你从设置走到第一笔交易。
 
-```powershell
-irm https://binference.io/install.ps1 | iex
-```
-
-支持 macOS、Windows 和 Linux，可运行在你的电脑、服务器或 Docker 中。自托管的 Agent 不收取任何费用。不想自己设置？可以在 [binference.io](https://binference.io) 上部署到 bInference Cloud。
+自托管的 Agent 不收取任何费用。不想自己设置？可以在 [binference.io](https://binference.io) 上部署到 bInference Cloud。
 
 ## 参与贡献
 

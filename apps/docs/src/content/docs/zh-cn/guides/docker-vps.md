@@ -1,6 +1,7 @@
 ---
 title: 用 Docker 在服务器上运行 binference
 description: 在 Linux 服务器上部署 binference 镜像，保持它不对外公开，备份、更新它，并在重启后解锁。
+draft: true
 ---
 
 本指南在你租用的 Linux 服务器（例如 VPS）上用 Docker 运行 binference。引擎的规则与在你自己电脑上相同：每笔交易前都会先问你，只在服务器的回环地址上监听，你的密钥留在它的状态文件夹中。

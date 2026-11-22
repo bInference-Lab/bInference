@@ -10,10 +10,10 @@ transaction. It trades only inside the limits you set, from its own wallets.
 
 ## Install
 
-binference needs Node 26.1 or later.
+binference supports macOS for now, and needs Node 26.1 or later.
 
 ```sh
-npm install --global binference
+npm install --global binference@beta
 binference --version
 ```
 

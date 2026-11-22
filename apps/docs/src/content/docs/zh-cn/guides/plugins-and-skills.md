@@ -52,8 +52,6 @@ Agent 看到的插件工具名称为 `<plugin>__<tool>`，例如 `fear_index__sc
 - 在任何插件启动之前，binference 会检查沙箱在这台机器上是否有效。`binference check` 中显示为 `plugins.sandbox`。沙箱无效时，任何插件都不会运行，你会收到 [`pluginSandboxOff`](/zh-cn/reference/notices/#pluginsandboxoff) 通知。
 - 每次启动前，binference 都会检查插件的文件是否仍是你添加时的文件。
 
-在 Docker 中，插件以独立的用户运行；[Docker 指南](/zh-cn/guides/docker-vps/)说明了如何为此启动容器。
-
 ## 技能
 
 技能是 Agent Skills 格式（`SKILL.md`）的操作手册，任务匹配时 Agent 会打开它。技能不添加工具，也不改变限额：它引出的任何操作仍要经过 Agent 的工具、卡片和上限。binference 自带以下技能：

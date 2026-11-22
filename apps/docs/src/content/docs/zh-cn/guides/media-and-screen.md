@@ -29,7 +29,7 @@ binference config set models.imageMaking binference/<model>
 `speak` 把最多 4,000 个字符读成语音消息，仅在你要求听某些内容时使用。`models.speech` 指定由谁来说：
 
 - `openai` 服务商上的某个语音模型；`speech.voice` 选择它的一种声音，默认为 `alloy`
-- `local`，即 macOS 上这台机器自带的声音；`speech.voice` 选择它的一种声音，例如 `Samantha`。在 Linux 和 Windows 上，`local` 会被拒绝。
+- `local`，即这台 Mac 自带的声音；`speech.voice` 选择它的一种声音，例如 `Samantha`
 
 Telegram 发送语音消息，控制台直接播放，终端对话打印它的保存位置，即 `media/speech/<date>/`。
 
@@ -51,11 +51,9 @@ Telegram 发送语音消息，控制台直接播放，终端对话打印它的�
 
 `look_at_screen` 截取机器屏幕的截图并加以描述，仅在你要求 Agent 查看时使用。它只看不动：binference 中没有任何部分会移动鼠标、点击、输入或控制应用，所以 Agent 会告诉你在那里该怎么做。每张截图保存在 `media/screen/<date>/` 中，你要求时 Agent 会展示给你。屏幕上显示的内容是外部内容，Agent 从不复述它看到的密码、密钥或助记词。
 
-- **macOS** 会在第一次截图时请求权限，在你允许之前不会截图。打开“系统设置”中的“隐私与安全性”，进入“屏幕录制”，开启 Agent 指出的程序：binference 运行所用的 Node 程序，或启动 binference 的终端应用。然后用 `binference stop` 和 `binference start` 重启 binference。
-- **Linux** 需要桌面会话，以及 `grim`、`gnome-screenshot` 或 `scrot` 之一。
-- **Windows** 用一个固定的 PowerShell 脚本截图。
+macOS 会在第一次截图时请求权限，在你允许之前不会截图。打开“系统设置”中的“隐私与安全性”，进入“屏幕录制”，开启 Agent 指出的程序：binference 运行所用的 Node 程序，或启动 binference 的终端应用。然后用 `binference stop` 和 `binference start` 重启 binference。
 
-没有屏幕的机器（例如服务器或容器）没有可看的内容。超过 5 MiB 的截图会在 Agent 读取前被缩小；`gnome-screenshot` 无法缩小截图，所以用它时这样的截图会被拒绝。
+没有屏幕的机器（例如服务器）没有可看的内容。超过 5 MiB 的截图会在 Agent 读取前被缩小。
 
 ## 另请参阅
 

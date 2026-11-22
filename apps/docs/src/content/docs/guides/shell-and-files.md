@@ -15,17 +15,8 @@ read or change anything in it, apart from its `workspace/` folder, which stays o
 link into the folder does not get through either: each path is read at its real path, and a file
 call uses only the file it checked.
 
-- On macOS, a Seatbelt rule set walls every command. Commands cannot reach the keychain either.
-- On Linux, bubblewrap walls every command. Install `bwrap`. It needs unprivileged user
-  namespaces, which some distributions turn off and a container under Docker's default settings
-  refuses, so binference runs a command that does nothing through it before it trusts the wall.
-  Where `bwrap` is missing or refused, every command is refused with a message that says so, and
-  `binference check` names the cause.
-- In the Docker image, the agent's commands run as `binference-shell`, a user of their own that
-  cannot read binference's own files, so the image needs no bubblewrap. The
-  [server guide](/guides/docker-vps/) says what that changes.
-- Windows has no wall yet, so the agent's shell is off there; run binference in its Docker image
-  instead.
+On macOS, which binference supports for now, a Seatbelt rule set walls every command. Commands
+cannot reach the keychain either.
 
 A command never runs without the wall. Everything else your user holds stays within its reach: your
 other files, and the network. What keeps your money safe stays the cards, the limits and the ceiling

@@ -12,7 +12,6 @@ description: 通过 Tailscale 从 Telegram 打开 Mini App，并让 TradingView 
 - 在引擎所在的机器上安装 Tailscale，并用 `tailscale up` 登录。
 - 在 Tailscale 管理后台的 DNS 页面开启 HTTPS 证书。
 - 如果要接收来自互联网的提醒：在 tailnet 的策略文件中允许这台机器使用 Funnel。
-- 在 Linux 上，运行一次 `sudo tailscale set --operator=$USER`，让你的账号可以修改 Tailscale 的设置。
 
 ### 发布 Mini App
 

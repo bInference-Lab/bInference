@@ -14,8 +14,6 @@ receive alerts on, on the internet.
 - Install Tailscale on the engine's machine and sign in with `tailscale up`.
 - Turn on HTTPS certificates on the DNS page of Tailscale's admin site.
 - For alert rules from the internet: allow Funnel for this machine in your tailnet's policy file.
-- On Linux, let your account change Tailscale's settings once:
-  `sudo tailscale set --operator=$USER`.
 
 ### Publish the Mini App
 

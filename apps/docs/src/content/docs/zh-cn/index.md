@@ -3,12 +3,12 @@ title: binference
 description: 一个开源 AI Agent，替所有者在 BNB Smart Chain 上交易，每笔链上交易前都会先问你。
 ---
 
-binference 是替你在 BNB Smart Chain 上交易的 AI Agent。它运行在你自己的电脑或服务器上，通过 Telegram、网页控制台和终端与你对话，每笔链上交易前都会先问你。
+binference 是替你在 BNB Smart Chain 上交易的 AI Agent。它运行在你自己的 Mac 上，通过 Telegram、网页控制台和终端与你对话，每笔链上交易前都会先问你。binference 目前只支持 macOS。
 
 ## 开始使用
 
 - [用一条命令安装 binference](/zh-cn/guides/install/)
-- [用 Docker 在服务器上运行 binference](/zh-cn/guides/docker-vps/)
+- [开始使用](/zh-cn/guides/getting-started/)：完成设置、配对 Telegram、模拟交易、切换到实盘、冻结和紧急转出。
 
 ## 功能指南
 

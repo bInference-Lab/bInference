@@ -103,22 +103,17 @@ Run one agent or several, each with its own wallets and limits, in English or Ch
 - Every new agent starts in paper mode, with virtual money and real quotes.
 - `/freeze` in Telegram, or Freeze in the console, stops everything. `/rescue`, or the console's rescue card, moves all funds to your own wallet.
 
-## Install <img src=".github/assets/logos/apple.png" width="20" height="20" alt="macOS">&nbsp;<img src=".github/assets/logos/windows.png" width="20" height="20" alt="Windows">&nbsp;<img src=".github/assets/logos/linux.png" width="20" height="20" alt="Linux">&nbsp;<img src=".github/assets/logos/docker.png" width="20" height="20" alt="Docker">
+## Install <img src=".github/assets/logos/apple.png" width="20" height="20" alt="macOS">
 
-macOS and Linux:
+bInference supports macOS for now; Linux and Windows come in later releases. In Terminal:
 
 ```bash
-curl -fsSL https://binference.io/install.sh | sh
-binference init
+curl -fsSL https://binference.io/install.sh | sh -s -- --beta
 ```
 
-On Windows, in PowerShell:
+The script installs Node 26 when your Mac needs it, then bInference, then runs `binference init`, which sets it up. [Get started](apps/docs/src/content/docs/guides/getting-started.md) walks you from the setup to your first trade.
 
-```powershell
-irm https://binference.io/install.ps1 | iex
-```
-
-Runs on macOS, Windows and Linux, on your computer, a server or Docker. The self-hosted agent charges no fees. Prefer no setup? Deploy it in bInference Cloud on [binference.io](https://binference.io).
+The self-hosted agent charges no fees. Prefer no setup? Deploy it in bInference Cloud on [binference.io](https://binference.io).
 
 ## Contributing
 

@@ -3,14 +3,15 @@ title: binference
 description: An open-source AI agent that trades on BNB Smart Chain for its owner, and asks before every transaction.
 ---
 
-binference is an AI agent that trades on BNB Smart Chain for you. It runs on your own computer
-or server, talks with you in Telegram, in a web console and in the terminal, and asks you before
-every transaction.
+binference is an AI agent that trades on BNB Smart Chain for you. It runs on your own Mac, talks
+with you in Telegram, in a web console and in the terminal, and asks you before every transaction.
+binference supports macOS for now.
 
 ## Get started
 
 - [Install binference with one command](/guides/install/)
-- [Run binference on a server with Docker](/guides/docker-vps/)
+- [Get started](/guides/getting-started/): set up, pair Telegram, trade on paper, go live, freeze
+  and rescue.
 
 ## Features
 
