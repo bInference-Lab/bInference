@@ -61,6 +61,7 @@ import { keccak256, toHex } from "viem";
 import { selfHostedChains } from "../compose/open-engine-parts.js";
 import { createSystemClock } from "../runtime/system-clock.js";
 import { forkCustody, forkTokenFacts, forkWallet, pancakeV2Venue } from "./fork-trading.js";
+import { notingReceipts } from "./noting-receipts.js";
 
 /** A key made from fixed words: the fork's own test wallet, which holds nothing on BSC. */
 export const walletKey: `0x${string}` = keccak256(toHex("binference executor fork wallet"));
@@ -80,6 +81,8 @@ export interface Rig {
   readonly positions: PositionStore;
   readonly custody: ReturnType<typeof forkCustody>;
   readonly sends: { readonly raw: string; readonly stored: readonly string[] }[];
+  /** The latest block of each head the executor read, oldest first. */
+  readonly heads: bigint[];
   readonly native: AssetRef;
   readonly bought: AssetRef;
   /** What the engine and its executor logged. */
@@ -143,6 +146,7 @@ interface RigParts {
   readonly wallets: WalletFactsSource;
   readonly ids: IdSource;
   readonly sends: Rig["sends"];
+  readonly heads: Rig["heads"];
   readonly relayHttp: Http;
   readonly logger: MemoryLogger;
   /** Whether the engine and its executor fill live orders and rules; off unless a test says. */
@@ -192,6 +196,7 @@ async function partsOf(
     wallets,
     ids: createIdSource({ clock, random: createSeededRandom(43) }),
     sends: [],
+    heads: [],
     relayHttp,
     logger: createMemoryLogger({ subsystem: "engine" }),
     liveOrderFills,
@@ -217,7 +222,7 @@ function executorOf(parts: RigParts): RunningExecutor {
         {
           preparer: createEvmTxPreparer({ rpc, chain, networkFeeCapWeiPerGas: 10n ** 10n }),
           sender: forkSender(fork, parts, parts.relayHttp),
-          receipts: createEvmReceiptReader({ rpc, chain, finality }),
+          receipts: notingReceipts(createEvmReceiptReader({ rpc, chain, finality }), parts.heads),
         },
       ],
     ]),
@@ -282,10 +287,10 @@ async function rigOf(
     },
     { signal: AbortSignal.timeout(5_000) },
   );
-  const { stores, positions, custody, sends, logger } = parts;
+  const { stores, positions, custody, sends, heads, logger } = parts;
   const native = fork.chain.nativeAsset;
   const bought = erc20AssetRef(fork.chain, usdt);
-  return { engine, stores, positions, custody, sends, native, bought, logger };
+  return { engine, stores, positions, custody, sends, heads, native, bought, logger };
 }
 
 /** Mines blocks in the background, as BSC would, until the signal stops it. */

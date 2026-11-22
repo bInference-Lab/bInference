@@ -68,10 +68,34 @@ function nth(stored: readonly TransactionRecord[], index: number): TransactionRe
   return transaction;
 }
 
-// Holds a sent step out of every block, then mines `blocks` empty blocks past it.
-async function holdFor(fork: Fork, transaction: TransactionRecord, blocks: number): Promise<void> {
-  await fork.call("anvil_dropTransaction", [transaction.hash]);
-  await fork.call("anvil_mine", [toHex(blocks)]);
+// Waits until the executor reads the head again, for at most 30 seconds.
+async function headReadAgain(rig: Rig): Promise<void> {
+  const deadline = Date.now() + 30_000;
+  const reads = rig.heads.length;
+  const poll = async (): Promise<void> => {
+    if (rig.heads.length > reads) {
+      return;
+    }
+    if (Date.now() > deadline) {
+      throw new BinferenceError({ code: "fork.not_watched", message: "No head was read." });
+    }
+    await wait(100);
+    return poll();
+  };
+  return poll();
+}
+
+// Holds a sent step out of every block, then mines `blocks` empty blocks past it. The watch
+// counts blocks from the first head it reads after the send, which can come after the test saw
+// the step sent: the hold waits for a head read first, so the blocks count from before it.
+async function holdFor(
+  rig: Rig,
+  fork: Fork,
+  held: { readonly transaction: TransactionRecord; readonly blocks: number },
+): Promise<void> {
+  await headReadAgain(rig);
+  await fork.call("anvil_dropTransaction", [held.transaction.hash]);
+  await fork.call("anvil_mine", [toHex(held.blocks)]);
 }
 
 // Mines in the background until the intent reaches `state`, and answers the state it reached.
@@ -119,7 +143,7 @@ describe("a stuck transaction on the BSC fork", () => {
       const before = await balanceOf(fork);
       const intent = await proposeAndTap(rig, signal);
       const first = nth(await storedOnce(rig, fork, 1), 0);
-      await holdFor(fork, first, 21);
+      await holdFor(rig, fork, { transaction: first, blocks: 21 });
       expect(await sendsReach(rig, first, 2)).toBeGreaterThanOrEqual(2);
       await expect(mineUntil(rig, fork, { intent, state: "reconciled" })).resolves.toBe(
         "reconciled",
@@ -139,9 +163,9 @@ describe("a stuck transaction on the BSC fork", () => {
     await onFork(signal, { isMining: false }, async (rig, fork) => {
       const intent = await proposeAndTap(rig, signal);
       const first = nth(await storedOnce(rig, fork, 1), 0);
-      await holdFor(fork, first, 21);
+      await holdFor(rig, fork, { transaction: first, blocks: 21 });
       await sendsReach(rig, first, 2);
-      await holdFor(fork, first, 20);
+      await holdFor(rig, fork, { transaction: first, blocks: 20 });
       const speedUp = nth(await storedOnce(rig, fork, 2), 1);
       await expect(mineUntil(rig, fork, { intent, state: "reconciled" })).resolves.toBe(
         "reconciled",
@@ -169,7 +193,7 @@ describe("a stuck transaction on the BSC fork", () => {
       const first = nth(await storedOnce(rig, fork, 1), 0);
       // The swap's deadline is 60 seconds out: two minutes later it reverts.
       await fork.call("evm_increaseTime", [120]);
-      await holdFor(fork, first, 21);
+      await holdFor(rig, fork, { transaction: first, blocks: 21 });
       const cancel = nth(await storedOnce(rig, fork, 2), 1);
       await expect(mineUntil(rig, fork, { intent, state: "failed_onchain" })).resolves.toBe(
         "failed_onchain",
