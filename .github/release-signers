@@ -5,3 +5,4 @@
 #
 # A tag signed by any other key, or an unsigned tag, still runs dry. Until a key is listed here,
 # nothing publishes.
+binference0@gmail.com namespaces="git" ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAII5/xqL+JGpHFTt8o4k40P6La7HcFynbY/wX/X6kMFID
