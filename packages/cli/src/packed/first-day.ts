@@ -29,7 +29,7 @@ import { type FirstDayWorld, openFirstDay, runLauncher } from "./first-day-world
 import type { SmokeBot } from "./smoke-bot.js";
 import { chatAgain, lastJsonLine, pairOwner, paperTradeScript, tradeByChat } from "./smoke-chat.js";
 import { smokeHostOf } from "./smoke-host.js";
-import { startPaperPortfolio } from "./smoke-paper-start.js";
+import { waitForPaperStart } from "./smoke-paper-start.js";
 
 // The first-day smoke's driver, which `pnpm first-day:smoke` runs once the install one-liner put
 // release A in place in a scratch home folder (decision 0359). It goes on through the owner's
@@ -107,7 +107,7 @@ async function startService(world: FirstDayWorld, version: string): Promise<read
 
 async function trade(world: FirstDayWorld, code: string): Promise<readonly string[]> {
   await pairOwner(world.bot, code);
-  await startPaperPortfolio(world.paths.state, AbortSignal.timeout(minute));
+  await waitForPaperStart(world.paths.state, AbortSignal.timeout(minute));
   await tradeByChat(world.bot, paperTradeScript.report);
   return [];
 }

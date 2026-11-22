@@ -8,6 +8,7 @@ import type { OrderFills } from "../orders/fill-orders.js";
 import { repairOrderFills } from "../orders/repair-order-fills.js";
 import type { ResumeFence } from "../orders/resume-fence.js";
 import type { PaperParts } from "../paper/paper-parts.js";
+import { createPaperStart } from "../paper/paper-start.js";
 import { repairPaperFills } from "../paper/repair-paper-fills.js";
 import type { ShellPart } from "../shell/engine-shell.js";
 import { repairRuleFills } from "../webhooks/repair-rule-fills.js";
@@ -63,8 +64,9 @@ function orderRepairOf(
 
 /**
  * The engine's work the startup runs first, the repairs of what a stop left with the commands it
- * lost and the proposals it left before their cards (decision 0444), and the downtime re-check
- * after each stop and sleep (decision 0266).
+ * lost and the proposals it left before their cards (decision 0444), the downtime re-check after
+ * each stop and sleep (decision 0266), and the paper start of each agent that never had a paper
+ * portfolio (decision 0450).
  */
 export function startupWorkOf(
   options: EngineOptions,
@@ -88,6 +90,7 @@ export function startupWorkOf(
   | "tellLostShellJobs"
   | "downtime"
   | "followBreaker"
+  | "startPaper"
 > {
   const { stored, fills, paper, check, relay, shell, orders, rules } = parts;
   return {
@@ -98,5 +101,11 @@ export function startupWorkOf(
     endUnfinishedProposals: async (call) =>
       endUnfinishedProposals({ stored, clock: options.clock, orders, rules }, call),
     downtime: downtimeOf(options, { check, relay }),
+    startPaper: createPaperStart({
+      ...options.stores,
+      positions: options.positions,
+      portfolio: paper.portfolio,
+      wallets: options.wallets,
+    }),
   };
 }

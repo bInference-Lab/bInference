@@ -102,6 +102,7 @@ new name here first, in the change that uses it.
   quote's input for its expected output, kept with the move to `paper_filled` and its ledger entry.
 - **paper portfolio**: an agent's paper money, held as its wallets' paper positions with their own
   P&L. A **paper reset** starts it again from the starting balances, 1 BNB and 500 USDT by default.
+  The **paper start** opens them once for an agent that never had a paper portfolio.
 - **live switch**: `agent/goLive`, the one step that moves an agent from paper to live. The **first
   live card** after it says that the trade uses real money.
 - **approval mode**: per agent, **manual** (every transaction outside an auto order needs a tap; the

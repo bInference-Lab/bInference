@@ -33,6 +33,7 @@ const portfolio: PaperPortfolio = {
   balance: async (wallet, asset) =>
     await Promise.resolve(wallet === testWallet && asset === testCoin ? 5n : 0n),
   reset: async () => await Promise.reject(new Error("Not reset here.")),
+  start: async () => await Promise.reject(new Error("Not started here.")),
 };
 const source = withPaperBalances(
   createFakeWalletFacts(new Map([[testAgent, [testWallet]]]), facts),

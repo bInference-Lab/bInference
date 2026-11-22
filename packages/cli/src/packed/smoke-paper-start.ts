@@ -1,44 +1,26 @@
-import { createProtocolClient } from "@binference/client";
-import { BinferenceError } from "@binference/core";
-import { createMemoryLogger } from "@binference/core/testing";
-import { createPlatform } from "@binference/platform";
-import { operations } from "@binference/protocol";
-import { ipcWebSocket } from "../commands/connect-engine.js";
-import { cliTokenFile, readCliToken } from "../compose/cli-token.js";
-import { engineEndpoint } from "../compose/engine-locations.js";
+import { join } from "node:path";
+import { readTextFile } from "@binference/platform";
 import { createSystemClock } from "../runtime/system-clock.js";
-import { createSystemRandom } from "../runtime/system-random.js";
+
+// How often the smoke reads the engine log while it waits.
+const readEveryMs = 200;
 
 /**
- * Gives the agent of the install in `home` its paper starting balances, as the console does: a
- * new agent's paper portfolio is empty until a reset. It signs in over the engine's IPC endpoint
- * with the CLI's token, as `binference` does, and answers the agent's id.
+ * Waits until the engine of the install in `home` started its agent's paper portfolio, as it does
+ * on its own once it serves (decision 0450): its log names `engine.paper_started`. The smoke gives
+ * the agent nothing itself, so a trade fills only from the start an owner's install makes. Reads
+ * the log every 200 ms; rejects with the signal's reason once it aborts.
  */
-export async function startPaperPortfolio(home: string, signal: AbortSignal): Promise<string> {
-  const platform = createPlatform({ binferenceHome: home, homeDir: home });
-  const token = await readCliToken(cliTokenFile(platform.stateFolder), signal);
-  if (token === undefined) {
-    throw new BinferenceError({ code: "smoke.no_token", message: "The CLI token is missing." });
-  }
-  const { address } = engineEndpoint(platform);
-  const client = createProtocolClient({
-    operations,
-    openSocket: () => ipcWebSocket(address),
-    client: { kind: "cli", version: "packed-smoke" },
-    credential: { token },
-    clock: createSystemClock(),
-    random: createSystemRandom(),
-    logger: createMemoryLogger({ subsystem: "smoke" }),
-  });
-  try {
-    await client.connect(signal);
-    const [agent] = (await client.call("engine/status", {}, { signal })).agents;
-    if (agent === undefined) {
-      throw new BinferenceError({ code: "smoke.no_agent", message: "init made no agent." });
+export async function waitForPaperStart(home: string, signal: AbortSignal): Promise<void> {
+  const clock = createSystemClock();
+  const file = join(home, "logs", "engine.log");
+  const read = async (): Promise<void> => {
+    const text = await readTextFile(file, signal);
+    if (text.ok && text.value.includes('"event":"engine.paper_started"')) {
+      return;
     }
-    await client.call("portfolio/resetPaper", { agent: agent.id }, { signal });
-    return agent.id;
-  } finally {
-    client.close();
-  }
+    await clock.sleep(readEveryMs, signal);
+    await read();
+  };
+  await read();
 }

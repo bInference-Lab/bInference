@@ -286,6 +286,7 @@ export { rowPageSchema, type RowPage } from "./records/row-page.js";
 export { isSha256Hex, sha256Hex, sha256HexSchema, type Sha256Hex } from "./records/sha256-hex.js";
 export { stampedIdSchema, type StampedId } from "./records/stamped-id.js";
 export { createEngine, type Engine, type EngineOptions } from "./operations/create-engine.js";
+export type { PaperStartPass } from "./paper/paper-start.js";
 export type { EngineHandlers } from "./operations/engine-handlers.js";
 export type { AnswerCard, AnsweredCard, LockedOutcome } from "./operations/answer-card.js";
 export type { EngineCall, EngineCaller, EngineHandler } from "./operations/engine-call.js";

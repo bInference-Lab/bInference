@@ -27,6 +27,16 @@ export interface PaperPortfolio {
     reset: { readonly agent: Id<"agt">; readonly balances?: readonly Amount[] },
     options: { readonly signal: AbortSignal },
   ): Promise<Result<readonly Id<"wal">[], "no_wallet" | "no_price">>;
+  /**
+   * Opens the starting balances in the agent's first wallet, as a reset with no balances does,
+   * for an agent that never had a paper portfolio (decision 0450): it tries once, so a paper write
+   * that landed on the wallet since it was read is `stale`, and nothing changed then. Answers the
+   * wallet. `no_wallet` and `no_price` as for `reset`.
+   */
+  start(
+    start: { readonly agent: Id<"agt"> },
+    options: { readonly signal: AbortSignal },
+  ): Promise<Result<Id<"wal">, "no_wallet" | "no_price" | "stale">>;
 }
 
 /** What the paper portfolio is kept in and starts from. */
@@ -98,6 +108,19 @@ export function createPaperPortfolio(options: PaperPortfolioOptions): PaperPortf
         ),
       );
       return ok(wallets);
+    },
+    async start({ agent }, { signal }) {
+      const [first] = await options.wallets.wallets(agent, { signal });
+      if (first === undefined) {
+        return err("no_wallet");
+      }
+      const starting = {
+        walletId: first,
+        atMs: options.clock.now(),
+        balances: options.startingBalances,
+      };
+      const opened = await options.positions.resetPaper(starting, { signal });
+      return opened.ok ? ok(first) : opened;
     },
   };
 }

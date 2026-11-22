@@ -20,6 +20,7 @@ import { startGasCheckTimer } from "./gas-check-timer.js";
 import { listenForProtocol, type Opened, type Opening } from "./open-engine-parts.js";
 import { startTestOrders } from "./order-pricing.js";
 import { startOrderTimer } from "./order-timer.js";
+import { startPaperStartTimer } from "./paper-start-timer.js";
 import { startPinTimer } from "./pin-timer.js";
 import { startPruneTimer } from "./prune-timer.js";
 import { startScheduleTimer } from "./schedule-timer.js";
@@ -55,8 +56,9 @@ function startShutdown(
 }
 
 // The timers that read and tell, locked or not: the launches' pins, the daily summaries, the
-// bridges in transit and the unstaked coin ready to claim; and the daily prune of old records and
-// idempotency keys.
+// bridges in transit and the unstaked coin ready to claim; the paper start of each agent that
+// never had a paper portfolio (decision 0450); and the daily prune of old records and idempotency
+// keys.
 function startReadTimers(
   composed: ComposedSelfHosted,
   timers: Pick<Parameters<typeof startPinTimer>[0], "clock" | "closers" | "logger">,
@@ -65,6 +67,7 @@ function startReadTimers(
   startSummaryTimer({ sendDailySummaries: composed.sendDailySummaries, ...timers });
   startBridgeTimer({ followBridges: composed.followBridges, ...timers });
   startClaimReadyTimer({ tellClaimsReady: composed.tellClaimsReady, ...timers });
+  startPaperStartTimer({ startPaper: composed.startPaper, ...timers });
   const { server, pruneRecords } = composed;
   startPruneTimer({ pruneRecords, pruneKeys: async (call) => server.pruneKeys(call), ...timers });
 }

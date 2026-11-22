@@ -37,6 +37,7 @@ const portfolio: PaperPortfolio = {
     return await Promise.resolve(wallet === testWallet ? (held.get(asset) ?? 0n) : 0n);
   },
   reset: async () => await Promise.reject(new Error("Not reset here.")),
+  start: async () => await Promise.reject(new Error("Not started here.")),
 };
 const simulated = { spent: [], received: [], simulatedAt: testNowMs };
 const clock = createManualClock(testNowMs);

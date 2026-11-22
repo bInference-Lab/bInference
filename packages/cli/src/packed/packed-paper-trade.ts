@@ -6,7 +6,7 @@ import { z } from "zod";
 import type { SourceProgram } from "../e2e/source-program.js";
 import { openSmokeParts, type SmokeParts, type SmokeScript } from "./packed-smoke-parts.js";
 import { lastJsonLine, pairOwner, paperTradeScript, tradeByChat } from "./smoke-chat.js";
-import { startPaperPortfolio } from "./smoke-paper-start.js";
+import { waitForPaperStart } from "./smoke-paper-start.js";
 
 // The built-package smoke's paper trade by chat, which `pnpm release:smoke` runs with the folder
 // the packed tarballs were installed in. The binference under test is that install's alone: each
@@ -93,9 +93,7 @@ async function smoke(parts: SmokeParts, engineStop: AbortSignal): Promise<Record
   const code = await timed("init", async () => setUp(parts));
   const engine = await timed("start", async () => startEngine(parts, engineStop));
   await timed("pair", async () => pairOwner(parts.bot, code));
-  await timed("paperStart", async () =>
-    startPaperPortfolio(parts.home, AbortSignal.timeout(minute)),
-  );
+  await timed("paperStart", async () => waitForPaperStart(parts.home, AbortSignal.timeout(minute)));
   await timed("trade", async () => tradeByChat(parts.bot, script.report));
   await timed("stop", async () => stopEngine(parts, engine));
   return Object.fromEntries(times);

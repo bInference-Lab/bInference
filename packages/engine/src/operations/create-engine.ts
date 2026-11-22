@@ -44,6 +44,7 @@ import type { CanPrice, OrderParts } from "../orders/create-order.js";
 import type { OrderFills } from "../orders/fill-orders.js";
 import { type OrderTriggers } from "../orders/order-triggers.js";
 import { createPaperParts, type PaperParts } from "../paper/paper-parts.js";
+import type { PaperStartPass } from "../paper/paper-start.js";
 import type {
   BreakerSource,
   Executor,
@@ -112,6 +113,14 @@ export interface Engine extends BridgeWork, StakeWork, PruneWork, BreakerWork {
    * calls it while the engine is unlocked. A read that fails is thrown once every wallet is read.
    */
   readonly checkGas: (options: { readonly signal: AbortSignal }) => Promise<void>;
+  /**
+   * Opens the starting balances once for each agent that never had a paper portfolio, live ones
+   * too, and leaves every agent with paper records as it is (decision 0450). A timer of the
+   * composition root calls it once the engine serves and every minute after, so an agent added
+   * later, or one whose start found no price, gets its start on a later pass. Answers the agents
+   * a pass started and the ones that still wait.
+   */
+  readonly startPaper: (options: { readonly signal: AbortSignal }) => Promise<PaperStartPass>;
   /**
    * Records the positions of each paper fill of the last 30 days that has none, which a crash
    * between a fill and its positions leaves, valued at the price the fill kept. The startup calls

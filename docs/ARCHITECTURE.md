@@ -601,8 +601,10 @@ New agents start in paper mode. Paper mode runs the whole money path up to the s
 A rescue is the one exception: it moves the real funds in paper mode too, since paper mode fakes
 trades, never the safety exit ([decision 0100](DECISIONS.md#d0100)).
 
-A paper portfolio starts with 1 BNB and 500 USDT ([decision 0069](DECISIONS.md#d0069)), changeable
-in onboarding and resettable at any time; it works with an empty real wallet.
+A paper portfolio starts with 1 BNB and 500 USDT ([decision 0069](DECISIONS.md#d0069)), set by
+`defaults.paper.balances`: the engine opens it once for each agent that never had one, once it
+serves ([decision 0450](DECISIONS.md#d0450)), and `portfolio/resetPaper` starts it again; it works
+with an empty real wallet.
 
 Going live is one explicit step (`binference live` or the console), after the wallet is funded, and
 the first live card says so.

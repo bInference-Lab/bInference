@@ -180,6 +180,10 @@ Rules for this package:
   A paper sale of a token whose balance the chain's simulator cannot set (`chain.balance_unset`:
   a reflection or rebasing token) runs nothing and passes as an estimate at the quote's amounts,
   which the card says (`card.warn.paperEstimate`). A live trade always needs its simulation.
+- The paper start (`src/paper/paper-start.ts`, decision 0450) opens the starting balances once for
+  each agent not archived whose wallets hold no paper position, arrival or execution, through the
+  paper portfolio's `start`, one try, a lost race counted as started. It never touches an agent
+  with a paper record; the composition root runs it when the engine serves and every minute.
 - The paper portfolio is the agent's wallets' paper positions: a paper intent's native balance is
   its paper position of the native coin. A reset empties every paper position of the agent's
   wallets, P&L too, and opens the starting balances in its first wallet, each at its price when it

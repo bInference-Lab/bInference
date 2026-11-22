@@ -7,8 +7,9 @@ import type { Engine } from "@binference/engine";
  * rules accepted (decision 0338), the token launches
  * waiting for their launchpad's pin, the re-check of the orders after a stop or a sleep, the
  * daily summaries (decision 0273), the bridges in transit (decision 0320), the unstaked coin
- * ready to claim (decision 0327), and the prune of the alerts and inbox entries outside input
- * grows (decision 0333).
+ * ready to claim (decision 0327), the prune of the alerts and inbox entries outside input
+ * grows (decision 0333), and the paper start of each agent that never had a paper portfolio
+ * (decision 0450).
  */
 export type TimedWork = Pick<
   Engine,
@@ -26,6 +27,7 @@ export type TimedWork = Pick<
   | "tellClaimsReady"
   | "pruneRecords"
   | "followBreaker"
+  | "startPaper"
 >;
 
 /** The engine's {@link TimedWork}, for the timers to run. */
@@ -45,5 +47,6 @@ export function timedWorkOf(engine: Engine): TimedWork {
     tellClaimsReady: engine.tellClaimsReady,
     pruneRecords: engine.pruneRecords,
     followBreaker: engine.followBreaker,
+    startPaper: engine.startPaper,
   };
 }
