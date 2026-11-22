@@ -141,8 +141,17 @@ function claimIdle(pool: string, busy: string): boolean {
   );
 }
 
+// A commit of the whole repo leaves thousands of loose objects, so git's automatic gc and its
+// background maintenance would pack them in a detached process while the next step (Stryker's
+// scan, say) walks `.git`. Both go off before the sandbox's first commit.
+function quietGit(root: string): void {
+  git(root, ["config", "gc.auto", "0"]);
+  git(root, ["config", "maintenance.auto", "false"]);
+}
+
 // Brings a kept sandbox from its base to the repo's files and commits them as the new base.
 function refresh(repo: string, root: string, files: readonly string[]): void {
+  quietGit(root);
   const kept = git(root, ["ls-tree", "-r", "-z", "--name-only", baseRef])
     .split("\0")
     .filter((file) => file.length > 0);
@@ -163,6 +172,7 @@ function create(repo: string, root: string, files: readonly string[]): void {
   copyFiles(repo, root, files);
   install(root);
   git(root, ["init", "-q", "-b", "master"]);
+  quietGit(root);
   git(root, ["add", "-A"]);
   git(root, ["commit", "-q", "-m", "chore: start the sandbox"]);
   git(root, ["update-ref", baseRef, "HEAD"]);
@@ -218,9 +228,6 @@ export function openSandbox(repo: string): Sandbox {
     rmSync(root, { recursive: true, force: true });
     create(repo, root, repoFiles);
   }
-  // A commit of the whole repo leaves thousands of loose objects, so git's automatic gc would pack
-  // them in a detached process while the next step (Stryker's scan, say) walks `.git`.
-  git(root, ["config", "gc.auto", "0"]);
   const base = git(root, ["rev-parse", baseRef]).trim();
   const installs = installsOf(repoFiles);
   const reset = (): void => {
