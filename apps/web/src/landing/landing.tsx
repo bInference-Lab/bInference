@@ -69,6 +69,7 @@ export function Landing(props: { readonly locale: Locale }): React.JSX.Element {
           agent: words.text("status.agent"),
           asleep: words.text("status.asleep"),
           watching: words.text("status.watching"),
+          poke: words.text("status.poke"),
         }}
       />
       <Header words={words} />

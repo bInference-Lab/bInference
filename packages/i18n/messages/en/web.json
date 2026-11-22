@@ -16,6 +16,7 @@
   "status.agent": "agent",
   "status.asleep": "asleep",
   "status.watching": "watching you",
+  "status.poke": "Poke the agent",
   "status.day": "working through the day",
   "status.tools": "pick a tool",
   "status.card": "waiting for your tap",

@@ -16,6 +16,7 @@
   "status.agent": "Agent",
   "status.asleep": "休眠中",
   "status.watching": "正在看着你",
+  "status.poke": "戳一下 Agent",
   "status.day": "全天工作中",
   "status.tools": "选一个工具",
   "status.card": "等你点按",
