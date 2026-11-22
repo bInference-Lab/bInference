@@ -1,6 +1,6 @@
 # 0453. CI runs its OS rows on macOS alone while the release supports macOS only
 
-Status: Accepted
+Status: Amended by 0454
 
 Accepted by the tech lead on 2026-11-22.
 

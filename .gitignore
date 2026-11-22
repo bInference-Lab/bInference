@@ -20,6 +20,8 @@ dist/
 # Each build's record of the outside code in the files it wrote, which the release reads.
 bundle-record/
 coverage/
+# Vitest's blob reports, which a shard of CI's test run writes.
+.vitest/
 reports/
 # The console smoke test's screenshots.
 packages/console/smoke-results/
