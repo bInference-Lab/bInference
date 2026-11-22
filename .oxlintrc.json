@@ -143,6 +143,7 @@
   "ignorePatterns": [
     "**/node_modules/**",
     "**/dist/**",
+    "**/.next/**",
     "coverage/**",
     "reports/**",
     ".stryker-tmp/**",
@@ -161,6 +162,37 @@
         "react/no-danger": "error",
         "jsx-a11y/alt-text": "error",
         "jsx-a11y/anchor-is-valid": "error"
+      }
+    },
+    {
+      "files": ["apps/web/**"],
+      "plugins": ["react", "jsx-a11y"],
+      "rules": {
+        "react/react-in-jsx-scope": "off",
+        "react/rules-of-hooks": "error",
+        "react/exhaustive-deps": "error",
+        "react/jsx-key": "error",
+        "react/no-danger": "error",
+        "jsx-a11y/alt-text": "error",
+        "jsx-a11y/anchor-is-valid": "error"
+      }
+    },
+    {
+      // Next.js finds a page, a layout and its config by their default export.
+      "files": [
+        "apps/web/src/app/**/page.tsx",
+        "apps/web/src/app/**/layout.tsx",
+        "apps/web/next.config.ts"
+      ],
+      "rules": {
+        "import/no-default-export": "off"
+      }
+    },
+    {
+      // A Next.js app loads its global stylesheet by importing it.
+      "files": ["apps/web/src/landing/site-document.tsx"],
+      "rules": {
+        "import/no-unassigned-import": ["error", { "allow": ["**/*.css"] }]
       }
     },
     {

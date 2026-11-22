@@ -29,6 +29,7 @@ import enShell from "../messages/en/shell.json" with { type: "json" };
 import enTelegram from "../messages/en/telegram.json" with { type: "json" };
 import enTui from "../messages/en/tui.json" with { type: "json" };
 import enTurn from "../messages/en/turn.json" with { type: "json" };
+import enWeb from "../messages/en/web.json" with { type: "json" };
 import enWebPush from "../messages/en/webPush.json" with { type: "json" };
 import enWorkspace from "../messages/en/workspace.json" with { type: "json" };
 import zhAlert from "../messages/zh/alert.json" with { type: "json" };
@@ -62,6 +63,7 @@ import zhShell from "../messages/zh/shell.json" with { type: "json" };
 import zhTelegram from "../messages/zh/telegram.json" with { type: "json" };
 import zhTui from "../messages/zh/tui.json" with { type: "json" };
 import zhTurn from "../messages/zh/turn.json" with { type: "json" };
+import zhWeb from "../messages/zh/web.json" with { type: "json" };
 import zhWebPush from "../messages/zh/webPush.json" with { type: "json" };
 import zhWorkspace from "../messages/zh/workspace.json" with { type: "json" };
 import type { MessageLocale } from "./locales.js";
@@ -116,6 +118,7 @@ export const messages: Readonly<Record<MessageLocale, Catalog>> = {
     ...inArea("plugin", enPlugin),
     ...inArea("workspace", enWorkspace),
     ...inArea("docs", enDocs),
+    ...inArea("web", enWeb),
     ...inArea("config", enConfig),
     ...inArea("configKeys", enConfigKeys),
   },
@@ -151,6 +154,7 @@ export const messages: Readonly<Record<MessageLocale, Catalog>> = {
     ...inArea("plugin", zhPlugin),
     ...inArea("workspace", zhWorkspace),
     ...inArea("docs", zhDocs),
+    ...inArea("web", zhWeb),
     ...inArea("config", zhConfig),
     ...inArea("configKeys", zhConfigKeys),
   },

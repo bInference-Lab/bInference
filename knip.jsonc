@@ -6,6 +6,12 @@
       "entry": ["scripts/*.mts", "config/oxlint/store-guards.mjs"],
       "project": ["scripts/**/*.mts", "config/**/*.{ts,mjs}", "*.config.{ts,mts,mjs}"],
     },
+    // Next.js loads the pages and layouts by their names; next/font reads the font by its path.
+    "apps/web": {
+      "entry": ["src/app/**/{page,layout}.tsx", "src/**/*.test.{ts,tsx}"],
+      "project": ["src/**/*.{ts,tsx}"],
+      "ignoreDependencies": ["@fontsource-variable/hanken-grotesk"],
+    },
     // Astro loads the content config by its name.
     "apps/docs": {
       "entry": ["src/content.config.mjs"],

@@ -30,3 +30,7 @@ packages/console/smoke-results/
 
 # The docs site's generated content types.
 apps/docs/.astro/
+
+# The landing site's Next.js build and the types file Next.js writes.
+apps/web/.next/
+apps/web/next-env.d.ts

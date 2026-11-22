@@ -1,0 +1,75 @@
+.hero {
+  position: relative;
+  z-index: 2;
+  min-height: calc(100svh - 48px);
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  text-align: center;
+  padding: 16px 0 64px;
+}
+.slot {
+  height: clamp(220px, 39svh, 390px);
+  margin: 22px 0 clamp(34px, 5svh, 52px);
+}
+.title {
+  font-size: clamp(42px, 5.6vw, 80px);
+  line-height: 0.98;
+  letter-spacing: -0.048em;
+  font-weight: 600;
+}
+.title :global(.second) {
+  font-weight: 250;
+}
+.title :global(.si) {
+  transition-delay: calc(var(--n) * 70ms + 1100ms);
+}
+:global(body:not(.open)) .title :global(.si) {
+  transform: translateY(118%) rotate(4deg);
+}
+.title :global(.stop) {
+  transition: opacity 0.6s var(--ease-out) 1.4s;
+}
+:global(body:not(.open)) .title :global(.stop) {
+  opacity: 0;
+}
+.lead {
+  max-width: 620px;
+  margin-top: 18px;
+  font-size: clamp(17px, 1.4vw, 20px);
+}
+.ctas {
+  margin-top: 24px;
+  display: flex;
+  gap: 28px;
+  justify-content: center;
+  align-items: center;
+}
+.eyebrow,
+.lead,
+.ctas {
+  opacity: 0;
+  transform: translateY(22px);
+  transition:
+    opacity 1.3s var(--ease-out),
+    transform 1.3s var(--ease-out);
+}
+:global(body.open) .eyebrow {
+  opacity: 1;
+  transform: none;
+  transition-delay: 0.9s;
+}
+:global(body.open) .lead {
+  opacity: 1;
+  transform: none;
+  transition-delay: 2s;
+}
+:global(body.open) .ctas {
+  opacity: 1;
+  transform: none;
+  transition-delay: 2.2s;
+}
+.eyebrow {
+  font-size: clamp(17px, 1.5vw, 21px);
+  font-weight: 600;
+}

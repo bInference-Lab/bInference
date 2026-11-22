@@ -1,0 +1,50 @@
+.install {
+  position: relative;
+  z-index: 2;
+  padding: 120px 22px 200px;
+  text-align: center;
+  border-top: 1px solid var(--line);
+  display: grid;
+  justify-items: center;
+}
+.slot {
+  height: min(30svh, 280px);
+  margin-bottom: 36px;
+}
+.title {
+  font-size: clamp(48px, 7.4vw, 108px);
+  letter-spacing: -0.048em;
+  line-height: 1;
+  font-weight: 270;
+}
+.title b {
+  font-weight: 620;
+}
+.command {
+  margin: 54px auto 0;
+  width: min(640px, calc(100vw - 44px));
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 8px 8px 26px;
+  border-radius: 980px;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.command code {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  font: 15px var(--mono);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.command code b {
+  color: var(--gold);
+  font-weight: 400;
+}
+.meta {
+  margin-top: 26px;
+  font-size: 14px;
+  color: var(--mute);
+}

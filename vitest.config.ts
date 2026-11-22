@@ -62,6 +62,22 @@ function consoleProject(): TestProjectInlineConfiguration {
   };
 }
 
+// The landing site is a Next.js app outside the package folders: its tests are TSX too, and its
+// pure modules (the agent's motion and geometry, the scroll math, the words) run in Node.
+const webFolder = "apps/web";
+
+function webProject(): TestProjectInlineConfiguration {
+  return {
+    extends: true,
+    oxc: { jsx: { runtime: "automatic" } },
+    test: {
+      name: "web",
+      include: [`${webFolder}/src/**/*.test.{ts,tsx}`],
+      isolate: false,
+    },
+  };
+}
+
 // Two projects, split by isolation: every project starts its own workers and module graph, which
 // cost more than the tests themselves when each package was a project.
 function project(
@@ -102,6 +118,7 @@ function projects(): readonly TestProjectInlineConfiguration[] {
     ...(shared.length === 0 ? [] : [project("shared", shared)]),
     ...(isolated.length === 0 ? [] : [project("isolated", isolated)]),
     ...(folders.includes(consoleFolder) ? [consoleProject()] : []),
+    ...(existsSync(webFolder) ? [webProject()] : []),
     postgresProject(folders.filter((folder) => folder !== consoleFolder)),
   ];
 }

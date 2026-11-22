@@ -1,0 +1,20 @@
+{
+  "$schema": "../../node_modules/turbo/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "inputs": [
+        "src/**",
+        "!src/**/*.test.ts",
+        "!src/**/*.test.tsx",
+        "public/**",
+        "next.config.ts",
+        "next-run.mjs",
+        "package.json",
+        "tsconfig.json",
+        "$TURBO_ROOT$/packages/i18n/messages/*/web.json"
+      ],
+      "outputs": [".next/**", "!.next/cache/**", "!.next/dev/**"]
+    }
+  }
+}
