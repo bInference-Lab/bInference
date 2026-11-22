@@ -97,6 +97,14 @@ function transportOf(
     : createChatCompletionsTransport(options);
 }
 
+// A model of a `binference` provider is on bInference's AI gateway, whose one key's credit pays
+// for every model there.
+function gatewayOf(models: RuntimeModels, ref: string | undefined): { readonly onGateway?: true } {
+  const named = ref === undefined ? undefined : splitModel(ref);
+  const provider = named === undefined ? undefined : models.providers[named.provider];
+  return provider?.kind === "binference" ? { onGateway: true } : {};
+}
+
 /** What a chain's transports reach the network and the time through, and the providers' rests. */
 export interface ChainParts extends ProviderParts {
   /** When each resting provider's rest ends, shared by every turn of the runtime. */
@@ -135,6 +143,7 @@ export function modelChainFor(
       ...(priced === undefined ? {} : { price: priced.price }),
       ...(reads ? { readsImages: true as const } : {}),
       ...(repairs ? { repairsCalls: true as const } : {}),
+      ...gatewayOf(models, model.ref),
     };
   };
   return createModelChain([chainModel(own), ...fallbacks.map(chainModel)], {
@@ -170,6 +179,7 @@ export function visionChainFor(
     transport: transportOf(models, { ref, place }, { http: parts.http, clock: parts.clock }),
     ...(priced === undefined ? {} : { price: priced.price }),
     readsImages: true as const,
+    ...gatewayOf(models, ref),
   };
   return createModelChain([model], {
     clock: parts.clock,

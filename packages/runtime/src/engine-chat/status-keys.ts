@@ -43,7 +43,9 @@ export function statusKeysOf(line: TurnStatusLine): readonly StatusKey[] {
     ];
   }
   if (line.line === "failed") {
-    return [{ key: failureKeys[line.failure] }];
+    // A spent gateway credit is added at binference.io: another model on the gateway shares it.
+    const isGateway = line.failure === "billing" && line.onGateway === true;
+    return [{ key: isGateway ? "turn.failed.gatewayBilling" : failureKeys[line.failure] }];
   }
   if (line.line === "budget" || line.line === "quota") {
     return [{ key: `turn.${line.line}`, values: { when: line.resumesAt } }];

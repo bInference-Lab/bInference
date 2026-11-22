@@ -126,6 +126,26 @@ describe("retries and fallbacks of a model call", () => {
     });
   });
 
+  it("says the credit is the gateway's when a model on the gateway ran out of it", async () => {
+    const onGateway = createTestTurn({
+      replies: [fails("billing")],
+      model: { name: "binference/openai/gpt-5.4", onGateway: true },
+    });
+    const elsewhere = createTestTurn({
+      replies: [fails("billing")],
+      model: { name: "openai/gpt-5.4" },
+    });
+    await expect(onGateway.turn.run()).resolves.toMatchObject({ outcome: "failed" });
+    await expect(elsewhere.turn.run()).resolves.toMatchObject({ outcome: "failed" });
+    const lines = [onGateway, elsewhere].map(({ recorder }) =>
+      recorder.steps.find((step) => step.kind === "status"),
+    );
+    expect(lines).toStrictEqual([
+      { kind: "status", line: { line: "failed", failure: "billing", onGateway: true } },
+      { kind: "status", line: { line: "failed", failure: "billing" } },
+    ]);
+  });
+
   it("keeps the fallback for the rest of the turn, and starts the next turn at the first model", async () => {
     const models = twoModels(
       [fails("request"), textReply("First again.")],

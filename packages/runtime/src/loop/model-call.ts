@@ -120,7 +120,9 @@ async function attempt(
       feed.reasoningEnd(response.reasoning);
     }
     const wasSilent = !response.ok && idle.signal.aborted && !run.halted.aborted;
-    return wasSilent ? silent(run, response) : response;
+    const ended = wasSilent ? silent(run, response) : response;
+    // A fault names the gateway its model is on, whose own credit fixes a `billing` failure.
+    return !ended.ok && model.onGateway === true ? { ...ended, onGateway: true } : ended;
   } finally {
     timer.stop();
   }

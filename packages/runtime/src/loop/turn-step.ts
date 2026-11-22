@@ -85,7 +85,8 @@ export function haltedEnd(run: TurnRun): LoopEnd {
 
 /**
  * How a model call's fault ends the turn: as its halt says, with what the model wrote after a
- * provider's own refusal, at a spent budget, or failed with the fault's class.
+ * provider's own refusal, at a spent budget, or failed with the fault's class; a `billing` fault
+ * of a model on bInference's AI gateway says so, since its credit is added there.
  */
 export function endOfFault(run: TurnRun, fault: ModelFault): LoopEnd {
   if (run.halted.aborted) {
@@ -98,7 +99,9 @@ export function endOfFault(run: TurnRun, fault: ModelFault): LoopEnd {
   if (run.tally.now().budgetSpent) {
     return budgetEnd(run);
   }
-  return { outcome: "failed", status: { line: "failed", failure: fault.failure } };
+  const { failure, onGateway } = fault;
+  const gateway = failure === "billing" && onGateway === true ? { onGateway } : {};
+  return { outcome: "failed", status: { line: "failed", failure, ...gateway } };
 }
 
 // A card waits only for a proposal the engine took; more may follow it after the owner answers.

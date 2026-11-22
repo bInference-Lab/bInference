@@ -33,6 +33,8 @@ export interface ModelFault {
   readonly retryAfterMs?: number;
   /** What the provider reported the call used before it failed, when it reported anything. */
   readonly usage?: ModelUsage;
+  /** The model that failed is on bInference's AI gateway (`ChainModel.onGateway`). */
+  readonly onGateway?: true;
 }
 
 /** A model call's outcome. */

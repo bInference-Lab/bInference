@@ -106,13 +106,14 @@ export interface TestTurnOptions {
   /** The turn's models in place of one model answering `replies`, made on the turn's clock. */
   readonly models?: (clock: ManualClock) => ModelChain;
   /**
-   * The one model answering `replies`: its name, `test/model` when absent, its price, and whether
-   * its malformed calls are repaired (decision 0447).
+   * The one model answering `replies`: its name, `test/model` when absent, its price, whether
+   * its malformed calls are repaired (decision 0447), and whether it is on bInference's AI gateway.
    */
   readonly model?: {
     readonly name: string;
     readonly price?: ModelPrice;
     readonly repairsCalls?: true;
+    readonly onGateway?: true;
   };
   /** The turn's clock in place of a new one, such as one a chain's rests already use. */
   readonly clock?: ManualClock;

@@ -184,6 +184,22 @@ describe("modelChainFor", () => {
     expect(chain.models.map((model) => model.name)).toStrictEqual(["a/one", "b/two", "a/three"]);
   });
 
+  it("marks each model of a binference provider as on the gateway, and no other", () => {
+    const models = {
+      ...modelsWith(
+        { gw: { kind: "binference", apiKey: "binf_test" }, oa: { kind: "openai" } },
+        "gw/openai/gpt-5.4",
+      ),
+      fallbacks: { main: ["oa/gpt-5-mini"], fast: [] },
+    };
+    const parts = { http: createRecordedHttp([]), clock, rests: new Map<string, number>() };
+    const chain = modelChainFor(models, { role: "main" }, parts);
+    expect(chain.models.map(({ name, onGateway }) => ({ name, onGateway }))).toStrictEqual([
+      { name: "gw/openai/gpt-5.4", onGateway: true },
+      { name: "oa/gpt-5-mini", onGateway: undefined },
+    ]);
+  });
+
   it("chains only the model the owner picked, whatever the fallbacks", () => {
     const models = {
       ...modelsWith({ a: { kind: "openai" } }, "a/one"),

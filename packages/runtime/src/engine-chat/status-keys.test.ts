@@ -14,4 +14,12 @@ describe("statusKeysOf", () => {
       [{ key: "turn.image.noVision" }],
     ]);
   });
+
+  it("words a spent credit on the gateway apart from a provider's spending limit", () => {
+    const failed = { line: "failed", failure: "billing" } as const;
+    expect([statusKeysOf({ ...failed, onGateway: true }), statusKeysOf(failed)]).toStrictEqual([
+      [{ key: "turn.failed.gatewayBilling" }],
+      [{ key: "turn.failed.billing" }],
+    ]);
+  });
 });

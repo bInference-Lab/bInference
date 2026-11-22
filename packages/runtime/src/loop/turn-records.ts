@@ -40,6 +40,12 @@ export interface ChainModel {
    * repaired propose or control call is held (decision 0447). Absent, no call of it is repaired.
    */
   readonly repairsCalls?: true;
+  /**
+   * The model's provider is the `binference` kind, bInference's AI gateway, whose one key's credit
+   * pays for every model it serves: a `billing` failure there is fixed at binference.io, never by
+   * another model. Absent for any other provider.
+   */
+  readonly onGateway?: true;
 }
 
 /** What a tool does, which decides how the loop runs it (runtime spec, section 5.1). */
@@ -276,7 +282,12 @@ export type TurnStatusLine =
   | { readonly line: "stopped" }
   /** Stopped after the engine took the turn's proposal: its card is still open. */
   | { readonly line: "stoppedCardOpen" }
-  | { readonly line: "failed"; readonly failure: TurnFailure }
+  | {
+      readonly line: "failed";
+      readonly failure: TurnFailure;
+      /** A `billing` failure of a model on bInference's AI gateway, whose credit is added there. */
+      readonly onGateway?: true;
+    }
   | { readonly line: "toolCallLimit" }
   | { readonly line: "modelCallLimit" }
   /** The loop guard found the same call with the same result three times. */
