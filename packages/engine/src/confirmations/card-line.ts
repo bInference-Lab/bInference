@@ -153,6 +153,9 @@ export const cardKeys = [
   "receipt.bridgeRefunded",
   "receipt.unstaked",
   "receipt.identity",
+  "receipt.rescued",
+  "receipt.movedAnd",
+  "receipt.movedAndOthers",
   "receipt.result",
   "receipt.tx",
   // The P&L card's lines (spec 4, section 3.7).

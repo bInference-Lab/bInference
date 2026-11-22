@@ -54,6 +54,8 @@ type RelayWork =
       readonly onlyLive?: true;
       /** The card closed for good, so the agent's line that it waits goes (spec 4, section 8.1). */
       readonly closes?: true;
+      /** The work of a card's closing, whose receipt shows how it closed and nothing after. */
+      readonly atClosing?: true;
     }
   | { readonly kind: "deliver"; readonly through?: Id<"ntc"> }
   | { readonly kind: "chat"; readonly push: EnginePush };
@@ -136,10 +138,23 @@ function cardWorkOf(push: EnginePush): RelayWork | undefined {
   if (!moved.success || !settles(push.kind, moved.data.state)) {
     return undefined;
   }
-  // A card a new version replaced still waits for the owner, as that version.
-  const closes = push.kind === "card/closed" && moved.data.reason !== "replaced";
   const work = settleWorkOf(moved.data.intent, moved.data.state);
-  return closes ? { ...work, closes } : work;
+  if (push.kind !== "card/closed") {
+    return work;
+  }
+  // A card a new version replaced still waits for the owner, as that version.
+  const closes = moved.data.reason === "replaced" ? {} : { closes: true as const };
+  return { ...work, atClosing: true, ...closes };
+}
+
+// What a card's closing shows on its own: how it closed. What followed, a fill, an end on chain or
+// what took effect, shows at the move that brought it, so it never overtakes a notice the engine
+// sent before that move, such as a rescue's; a paper fill or what took effect shows nothing before.
+function closingOnly(settling: CardSettling | undefined): CardSettling | undefined {
+  if (settling === undefined || settling.paper !== undefined || settling.written !== undefined) {
+    return undefined;
+  }
+  return { ref: settling.ref, closing: settling.closing };
 }
 
 // A Confirm or Cancel pressed in Telegram turns the pressed card into its receipt itself; how a
@@ -174,7 +189,8 @@ async function settle(
   if (work.closes === true) {
     await context.chat.cardClosed(work.intent, call);
   }
-  const settling = await context.showings.settled(work.intent, call);
+  const read = await context.showings.settled(work.intent, call);
+  const settling = work.atClosing === true ? closingOnly(read) : read;
   const isShown = work.onlyLive !== true || settling?.live !== undefined;
   if (settling !== undefined && isShown && !isTelegramAnswer(settling)) {
     await context.cards.settle(settling, call);

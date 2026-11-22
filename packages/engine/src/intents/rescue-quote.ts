@@ -32,6 +32,11 @@ export interface RescueQuote {
   /** Assets with no USD price count for nothing. */
   readonly valueUsdMicros: bigint;
   readonly quotedAtMs: number;
+  /**
+   * The chain's coin each wallet keeps to pay network fees, its agent's gas reserve, when every
+   * wallet keeps the same above zero; absent otherwise.
+   */
+  readonly kept?: Amount;
 }
 
 /** A {@link RescueQuote} as JSON carries it. */
@@ -44,6 +49,7 @@ interface RescueQuoteWire {
   }[];
   readonly valueUsdMicros: string;
   readonly quotedAtMs: number;
+  readonly kept?: AmountWire;
 }
 
 const rescueQuoteSchema: z.ZodType<RescueQuote, RescueQuoteWire> = z.strictObject({
@@ -55,6 +61,7 @@ const rescueQuoteSchema: z.ZodType<RescueQuote, RescueQuoteWire> = z.strictObjec
     .min(1),
   valueUsdMicros: decimalStringSchema,
   quotedAtMs: epochMsSchema,
+  kept: amountSchema.exactOptional(),
 });
 
 /** A rescue's quote, in the `quote` column of a rescue intent. */

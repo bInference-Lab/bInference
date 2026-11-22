@@ -1,3 +1,4 @@
+import { accountRefSchema } from "@binference/chain";
 import { bpsSchema } from "@binference/core";
 import { type CardAction, drawCard } from "@binference/engine";
 import { createFormatter } from "@binference/i18n";
@@ -135,6 +136,23 @@ describe("a card in Telegram HTML, in Chinese", () => {
         new RegExp(`^${icons.refused} 链上失败：.+ · ${explorerLink.replaceAll(".", "\\.")}$`, "u"),
       ),
     ]);
+  });
+
+  it("names what a rescue moved and where, in Chinese", () => {
+    const closing = {
+      outcome: "confirmed",
+      answeredBy: { surface: "cli", by: "cli" },
+      atMs: 0,
+    } as const;
+    const tx = { explorerLink: "https://scan.example.invalid/tx/0x01" };
+    const rescue = accountRefSchema.parse("fake:1:0x71D8a1b2c3d4e5f60718293a4b5c6d7e8f901234");
+    const moved = [
+      { asset: refs.bnb, base: 5n * 10n ** 17n },
+      { asset: refs.usdt, base: 12n * 10n ** 18n },
+    ] as const;
+    expect(textOf(receiptHtml(closing, display, { kind: "rescued", moved, rescue, tx }))).toBe(
+      `${icons.done} 已转到你的紧急转出地址 0x71D8…1234：0.5 BNB、12 USDT · ${tx.explorerLink}`,
+    );
   });
 
   it("names the transaction by its short hash on a chain with no block explorer", () => {

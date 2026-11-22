@@ -1,3 +1,4 @@
+import { accountRefSchema } from "@binference/chain";
 import { bpsSchema } from "@binference/core";
 import { type CardAction, type CardFacts, drawCard } from "@binference/engine";
 import { createFormatter, displayOutsideText } from "@binference/i18n";
@@ -295,6 +296,25 @@ describe("a card in Telegram HTML", () => {
       `${icons.done} Launched PEPE (0x6982…1933) · ${explorerLink}`,
       `${icons.done} Done on chain · ${explorerLink}`,
       `${icons.refused} Failed on chain: the transaction reverted; only the network fee was spent · ${explorerLink}`,
+    ]);
+  });
+
+  it("names what a rescue moved and where, the first five and how many more", () => {
+    const closing = {
+      outcome: "confirmed",
+      answeredBy: { surface: "cli", by: "cli" },
+      atMs: 0,
+    } as const;
+    const tx = { explorerLink: "https://scan.example.invalid/tx/0x01" };
+    const rescue = accountRefSchema.parse("fake:1:0x71D8a1b2c3d4e5f60718293a4b5c6d7e8f901234");
+    const bnb = { asset: refs.bnb, base: 5n * 10n ** 17n };
+    const usdt = { asset: refs.usdt, base: 12n * 10n ** 18n };
+    const two = receiptHtml(closing, display, { kind: "rescued", moved: [bnb, usdt], rescue, tx });
+    const seven = [bnb, usdt, usdt, usdt, usdt, usdt, usdt] as const;
+    const many = receiptHtml(closing, display, { kind: "rescued", moved: seven, rescue, tx });
+    expect([shown(two).text, shown(many).text]).toStrictEqual([
+      `${icons.done} Moved to your rescue address 0x71D8…1234: 0.5 BNB, 12 USDT · ${tx.explorerLink}`,
+      `${icons.done} Moved to your rescue address 0x71D8…1234: 0.5 BNB, 12 USDT, 12 USDT, 12 USDT, 12 USDT and 2 other tokens · ${tx.explorerLink}`,
     ]);
   });
 

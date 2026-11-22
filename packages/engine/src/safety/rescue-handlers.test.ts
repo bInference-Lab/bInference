@@ -122,6 +122,7 @@ describe("safety/rescue", () => {
       moves: testMoves,
       valueUsdMicros: ((15n * 10n ** 17n - 2n * 10n ** 15n) * 600n) / 10n ** 12n,
       quotedAtMs: testNowMs,
+      kept: { asset: testCoin, base: 10n ** 15n },
     });
     expect(plan.map(({ payload }) => payload)).toStrictEqual(testMoves.map(payloadOf));
     const view = expectOk(await test.engine.handlers["intent/get"](testCall({ intent })));
@@ -169,7 +170,7 @@ describe("safety/rescue", () => {
     expect(open.filter(({ kind }) => kind === "rescue")).toHaveLength(1);
   });
 
-  it("is left alone by a freeze, and announced with its address once confirmed", async () => {
+  it("is left alone by a freeze, and announced with its address and reserve once confirmed", async () => {
     const test = await startRescuing();
     const { intent } = expectOk(await rescue(test));
     expectOk(await test.engine.handlers["safety/freeze"](testCall({})));
@@ -180,7 +181,8 @@ describe("safety/rescue", () => {
     expect(notices(test).at(-1)).toStrictEqual({
       key: "notice.rescue",
       agent: testAgent,
-      values: { address: accountRefParts(testRescue).address },
+      values: { address: accountRefParts(testRescue).address, kept: "reserve" },
+      amounts: { reserve: { asset: testCoin, base: "1000000000000000" } },
       intent,
     });
   });

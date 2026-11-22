@@ -25,5 +25,8 @@
   "bridgeDelivered": "✅ 已在 {chain} 到账：{recipient} 收到 {received} · {explorerLink}",
   "bridgeRefunded": "⚠️ 未到账：{venue} 已将 {amount} 退回 {wallet} · {explorerLink}",
   "unstaked": "✅ 已解除质押 {amount}：{readyAt} 起可领取 · {explorerLink}",
-  "identity": "✅ 已在 ERC-8004 身份注册表中登记为 Agent {agentId} · {explorerLink}"
+  "identity": "✅ 已在 ERC-8004 身份注册表中登记为 Agent {agentId} · {explorerLink}",
+  "rescued": "✅ 已转到你的紧急转出地址 {address}：{moved} · {explorerLink}",
+  "movedAnd": "{amount}、{more}",
+  "movedAndOthers": "{amount} 及另外 {count, plural, other {# 种代币}}"
 }

@@ -12,6 +12,7 @@ import type { LiveOutcome, ReceiptTx } from "../confirmations/card-closing.js";
 import { requestDocument } from "../intents/intent-documents.schema.js";
 import { type IntentHistory, reasonNamedOf, settledTradeOf } from "../intents/intent-history.js";
 import type { IntentRecord } from "../intents/intent-record.js";
+import { rescueQuoteDocument } from "../intents/rescue-quote.js";
 import { tokenLaunchQuoteDocument } from "../intents/token-launch-quote.js";
 import { intentAssetInfos } from "../money-path/asset-infos.js";
 import type { InstallStore, TransactionStore } from "../ports.js";
@@ -121,11 +122,52 @@ function registeredOf(
     : undefined;
 }
 
+// Each asset once, its amounts summed, in the order the assets first came.
+function summed(amounts: readonly Amount[]): readonly Amount[] {
+  const sums = new Map<AssetRef, bigint>();
+  for (const { asset, base } of amounts) {
+    sums.set(asset, (sums.get(asset) ?? 0n) + base);
+  }
+  return [...sums].map(([asset, base]: readonly [AssetRef, bigint]) => ({ asset, base }));
+}
+
+// A rescue that reconciled: what each send that landed moved, and the rescue address it went to,
+// linked to its last transaction.
+async function rescuedOf(
+  source: LiveReceiptSource,
+  call: { readonly signal: AbortSignal },
+): Promise<LiveReceipt | undefined> {
+  const { record, transactions, chains } = source;
+  if (record.kind !== "rescue" || record.quote === undefined) {
+    return undefined;
+  }
+  const { rescue, moves } = rescueQuoteDocument.decode(record.quote);
+  const sent = await transactions.ofIntent(record.id, call);
+  const landed = new Set(sent.filter((tx) => tx.state === "final").map((tx) => tx.step));
+  const [first, ...rest] = summed(moves.filter((_, step) => landed.has(step)).map((m) => m.amount));
+  const last = sent.at(-1);
+  if (first === undefined || last === undefined) {
+    return undefined;
+  }
+  const moved = [first, ...rest] as const;
+  const tx = receiptTxOf(chains, accountRefParts(last.account).chain, last.hash);
+  const assets = intentAssetInfos(
+    chains,
+    record,
+    moved.map((amount) => amount.asset),
+  );
+  return { outcome: { kind: "rescued", moved, rescue, tx }, assets };
+}
+
 // A live intent that reconciled: its trade, an identity's id, its last transaction, or done.
 async function reconciledReceiptOf(
   source: LiveReceiptSource,
   call: { readonly signal: AbortSignal },
 ): Promise<LiveReceipt> {
+  const rescued = await rescuedOf(source, call);
+  if (rescued !== undefined) {
+    return rescued;
+  }
   const landed = reconciledOf(source) ?? (await landedOf(source, call));
   return registeredOf(source, landed) ?? landed ?? doneAlone;
 }

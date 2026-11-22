@@ -240,7 +240,7 @@ function sendOf(index: number): StepAction {
 }
 
 describe("a confirmed rescue on its wallets' queues", () => {
-  it("ends its card's receipt with the link of its last send", async () => {
+  it("ends its card's receipt with what it moved, where to and the link of its last send", async () => {
     const bench = await benchWithRescue();
     const intent = await rescueConfirmed(bench);
     await driveUntil(bench, intent, { states: ["reconciled"] });
@@ -252,7 +252,12 @@ describe("a confirmed rescue on its wallets' queues", () => {
     });
     const ended = await showings.settled(intent, live);
     expect(ended?.live?.outcome).toStrictEqual({
-      kind: "landed",
+      kind: "rescued",
+      moved: [
+        { asset: testToken, base: 500n },
+        { asset: testCoin, base: 15n * 10n ** 17n - 2n * testReserveBase },
+      ],
+      rescue: testRescue,
       tx: { explorerLink: `https://scan.example.invalid/tx/${hashOf(last)}` },
     });
   });

@@ -2,6 +2,7 @@ import {
   type AccountRef,
   accountRefParts,
   type Amount,
+  type AssetRef,
   type ChainRegistry,
   type PriceSource,
   type RegisteredChain,
@@ -56,6 +57,20 @@ interface Planned {
   readonly checked: CheckedRescue;
   /** The wallet the intent is stored under: the first that moves something, its agent active. */
   readonly owner: RescueWallet;
+  /** The coin each wallet keeps for network fees, when every one keeps the same above zero. */
+  readonly kept?: Amount;
+}
+
+// The gas reserve every wallet of the rescue keeps, when they all keep the same above zero.
+function keptOf(
+  wallets: readonly RescueWallet[],
+  nativeAsset: AssetRef,
+): { readonly kept?: Amount } {
+  const reserves = new Set(wallets.map(({ gasReserveBase }) => gasReserveBase));
+  const [base] = reserves;
+  return reserves.size === 1 && base !== undefined && base > 0n
+    ? { kept: { asset: nativeAsset, base } }
+    : {};
 }
 
 async function planOf(
@@ -87,7 +102,13 @@ async function planOf(
   const owner = wallets.find(({ agentId, account }) => active.has(agentId) && movers.has(account));
   return owner === undefined
     ? err("agent.not_found")
-    : ok({ rescue, chain: chain.value, checked, owner });
+    : ok({
+        rescue,
+        chain: chain.value,
+        checked,
+        owner,
+        ...keptOf(wallets, nativeAssetOf(chain.value)),
+      });
 }
 
 // What the moves are worth now, each rounded down; an asset with no price counts for nothing.
@@ -184,13 +205,14 @@ async function quoteAndCheck(
   run: Run,
   checked: IntentSnapshot,
 ): Promise<IntentSnapshot> {
-  const { rescue, checked: moves } = run.planned;
+  const { rescue, checked: moves, kept } = run.planned;
   const quotedAtMs = parts.clock.now();
   const amounts = moves.moves.map(({ amount }) => amount);
   const valueUsdMicros = await valueOf(parts.prices, amounts, run.advance.signal);
   const quote = { rescue, moves: moves.moves, valueUsdMicros, quotedAtMs };
+  const keeps = kept === undefined ? {} : { kept };
   const fields = {
-    quote: rescueQuoteDocument.encode(quote),
+    quote: rescueQuoteDocument.encode({ ...quote, ...keeps }),
     plan: planDocument.encode(moves.drafts),
   };
   const quoted = await advanceIntent(run.advance, checked, {

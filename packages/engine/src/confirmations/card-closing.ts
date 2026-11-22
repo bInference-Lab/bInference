@@ -82,6 +82,13 @@ export type LiveOutcome =
     }
   /** An identity registration that reconciled: the id its registry gave (decision 0335). */
   | { readonly kind: "registered"; readonly agentId: string; readonly tx: ReceiptTx }
+  /** A rescue that reconciled: what its landed sends moved, each asset once, and where to. */
+  | {
+      readonly kind: "rescued";
+      readonly moved: readonly [Amount, ...Amount[]];
+      readonly rescue: AccountRef;
+      readonly tx: ReceiptTx;
+    }
   | BridgeOutcome;
 
 /**
@@ -170,6 +177,29 @@ const reasonLine = (reason: IntentReason, values: CardLine["values"] = {}): Card
   line: { key: `reason.${reason}`, values },
 });
 
+// A rescue names this many of the assets it moved, then how many more.
+const listedMoves = 5;
+
+// What a rescue moved, as one value: `0.5 BNB, 12 USDT`, the first five and how many more.
+function movedValue(moved: readonly [Amount, ...Amount[]], listed = 1): CardValue {
+  const [first, ...rest] = moved;
+  const amount: CardValue = { type: "amount", amount: first };
+  const [next, ...after] = rest;
+  if (next === undefined) {
+    return amount;
+  }
+  const others = { amount, count: { type: "count", count: rest.length } } as const;
+  return listed >= listedMoves
+    ? { type: "line", line: { key: "receipt.movedAndOthers", values: others } }
+    : {
+        type: "line",
+        line: {
+          key: "receipt.movedAnd",
+          values: { amount, more: movedValue([next, ...after], listed + 1) },
+        },
+      };
+}
+
 /** What follows a confirmation, by its kind. */
 type AfterOf<K extends ReceiptAfter["kind"]> = Extract<ReceiptAfter, { readonly kind: K }>;
 
@@ -228,6 +258,14 @@ const afterLines: { readonly [K in ReceiptAfter["kind"]]: (after: AfterOf<K>) =>
     values: {
       amount: { type: "amount", amount: after.amount },
       readyAt: { type: "dateTime", atMs: after.readyAtMs },
+      explorerLink: txValue(after.tx),
+    },
+  }),
+  rescued: (after) => ({
+    key: "receipt.rescued",
+    values: {
+      address: { type: "account", account: after.rescue },
+      moved: movedValue(after.moved),
       explorerLink: txValue(after.tx),
     },
   }),

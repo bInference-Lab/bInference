@@ -84,7 +84,11 @@ export const noticeTable: Readonly<Record<string, TableNotice>> = {
     agent: tableAgent,
     values: { ...agent, scope: "agent", surface: "console" },
   },
-  "notice.rescue": { key: "notice.rescue", values: { address: "0x9F3c…41aB" } },
+  "notice.rescue": {
+    key: "notice.rescue",
+    values: { address: "0x9F3c…41aB", kept: "reserve" },
+    amounts: { reserve: coinAmount(2n) },
+  },
   "notice.newDevice": { key: "notice.newDevice", values: { label: "Laptop" } },
   "notice.signInsLocked": {
     key: "notice.signInsLocked",

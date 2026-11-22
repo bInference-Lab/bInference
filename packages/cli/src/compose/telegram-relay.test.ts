@@ -160,6 +160,30 @@ describe("the relay to the owner's chat", () => {
     ]);
   });
 
+  it("shows how a confirmed card ended only after the notice sent before that end", async () => {
+    const landed = { kind: "landed", tx: { explorerLink: "https://scan.example.invalid/tx/0x01" } };
+    // The line runs behind the engine: by the closing's turn, the rescue landed already.
+    const test = setUp([], { ...sending, live: { outcome: landed, assets: {} } } as CardSettling);
+    test.relay.start();
+    test.relay.relay({
+      topic: "intent",
+      kind: "card/closed",
+      data: { intent, reason: "confirmed" },
+    });
+    test.relay.relay(noticed(1));
+    test.relay.relay(moved("reconciled"));
+    await test.relay.idle();
+    await test.relay.close();
+    expect(test.events).toStrictEqual([
+      "send all",
+      `card closed ${intent}`,
+      "settle confirmed",
+      `send ${notice(1)}`,
+      "settle landed",
+      "chat closed",
+    ]);
+  });
+
   it("turns a bridge's card into its receipt on its way once its deposit is final", async () => {
     const bridgeSent = {
       kind: "bridgeSent",

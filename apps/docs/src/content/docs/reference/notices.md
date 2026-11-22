@@ -162,7 +162,7 @@ Level: info. Can be muted: no.
 Level: critical. Can be muted: no.
 
 ```text
-🔴 Rescue confirmed: moving everything to 0x9F3c…41aB
+🔴 Rescue confirmed: moving everything to 0x9F3c…41aB, but 0.002 BNB stays in each wallet to pay network fees
 ```
 
 ## `newDevice`

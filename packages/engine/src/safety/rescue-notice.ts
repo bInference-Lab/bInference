@@ -9,17 +9,20 @@ export const rescueNoticeKey = "notice.rescue";
 
 /**
  * The notice that announces on every surface that the owner confirmed a rescue, with the address
- * its card confirmed; `undefined` for a rescue with no quote, which no card confirmed.
+ * its card confirmed and the gas reserve each wallet keeps; `undefined` for a rescue with no
+ * quote, which no card confirmed.
  */
 export function rescueNotice(record: IntentRecord): EnginePush | undefined {
   if (record.quote === undefined) {
     return undefined;
   }
-  const { rescue } = rescueQuoteDocument.decode(record.quote);
+  const { rescue, kept } = rescueQuoteDocument.decode(record.quote);
+  const address = accountRefParts(rescue).address;
   return noticePush({
     key: rescueNoticeKey,
     agent: record.agentId,
     intent: record.id,
-    values: { address: accountRefParts(rescue).address },
+    values: { address, kept: kept === undefined ? "none" : "reserve" },
+    ...(kept === undefined ? {} : { amounts: { reserve: kept } }),
   });
 }
