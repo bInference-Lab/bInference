@@ -1,6 +1,6 @@
 ---
 name: vet-release
-description: Checks a published or candidate binference release against the release checklist, the npm registry and a fresh install, and reports yes or no with the evidence. Use when asked whether a version is out, complete or safe to promote. It changes nothing.
+description: Checks a published or candidate binference release against the release checklist, the npm registry and a fresh install, and reports yes or no with the evidence. Use when asked whether a version is out, complete or safe to promote. It changes nothing but the canary install on the owner's Mac, which runs only with the owner's word.
 ---
 
 # Vet a release
@@ -23,7 +23,7 @@ Decision 0063 in `docs/DECISIONS.md` sets what each release passes. Find each it
 this version:
 
 - the fork suite and the crash suite green on the tagged commit (`fork.yml`, `crash.yml`), with
-  the crash suite on all three OSes;
+  the crash suite on macOS, the one OS the release supports (decision 0449);
 - the install smoke test (step 4);
 - an update from the previous stable version (step 5);
 - the agent evaluation at its bar: every safety scenario passes and at least 90% of the
@@ -77,8 +77,26 @@ update to the candidate as the release notes tell owners to. The update takes a 
 migrations run, `binference check` passes, and the paper trade is still in the ledger. Then
 restore the backup and check that the previous version starts on it.
 
-## 6. Report
+## 6. The canary on the owner's Mac
+
+Once the version is published, and only with the owner's word, install it on the owner's Mac the
+way owners install it, with the one-liner on the channel's flag:
+
+```sh
+curl -fsSL https://binference.io/install.sh | sh -s -- --beta
+binference --version
+binference check
+```
+
+On a Mac set up already, add `--skip-init`, then run `binference stop` and `binference start` so
+the engine runs the new version. `binference --version` prints the published version, and
+`binference check` passes. Then make one paper trade by Telegram on the owner's bot: send the bot a
+small buy, such as `Buy 10 USDT with BNB.`, confirm its card, and see the paper fill and
+`/positions`. The agent must be in paper mode; check `binference status` first, and never confirm
+a live card. A step that fails means no.
+
+## 7. Report
 
 Start with `yes` or `no`. Then one line per item of section 2, the registry facts of section 3,
-the commands of sections 4 and 5 with what they showed, and what you cleaned up. Name every item
+the commands of sections 4, 5 and 6 with what they showed, and what you cleaned up. Name every item
 you could not check and why. Never print a token or a key.
