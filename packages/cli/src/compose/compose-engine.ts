@@ -256,9 +256,10 @@ function custodyPartsOf(parts: EngineParts) {
 
 // The engine's switches: whether it is locked, whether a community plugin (decision 0350) or a
 // listed MCP server (decision 0428) is on, whether live auto orders fill and whether a launch
-// feed runs.
+// feed runs; and the log a turn that ended failed is written to.
 function switchesOf(options: ComposeEngineOptions) {
   return {
+    logger: options.logger,
     isLocked: options.isLocked ?? (() => false),
     communityPluginsOn: options.communityPluginsOn,
     ...(options.listedMcpOn === undefined ? {} : { listedMcpOn: options.listedMcpOn }),

@@ -57,6 +57,17 @@ describe("a running turn the engine ends without the runtime's end", () => {
     expect(test.botApi.sent().map(({ text }) => text)).toStrictEqual([stopped]);
   });
 
+  it("logs a turn of the runtime that failed, with the class its status line names", async () => {
+    const { test } = await running();
+    const { handlers } = test.composed.engine;
+    const statusKey = "turn.failed.billing";
+    await handlers["turn/status"]({ args: { agent, turn, statusKey }, caller: runtime, ...live });
+    const failed = test.logger.records().filter((record) => record.event === "turn.failed");
+    expect(failed.map((record) => [record.level, record.fields])).toStrictEqual([
+      ["warn", { agentId: agent, traceId: turn, reason: "billing" }],
+    ]);
+  });
+
   it("shows the repair's line when the engine stopped with the runtime and ended nothing", async () => {
     const turns = createRunningTurns({ clock: createManualClock(0) });
     const test = await bot({ turns });

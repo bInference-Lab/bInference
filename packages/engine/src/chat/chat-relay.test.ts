@@ -1,4 +1,5 @@
 import { idSchema } from "@binference/core";
+import { createMemoryLogger } from "@binference/core/testing";
 import { type InboxMessageView, inboxMessageViewSchema } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
 import { bridgeEngine, testBridge, testRescueThere } from "../bridges/test-bridges.js";
@@ -27,6 +28,16 @@ const earlierRuntime: EngineCaller = {
   ...runtime,
   credential: "tok_0190f1c2-3a4b-7c5d-8e6f-000000000002",
 };
+
+// The engine's log line of a failed turn of the test agent.
+function failedLine(reason: string) {
+  return {
+    level: "warn",
+    subsystem: "engine",
+    event: "turn.failed",
+    fields: { agentId: testAgent, traceId: turn, reason },
+  };
+}
 
 function inboxPushes(test: TestEngine): readonly InboxMessageView[] {
   return test.pushes
@@ -306,6 +317,18 @@ describe("the chat relay", () => {
       kind: "chat/turnEnded",
       data: ended,
     });
+  });
+
+  it("logs one line for a turn that failed, with the class its line names, and none for others", async () => {
+    const logger = createMemoryLogger({ subsystem: "engine" });
+    const test = await startTestEngine({ logger });
+    expectOk(await startTurn(test));
+    const say = async (statusKey: string) =>
+      test.engine.handlers["turn/status"](testCall({ agent: testAgent, turn, statusKey }, runtime));
+    expectOk(await say("turn.proposalWaits"));
+    expectOk(await say("turn.failed.billing"));
+    expectOk(await say("turn.failed.timeLimit"));
+    expect(logger.records()).toStrictEqual([failedLine("billing"), failedLine("time_limit")]);
   });
 
   it("refuses a turn of an agent the install does not hold, and runs none", async () => {

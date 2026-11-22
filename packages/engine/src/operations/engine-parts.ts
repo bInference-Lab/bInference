@@ -109,10 +109,9 @@ type ShellSide = "madeImageFiles" | "sentFiles" | "browser" | "pdfReader" | Mach
 // The machine's own voice, the owner's screen and the API calls, when the shell gives them.
 function machineSenseOf(shell: EngineOptions["shell"]): Pick<ChatRelayOptions, MachineSense> {
   const localVoice = shell?.voice;
-  const screen = shell?.screen;
   return {
     ...(localVoice === undefined ? {} : { localVoice }),
-    ...(screen === undefined ? {} : { screen }),
+    ...(shell?.screen === undefined ? {} : { screen: shell.screen }),
     ...(shell?.requests === undefined ? {} : { requests: shell.requests }),
   };
 }
@@ -181,6 +180,7 @@ function relayOptionsOf(
     images,
     ...agentSideOf(options),
     credentials: stores.credentials,
+    ...(options.logger === undefined ? {} : { logger: options.logger }),
   };
 }
 

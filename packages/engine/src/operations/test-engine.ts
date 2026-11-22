@@ -97,13 +97,13 @@ export const testCallers: Readonly<Record<"cli" | "mcp" | "runtime", EngineCalle
   },
 };
 
-type OutsideSwitches = "communityPluginsOn" | "listedMcpOn" | "quotas" | "breaker";
+type OutsideSwitches = "communityPluginsOn" | "listedMcpOn" | "quotas" | "breaker" | "logger";
 
 /**
  * How a test engine differs from the default: a paper agent in manual mode on the fake venue.
  * Whether a community plugin (decision 0350) or a listed MCP server (decision 0428) is on, the
- * install's quotas (decision 0431) and the breaker (decision 0439) come as the engine takes them;
- * none are when absent, and the breaker is `noBreaker`.
+ * install's quotas (decision 0431), the breaker (decision 0439) and the log come as the engine
+ * takes them; none are when absent, and the breaker is `noBreaker`.
  */
 export interface TestEngineOptions extends Partial<Pick<EngineOptions, OutsideSwitches>> {
   readonly agent?: Partial<AgentDraft>;

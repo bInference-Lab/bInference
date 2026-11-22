@@ -1,4 +1,4 @@
-import type { Clock, Id, IdSource, Random } from "@binference/core";
+import type { Clock, Id, IdSource, Logger, Random } from "@binference/core";
 import type { ProtocolId, PushTopic } from "@binference/protocol";
 import type { ModelBudget } from "../billing/model-budget.js";
 import type { EngineBrowser } from "../browse/browser-handlers.js";
@@ -80,6 +80,11 @@ export interface ChatRelayOptions {
   readonly onStop?: (agent: Id<"agt"> | undefined, by: "owner" | "freeze") => void;
   /** The agent runtime's side of a chat deletion (decision 0415); without it none runs. */
   readonly runtimeChats?: RuntimeChats;
+  /**
+   * Where a turn that failed is logged as `turn.failed`, with its agent, its turn and the class
+   * its status line names; without it, nothing is logged.
+   */
+  readonly logger?: Logger;
 }
 
 /**

@@ -3,7 +3,7 @@ import type { EngineOptions } from "./create-engine.js";
 import type { TestEngineOptions } from "./test-engine.js";
 
 // The config file a confirmed change writes, the agent's shell, the runtime's side of a chat
-// deletion, the install's quotas and the breaker, as a test engine's options ask.
+// deletion, the install's quotas, the breaker and the log, as a test engine's options ask.
 function machineSwitchesOf(
   options: TestEngineOptions,
 ): Partial<EngineOptions> & Pick<EngineOptions, "breaker"> {
@@ -13,6 +13,7 @@ function machineSwitchesOf(
     ...(options.shell === undefined ? {} : { shell: options.shell }),
     ...(options.runtimeChats === undefined ? {} : { runtimeChats: options.runtimeChats }),
     ...(options.quotas === undefined ? {} : { quotas: options.quotas }),
+    ...(options.logger === undefined ? {} : { logger: options.logger }),
   };
 }
 

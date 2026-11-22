@@ -7,7 +7,7 @@ import type {
   TxSimulator,
 } from "@binference/chain";
 import type { StakingVenue } from "@binference/chain/staking";
-import type { Clock, Id, IdSource, Random, WorkspaceFiles } from "@binference/core";
+import type { Clock, Id, IdSource, Logger, Random, WorkspaceFiles } from "@binference/core";
 import { createAddressBookHandlers } from "../address-book/address-book-handlers.js";
 import type { DestinationChain } from "../address-book/destination-chain.js";
 import { withLimitsInEffect } from "../agents/limits-in-effect.js";
@@ -327,6 +327,11 @@ export interface EngineOptions extends MarketParts, ModelBudgetParts, ChatSource
    * that starts the runtime keeps; an engine with no runtime has none started.
    */
   readonly turns?: RunningTurns;
+  /**
+   * Where the engine's chat logs a turn of the agent runtime that ended failed (`turn.failed`);
+   * without it, nothing is logged.
+   */
+  readonly logger?: Logger;
   /**
    * Whether a live auto order may fill. Off when absent, and no config sets it: live fills wait
    * for the crash suite on fills (decision 0195), so a live order skips with `live_fills_off`.

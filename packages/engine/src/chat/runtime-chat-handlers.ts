@@ -107,6 +107,21 @@ async function startTurn(options: ChatRelayOptions, call: EngineCall<"turn/start
   return ok({ budgetLeftMicros: left });
 }
 
+/** The status lines a failed turn ends with: `turn.failed.` and its class (spec 4, section 8.1). */
+const failedStatusKey = "turn.failed.";
+
+// A turn that failed leaves one line in the engine's log, from the status line it ends with: its
+// agent, its turn and the line's class, such as `billing`. The runtime logs nothing of its own,
+// and the line holds no word of the chat, the prompt or the provider.
+function logFailed(options: ChatRelayOptions, line: EngineCall<"turn/status">["args"]): void {
+  if (!line.statusKey.startsWith(failedStatusKey)) {
+    return;
+  }
+  const named = line.statusKey.slice(failedStatusKey.length);
+  const reason = named.replaceAll(/[A-Z]/gu, (letter) => `_${letter.toLowerCase()}`);
+  options.logger?.warn("turn.failed", { agentId: line.agent, traceId: line.turn, reason });
+}
+
 function turnHandlers(
   options: ChatRelayOptions,
 ): Pick<RuntimeChatHandlers, "turn/start" | "turn/mark" | "turn/say" | "turn/status" | "turn/end"> {
@@ -132,6 +147,7 @@ function turnHandlers(
       }
       const data = { agent, turn, statusKey, ...(values === undefined ? {} : { values }) };
       publish({ topic: chatTopic(agent), kind: "chat/status", data });
+      logFailed(options, call.args);
       if (statusKey === loopStatusKey) {
         await noticeLoop(options, agent, call.signal);
       }
