@@ -1,6 +1,6 @@
 # 0292. The Docker image runs binference as its own user on a state volume
 
-Status: Accepted
+Status: Amended by 0449
 
 Accepted by the owner on 2026-10-29.
 

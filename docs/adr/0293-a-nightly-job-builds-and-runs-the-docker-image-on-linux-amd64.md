@@ -1,6 +1,6 @@
 # 0293. A nightly job builds and runs the Docker image on Linux amd64
 
-Status: Accepted
+Status: Amended by 0449
 
 Accepted by the owner on 2026-10-29.
 

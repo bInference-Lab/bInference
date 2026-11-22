@@ -1,6 +1,6 @@
 # 0354. The packed packages trade on paper by chat on every OS, nightly and before each publish
 
-Status: Accepted
+Status: Amended by 0449
 
 Accepted by the tech lead on 2026-11-04.
 
