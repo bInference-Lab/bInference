@@ -270,6 +270,8 @@ jobs:
           flags=()
           if [ "$(jq -r .channel release-files/release.json)" = "beta" ]; then flags+=(--prerelease); fi
           if [ "$SCRATCH" = "true" ]; then flags+=(--draft); fi
+          # install.ps1 waits for the Windows one-liner job (decisions 0357 and 0449).
           gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --verify-tag \
             --title "binference $VERSION" --notes-file release-files/notes.md "${flags[@]}" \
-            release-files/*.tgz release-files/SHA256SUMS release-files/*.cdx.json
+            release-files/*.tgz release-files/SHA256SUMS release-files/*.cdx.json \
+            release-files/install.sh release-files/install.sh.sha256

@@ -87,8 +87,8 @@ its summary and its checksums: they must match your local dry run's.
 Only with the owner's word: run `release.yml` by hand with `tag` and `publish` on. The run checks
 the tag's signature and that `master` holds it, then waits for the `release` environment's
 approval. npm publishes the dry run's tarballs, and the GitHub release gets the notes, tarballs,
-`SHA256SUMS` and the SBOM. A run that stops halfway runs again: the npm job skips a version npm
-holds already.
+`SHA256SUMS`, the SBOM, and `install.sh` with its `.sha256` (not `install.ps1`). A run that stops
+halfway runs again: the npm job skips a version npm holds already.
 
 The npm job reads each package on npm before it publishes it (decision 0451). A package npm holds
 publishes through trusted publishing alone. A package npm has never held publishes once with
