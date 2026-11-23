@@ -48,3 +48,22 @@
   font-size: 14px;
   color: var(--mute);
 }
+/* On a phone the whole command stays readable: it wraps above its Copy button, inside a box
+   with softer corners. */
+@media (max-width: 600px) {
+  .command {
+    flex-direction: column;
+    align-items: stretch;
+    border-radius: 22px;
+    padding: 16px 12px 12px 20px;
+  }
+  .command button {
+    align-self: flex-end;
+  }
+  .command code {
+    font-size: 14px;
+    line-height: 1.5;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}

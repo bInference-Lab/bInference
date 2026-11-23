@@ -4,7 +4,9 @@ import type { Words } from "../words/words";
 import { CopyButton } from "./copy-button";
 import styles from "./install.module.css";
 
-const installCommand = "curl -fsSL https://binference.io/install.sh | sh";
+// The command breaks after the host on a narrow phone, never inside the file name.
+const commandParts = ["curl -fsSL https://binference.io/", "install.sh | sh"] as const;
+const installCommand = commandParts.join("");
 
 /** Take me home: the agent waits beside the install command. */
 export function Install(props: { readonly words: Words }): React.JSX.Element {
@@ -17,7 +19,9 @@ export function Install(props: { readonly words: Words }): React.JSX.Element {
       </Reveal>
       <Reveal className={styles["command"]} order={2}>
         <code>
-          <b>$</b> {installCommand}
+          <b>$</b> {commandParts[0]}
+          <wbr />
+          {commandParts[1]}
         </code>
         <CopyButton
           text={installCommand}

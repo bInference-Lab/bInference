@@ -73,3 +73,13 @@
   font-size: clamp(17px, 1.5vw, 21px);
   font-weight: 600;
 }
+/* On a phone the first screen holds the words and buttons above the status pill: the agent
+   takes the height they leave, and the bottom keeps the pill's room. */
+@media (max-width: 900px) {
+  .hero {
+    padding-bottom: 84px;
+  }
+  .slot {
+    height: clamp(150px, calc(100svh - 500px), 39svh);
+  }
+}
