@@ -1,5 +1,6 @@
 import { restingAgent } from "./agent-motion";
 import { engravingPath } from "./engraving-path";
+import { coreRadius, ringRadius } from "./instrument-layout";
 import { corePoint, markOutline, sensorReach } from "./mark-field";
 
 /** The drawing's frame in the mark's units: the mark with its orbit around the core. */
@@ -31,8 +32,8 @@ export function agentFigureSvg(): string {
     `<path d="${engravingPath(angle)}" fill="${gold}"/>`,
     `<g ${core}>`,
     needle(angle),
-    `<circle r="47" fill="none" stroke="${gold}" stroke-opacity="0.55" stroke-width="1.4"/>`,
-    `<circle r="38" fill="${gold}"/>`,
+    `<circle r="${String(ringRadius)}" fill="none" stroke="${gold}" stroke-opacity="0.55" stroke-width="1.4"/>`,
+    `<circle r="${String(coreRadius)}" fill="${gold}"/>`,
     `</g></svg>`,
   ].join("");
 }

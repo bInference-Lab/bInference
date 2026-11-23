@@ -1,4 +1,5 @@
 import type { AgentState } from "./agent-motion";
+import { instrumentLayout, ringRadius } from "./instrument-layout";
 import { corePoint, markHeight, markOutline, markWidth, sensorReach } from "./mark-field";
 import { linePeriod, traceRelief } from "./relief";
 
@@ -165,8 +166,8 @@ function drawNeedle(pen: Pen, grown: number): void {
   context.restore();
 }
 
-// The instrument inside: dial, needle, sensors, core. Each layer moves a little more toward the
-// look, so the eye reads depth without shading.
+// The instrument inside: dial, needle, sensors, core. The needle, ring and core move a little
+// more toward the look than the dial, so the eye reads depth without shading.
 function drawInstrument(pen: Pen): void {
   const { context, picture, hair } = pen;
   const { look, wake, blinkAt, pulseAt } = picture.state;
@@ -174,27 +175,26 @@ function drawInstrument(pen: Pen): void {
   if (grown <= 0) {
     return;
   }
+  const sincePulse = pulseAt < 0 ? Number.POSITIVE_INFINITY : picture.now - pulseAt;
+  const layout = instrumentLayout(look, { grown, breathe: pen.breathe, sincePulse });
   context.save();
-  context.translate(corePoint.x + look.x * 3, corePoint.y + look.y * 3);
+  context.translate(corePoint.x + layout.dial.x, corePoint.y + layout.dial.y);
   context.lineWidth = hair;
   if (pen.detail) {
     context.globalAlpha = 0.5 * grown;
     tickRing(pen, { radius: 99, count: 60, turn: 0 });
   }
-  context.translate(look.x * 4, look.y * 4);
+  context.translate(layout.eye.x - layout.dial.x, layout.eye.y - layout.dial.y);
   context.globalAlpha = grown;
   drawNeedle(pen, grown);
   context.globalAlpha = 0.55 * grown;
   context.beginPath();
-  context.arc(0, 0, 47, 0, Math.PI * 2);
+  context.arc(0, 0, ringRadius, 0, Math.PI * 2);
   context.stroke();
-  context.translate(look.x * 9, look.y * 9);
   context.globalAlpha = grown;
   const blink = blinkAt < 0 ? 0 : Math.sin(Math.PI * clamp01((picture.now - blinkAt) / 0.22));
-  const swell = pulseAt < 0 ? 0 : Math.max(0, 0.25 - (picture.now - pulseAt));
-  const core = 38 * grown * (1 + pen.breathe * 0.02 + swell);
   context.beginPath();
-  context.ellipse(0, 0, core, core * (1 - blink * 0.9), 0, 0, Math.PI * 2);
+  context.ellipse(0, 0, layout.core, layout.core * (1 - blink * 0.9), 0, 0, Math.PI * 2);
   context.fill();
   context.restore();
 }
