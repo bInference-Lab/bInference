@@ -1,6 +1,6 @@
 # 0452. The landing site is a Next.js app whose agent is a living engraving of the mark
 
-Status: Accepted
+Status: Amended by 0455
 
 Accepted by the owner on 2026-11-22.
 

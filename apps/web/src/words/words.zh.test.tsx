@@ -6,7 +6,7 @@ describe("wordsFor in Chinese", () => {
   it("draws the gold full stop and the light second line of the hero", () => {
     const markup = renderToStaticMarkup(<h1>{wordsFor("zh").rich("hero.title")}</h1>);
     expect(markup).toBe(
-      '<h1>你点了一下<i class="stop"></i><br/><span class="second">现在，我醒了。</span></h1>',
+      '<h1>你的 Agent<i class="stop"></i><br/><span class="second">就在 BNB Smart Chain 上。</span></h1>',
     );
   });
 });

@@ -1,11 +1,11 @@
 import { AgentProvider } from "../agent/agent-context";
 import { AgentStage } from "../agent/agent-stage";
+import { Wake } from "../agent/wake";
 import { SiteHeader } from "../header/site-header";
 import { Assembly } from "../sections/assembly";
 import { Boundary } from "../sections/boundary";
 import { CardScene } from "../sections/card-scene";
 import { Day } from "../sections/day";
-import { Gate } from "../sections/gate";
 import { Hero } from "../sections/hero";
 import { Install } from "../sections/install";
 import { Playground } from "../sections/playground";
@@ -52,17 +52,12 @@ function Header(props: { readonly words: Words }): React.JSX.Element {
   );
 }
 
-/** The landing page in one language: the agent, awake on the reader's tap, through every scene. */
+/** The landing page in one language: the agent, awake as the page arrives, through every scene. */
 export function Landing(props: { readonly locale: Locale }): React.JSX.Element {
   const words = wordsFor(props.locale);
   return (
     <AgentProvider>
-      <Gate
-        words={{
-          line: words.rich("gate.line"),
-          nudge: words.text("gate.nudge"),
-        }}
-      />
+      <Wake />
       <AgentStage
         words={{
           agent: words.text("status.agent"),

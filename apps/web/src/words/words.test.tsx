@@ -7,8 +7,8 @@ describe("wordsFor", () => {
   const words = wordsFor("en");
 
   it("draws the tags of a message", () => {
-    expect(renderToStaticMarkup(<p>{words.rich("gate.line")}</p>)).toBe(
-      "<p><b>Nothing moves</b> until you tap.</p>",
+    expect(renderToStaticMarkup(<p>{words.rich("readme.title")}</p>)).toBe(
+      "<p>Read <b>me.</b></p>",
     );
     expect(renderToStaticMarkup(<p>{words.rich("assembly.final")}</p>)).toBe(
       '<p>One agent. <b class="gold">Yours.</b></p>',
@@ -16,7 +16,7 @@ describe("wordsFor", () => {
   });
 
   it("gives plain text without its tags", () => {
-    expect(words.text("gate.line")).toBe("Nothing moves until you tap.");
+    expect(words.text("readme.title")).toBe("Read me.");
   });
 
   it("puts each word of a split heading in its own mask, numbered in order", () => {
