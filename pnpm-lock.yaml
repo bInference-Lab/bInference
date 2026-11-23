@@ -185,6 +185,9 @@ catalogs:
     '@fontsource-variable/hanken-grotesk':
       specifier: 5.3.0
       version: 5.3.0
+    '@fontsource/hanken-grotesk':
+      specifier: 5.3.0
+      version: 5.3.0
     '@hpke/chacha20poly1305':
       specifier: 1.8.0
       version: 1.8.0
@@ -516,6 +519,9 @@ importers:
   apps/web:
     dependencies:
       '@fontsource-variable/hanken-grotesk':
+        specifier: 'catalog:'
+        version: 5.3.0
+      '@fontsource/hanken-grotesk':
         specifier: 'catalog:'
         version: 5.3.0
       intl-messageformat:
@@ -2228,6 +2234,9 @@ packages:
 
   '@fontsource-variable/hanken-grotesk@5.3.0':
     resolution: {integrity: sha512-DOd0FqL+3cH2dfNy0JtSq9tUfxBz5mLmHMjTU0DOr3E9Zo6wxuatCl53DIPNrSPgCsnuKyM739BTIG5glCLirw==}
+
+  '@fontsource/hanken-grotesk@5.3.0':
+    resolution: {integrity: sha512-eiqAvcMT88tCMCBzn6qKgMHGLJKq3NEXO3+0y9JXqzyty2U6KZnaGtbfiQgzRAXfwFp559hJQ0zBgJ6d89AuTA==}
 
   '@formatjs/fast-memoize@3.1.7':
     resolution: {integrity: sha512-zXfhLpvA6T7+efdt9JLbBwZ00tT7NsBMDVnDu8rpHeNNv8KfRZAMo2gkG0k9lK/Nzc//3kJ9pImsfuJxk3KhUA==}
@@ -7969,6 +7978,8 @@ snapshots:
   '@floating-ui/utils@0.2.12': {}
 
   '@fontsource-variable/hanken-grotesk@5.3.0': {}
+
+  '@fontsource/hanken-grotesk@5.3.0': {}
 
   '@formatjs/fast-memoize@3.1.7': {}
 

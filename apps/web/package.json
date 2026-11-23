@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@fontsource-variable/hanken-grotesk": "catalog:",
+    "@fontsource/hanken-grotesk": "catalog:",
     "intl-messageformat": "catalog:",
     "next": "catalog:",
     "react": "catalog:",

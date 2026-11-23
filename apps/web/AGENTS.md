@@ -22,8 +22,12 @@ The root [AGENTS.md](../../AGENTS.md) applies here. Rules for this folder:
 - Scroll scenes read their progress as `--p` from `Scene` (`src/motion/scene.tsx`), which one loop
   in `scene-loop.ts` eases for every scene. Motion lives in CSS on `--p`, not in JavaScript per
   frame, and every scene rests when the reader prefers reduced motion.
-- Next.js finds pages, layouts and `next.config.ts` by their default export, the one place it is
-  allowed. `pnpm typecheck` checks the app; its build does not.
+- Next.js finds pages, layouts, the link picture (`opengraph-image.tsx`) and `next.config.ts` by
+  their default export, the one place it is allowed. `pnpm typecheck` checks the app; its build
+  does not.
+- The link picture is drawn at build time from the same relief as the live agent
+  (`src/agent/agent-figure.ts`). Whole addresses come from `siteUrl()`, which reads Vercel's
+  production domain, so the site needs no address of its own in the code.
 - `pnpm --filter @binference/web dev` serves it on port 4819 with Next.js telemetry off
   (`next-run.mjs`). `pnpm build` builds it with the rest; run it through `heavy` on the owner's
   laptop.

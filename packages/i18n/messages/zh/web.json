@@ -1,6 +1,8 @@
 {
   "meta.title": "bInference Agent：你在 BNB Smart Chain 上的 AI Agent",
   "meta.description": "开源的 AI Agent，运行在你的 Mac 上，日夜在 BNB Smart Chain 上工作。它阅读、调研、盯盘、交易，没有你的点按，绝不动一枚币。",
+  "meta.shareName": "Agent",
+  "meta.imageAlt": "bInference Agent：用金色线条雕刻出的标志",
   "language.self": "简体中文",
   "gate.line": "<b>没有你的点按</b>，什么都不会动。",
   "gate.nudge": "点一下这个圆点。",

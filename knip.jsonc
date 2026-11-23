@@ -8,9 +8,9 @@
     },
     // Next.js loads the pages and layouts by their names; next/font reads the font by its path.
     "apps/web": {
-      "entry": ["src/app/**/{page,layout}.tsx", "src/**/*.test.{ts,tsx}"],
+      "entry": ["src/app/**/{page,layout,opengraph-image}.tsx", "src/**/*.test.{ts,tsx}"],
       "project": ["src/**/*.{ts,tsx}"],
-      "ignoreDependencies": ["@fontsource-variable/hanken-grotesk"],
+      "ignoreDependencies": ["@fontsource-variable/hanken-grotesk", "@fontsource/hanken-grotesk"],
     },
     // Astro loads the content config by its name.
     "apps/docs": {
