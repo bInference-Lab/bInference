@@ -1,0 +1,340 @@
+/* The four screens on the channels board, drawn flat in ink and gold. Sizes follow each frame's
+   width (container units), and every step of the story follows the scene's `--p`. */
+.phone,
+.window {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--ink-2);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+/* Telegram on a phone. */
+.phone {
+  font-size: clamp(8.5px, 4.3cqw, 13px);
+  border-radius: 13cqw;
+  padding: 7cqw 4.5cqw 5cqw;
+  background: var(--ink);
+  box-shadow:
+    inset 0 0 0 1px var(--line),
+    inset 0 0 0 2.2cqw var(--ink-2);
+}
+.chatHead {
+  display: flex;
+  align-items: center;
+  gap: 0.7em;
+  padding: 0.8em 0.9em;
+  border-bottom: 1px solid var(--line);
+}
+.avatar {
+  flex: none;
+  width: 2.3em;
+  height: 2.3em;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 0.4em var(--gold);
+  display: grid;
+  place-items: center;
+}
+.avatar::after {
+  content: "";
+  width: 0.5em;
+  height: 0.5em;
+  border-radius: 50%;
+  background: var(--gold);
+}
+.chatHead b,
+.chatHead small {
+  display: block;
+  line-height: 1.25;
+}
+.chatHead small {
+  font-size: 0.85em;
+  color: var(--mute);
+}
+.messages {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  gap: 0.6em;
+  padding: 0.8em 0.7em;
+}
+.bubble,
+.typing {
+  --k: clamp(0, calc((var(--p, 0) - var(--a)) * 30), 1);
+  max-width: 86%;
+  padding: 0.55em 0.8em;
+  border-radius: 1.1em 1.1em 1.1em 0.35em;
+  background: var(--ink-3);
+  line-height: 1.35;
+  opacity: var(--k);
+  transform: translateY(calc((1 - var(--k)) * 0.8em));
+}
+.mine {
+  align-self: flex-end;
+  border-radius: 1.1em 1.1em 0.35em 1.1em;
+  background: color-mix(in srgb, var(--gold) 18%, var(--ink-3));
+}
+.typing {
+  display: flex;
+  gap: 0.3em;
+  width: fit-content;
+  opacity: calc(var(--k) * (1 - clamp(0, calc((var(--p, 0) - var(--b)) * 40), 1)));
+}
+.typing i {
+  width: 0.45em;
+  height: 0.45em;
+  border-radius: 50%;
+  background: var(--mute);
+}
+.compose {
+  margin: 0.5em 0.4em 0;
+  padding: 0.6em 1em;
+  border-radius: 2em;
+  background: var(--ink-3);
+  color: var(--mute);
+}
+
+/* The card, as a chat shows it: its terms and two buttons, then the confirmed line. */
+.card {
+  --in: clamp(0, calc((var(--p, 0) - var(--shown)) * 30), 1);
+  --ok: clamp(0, calc((var(--p, 0) - var(--done)) * 30), 1);
+  --tap: clamp(0, calc((var(--p, 0) - var(--press)) * 60), 1);
+  position: relative;
+  padding: 0.8em 0.9em;
+  border-radius: 0.9em;
+  background: var(--ink);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold) calc(var(--in) * 40%), var(--line));
+  opacity: var(--in);
+  transform: scale(calc(0.9 + var(--in) * 0.1));
+}
+.ask {
+  opacity: calc(1 - var(--ok));
+}
+.cardHead {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  font-weight: 650;
+}
+.cardHead i {
+  width: 0.55em;
+  height: 0.55em;
+  border-radius: 50%;
+  background: var(--gold);
+}
+.cardLine {
+  margin-top: 0.35em;
+  color: var(--mute);
+}
+.keys {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45em;
+  margin-top: 0.7em;
+}
+.keys span {
+  padding: 0.45em 0;
+  border-radius: 0.6em;
+  text-align: center;
+  font-weight: 600;
+  background: var(--ink-3);
+}
+.keys {
+  position: relative;
+}
+.ring {
+  --rip: clamp(0, calc((var(--p, 0) - var(--press)) * 22), 1);
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: calc(50% - 0.225em);
+  height: 100%;
+  border-radius: 0.6em;
+  box-shadow: 0 0 0 1.5px var(--gold);
+  opacity: calc(clamp(0, calc((var(--p, 0) - var(--press)) * 60), 1) * (1 - var(--rip)));
+  transform: scale(calc(1 + var(--rip) * 0.35), calc(1 + var(--rip) * 0.9));
+}
+.keys .yes {
+  background: color-mix(in srgb, var(--gold) calc(var(--tap) * 100%), var(--ink-3));
+  color: color-mix(in srgb, var(--ink) calc(var(--tap) * 100%), var(--text));
+}
+.ok {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  padding: 0 0.9em;
+  border-radius: inherit;
+  opacity: var(--ok);
+  transform: scale(calc(0.94 + var(--ok) * 0.06));
+}
+.ok span {
+  display: grid;
+  line-height: 1.3;
+}
+.ok b {
+  color: var(--gain);
+}
+.check {
+  flex: none;
+  width: 1.5em;
+  height: 1.5em;
+  fill: none;
+  stroke: var(--gain);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* A window on the Mac: the console, the terminal and the MCP client. */
+.window {
+  font-size: clamp(9px, 2.9cqw, 13.5px);
+  border-radius: 12px;
+}
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  flex: none;
+  height: 2.5em;
+  padding: 0 0.9em;
+  border-bottom: 1px solid rgb(255 255 255 / 0.05);
+}
+.bar i {
+  width: 0.75em;
+  height: 0.75em;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px #3a414b;
+}
+.bar span {
+  margin-left: auto;
+  font: 0.85em var(--mono);
+  color: var(--mute);
+}
+.body {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.55em;
+  padding: 0.9em 1.1em;
+}
+.idle {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--mute);
+  opacity: calc(1 - clamp(0, calc((var(--p, 0) - var(--b)) * 30), 1));
+}
+.mcp {
+  font-size: clamp(10px, 4.1cqw, 14px);
+}
+.mcp .body {
+  justify-content: center;
+}
+.window .card {
+  width: min(100%, 26em);
+  align-self: center;
+}
+.mono {
+  font-family: var(--mono);
+  letter-spacing: 0;
+}
+.mono .body {
+  justify-content: flex-start;
+  --in: clamp(0, calc((var(--p, 0) - var(--shown)) * 30), 1);
+  --ok: clamp(0, calc((var(--p, 0) - var(--done)) * 30), 1);
+}
+.prompt,
+.dim {
+  color: var(--mute);
+}
+.box,
+.call,
+.reply {
+  opacity: var(--in);
+}
+.box {
+  padding: 0.6em 0.8em;
+  border-radius: 0.4em;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.boxHead {
+  color: var(--gold);
+}
+.call {
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+}
+.call i {
+  width: 0.55em;
+  height: 0.55em;
+  border-radius: 50%;
+  background: var(--gain);
+}
+.reply {
+  margin-left: 0.3em;
+  padding-left: 0.9em;
+  border-left: 1px solid var(--line);
+  color: var(--mute);
+}
+.line {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  color: var(--gain);
+  opacity: var(--ok);
+}
+.line .check {
+  width: 1.2em;
+  height: 1.2em;
+}
+
+/* The short state a small window shows on a phone. */
+.status {
+  display: none;
+}
+@media (max-width: 760px) {
+  .window .body {
+    display: none;
+  }
+  .status {
+    --in: clamp(0, calc((var(--p, 0) - var(--shown)) * 30), 1);
+    --ok: clamp(0, calc((var(--p, 0) - var(--done)) * 30), 1);
+    position: relative;
+    flex: 1 1 auto;
+    display: grid;
+    place-items: center;
+    font-size: 11px;
+    font-family: var(--font-sans), sans-serif;
+  }
+  .waits,
+  .did {
+    grid-area: 1 / 1;
+    display: flex;
+    align-items: center;
+    gap: 0.45em;
+  }
+  .waits {
+    color: var(--gold);
+    opacity: calc(var(--in) * (1 - var(--ok)));
+  }
+  .waits i {
+    width: 0.55em;
+    height: 0.55em;
+    border-radius: 50%;
+    background: var(--gold);
+  }
+  .did {
+    color: var(--gain);
+    opacity: var(--ok);
+  }
+}

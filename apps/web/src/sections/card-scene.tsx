@@ -1,9 +1,10 @@
 import { AgentSlot } from "../agent/agent-slot";
 import { Scene } from "../motion/scene";
 import type { Words, WordKey } from "../words/words";
+import { type SceneLine, SceneLines } from "./scene-lines";
 import styles from "./card-scene.module.css";
 
-const says: readonly { readonly key: WordKey; readonly from: number; readonly to: number }[] = [
+const says: readonly SceneLine[] = [
   { key: "card.say1", from: -1, to: 0.17 },
   { key: "card.say2", from: 0.19, to: 0.5 },
   { key: "card.say3", from: 0.52, to: 0.66 },
@@ -81,13 +82,12 @@ export function CardScene(props: { readonly words: Words }): React.JSX.Element {
           look="card-confirm"
           label={words.text("status.card")}
         />
-        <div className={styles["says"]}>
-          {says.map((say) => (
-            <p key={say.key} className={styles["say"]} style={{ "--a": say.from, "--b": say.to }}>
-              {words.rich(say.key)}
-            </p>
-          ))}
-        </div>
+        <SceneLines
+          words={words}
+          lines={says}
+          className={styles["says"]}
+          lineClassName={styles["say"]}
+        />
         <div className={styles["flip"]}>
           <Front words={words} />
           <Back words={words} />

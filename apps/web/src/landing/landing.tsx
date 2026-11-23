@@ -5,6 +5,7 @@ import { SiteHeader } from "../header/site-header";
 import { Assembly } from "../sections/assembly";
 import { Boundary } from "../sections/boundary";
 import { CardScene } from "../sections/card-scene";
+import { Channels } from "../sections/channels";
 import { Day } from "../sections/day";
 import { Hero } from "../sections/hero";
 import { Playground } from "../sections/playground";
@@ -69,6 +70,7 @@ export function Landing(props: { readonly locale: Locale }): React.JSX.Element {
       <main>
         <Hero words={words} />
         <Takeover ideas={takeoverIdeas(words)} />
+        <Channels words={words} />
         <Day
           words={{
             title: words.rich("day.title"),
