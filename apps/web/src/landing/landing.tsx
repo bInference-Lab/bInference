@@ -12,6 +12,7 @@ import { Hero } from "../sections/hero";
 import { Playground } from "../sections/playground";
 import { SiteFooter } from "../sections/site-footer";
 import { SourceWall } from "../sections/source-wall";
+import { Start } from "../sections/start";
 import { Takeover } from "../sections/takeover";
 import { Tools } from "../sections/tools";
 import { type Locale, wordsFor, type Words } from "../words/words";
@@ -90,6 +91,7 @@ export function Landing(props: { readonly locale: Locale }): React.JSX.Element {
         <SourceWall words={words} />
         <Boundary words={boundaryWords(words)} />
         <Assembly words={words} />
+        <Start words={words} />
       </main>
       <SiteFooter words={words} />
     </AgentProvider>

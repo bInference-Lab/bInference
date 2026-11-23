@@ -161,7 +161,7 @@ export function SiteHeader(props: SiteHeaderProps): React.JSX.Element {
           >
             {props.other.label}
           </a>
-          <a className="btn btn-sm" href="#install">
+          <a className="btn btn-sm" href="#start">
             {props.start}
           </a>
         </div>
