@@ -59,7 +59,6 @@ export function Landing(props: { readonly locale: Locale }): React.JSX.Element {
     <AgentProvider>
       <Gate
         words={{
-          label: words.text("gate.label"),
           line: words.rich("gate.line"),
           nudge: words.text("gate.nudge"),
         }}

@@ -12,9 +12,8 @@ import type { AgentBus } from "../agent/agent-bus";
 import { useAgent } from "../agent/agent-context";
 import styles from "./gate.module.css";
 
-/** The gate's words. */
+/** The gate's words; the button reads them aloud as they are shown. */
 export interface GateWords {
-  readonly label: string;
   readonly line: ReactNode;
   readonly nudge: string;
 }
@@ -127,7 +126,6 @@ export function Gate(props: { readonly words: GateWords }): React.JSX.Element | 
         type="button"
         data-gate=""
         className={[styles["gate"], phase === "opening" ? styles["going"] : ""].join(" ")}
-        aria-label={props.words.label}
         onClick={open}
       >
         <span ref={dot} className={styles["dot"]} />

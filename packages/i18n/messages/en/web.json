@@ -2,7 +2,6 @@
   "meta.title": "bInference Agent: your own AI agent on BNB Smart Chain",
   "meta.description": "An open-source AI agent that runs on your Mac and works on BNB Smart Chain day and night. It reads, researches, watches and trades, and never moves a coin without your tap.",
   "language.self": "English",
-  "gate.label": "Tap to wake the agent",
   "gate.line": "<b>Nothing moves</b> until you tap.",
   "gate.nudge": "Tap the dot.",
   "nav.day": "A day",
