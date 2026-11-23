@@ -130,6 +130,7 @@
   "play.freezeDone": "<b>已冻结。</b>每个 Agent 都已停止。解除冻结需要你在它自己的卡片上点按。",
   "readme.title": "读<b>我。</b>",
   "readme.text": "我是开源的。我运行的每一行代码都在 GitHub 上，这些文字背后的代码就是真实的代码。移动指针来阅读。",
+  "readme.link": "到 GitHub 上读我",
   "boundary.title": "我只有两个部分<b>能碰到资金。</b>",
   "boundary.sub": "我的对话和我的模型只能读取和提议。只有我的引擎做决定，只有我的签名进程签名，而且只在你设定的上限之内。",
   "boundary.label": "对话和模型向引擎提议；只有引擎和签名进程能到达链上",
@@ -162,5 +163,6 @@
   "install.copied": "已复制",
   "install.meta": "免费开源，MIT · 现已支持 macOS，Linux 和 Windows 随后推出",
   "footer.risk": "bInference 仍在开发中，尚不适合使用真实资金。交易有风险。",
+  "footer.source": "GitHub 上的源代码",
   "footer.maker": "bInference Lab"
 }

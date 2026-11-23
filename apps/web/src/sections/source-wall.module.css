@@ -107,6 +107,10 @@
   max-width: 560px;
   margin: 0 auto;
 }
+.front .link {
+  margin-top: 26px;
+  font-size: 19px;
+}
 @media (max-width: 900px) {
   .wall {
     grid-template-columns: 1fr;

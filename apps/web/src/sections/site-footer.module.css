@@ -12,3 +12,14 @@
   gap: 20px;
   flex-wrap: wrap;
 }
+.end {
+  display: flex;
+  gap: 18px;
+}
+.end a {
+  color: var(--text);
+  transition: color 0.3s var(--ease-out);
+}
+.end a:hover {
+  color: var(--gold);
+}

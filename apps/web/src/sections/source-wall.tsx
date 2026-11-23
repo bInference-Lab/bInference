@@ -1,3 +1,4 @@
+import { sourceUrl } from "../landing/source-url";
 import { Reveal } from "../motion/reveal";
 import type { Words } from "../words/words";
 import { ReadingLight } from "./reading-light";
@@ -36,6 +37,11 @@ export async function SourceWall(props: { readonly words: Words }): Promise<Reac
         </Reveal>
         <Reveal tag="p" className="t-lead mute">
           {props.words.text("readme.text")}
+        </Reveal>
+        <Reveal tag="p" className={styles["link"]} order={2}>
+          <a className="more" href={sourceUrl}>
+            {props.words.text("readme.link")}
+          </a>
         </Reveal>
       </div>
     </ReadingLight>

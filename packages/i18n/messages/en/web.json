@@ -130,6 +130,7 @@
   "play.freezeDone": "<b>Frozen.</b> Every agent stopped. Unfreezing takes your tap on its own card.",
   "readme.title": "Read <b>me.</b>",
   "readme.text": "I am open source. Every line I run is on GitHub, and the lines behind these words are the real ones. Move the pointer to read.",
+  "readme.link": "Read me on GitHub",
   "boundary.title": "Only two parts of me <b>touch money.</b>",
   "boundary.sub": "My chats and my model can read and propose. Only my engine decides, and only my signer signs, inside the ceiling you set.",
   "boundary.label": "Chats and models propose to the engine; only the engine and the signer reach the chain",
@@ -162,5 +163,6 @@
   "install.copied": "Copied",
   "install.meta": "Free and open source, MIT · macOS now, Linux and Windows next",
   "footer.risk": "bInference is in development and not ready for real funds. Trading carries risk.",
+  "footer.source": "Source on GitHub",
   "footer.maker": "bInference Lab"
 }
