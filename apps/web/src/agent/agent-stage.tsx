@@ -15,6 +15,7 @@ import {
 import { type AgentPicture, drawAgent } from "./draw-agent";
 import type { Point } from "./mark-field";
 import { type EyesRun, runEyes } from "./run-eyes";
+import { useStepAside } from "./step-aside";
 import { writingSeconds, writtenText } from "./written-text";
 import styles from "./agent-stage.module.css";
 
@@ -114,6 +115,7 @@ export function AgentStage(props: { readonly words: AgentStageWords }): React.JS
     () => runAgent({ bus, canvas, status, live, pill, poked, readUntil, words: props.words }),
     [bus, props.words],
   );
+  useStepAside(pill, styles["aside"] ?? "aside");
   const poke = (): void => {
     poked.current = performance.now() / 1000;
     bus.pulse();

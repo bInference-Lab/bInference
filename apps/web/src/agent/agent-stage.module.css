@@ -29,6 +29,11 @@
 .status.open {
   opacity: 1;
 }
+.status.open.aside {
+  opacity: 0;
+  transform: translateY(14px);
+  pointer-events: none;
+}
 .status.cold {
   --eye: var(--cold);
   --white: #e6eef7;

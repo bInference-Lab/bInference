@@ -1,0 +1,233 @@
+/* The install command as a terminal: an ink window with a hairline frame and three hollow dots,
+   a zsh prompt, the command colored as a shell colors it, and a gold block cursor. A copy sweeps
+   a gold selection over the command, lights the dots, and unfolds the terminal's answer, which
+   folds away again. */
+.terminal {
+  width: min(720px, calc(100vw - 32px));
+  margin-top: 30px;
+  border-radius: 14px;
+  overflow: hidden;
+  text-align: left;
+  background: #0e1115;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08);
+  transition: box-shadow 0.6s var(--ease-out);
+}
+.terminal:hover {
+  box-shadow: inset 0 0 0 1px rgb(240 185 11 / 0.35);
+}
+.bar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  height: 32px;
+  padding: 0 14px;
+  border-bottom: 1px solid rgb(255 255 255 / 0.05);
+}
+.bar i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px #3a414b;
+  transition:
+    background-color 0.4s var(--ease-out),
+    box-shadow 0.4s var(--ease-out);
+}
+.terminal:hover .bar i {
+  background: rgb(240 185 11 / 0.85);
+  box-shadow: none;
+}
+.terminal:hover .bar i:nth-child(2) {
+  transition-delay: 60ms;
+}
+.terminal:hover .bar i:nth-child(3) {
+  transition-delay: 120ms;
+}
+.bar span {
+  margin-left: auto;
+  font: 11px var(--mono);
+  letter-spacing: 0.04em;
+  color: var(--mute);
+  transition: color 0.3s;
+}
+.terminal:hover .bar span {
+  color: var(--gold);
+}
+
+.screen {
+  display: block;
+  width: 100%;
+  padding: 18px 22px 16px;
+  text-align: left;
+  font: 15px/1.7 var(--mono);
+  color: var(--text);
+  cursor: pointer;
+}
+.line {
+  display: block;
+  padding-left: 4ch;
+  text-indent: -4ch;
+}
+.prompt {
+  margin-right: 1ch;
+  color: var(--mute);
+}
+.program {
+  color: var(--text);
+}
+.flag,
+.pipe {
+  color: var(--mute);
+}
+.url {
+  color: var(--gold);
+}
+.cursor {
+  display: inline-block;
+  width: 0.6em;
+  height: 1.15em;
+  margin-left: 1px;
+  vertical-align: -0.2em;
+  background: var(--gold);
+  animation: blink 1.1s steps(1) infinite;
+}
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+.spoken {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The copy: a selection sweeps the command and stays while the answer shows. */
+.terminal[data-copied] .command span {
+  animation: select 6.6s var(--ease-out) both;
+  animation-delay: calc(var(--i) * 7ms);
+}
+@keyframes select {
+  0% {
+    background: transparent;
+  }
+  4%,
+  86% {
+    background: rgb(240 185 11 / 0.26);
+  }
+  100% {
+    background: transparent;
+  }
+}
+.terminal[data-copied] .line .cursor {
+  animation:
+    blink 1.1s steps(1) infinite,
+    rest 6.6s both;
+}
+@keyframes rest {
+  0%,
+  100% {
+    visibility: visible;
+  }
+  4%,
+  92% {
+    visibility: hidden;
+  }
+}
+.terminal[data-copied] .bar i {
+  animation: lamp 1.4s var(--ease-out) both;
+}
+.terminal[data-copied] .bar i:nth-child(2) {
+  animation-delay: 0.12s;
+}
+.terminal[data-copied] .bar i:nth-child(3) {
+  animation-delay: 0.24s;
+}
+@keyframes lamp {
+  30% {
+    background: var(--gold);
+    box-shadow: none;
+  }
+}
+
+/* The terminal's answer unfolds under the command, then folds away. */
+.answer {
+  display: grid;
+  grid-template-rows: 0fr;
+  font: 15px/1.7 var(--mono);
+}
+.answer > div {
+  min-height: 0;
+  overflow: hidden;
+  padding: 0 22px;
+}
+.terminal[data-copied] .answer {
+  animation: unfold 6.6s var(--ease-out) both;
+}
+@keyframes unfold {
+  0% {
+    grid-template-rows: 0fr;
+  }
+  8%,
+  88% {
+    grid-template-rows: 1fr;
+  }
+  100% {
+    grid-template-rows: 0fr;
+  }
+}
+.said {
+  margin: 0;
+  color: var(--text);
+  animation: said 0.5s var(--ease-out) 0.3s both;
+}
+.tick {
+  display: inline-block;
+  width: 0.9em;
+  height: 0.9em;
+  margin-right: 1ch;
+  vertical-align: -0.08em;
+  fill: none;
+  stroke: var(--gold);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.next {
+  margin: 0 0 18px;
+}
+@keyframes said {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+@media (max-width: 640px) {
+  .screen,
+  .answer {
+    font-size: 13px;
+  }
+  .screen {
+    padding: 14px 16px;
+  }
+  .answer > div {
+    padding: 0 16px;
+  }
+}
+
+/* With reduced motion the terminal rests: the command is there, the answer stays once copied. */
+@media (prefers-reduced-motion: reduce) {
+  .terminal[data-copied] .command span,
+  .terminal[data-copied] .bar i,
+  .terminal[data-copied] .answer,
+  .said,
+  .cursor {
+    animation: none;
+  }
+  .terminal[data-copied] .answer {
+    grid-template-rows: 1fr;
+  }
+}

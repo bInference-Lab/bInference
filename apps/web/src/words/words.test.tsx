@@ -20,8 +20,8 @@ describe("wordsFor", () => {
   });
 
   it("puts each word of a split heading in its own mask, numbered in order", () => {
-    const markup = renderToStaticMarkup(<h1>{words.split("install.title")}</h1>);
-    expect(markup.match(/class="sw"/g)).toHaveLength(3);
+    const markup = renderToStaticMarkup(<h1>{words.split("play.title")}</h1>);
+    expect(markup.match(/class="sw"/g)).toHaveLength(4);
     expect(markup).toContain('style="--n:0"');
     expect(markup).toContain('style="--n:2"');
     expect(markup).toContain("<b>");

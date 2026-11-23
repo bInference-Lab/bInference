@@ -7,7 +7,6 @@ import { Boundary } from "../sections/boundary";
 import { CardScene } from "../sections/card-scene";
 import { Day } from "../sections/day";
 import { Hero } from "../sections/hero";
-import { Install } from "../sections/install";
 import { Playground } from "../sections/playground";
 import { SiteFooter } from "../sections/site-footer";
 import { SourceWall } from "../sections/source-wall";
@@ -87,7 +86,6 @@ export function Landing(props: { readonly locale: Locale }): React.JSX.Element {
         <SourceWall words={words} />
         <Boundary words={boundaryWords(words)} />
         <Assembly words={words} />
-        <Install words={words} />
       </main>
       <SiteFooter words={words} />
     </AgentProvider>
