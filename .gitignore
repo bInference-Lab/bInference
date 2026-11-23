@@ -36,3 +36,6 @@ apps/docs/.astro/
 # The landing site's Next.js build and the types file Next.js writes.
 apps/web/.next/
 apps/web/next-env.d.ts
+
+# A machine's link to its hosting project, and the output it deploys, stay on that machine.
+.vercel/
