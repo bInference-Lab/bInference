@@ -6,6 +6,7 @@ import { Assembly } from "../sections/assembly";
 import { Boundary } from "../sections/boundary";
 import { CardScene } from "../sections/card-scene";
 import { Channels } from "../sections/channels";
+import { Controls } from "../sections/controls";
 import { Day } from "../sections/day";
 import { Hero } from "../sections/hero";
 import { Playground } from "../sections/playground";
@@ -84,6 +85,7 @@ export function Landing(props: { readonly locale: Locale }): React.JSX.Element {
           tools={toolList(words)}
         />
         <CardScene words={words} />
+        <Controls words={words} />
         <Playground words={playgroundWords(words)} runs={demoRuns(words)} />
         <SourceWall words={words} />
         <Boundary words={boundaryWords(words)} />

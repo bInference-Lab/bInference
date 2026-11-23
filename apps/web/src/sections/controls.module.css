@@ -1,0 +1,350 @@
+/* The owner's controls as a deck of tiles, flat ink with hairlines: mode, limits, the brake, the
+   rescue, and paper before live. */
+.controls {
+  position: relative;
+  z-index: 2;
+  padding: clamp(110px, 16svh, 180px) 0;
+}
+.head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 24px;
+  margin-bottom: clamp(30px, 5svh, 52px);
+}
+.head h2 b {
+  font-weight: 620;
+}
+.sub {
+  margin-top: 14px;
+}
+.slot {
+  height: clamp(110px, 15svh, 160px);
+}
+
+.deck {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+.tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 26px 26px 24px;
+  border-radius: 26px;
+  background: var(--ink-2);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.tile h3 {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+.note {
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--mute);
+}
+.command {
+  margin-top: auto;
+  padding-top: 8px;
+  font: 13px var(--mono);
+  color: var(--gold);
+  letter-spacing: 0;
+}
+.mode {
+  grid-column: 1 / span 2;
+  grid-row: 1 / span 2;
+}
+.limits {
+  grid-column: 3 / span 2;
+}
+.paper {
+  grid-column: 1 / -1;
+}
+
+/* Mode: a segmented switch, and the example actions with what each does in that mode. */
+.tileHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+.switch {
+  display: flex;
+  margin: 0;
+  padding: 3px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.switch button {
+  min-width: 86px;
+  padding: 7px 16px;
+  border-radius: 9px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--mute);
+  transition:
+    background-color 0.35s var(--ease-out),
+    color 0.35s var(--ease-out);
+}
+.switch button[aria-pressed="true"] {
+  background: var(--gold);
+  color: var(--ink);
+}
+.rows {
+  display: grid;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.rows li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 15px 0;
+  border-top: 1px solid var(--line);
+  font-size: 15px;
+}
+.asks,
+.runs {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  font-size: 14px;
+  font-weight: 600;
+  animation: arrive 0.45s var(--ease-out);
+}
+.asks {
+  color: var(--gold);
+}
+.runs {
+  color: var(--gain);
+}
+.asks i,
+.runs i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+@keyframes arrive {
+  from {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+}
+
+/* Limits: two sliders, and what a move means. */
+.limit {
+  display: grid;
+  gap: 10px;
+  margin-top: 6px;
+}
+.limitHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 15px;
+}
+.limitHead output {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.limitHead .later {
+  color: var(--gold);
+}
+.limit input {
+  width: 100%;
+  height: 22px;
+  margin: 0;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+.limit input::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 4px;
+  background: linear-gradient(to right, var(--gold) var(--fill), var(--ink-3) var(--fill));
+}
+.limit input::-moz-range-track {
+  height: 4px;
+  border-radius: 4px;
+  background: linear-gradient(to right, var(--gold) var(--fill), var(--ink-3) var(--fill));
+}
+.limit input::-webkit-slider-thumb {
+  width: 20px;
+  height: 20px;
+  margin-top: -8px;
+  appearance: none;
+  border-radius: 50%;
+  background: var(--text);
+}
+.limit input::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--text);
+}
+.said {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: auto;
+  padding-top: 8px;
+  font-size: 14px;
+  color: var(--mute);
+}
+.said i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.said[data-change="tighter"] {
+  color: var(--gain);
+}
+.said[data-change="looser"] {
+  color: var(--gold);
+}
+
+/* The brake and the rescue. */
+.brake,
+.pill {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: fit-content;
+  padding: 10px 18px 10px 12px;
+  border-radius: 999px;
+  font-size: 17px;
+  font-weight: 600;
+  background: var(--ink-3);
+  transition:
+    background-color 0.4s var(--ease-out),
+    color 0.4s var(--ease-out);
+}
+.brake svg,
+.pill svg {
+  width: 26px;
+  height: 26px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.brake:hover {
+  background: color-mix(in srgb, var(--cold) 18%, var(--ink-3));
+}
+.freeze[data-frozen="true"] .brake {
+  background: var(--cold);
+  color: var(--ink);
+}
+.freeze[data-frozen="true"] .brake svg {
+  animation: settle 0.8s var(--ease-out);
+}
+@keyframes settle {
+  from {
+    transform: rotate(-60deg) scale(0.7);
+  }
+}
+.pill {
+  color: var(--gold);
+}
+
+/* Paper, then live. */
+.paper {
+  flex-direction: row;
+  align-items: stretch;
+  gap: 26px;
+}
+.stage {
+  flex: 1 1 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.stage h3 i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1.5px var(--mute);
+}
+.stage[data-on] h3 i {
+  background: var(--gold);
+  box-shadow: none;
+}
+.arrow {
+  flex: none;
+  align-self: center;
+  width: 64px;
+  height: 1px;
+  background: var(--line);
+  position: relative;
+}
+.arrow::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  top: -4px;
+  width: 8px;
+  height: 8px;
+  border: solid var(--line);
+  border-width: 1px 1px 0 0;
+  transform: rotate(45deg);
+}
+
+@media (max-width: 900px) {
+  .deck {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .mode,
+  .limits,
+  .paper {
+    grid-column: 1 / -1;
+    grid-row: auto;
+  }
+}
+@media (max-width: 560px) {
+  .head {
+    grid-template-columns: 1fr;
+  }
+  .slot {
+    display: none;
+  }
+  .deck {
+    grid-template-columns: 1fr;
+  }
+  .tile {
+    padding: 22px 20px 20px;
+  }
+  .tileHead {
+    flex-wrap: wrap;
+  }
+  .paper {
+    flex-direction: column;
+  }
+  .arrow {
+    width: 1px;
+    height: 28px;
+    align-self: flex-start;
+    margin-left: 4px;
+  }
+  .arrow::after {
+    right: -4px;
+    top: auto;
+    bottom: 0;
+    transform: rotate(135deg);
+  }
+}
