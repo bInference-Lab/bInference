@@ -7,10 +7,12 @@ import { AgentSlot } from "../agent/agent-slot";
 import { Reveal } from "../motion/reveal";
 import styles from "./tools.module.css";
 
-/** One tool the agent can use. */
+/** One thing the agent can do. */
 export interface Tool {
   readonly name: string;
   readonly text: string;
+  /** What it does it with or through: the venues, the services, or a short note. */
+  readonly via: string;
   /** The status pill's words while the agent uses it. */
   readonly use: string;
 }
@@ -47,6 +49,7 @@ function ToolList(props: {
           >
             <b>{tool.name}</b>
             <span>{tool.text}</span>
+            <small>{tool.via}</small>
           </button>
         </li>
       ))}
@@ -54,14 +57,14 @@ function ToolList(props: {
   );
 }
 
-/** What the agent can use: hover a tool, and it turns to it and puts it to work. */
+/** What the agent can do: hover one, and it turns to it and puts it to work. */
 export function Tools(props: {
   readonly words: ToolsWords;
   readonly tools: readonly Tool[];
 }): React.JSX.Element {
   const half = Math.ceil(props.tools.length / 2);
   return (
-    <section className={`wide ${styles["tools"] ?? ""}`}>
+    <section className={`wide ${styles["tools"] ?? ""}`} id="features">
       <Reveal tag="h2" wordsOnly className={`t-l thin ${styles["title"] ?? ""}`}>
         {props.words.title}
       </Reveal>

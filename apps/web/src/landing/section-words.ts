@@ -20,23 +20,28 @@ export function dayEntries(words: Words): readonly DayEntry[] {
   return dayLog.map((entry) => ({ time: entry.time, text: words.text(entry.key), at: entry.at }));
 }
 
-const toolKeys: readonly (readonly [WordKey, WordKey, WordKey])[] = [
-  ["tools.chain", "tools.chainText", "tools.chainUse"],
-  ["tools.wallets", "tools.walletsText", "tools.walletsUse"],
-  ["tools.venues", "tools.venuesText", "tools.venuesUse"],
-  ["tools.browser", "tools.browserText", "tools.browserUse"],
-  ["tools.terminal", "tools.terminalText", "tools.terminalUse"],
-  ["tools.clock", "tools.clockText", "tools.clockUse"],
-  ["tools.memory", "tools.memoryText", "tools.memoryUse"],
-  ["tools.helpers", "tools.helpersText", "tools.helpersUse"],
-];
+const toolNames = [
+  "launchpads",
+  "swaps",
+  "orders",
+  "staking",
+  "bridges",
+  "private",
+  "research",
+  "safety",
+  "alerts",
+  "wallets",
+  "terminal",
+  "memory",
+] as const;
 
-/** The tools the agent can use, in the order the page lists them. */
+/** What the agent can do, in the order the page lists them: trading first, then what it knows. */
 export function toolList(words: Words): readonly Tool[] {
-  return toolKeys.map(([name, text, use]) => ({
-    name: words.text(name),
-    text: words.text(text),
-    use: words.text(use),
+  return toolNames.map((name) => ({
+    name: words.text(`tools.${name}`),
+    text: words.text(`tools.${name}Text`),
+    via: words.text(`tools.${name}Via`),
+    use: words.text(`tools.${name}Use`),
   }));
 }
 

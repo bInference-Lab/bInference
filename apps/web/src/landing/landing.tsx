@@ -36,8 +36,8 @@ function Header(props: { readonly words: Words }): React.JSX.Element {
   return (
     <SiteHeader
       chapters={[
-        { href: "#day", label: words.text("nav.day") },
-        { href: "#play", label: words.text("nav.talk") },
+        { href: "#features", label: words.text("nav.features") },
+        { href: "#play", label: words.text("nav.demo") },
         { href: "#readme", label: words.text("nav.source") },
       ]}
       chaptersLabel={words.text("nav.label")}

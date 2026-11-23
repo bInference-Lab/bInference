@@ -46,8 +46,16 @@
   letter-spacing: -0.015em;
 }
 .tool span {
+  display: block;
   color: var(--mute);
   font-size: 15px;
+}
+.tool small {
+  display: block;
+  margin-top: 6px;
+  font: 500 11px/1.3 var(--mono);
+  letter-spacing: 0.02em;
+  color: rgb(240 185 11 / 0.72);
 }
 @media (max-width: 900px) {
   .kit {
