@@ -1,0 +1,86 @@
+/* The facts under the install command: a fine icon beside a label and a quiet note, in one
+   row parted by hairlines on a wide screen, and a two-column grid on a narrow one. The last is
+   the demo link. */
+.facts {
+  display: flex;
+  justify-content: center;
+  margin: 24px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.fact {
+  padding: 2px 26px;
+}
+.fact + .fact {
+  border-left: 1px solid var(--line);
+}
+.fact,
+.fact a {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  text-align: left;
+  /* A Chinese note wraps only between words, never leaving one character alone. */
+  word-break: keep-all;
+}
+.fact svg {
+  flex: none;
+  width: 21px;
+  height: 21px;
+}
+.solid {
+  fill: var(--text);
+}
+.line {
+  fill: none;
+  stroke: var(--text);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.fact b {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+.fact small {
+  display: block;
+  margin-top: 1px;
+  font-size: 12px;
+  color: var(--mute);
+}
+.talk b,
+.talk .line {
+  color: var(--gold);
+  stroke: var(--gold);
+}
+.talk b::after {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 6px;
+  border: solid currentColor;
+  border-width: 1.5px 1.5px 0 0;
+  transform: translateY(-1px) rotate(45deg);
+  transition: transform 0.25s var(--ease);
+}
+.talk a:hover b::after {
+  transform: translate(3px, -1px) rotate(45deg);
+}
+@media (max-width: 780px) {
+  .facts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px 16px;
+    width: 100%;
+    max-width: 360px;
+  }
+  .fact,
+  .fact + .fact {
+    padding: 0;
+    border: 0;
+  }
+}

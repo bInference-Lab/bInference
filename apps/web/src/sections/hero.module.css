@@ -8,9 +8,12 @@
   text-align: center;
   padding: 72px 0 64px;
 }
+/* The agent's orbits reach past the mark, 7% of its height above it and 19% below, so the room
+   around the slot grows with it and nothing ever touches an orbit. */
 .slot {
-  height: clamp(220px, 34svh, 380px);
-  margin: 22px 0 clamp(34px, 5svh, 52px);
+  --slot: clamp(190px, 27svh, 330px);
+  height: var(--slot);
+  margin: calc(var(--slot) * 0.07) 0 calc(var(--slot) * 0.19 + 30px);
 }
 .title {
   font-size: clamp(42px, 5.6vw, 80px);
@@ -35,21 +38,30 @@
 }
 .lead {
   max-width: 620px;
-  margin-top: 18px;
-  font-size: clamp(17px, 1.4vw, 20px);
+  margin-top: 20px;
+  font-size: clamp(16px, 1.3vw, 19px);
+  line-height: 1.45;
+}
+.verbs {
+  margin-bottom: 6px;
+  font-size: clamp(19px, 1.7vw, 24px);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--text);
+}
+/* Each sentence keeps to one line: on a narrow screen the second moves down whole. */
+.line {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  column-gap: 0.28em;
+}
+.line:lang(zh) {
+  column-gap: 0;
 }
 .start {
   display: grid;
   justify-items: center;
-}
-.after {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-items: center;
-  gap: 8px 22px;
-  margin-top: 4px;
-  font-size: 14px;
 }
 .eyebrow,
 .lead,
@@ -75,9 +87,13 @@
   transform: none;
   transition-delay: 2.2s;
 }
+/* The product's name, set right above the headline it names, in the agent's gold. */
 .eyebrow {
-  font-size: clamp(17px, 1.5vw, 21px);
+  margin-bottom: clamp(6px, 1svh, 10px);
+  font-size: clamp(16px, 1.35vw, 20px);
   font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--gold);
 }
 /* On a phone the first screen holds the words and buttons above the status pill: the agent
    takes the height they leave, and the bottom keeps the pill's room. */
@@ -86,6 +102,6 @@
     padding-bottom: 84px;
   }
   .slot {
-    height: clamp(140px, calc(100svh - 560px), 39svh);
+    --slot: clamp(140px, calc(100svh - 580px), 39svh);
   }
 }
