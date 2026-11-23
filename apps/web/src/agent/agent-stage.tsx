@@ -15,6 +15,7 @@ import {
 import { type AgentPicture, drawAgent } from "./draw-agent";
 import type { Point } from "./mark-field";
 import { type EyesRun, runEyes } from "./run-eyes";
+import { writingSeconds, writtenText } from "./written-text";
 import styles from "./agent-stage.module.css";
 
 /** The words of the status pill. */
@@ -98,17 +99,19 @@ function sceneAt(bus: AgentBus, slots: readonly HTMLElement[], pointer: Point | 
 }
 
 /**
- * The agent: one canvas over the page that stands in the slot on screen, and its status pill,
- * whose eyes are the agent's own.
+ * The agent: one canvas over the page that stands in the slot on screen, and in the corner its own
+ * eyes, which follow the reader and read the status the agent writes beside them.
  */
 export function AgentStage(props: { readonly words: AgentStageWords }): React.JSX.Element {
   const bus = useAgent();
   const canvas = useRef<HTMLCanvasElement>(null);
   const status = useRef<HTMLElement>(null);
+  const live = useRef<HTMLSpanElement>(null);
   const pill = useRef<HTMLDivElement>(null);
   const poked = useRef(-1);
+  const readUntil = useRef(0);
   useEffect(
-    () => runAgent({ bus, canvas, status, pill, poked, words: props.words }),
+    () => runAgent({ bus, canvas, status, live, pill, poked, readUntil, words: props.words }),
     [bus, props.words],
   );
   const poke = (): void => {
@@ -127,8 +130,15 @@ export function AgentStage(props: { readonly words: AgentStageWords }): React.JS
         >
           <AgentEyes />
         </button>
-        <span aria-live="polite">
-          {props.words.agent} · <b ref={status}>{props.words.asleep}</b>
+        <span className={styles["words"]} aria-hidden="true">
+          <small>{props.words.agent}</small>
+          <span className={styles["line"]}>
+            <b ref={status} />
+            <i className={styles["caret"]} />
+          </span>
+        </span>
+        <span ref={live} className={styles["live"]} aria-live="polite">
+          {props.words.asleep}
         </span>
       </div>
     </>
@@ -139,8 +149,11 @@ interface Run {
   readonly bus: AgentBus;
   readonly canvas: { readonly current: HTMLCanvasElement | null };
   readonly status: { readonly current: HTMLElement | null };
+  readonly live: { readonly current: HTMLElement | null };
   readonly pill: { readonly current: HTMLDivElement | null };
   readonly poked: { readonly current: number };
+  /** Until when the eyes read the status, in seconds; the writer sets it as it begins. */
+  readonly readUntil: { current: number };
   readonly words: AgentStageWords;
 }
 
@@ -174,12 +187,20 @@ function watchPointer(): PointerWatch {
 }
 
 function startEyes(run: Run, pointer: PointerWatch): EyesRun | undefined {
-  const pill = run.pill.current;
+  const { current: pill } = run.pill;
+  const { current: words } = run.status;
   const svg = pill?.querySelector("svg");
-  if (pill === null || svg === null || svg === undefined) {
+  if (pill === null || words === null || svg === null || svg === undefined) {
     return undefined;
   }
-  return runEyes({ pill, svg, pointer: pointer.at, pokedAt: () => run.poked.current });
+  return runEyes({
+    pill,
+    svg,
+    words,
+    pointer: pointer.at,
+    pokedAt: () => run.poked.current,
+    readUntil: () => run.readUntil.current,
+  });
 }
 
 interface Senses {
@@ -213,7 +234,7 @@ function runAgent(run: Run): () => void {
   const keepOrder = orderKeeper(run.bus);
   let state: AgentState = restingAgent({ x: innerWidth, y: innerHeight });
   let last = performance.now() / 1000;
-  let shown = "";
+  const write = createStatusWriter({ run, instant });
   let frame = 0;
   const tick = (): void => {
     const now = performance.now() / 1000;
@@ -233,7 +254,7 @@ function runAgent(run: Run): () => void {
     });
     last = now;
     senses.eyes?.draw({ state, now, awake });
-    shown = showStatus(run, { awake, scene, shown, instant });
+    write({ awake, scene, now });
     paint(
       { canvas: el, context },
       {
@@ -255,32 +276,37 @@ function runAgent(run: Run): () => void {
 interface StatusView {
   readonly awake: boolean;
   readonly scene: Scene;
-  readonly shown: string;
+  readonly now: number;
+}
+
+function setText(element: HTMLElement | null, text: string): void {
+  if (element !== null && element.textContent !== text) {
+    element.replaceChildren(text);
+  }
+}
+
+// The agent writes each new status a letter at a time while its eyes read along; a screen
+// reader hears the whole status at once from a copy no one sees.
+function createStatusWriter(writer: {
+  readonly run: Run;
   readonly instant: boolean;
-}
-
-// A new status rolls up into place from behind a soft blur.
-const rising: readonly Keyframe[] = [
-  { opacity: 0, transform: "translateY(70%)", filter: "blur(3px)" },
-  { opacity: 1, transform: "none", filter: "none" },
-];
-
-function rollIn(label: HTMLElement, view: StatusView): void {
-  if (!view.instant && view.shown !== "") {
-    label.animate([...rising], { duration: 560, easing: "cubic-bezier(0.16, 1, 0.3, 1)" });
-  }
-}
-
-function showStatus(run: Run, view: StatusView): string {
-  const words = view.awake ? (view.scene.label ?? run.words.watching) : run.words.asleep;
-  const { current: label } = run.status;
-  if (words !== view.shown && label !== null) {
-    label.textContent = words;
-    rollIn(label, view);
-    run.pill.current?.classList.toggle(styles["cold"] ?? "cold", view.scene.mode === "frozen");
-    run.pill.current?.classList.toggle(styles["open"] ?? "open", view.awake);
-  }
-  return words;
+}): (view: StatusView) => void {
+  const { run, instant } = writer;
+  const { readUntil } = run;
+  let words = "";
+  let since = 0;
+  return (view) => {
+    const next = view.awake ? (view.scene.label ?? run.words.watching) : run.words.asleep;
+    if (next !== words) {
+      words = next;
+      since = view.now;
+      readUntil.current = instant ? 0 : view.now + writingSeconds(next) + 0.6;
+      setText(run.live.current, next);
+      run.pill.current?.classList.toggle(styles["cold"] ?? "cold", view.scene.mode === "frozen");
+      run.pill.current?.classList.toggle(styles["open"] ?? "open", view.awake);
+    }
+    setText(run.status.current, instant ? words : writtenText(words, view.now - since));
+  };
 }
 
 interface Surface {

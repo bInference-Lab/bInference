@@ -1,49 +1,65 @@
-/* The agent's eyes, engraved: faint gold lines for the white, brighter ones for the iris, an ink
-   pupil with a glint, and a gold lash on each upper lid. --eye turns cold when frozen. */
+/* The agent's eyes: an ivory white, an iris engraved in gold lines around an ink pupil, two
+   glints, and a gold lash that ends in a wing. --eye and --white turn cold when frozen. */
 .eyes {
   display: block;
-  width: 44px;
-  height: 16.2px;
+  width: 102px;
+  height: 30px;
   flex: none;
   overflow: visible;
 }
-.faint {
-  fill: var(--eye);
-  opacity: 0.3;
+.white {
+  fill: var(--white);
 }
-.bright {
+.iris {
   fill: var(--eye);
+}
+.fiber {
+  stroke: var(--fiber);
+  stroke-width: 0.38;
+  stroke-linecap: round;
 }
 .limbus {
   fill: none;
-  stroke: var(--eye);
-  stroke-width: 0.5;
+  stroke: var(--fiber);
+  stroke-width: 0.9;
 }
 .pupil {
   fill: var(--ink);
 }
 .glint {
-  fill: #fff8e1;
+  fill: #fffdf6;
 }
 .upper,
-.lower {
+.lower,
+.wing {
   fill: none;
   stroke: var(--eye);
   stroke-linecap: round;
 }
 .upper {
-  stroke-width: 1.05;
+  stroke-width: 1.5;
 }
 .lower {
-  stroke-width: 0.45;
+  stroke-width: 0.6;
   opacity: 0;
 }
-.faint,
-.bright,
+.wing {
+  stroke-width: 1.2;
+}
+.white,
+.iris,
+.fiber,
 .limbus,
 .upper,
-.lower {
+.lower,
+.wing {
   transition:
     fill 0.9s var(--ease),
     stroke 0.9s var(--ease);
+}
+@media (max-width: 900px) {
+  .eyes {
+    width: 86px;
+    height: 25px;
+  }
 }

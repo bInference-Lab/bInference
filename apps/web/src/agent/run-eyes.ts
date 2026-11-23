@@ -1,16 +1,28 @@
-import { lidPath, openingPath, shutLid } from "./agent-eyes";
+import {
+  eyeCenters,
+  eyesWidth,
+  lidPath,
+  openingPath,
+  openLower,
+  openUpper,
+  shutCurve,
+} from "./agent-eyes";
 import type { AgentState } from "./agent-motion";
 import { type EyePose, type EyeSide, eyePose } from "./eye-pose";
 import type { Point } from "./mark-field";
 
 /** What the eyes read besides the agent. */
 export interface EyesSetup {
-  /** The status pill: a pointer resting on it makes the eyes smile. */
+  /** The eyes with their words: a pointer resting on them makes the eyes smile. */
   readonly pill: HTMLElement;
   readonly svg: SVGSVGElement;
+  /** The status as it is written: the eyes read along its end while it is new. */
+  readonly words: HTMLElement;
   readonly pointer: () => Point | undefined;
   /** When the reader last poked the eyes, in seconds of `performance.now()`, or -1. */
   readonly pokedAt: () => number;
+  /** Until when the eyes read their words, in seconds of `performance.now()`. */
+  readonly readUntil: () => number;
 }
 
 interface EyesFrame {
@@ -34,9 +46,6 @@ interface EyeParts {
   readonly upper: SVGElement;
   readonly lower: SVGElement;
 }
-
-/** How tall an open eye's lids curve, as their control height above and below the corners. */
-const wide = 6.4;
 
 function partsOf(group: SVGGElement): EyeParts | undefined {
   const side = group.dataset["eye"] === "right" ? "right" : "left";
@@ -65,37 +74,41 @@ function put(element: SVGElement, name: string, value: number | string): void {
 // lower one into a crescent; shut, both meet in a sleeper's curve.
 function lidsOf(pose: EyePose): { readonly upper: number; readonly lower: number } {
   const shut = 1 - pose.open;
-  const upper = -wide + (wide + shutLid) * shut + pose.y * 0.9 * pose.open;
-  const resting = wide - (wide - shutLid) * shut;
-  const smiling = wide - (wide + 1.6) * pose.smile;
-  return { upper, lower: Math.max(upper + 0.4, Math.min(resting, smiling)) };
+  const upper = openUpper + (shutCurve - openUpper) * shut + pose.y * 3 * pose.open;
+  const resting = openLower + (shutCurve - openLower) * shut;
+  const smiling = openLower + (openUpper * 0.4 - openLower) * pose.smile;
+  return { upper, lower: Math.max(upper + 0.6, Math.min(resting, smiling)) };
 }
 
-// The iris slides toward what the eye looks at and narrows as it turns away, as a sphere would;
-// its engraved lines stay level.
+// The iris slides toward what the eye looks at and narrows as it turns away, as a ball would;
+// its engraved lines turn with it.
 function drawEye(parts: EyeParts, pose: EyePose): void {
-  const at = `${(pose.x * 3.6).toFixed(2)} ${(pose.y * 1.5).toFixed(2)}`;
-  const narrow = `${(1 - Math.abs(pose.x) * 0.22).toFixed(2)} ${(1 - Math.abs(pose.y) * 0.12).toFixed(2)}`;
+  const at = `${(pose.x * 9).toFixed(2)} ${(pose.y * 4.2).toFixed(2)}`;
+  const narrow = `${(1 - Math.abs(pose.x) * 0.18).toFixed(2)} ${(1 - Math.abs(pose.y) * 0.1).toFixed(2)}`;
   put(parts.iris, "transform", `translate(${at}) scale(${narrow})`);
-  put(parts.pupil, "r", 1.15 * pose.pupil);
+  put(parts.pupil, "r", 3.6 * pose.pupil);
   const lids = lidsOf(pose);
   put(parts.opening, "d", openingPath(lids.upper, lids.lower));
   put(parts.upper, "d", lidPath(lids.upper));
   put(parts.lower, "d", lidPath(lids.lower));
-  put(parts.lower, "opacity", 0.55 * pose.open);
+  put(parts.lower, "opacity", 0.6 * pose.open);
 }
 
 interface Layout {
   readonly box: DOMRect;
   readonly eyes: readonly Point[];
+  /** The end of the words, where the next letter appears. */
+  readonly caret: Point;
 }
 
 function measure(setup: EyesSetup): Layout {
   const box = setup.svg.getBoundingClientRect();
   const middle = box.top + box.height / 2;
+  const words = setup.words.getBoundingClientRect();
   return {
     box: setup.pill.getBoundingClientRect(),
-    eyes: [9, 29].map((x) => ({ x: box.left + (box.width * x) / 38, y: middle })),
+    eyes: eyeCenters.map((x) => ({ x: box.left + (box.width * x) / eyesWidth, y: middle })),
+    caret: { x: words.right, y: words.top + words.height / 2 },
   };
 }
 
@@ -107,7 +120,7 @@ function nearness(pointer: Point | undefined, box: DOMRect): number {
   if (pointer === undefined) {
     return 0;
   }
-  const away = Math.hypot(pointer.x - (box.left + 24), pointer.y - (box.top + box.height / 2));
+  const away = Math.hypot(pointer.x - (box.left + 50), pointer.y - (box.top + box.height / 2));
   return Math.min(1, Math.max(0, 1 - (away - 40) / 260));
 }
 
@@ -142,13 +155,15 @@ export function runEyes(setup: EyesSetup): EyesRun {
   };
   const resized = new ResizeObserver(remeasure);
   resized.observe(setup.pill);
+  resized.observe(setup.words);
   addEventListener("resize", remeasure, { passive: true });
   const activity = watchActivity();
   return {
     draw: (frame) => {
       const pointer = setup.pointer();
       const hover = pointer !== undefined && inside(pointer, layout.box) ? pointer : undefined;
-      const shared = { ...frame, hover, pokedAt: setup.pokedAt() };
+      const glance = frame.now < setup.readUntil() ? layout.caret : undefined;
+      const shared = { ...frame, hover, glance, pokedAt: setup.pokedAt() };
       const near = nearness(pointer, layout.box);
       parts.forEach((eye, index) => {
         const center = layout.eyes[index] ?? { x: 0, y: 0 };

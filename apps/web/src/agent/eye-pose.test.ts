@@ -16,6 +16,7 @@ function input(overrides: Partial<EyeInput>): EyeInput {
     side: "left",
     awake: true,
     hover: undefined,
+    glance: undefined,
     near: 0,
     pokedAt: -1,
     still: 0,
@@ -28,7 +29,21 @@ describe("eyePose", () => {
     const pose = eyePose(input({}));
     expect(pose.x).toBeGreaterThan(0.5);
     expect(pose.y).toBeLessThan(-0.5);
-    expect(Math.hypot(pose.x, pose.y)).toBeCloseTo(1, 5);
+    expect(Math.hypot(pose.x, pose.y)).toBeGreaterThan(0.98);
+  });
+
+  it("turns both eyes toward each other for a pointer close between them", () => {
+    const hover = { x: 65, y: 860 };
+    const left = eyePose(input({ eye: { x: 40, y: 860 }, hover }));
+    const right = eyePose(input({ eye: { x: 90, y: 860 }, hover, side: "right" }));
+    expect(left.x).toBeGreaterThan(0.1);
+    expect(right.x).toBeLessThan(-0.1);
+  });
+
+  it("glances at its own words, while a pointer on them still wins", () => {
+    const glance = { x: 200, y: 860 };
+    expect(eyePose(input({ glance })).y).toBeCloseTo(0, 5);
+    expect(eyePose(input({ glance, hover: { x: 40, y: 960 } })).y).toBeGreaterThan(0.5);
   });
 
   it("keeps its eyes shut before the agent wakes", () => {

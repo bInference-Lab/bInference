@@ -2,68 +2,96 @@ import { useId } from "react";
 import type { EyeSide } from "./eye-pose";
 import styles from "./agent-eyes.module.css";
 
-/** The control height of a lid's curve when the eye is shut: a sleeper's curve, a little low. */
-export const shutLid = 1.4;
+/** Where each eye's center sits in the drawing, which is 102 by 30. */
+export const eyeCenters: readonly number[] = [26, 76];
 
-/** The opening of an eye between its two lids, from corner to corner, as an SVG path. */
+/** The drawing's width; the eyes' centers are read as shares of it on screen. */
+export const eyesWidth = 102;
+
+/** The upper lid's curve control when the eye is open: a full almond, the whole iris showing. */
+export const openUpper = -14;
+
+/** The lower lid's curve control when the eye is open. */
+export const openLower = 12;
+
+/** Where both lids meet when the eye is shut: a sleeper's curve, a little low. */
+export const shutCurve = 3;
+
+const corner = 20;
+// Rounded, so the server and the browser write the same numbers into the page.
+const fibers = Array.from({ length: 36 }, (_, step) => {
+  const angle = (step * Math.PI) / 18;
+  const at = (radius: number): string => (Math.cos(angle) * radius).toFixed(2);
+  const up = (radius: number): string => (Math.sin(angle) * radius).toFixed(2);
+  return { key: step, x1: at(3.9), y1: up(3.9), x2: at(8.5), y2: up(8.5) };
+});
+
+/** The opening between the two lids, from corner to corner, as an SVG path. */
 export function openingPath(upper: number, lower: number): string {
-  return `M -7 0 Q 0 ${upper.toFixed(2)} 7 0 Q 0 ${lower.toFixed(2)} -7 0 Z`;
+  const [u, l] = [upper.toFixed(2), lower.toFixed(2)];
+  return `M -${String(corner)} 0 C -10 ${u} 10 ${u} ${String(corner)} 0 C 10 ${l} -10 ${l} -${String(corner)} 0 Z`;
 }
 
 /** One lid's line from corner to corner, as an SVG path. */
 export function lidPath(control: number): string {
-  return `M -7 0 Q 0 ${control.toFixed(2)} 7 0`;
+  const c = control.toFixed(2);
+  return `M -${String(corner)} 0 C -10 ${c} 10 ${c} ${String(corner)} 0`;
 }
 
-interface EyeProps {
-  readonly side: EyeSide;
-  readonly x: number;
-  /** The ids of the two engraved fills: the faint white of the eye and the bright iris. */
-  readonly fills: { readonly white: string; readonly iris: string };
-}
-
-function Eye(props: EyeProps): React.JSX.Element {
-  const clip = `${useId()}-opening`;
+// The iris is engraved as the agent is: fine lines from the pupil to its rim.
+function Iris(): React.JSX.Element {
   return (
-    <g transform={`translate(${String(props.x)} 7)`} data-eye={props.side}>
+    <g data-iris>
+      <circle className={styles["iris"]} r={9} />
+      {fibers.map((fiber) => (
+        <line
+          key={fiber.key}
+          className={styles["fiber"]}
+          x1={fiber.x1}
+          y1={fiber.y1}
+          x2={fiber.x2}
+          y2={fiber.y2}
+        />
+      ))}
+      <circle className={styles["limbus"]} r={8.6} />
+      <circle data-pupil className={styles["pupil"]} r={3.6} />
+      <circle className={styles["glint"]} cx={-2.6} cy={-2.9} r={1.5} />
+      <circle className={styles["glint"]} cx={2.4} cy={2.1} r={0.6} />
+    </g>
+  );
+}
+
+function Eye(props: { readonly side: EyeSide; readonly x: number }): React.JSX.Element {
+  const clip = `${useId()}-opening`;
+  const outer = props.side === "left" ? -1 : 1;
+  const wing = `M ${String(corner * outer)} 0 Q ${String(23 * outer)} -1.2 ${String(27 * outer)} -5.5`;
+  return (
+    <g transform={`translate(${String(props.x)} 15)`} data-eye={props.side}>
       <clipPath id={clip}>
-        <path data-opening d={openingPath(shutLid, shutLid)} />
+        <path data-opening d={openingPath(shutCurve, shutCurve)} />
       </clipPath>
       <g clipPath={`url(#${clip})`}>
-        <rect x={-8} y={-5} width={16} height={10} fill={`url(#${props.fills.white})`} />
-        <g data-iris>
-          <circle r={3} fill={`url(#${props.fills.iris})`} />
-          <circle className={styles["limbus"]} r={3} />
-          <circle data-pupil className={styles["pupil"]} r={1.15} />
-          <circle className={styles["glint"]} cx={-1} cy={-1.1} r={0.55} />
-        </g>
+        <rect className={styles["white"]} x={-corner} y={-15} width={corner * 2} height={30} />
+        <Iris />
       </g>
-      <path data-lid="lower" className={styles["lower"]} d={lidPath(shutLid)} />
-      <path data-lid="upper" className={styles["upper"]} d={lidPath(shutLid)} />
+      <path data-lid="lower" className={styles["lower"]} d={lidPath(shutCurve)} />
+      <path data-lid="upper" className={styles["upper"]} d={lidPath(shutCurve)} />
+      <path className={styles["wing"]} d={wing} />
     </g>
   );
 }
 
 /**
- * The agent's eyes in the status pill, engraved as the agent itself is: gold lines on ink, an
- * iris of brighter lines, a gold lash for each upper lid. They start shut; `runEyes` opens and
- * moves them with the agent.
+ * The agent's eyes: two full almonds with an ivory white, an iris engraved in gold lines and a
+ * gold lash that sweeps into a wing. They start shut; `runEyes` opens and moves them with the
+ * agent and the reader's pointer.
  */
 export function AgentEyes(): React.JSX.Element {
-  const id = useId();
-  const fills = { white: `${id}-white`, iris: `${id}-iris` };
   return (
-    <svg className={styles["eyes"]} viewBox="0 0 38 14" aria-hidden="true">
-      <defs>
-        <pattern id={fills.white} width={2} height={1.3} patternUnits="userSpaceOnUse">
-          <rect className={styles["faint"]} width={2} height={0.55} />
-        </pattern>
-        <pattern id={fills.iris} width={2} height={1.3} patternUnits="userSpaceOnUse">
-          <rect className={styles["bright"]} width={2} height={0.8} />
-        </pattern>
-      </defs>
-      <Eye side="left" x={9} fills={fills} />
-      <Eye side="right" x={29} fills={fills} />
+    <svg className={styles["eyes"]} viewBox={`0 0 ${String(eyesWidth)} 30`} aria-hidden="true">
+      {eyeCenters.map((x, index) => (
+        <Eye key={x} side={index === 0 ? "left" : "right"} x={x} />
+      ))}
     </svg>
   );
 }

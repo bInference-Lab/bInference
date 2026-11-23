@@ -13,8 +13,10 @@ export interface EyeInput {
   readonly eye: Point;
   readonly side: EyeSide;
   readonly awake: boolean;
-  /** The pointer while it rests on the pill: the eyes turn to it and smile. */
+  /** The pointer while it rests on the eyes or their words: the eyes turn to it and smile. */
   readonly hover: Point | undefined;
+  /** Where the eyes glance for a moment, as at a status they are writing. */
+  readonly glance: Point | undefined;
   /** How close the pointer is, from 0 (far) to 1 (on the pill): the pupils widen as it comes. */
   readonly near: number;
   /** When the reader last poked the eyes, in seconds, or -1 for never. */
@@ -44,18 +46,20 @@ function shut(now: number, at: number, span: number): number {
   return at < 0 ? 0 : Math.sin(Math.PI * clamp01((now - at) / span));
 }
 
-// Toward what it looks at, nearer the rim the farther that is; thinking, it looks up and away
-// and lets its eyes drift in a slow circle.
+/** How far behind the screen the eyes sit, in pixels: each turns toward a point from there. */
+const depth = 140;
+
+// Each eye turns toward what it looks at as a ball set behind the screen would, so a near
+// pointer turns the two eyes toward each other; thinking, they look up and away and drift.
 function lookOf(input: EyeInput): Point {
-  const goal = input.hover ?? input.state.gaze;
+  const goal = input.hover ?? input.glance ?? input.state.gaze;
   const dx = goal.x - input.eye.x;
   const dy = goal.y - input.eye.y;
-  const distance = Math.hypot(dx, dy) || 1;
-  const reach = Math.min(1, distance / 160);
+  const reach = Math.hypot(dx, dy, depth);
   const { think } = input.state;
   return {
-    x: (dx / distance) * reach * (1 - think) + think * (0.55 + Math.cos(input.now * 1.7) * 0.3),
-    y: (dy / distance) * reach * (1 - think) + think * (-0.7 + Math.sin(input.now * 1.7) * 0.2),
+    x: (dx / reach) * (1 - think) + think * (0.55 + Math.cos(input.now * 1.7) * 0.3),
+    y: (dy / reach) * (1 - think) + think * (-0.7 + Math.sin(input.now * 1.7) * 0.2),
   };
 }
 
