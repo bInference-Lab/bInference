@@ -67,13 +67,15 @@ jobs:
           restore-keys: ${{ env.RESULTS_KEY }}-
 
       # Stryker saves what it tested when it is interrupted, so a shard stopped at 70 minutes keeps
-      # its work, and the next night goes on from there.
+      # its work, and the next night goes on from there. `--foreground` signals Stryker alone: sent
+      # to the group, the SIGINT also reaches `timeout` itself, and the uutils `timeout` of Ubuntu
+      # 26.04 then sends SIGKILL at once, before Stryker saves anything.
       - name: Stryker
         run: |
           args=(run --incremental)
           if [ "$FRESH" = "true" ]; then args+=(--force); fi
           status=0
-          timeout --signal=INT --kill-after=5m 70m node_modules/.bin/stryker "${args[@]}" || status=$?
+          timeout --foreground --signal=INT --kill-after=5m 70m node_modules/.bin/stryker "${args[@]}" || status=$?
           if [ "$status" -eq 124 ]; then
             echo "::notice::Shard $MUTATE_SHARD stopped at 70 minutes; the next run goes on from its saved results."
             exit 0

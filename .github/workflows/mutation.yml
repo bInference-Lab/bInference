@@ -84,13 +84,14 @@ jobs:
             } >> "$GITHUB_STEP_SUMMARY"
           fi
 
+      # `--foreground` signals Stryker alone, so it stops cleanly: see nightly.yml.
       - name: Stryker
         if: steps.changed.outputs.files != ''
         env:
           MUTATE_FILES: ${{ steps.changed.outputs.files }}
         run: |
           status=0
-          timeout --signal=INT --kill-after=5m "${STRYKER_MINUTES}m" node_modules/.bin/stryker run || status=$?
+          timeout --foreground --signal=INT --kill-after=5m "${STRYKER_MINUTES}m" node_modules/.bin/stryker run || status=$?
           if [ "$status" -eq 124 ]; then
             echo "::warning::Stryker stopped at $STRYKER_MINUTES minutes; the nightly run covers the mutants it did not reach."
             exit 0
