@@ -90,6 +90,8 @@ interface ErrorEvent {
   readonly retryAfterMs?: number;
   /** What the provider reported the call used before it failed, when it reported anything. */
   readonly usage?: ModelUsage;
+  /** The status of the provider's error answer, when one came: a number only, for the log. */
+  readonly httpStatus?: number;
 }
 
 /**

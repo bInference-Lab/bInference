@@ -111,15 +111,18 @@ async function startTurn(options: ChatRelayOptions, call: EngineCall<"turn/start
 const failedStatusKey = "turn.failed.";
 
 // A turn that failed leaves one line in the engine's log, from the status line it ends with: its
-// agent, its turn and the line's class, such as `billing`. The runtime logs nothing of its own,
-// and the line holds no word of the chat, the prompt or the provider.
+// agent, its turn, the line's class, such as `billing`, and the status the provider answered, so a
+// refused payment and an outage read apart. The runtime logs nothing of its own, and the line holds
+// no word of the chat, the prompt or the provider.
 function logFailed(options: ChatRelayOptions, line: EngineCall<"turn/status">["args"]): void {
   if (!line.statusKey.startsWith(failedStatusKey)) {
     return;
   }
   const named = line.statusKey.slice(failedStatusKey.length);
   const reason = named.replaceAll(/[A-Z]/gu, (letter) => `_${letter.toLowerCase()}`);
-  options.logger?.warn("turn.failed", { agentId: line.agent, traceId: line.turn, reason });
+  const answered = line.httpStatus === undefined ? {} : { status: line.httpStatus };
+  const fields = { agentId: line.agent, traceId: line.turn, reason, ...answered };
+  options.logger?.warn("turn.failed", fields);
 }
 
 function turnHandlers(

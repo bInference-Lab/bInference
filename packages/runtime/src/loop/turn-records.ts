@@ -287,6 +287,8 @@ export type TurnStatusLine =
       readonly failure: TurnFailure;
       /** A `billing` failure of a model on bInference's AI gateway, whose credit is added there. */
       readonly onGateway?: true;
+      /** The status of the provider's error answer, which only the engine's log names. */
+      readonly httpStatus?: number;
     }
   | { readonly line: "toolCallLimit" }
   | { readonly line: "modelCallLimit" }

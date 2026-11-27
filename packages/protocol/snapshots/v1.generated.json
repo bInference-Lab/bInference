@@ -36119,6 +36119,11 @@
                   "number"
                 ]
               }
+            },
+            "httpStatus": {
+              "type": "integer",
+              "minimum": 100,
+              "maximum": 599
             }
           },
           "required": [

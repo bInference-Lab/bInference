@@ -50,6 +50,7 @@ describe("the Chat Completions failure classes", () => {
       type: "error",
       failure: "context",
       message: "The model provider answered 400 (context_length_exceeded).",
+      httpStatus: 400,
     });
   });
 
@@ -83,6 +84,7 @@ describe("the Chat Completions failure classes", () => {
       type: "error",
       failure,
       message: `The model provider answered ${String(status)} (${code}).`,
+      httpStatus: status,
     });
   });
 

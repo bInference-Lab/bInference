@@ -42,13 +42,16 @@ async function lastEventOf(item: ProviderFailureCase): Promise<ModelEvent | unde
 
 const stepKind = { retry: "retry", next: "next", end: "end" } as const;
 
-// The last event a case's transport must end with.
+// The last event a case's transport must end with: an error answer names its status, an error
+// event in the middle of a stream none.
 function expectedEnd(item: ProviderFailureCase) {
+  const { status } = item.answer;
   return {
     type: "error",
     failure: item.failure,
     message: expect.any(String) as unknown,
     ...(item.retryAfterMs === undefined ? {} : { retryAfterMs: item.retryAfterMs }),
+    ...(status < 400 ? {} : { httpStatus: status }),
   };
 }
 

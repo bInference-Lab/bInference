@@ -78,6 +78,11 @@ interface StatusArgs extends AgentArgs {
   readonly turn: ProtocolId<"chatTurn">;
   readonly statusKey: string;
   readonly values?: Readonly<Record<string, string | number>>;
+  /**
+   * The status of the model provider's error answer behind a failed turn's line, a number only,
+   * which the engine's log names and no surface shows.
+   */
+  readonly httpStatus?: number;
 }
 
 /**
@@ -191,6 +196,7 @@ const message = protocolIdSchema("inboxMessage");
 // A status or progress line's i18n key, such as `turn.stopped`, and the values it takes.
 const lineKey = z.string().regex(/^[a-z][a-zA-Z0-9]*(?:\.[a-z][a-zA-Z0-9]*)+$/);
 const lineValues = z.record(z.string(), z.union([z.string(), z.number()])).exactOptional();
+const httpStatus = z.int().min(100).max(599).exactOptional();
 
 /** The chat, turn and usage operations, by name. */
 export const chatOperations: OperationTable<ChatOperationShapes> = {
@@ -268,12 +274,7 @@ export const chatOperations: OperationTable<ChatOperationShapes> = {
     ...readFlags,
     name: "turn/status",
     scope: "agent",
-    args: z.strictObject({
-      agent,
-      turn,
-      statusKey: lineKey,
-      values: lineValues,
-    }),
+    args: z.strictObject({ agent, turn, statusKey: lineKey, values: lineValues, httpStatus }),
     result: emptyResultSchema,
   },
   "turn/progress": {

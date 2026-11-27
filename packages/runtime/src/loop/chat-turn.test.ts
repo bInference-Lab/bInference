@@ -307,6 +307,17 @@ describe("createChatTurn", () => {
     ]);
   });
 
+  it("keeps the status the provider answered on the failed line", async () => {
+    const { turn, recorder } = createTestTurn({
+      replies: [[{ type: "error", failure: "billing", message: "402", httpStatus: 402 }]],
+    });
+    await turn.run();
+    expect(recorder.steps).toContainEqual({
+      kind: "status",
+      line: { line: "failed", failure: "billing", httpStatus: 402 },
+    });
+  });
+
   it("ends ok with what the model wrote when the provider refused for its own rules", async () => {
     const refused: ModelEvent[] = [
       { type: "text", delta: "I can not" },

@@ -11,6 +11,8 @@ export interface ProviderFailure {
   readonly message: string;
   /** How long the provider asked to wait before another try, for a `transient` failure. */
   readonly retryAfterMs?: number;
+  /** The status of the provider's error answer; none for a failure with no answer. */
+  readonly httpStatus?: number;
 }
 
 /** What classifying a failure needs besides the failure: the call's signal and the time. */
@@ -137,6 +139,7 @@ function failureOfFacts(
     failure,
     message: described(facts.status, facts.code),
     ...(retryAfterMs === undefined ? {} : { retryAfterMs }),
+    ...(facts.status === undefined ? {} : { httpStatus: facts.status }),
   };
 }
 

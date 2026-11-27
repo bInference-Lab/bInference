@@ -55,6 +55,8 @@ export interface EngineSay extends EngineTurn {
 export interface EngineStatus extends EngineTurn {
   readonly statusKey: string;
   readonly values?: Readonly<Record<string, number>>;
+  /** The status of the provider's error answer behind a failed turn, for the engine's log. */
+  readonly httpStatus?: number;
 }
 
 /** `turn/progress`: a line of spec 4 for the work the turn does now, and its values. */

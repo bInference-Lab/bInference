@@ -44,6 +44,7 @@ describe("the Messages failure classes", () => {
       type: "error",
       failure: "context",
       message: "The model provider answered 400 (invalid_request_error).",
+      httpStatus: 400,
     });
   });
 
@@ -63,6 +64,7 @@ describe("the Messages failure classes", () => {
       failure: "transient",
       message: "The model provider answered 429 (rate_limit_error).",
       retryAfterMs: 17_000,
+      httpStatus: 429,
     });
   });
 

@@ -84,12 +84,13 @@ function lineCalls(
   resending: CallClient,
 ): Pick<EngineChat, "turnStatus" | "turnProgress" | "turnReasoning"> {
   return {
-    async turnStatus({ agent, turn, statusKey, values }, signal) {
+    async turnStatus({ agent, turn, statusKey, values, httpStatus }, signal) {
       const args = {
         agent,
         turn,
         statusKey,
         ...(values === undefined ? {} : { values: { ...values } }),
+        ...(httpStatus === undefined ? {} : { httpStatus }),
       };
       await resending.call("turn/status", args, { signal });
     },

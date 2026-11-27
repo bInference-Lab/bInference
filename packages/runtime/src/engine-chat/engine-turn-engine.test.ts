@@ -157,4 +157,28 @@ describe("createEngineTurnEngine", () => {
     expect(heard).toStrictEqual([{ started: false, refusal: "budget", resumesAt: 9 }]);
     await expect(stores.sessions.turn(message.turn, { signal: live() })).resolves.toBeUndefined();
   });
+
+  it("sends a failed line with the status the provider answered, for the engine's log", async () => {
+    const { engine, stores, message } = await subject(undefined);
+    const sent: unknown[] = [];
+    const chat = {
+      ...engine,
+      turnStatus: async (status: unknown) => {
+        sent.push(status);
+        return Promise.resolve();
+      },
+    };
+    const place = { agent, session: message.session, turn: message.turn };
+    const clock = createManualClock(5);
+    const turns = createEngineTurnEngine({ chat, stores, place, taken: [], clock });
+    await turns.status({ line: "failed", failure: "billing", httpStatus: 402 }, live());
+    await turns.status({ line: "failed", failure: "transient", httpStatus: 503 }, live());
+    await turns.status({ line: "failed", failure: "transient" }, live());
+    const at = { agent, turn: message.turn };
+    expect(sent).toStrictEqual([
+      { ...at, statusKey: "turn.failed.billing", httpStatus: 402 },
+      { ...at, statusKey: "turn.failed.transient", httpStatus: 503 },
+      { ...at, statusKey: "turn.failed.transient" },
+    ]);
+  });
 });

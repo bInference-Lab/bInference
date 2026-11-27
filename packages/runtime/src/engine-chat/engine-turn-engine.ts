@@ -72,6 +72,23 @@ function progressOf(chat: EngineChat, at: EngineTurn): TurnEngine["progress"] {
   };
 }
 
+// The turn's status line as the lines of spec 4 it goes out as, in order; a failed line carries the
+// status of the provider's error answer, which only the engine's log names.
+function statusOf(chat: EngineChat, at: EngineTurn): TurnEngine["status"] {
+  return async (line, signal) => {
+    const answered =
+      line.line === "failed" && line.httpStatus !== undefined
+        ? { httpStatus: line.httpStatus }
+        : {};
+    for (const { key, values } of statusKeysOf(line)) {
+      const valued = values === undefined ? {} : { values };
+      const shown = { ...at, statusKey: key, ...valued, ...answered };
+      // oxlint-disable-next-line eslint/no-await-in-loop -- the lines go out in their order
+      await chat.turnStatus(shown, signal);
+    }
+  };
+}
+
 /**
  * The engine's side of one turn over the runtime's link to the engine (runtime spec, section 4.3):
  * `turn/start`, then the turn's row in `agent.sqlite`; `turn/mark`; `turn/say` with the final text
@@ -84,13 +101,7 @@ function progressOf(chat: EngineChat, at: EngineTurn): TurnEngine["progress"] {
 export function createEngineTurnEngine(options: EngineTurnOptions): TurnEngine {
   const { chat, place } = options;
   const at = { agent: place.agent, turn: place.turn };
-  const status: TurnEngine["status"] = async (line, signal) => {
-    for (const { key, values } of statusKeysOf(line)) {
-      const shown = { ...at, statusKey: key, ...(values === undefined ? {} : { values }) };
-      // oxlint-disable-next-line eslint/no-await-in-loop -- the lines go out in their order
-      await chat.turnStatus(shown, signal);
-    }
-  };
+  const status = statusOf(chat, at);
   return {
     async start(request, signal) {
       const messages = request.messages.map((id) => messageId.parse(id));

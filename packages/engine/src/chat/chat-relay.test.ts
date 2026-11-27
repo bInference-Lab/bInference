@@ -331,6 +331,28 @@ describe("the chat relay", () => {
     expect(logger.records()).toStrictEqual([failedLine("billing"), failedLine("time_limit")]);
   });
 
+  it("logs the status the provider answered, so a refused payment and an outage read apart", async () => {
+    const logger = createMemoryLogger({ subsystem: "engine" });
+    const test = await startTestEngine({ logger });
+    expectOk(await startTurn(test));
+    const say = async (statusKey: string, httpStatus: number) => {
+      const args = { agent: testAgent, turn, statusKey, httpStatus };
+      return test.engine.handlers["turn/status"](testCall(args, runtime));
+    };
+    expectOk(await say("turn.failed.billing", 402));
+    expectOk(await say("turn.failed.transient", 503));
+    const [billing, outage] = [failedLine("billing"), failedLine("transient")];
+    expect(logger.records()).toStrictEqual([
+      { ...billing, fields: { ...billing.fields, status: 402 } },
+      { ...outage, fields: { ...outage.fields, status: 503 } },
+    ]);
+    const shown = test.pushes.filter((push) => push.kind === "chat/status");
+    expect(shown.map((push) => push.data)).toStrictEqual([
+      { agent: testAgent, turn, statusKey: "turn.failed.billing" },
+      { agent: testAgent, turn, statusKey: "turn.failed.transient" },
+    ]);
+  });
+
   it("refuses a turn of an agent the install does not hold, and runs none", async () => {
     const test = await startTestEngine();
     const stranger = idSchema("agt").parse("agt_0190f1c2-3a4b-7c5d-8e6f-000000000099");

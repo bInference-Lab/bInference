@@ -35,6 +35,8 @@ export interface ModelFault {
   readonly usage?: ModelUsage;
   /** The model that failed is on bInference's AI gateway (`ChainModel.onGateway`). */
   readonly onGateway?: true;
+  /** The status of the provider's error answer, when one came. */
+  readonly httpStatus?: number;
 }
 
 /** A model call's outcome. */
@@ -111,16 +113,23 @@ function saidOf(draft: ResponseDraft): { readonly text: string; readonly reasoni
   return { text: split.text, reasoning: reasoning.join("\n\n") };
 }
 
-function fault(
-  draft: ResponseDraft,
-  said: {
-    readonly failure: ModelFailure;
-    readonly message: string;
-    readonly retryAfterMs?: number;
-    readonly usage?: ModelUsage;
-  },
-): ModelFault {
+type FaultFacts = Pick<ModelFault, "failure" | "message" | "retryAfterMs" | "usage" | "httpStatus">;
+
+function fault(draft: ResponseDraft, said: FaultFacts): ModelFault {
   return { ok: false, ...said, ...saidOf(draft) };
+}
+
+// What an error event says of the failure: its class and words, the wait it asks for, what the
+// call used and the status of the provider's answer.
+function failedOf(event: Extract<ModelEvent, { type: "error" }>): FaultFacts {
+  const { failure, message, retryAfterMs, usage, httpStatus } = event;
+  return {
+    failure,
+    message,
+    ...(retryAfterMs === undefined ? {} : { retryAfterMs }),
+    ...(usage === undefined ? {} : { usage }),
+    ...(httpStatus === undefined ? {} : { httpStatus }),
+  };
 }
 
 // A response cut off at its output limit may leave a call open; any other must close each call.
@@ -156,13 +165,7 @@ function apply(draft: ResponseDraft, event: ModelEvent): Step {
   if (event.type === "done") {
     return finish(draft, event);
   }
-  const { failure, message, retryAfterMs, usage } = event;
-  return fault(draft, {
-    failure,
-    message,
-    ...(retryAfterMs === undefined ? {} : { retryAfterMs }),
-    ...(usage === undefined ? {} : { usage }),
-  });
+  return fault(draft, failedOf(event));
 }
 
 // Decision 0416: what the model wrote comes in with U+FFFD in place of each U+0000, before the
