@@ -1192,7 +1192,8 @@ Decided in decisions [0047](DECISIONS.md#d0047), [0048](DECISIONS.md#d0048),
   change applies to the next request and reopens each WebSocket by the new route.
 - **Health signals** in `status`: event-loop lag, memory, RPC and relay health, model reachability,
   and the price watchers' lag in blocks.
-- **Targets.** Runs on 1 vCPU and 1 GB RAM; idle memory under 300 MB; a card within 2 seconds of a
+- **Targets.** Runs on 1 vCPU and 1 GB RAM; an idle engine under 400 MB, and its `memory` signal
+  warns past 512 MB ([decision 0459](DECISIONS.md#d0459)); a card within 2 seconds of a
   proposal (risk APIs excluded); an auto-order trigger broadcast within 1 block.
 
 <a id="section-25"></a>

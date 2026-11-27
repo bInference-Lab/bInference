@@ -16,7 +16,9 @@ describe("the health signals", () => {
 
   it.each([
     [200 * mebibyte, "ok"],
-    [300 * mebibyte, "warn"],
+    [512 * mebibyte - 1, "ok"],
+    [512 * mebibyte, "warn"],
+    [1024 * mebibyte - 1, "warn"],
     [1024 * mebibyte, "fail"],
   ])("reads %d resident bytes as %s", (bytes, state) => {
     expect(memoryState(bytes)).toBe(state);

@@ -43,8 +43,9 @@ function signalOf(part: HealthPart): HealthSignal {
 
 const lagWarnMs = 100;
 const lagFailMs = 1_000;
-// The engine aims to idle under 300 MB; past 1 GB a 1 GB machine is out of room.
-const memoryWarnBytes = 300 * 1024 * 1024;
+// An idle engine holds about 345 MB and up to 470 MB while it starts (decision 0459); past 1 GB a
+// 1 GB machine is out of room.
+const memoryWarnBytes = 512 * 1024 * 1024;
 const memoryFailBytes = 1024 * 1024 * 1024;
 
 /** The state of an event-loop lag: ok under 100 ms, warn under a second, else failed. */
@@ -55,7 +56,7 @@ export function lagState(lagMs: number): SignalState {
   return lagMs < lagFailMs ? "warn" : "fail";
 }
 
-/** The state of the resident memory: ok under 300 MB, warn under 1 GB, else failed. */
+/** The state of the resident memory: ok under 512 MB, warn under 1 GB, else failed. */
 export function memoryState(residentBytes: number): SignalState {
   if (residentBytes < memoryWarnBytes) {
     return "ok";
