@@ -1,10 +1,11 @@
-import { type AccountRef, accountRefSchema } from "@binference/chain";
+import { type AccountRef, accountRefParts, accountRefSchema } from "@binference/chain";
 import { bscContract, type Fork, withFork } from "@binference/chain-evm/fork";
 import type { StakingVenue } from "@binference/chain/staking";
 import { BinferenceError } from "@binference/core";
 import type { IntentRequest } from "@binference/protocol";
 import { createStakeHubVenue } from "@binference/stakehub";
-import { type Address, toHex } from "viem";
+import { type ForkValidators, warmWallet } from "@binference/stakehub/testing";
+import { type Address, getAddress, parseAbi, toHex } from "viem";
 import { describe, expect, it } from "vitest";
 import { activeValidator } from "./active-validator.js";
 import { startMining } from "./executor-rig.js";
@@ -22,8 +23,43 @@ const multicall = bscContract("multicall3", "multicall3");
 const bnb = 10n ** 18n;
 const [agent] = rescueAgents;
 
+const creditAbi = parseAbi([
+  "function getValidators(uint256 offset, uint256 limit) view returns (address[], address[], uint256)",
+  "function getValidatorCreditContract(address operatorAddress) view returns (address)",
+  "function getPooledBNB(address account) view returns (uint256)",
+]);
+
+// StakeHub's validators with their credit contracts, in one read.
+async function validatorsOf(fork: Fork): Promise<ForkValidators> {
+  const [operators, credits] = await fork.client.readContract({
+    address: hub,
+    abi: creditAbi,
+    functionName: "getValidators",
+    args: [0n, 0n],
+  });
+  return { operators, credits };
+}
+
 const accountOf = (fork: Fork, address: Address): AccountRef =>
   accountRefSchema.parse(`${fork.chain.ref}:${address}`);
+
+// The BNB the wallet's stake with one validator is worth, read from that validator's credit
+// contract alone: the venue's holdings read every validator's, which takes the fork much of the
+// minute the public node keeps the pinned block's state.
+async function stakedWith(fork: Fork, validator: AccountRef, wallet: Address): Promise<bigint> {
+  const credit = await fork.client.readContract({
+    address: hub,
+    abi: creditAbi,
+    functionName: "getValidatorCreditContract",
+    args: [getAddress(accountRefParts(validator).address)],
+  });
+  return fork.client.readContract({
+    address: credit,
+    abi: creditAbi,
+    functionName: "getPooledBNB",
+    args: [wallet],
+  });
+}
 
 // StakeHub on the fork as the engine runs it: each plan reads the chosen validator's yearly rate.
 function stakeHubOn(fork: Fork): StakingVenue {
@@ -66,6 +102,9 @@ describe("staking through the engine on the BSC fork", () => {
       const rig = await rescueRigOf(fork, { stakingVenues: [venue] });
       const main = await fundedMain(fork, rig);
       const wallet = accountOf(fork, main.address);
+      // The wallet's state at every credit contract, loaded many reads at once: the engine's
+      // reads of the wallet's holdings load it one slot at a time.
+      await warmWallet(fork, await validatorsOf(fork), main.address);
       const validator = await activeValidator(fork, { venue, wallet }, signal);
       const miner = new AbortController();
       const mining = startMining(fork, miner.signal);
@@ -78,8 +117,7 @@ describe("staking through the engine on the BSC fork", () => {
         );
         expect(staked.lines[4]).toBe("Unstaking later takes 7 days before you can claim it");
         expect(staked.state).toBe("reconciled");
-        const [held] = await venue.holdings(wallet, { signal });
-        expect(held?.stakedValue.base).toBeGreaterThan(bnb - 10n);
+        await expect(stakedWith(fork, validator, main.address)).resolves.toBeGreaterThan(bnb - 10n);
 
         const unstaked = await tappedOn(rig, stakeOf(validator, "unstake", fork), signal);
         expect(unstaked.lines[1]).toMatch(/· ready in 7 days$/u);
