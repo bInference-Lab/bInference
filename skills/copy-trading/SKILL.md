@@ -55,7 +55,7 @@ Before you propose, tell the owner in a few lines:
 Call `order_create` with an order of kind `copy`:
 
 - `token`: the chain's coin, from `token_search`, since a copy order follows every token;
-- `side`: `buy`;
+- `side`: `"buy"`;
 - `size`: `{ usdMicros }`, equal to the per-buy amount;
 - `trigger`: the `leader` as a chain account such as `eip155:56:0x…`, `perBuyUsdMicros` and
   `dailyUsdMicros`;

@@ -313,6 +313,10 @@ or waits for the turn to end (`after`). Cancelling a turn never cancels a confir
     `staking`, `bridge-checklist`, `portfolio-review` and `failed-tx-postmortem`.
   - The same skills, with a short `binference-tools` skill, teach Claude Code, Codex and other MCP
     clients how to use the engine.
+  - Each bundled skill of the agent is also on npm as `@binference/skill-<name>`: the skill in
+    `agent/`, and in `mcp/` a copy for MCP clients made from it at pack time, naming the
+    `binference_*` tools; a skill that needs a tool no MCP client has ships no copy
+    ([decision 0457](DECISIONS.md#d0457)).
 - **Third-party skills** install from git or npm with a pinned hash. Binance Skills Hub, BNB Chain,
   PancakeSwap and Flap all publish skills in the `SKILL.md` format. A lint refuses, at install, any
   skill that tells the agent to ask for API keys or seed phrases.

@@ -62,7 +62,7 @@ When the owner names no time of day, pick one and say it. A plan longer than 30 
 
 ## 5. Propose
 
-Call `order_create` with an order of kind `dca`: the token, `side` `buy`, the `size` of each buy,
+Call `order_create` with an order of kind `dca`: the token, `side: "buy"`, the `size` of each buy,
 `spend`, and a `trigger` with the `cron`, the `timezone` when the owner named one, and the
 `count`. Give a reason of one or two sentences. One proposal per turn.
 

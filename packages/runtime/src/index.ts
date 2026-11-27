@@ -56,6 +56,7 @@ export type { ListedMcpSource } from "./listed-mcp/ports.js";
 export type { ListedMcpState } from "./listed-mcp/listed-mcp-state.schema.js";
 export { describeAgentTools } from "./tools/tool-reference.js";
 export type { ToolReference } from "./tools/tool-reference.js";
+export type { AgentToolName } from "./tools/agent-tool-texts.js";
 export { endpointModelChain } from "./providers/endpoint-model-chain.js";
 export type { EndpointChainParts, ModelEndpoint } from "./providers/endpoint-model-chain.js";
 export type { ModelChain } from "./loop/ports.js";

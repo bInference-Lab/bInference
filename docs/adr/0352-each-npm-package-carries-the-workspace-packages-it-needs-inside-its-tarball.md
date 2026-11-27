@@ -1,6 +1,6 @@
 # 0352. Each npm package carries the workspace packages it needs inside its tarball
 
-Status: Accepted
+Status: Amended by 0457
 
 Accepted by the owner on 2026-11-04.
 
