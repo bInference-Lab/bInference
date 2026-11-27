@@ -84,11 +84,29 @@ export function isGoalTurn(message: QueuedMessage): boolean {
   return view?.kind === "inbox/message" && view.goalTurn === true;
 }
 
+type SettleMessage = Extract<TurnMessage, { readonly kind: "inbox/intentSettled" }>;
+
 // A settle message reaches the model as one line that names the intent, its kind and its state
-// (decision 0174).
-function settleText(view: Extract<TurnMessage, { readonly kind: "inbox/intentSettled" }>): string {
+// (decision 0174), then the receipt line its card already shows the owner, which the answer never
+// says again (decision 0458).
+function settleText(view: SettleMessage): string {
   const { intent, kind, state, paper } = view.intent;
-  return `The ${paper ? "paper " : ""}${kind} intent ${intent} you proposed is now ${state}.`;
+  const settled = `The ${paper ? "paper " : ""}${kind} intent ${intent} you proposed is now ${state}.`;
+  if (view.shownReceipt === undefined) {
+    return settled;
+  }
+  const receipt = `Its card already shows the owner this receipt: ${view.shownReceipt}`;
+  const rule =
+    "Do not restate the receipt, its amounts or the intent's state. Add only what it does not say, such as your next step, or write nothing.";
+  return `${settled}\n${receipt}\n${rule}`;
+}
+
+// A settle message as the model reads it, with the receipt line the owner already reads as shown.
+function settleMessageOf(view: SettleMessage): OwnerMessage {
+  const { shownReceipt } = view;
+  const text = settleText(view);
+  const base = { id: view.message, text, outside: false, fromEngine: true } as const;
+  return shownReceipt === undefined ? base : { ...base, shown: [shownReceipt] };
 }
 
 // A schedule's wake-up reaches the model as its prompt, with the time it was due, so a run missed
@@ -153,7 +171,7 @@ export function noteOf(message: QueuedMessage): OwnerMessage | undefined {
 export function ownerMessageOf(view: TurnMessage): OwnerMessage {
   const fromEngine = true;
   if (view.kind === "inbox/intentSettled") {
-    return { id: view.message, text: settleText(view), outside: false, fromEngine };
+    return settleMessageOf(view);
   }
   if (view.kind === "inbox/scheduleDue") {
     return { id: view.message, text: scheduleText(view), outside: view.outsideContent, fromEngine };

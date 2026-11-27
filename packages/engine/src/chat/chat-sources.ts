@@ -1,12 +1,19 @@
+import type { Locale } from "@binference/protocol";
 import type { UploadShelf } from "../uploads/upload-shelf.js";
 import type { RuntimeChats } from "./chat-delete.js";
 import type { OwnerImageSource, ViewImageSource } from "./ports.js";
 
 /**
- * What the agent's chat reads beyond the stores: the owner's images (decision 0227), the images
- * the agent views (decision 0385) and the agent runtime's side of a chat deletion (decision 0415).
+ * What the agent's chat reads beyond the stores: the owner's language (decision 0458), the owner's
+ * images (decision 0227), the images the agent views (decision 0385) and the agent runtime's side
+ * of a chat deletion (decision 0415).
  */
 export interface ChatSources {
+  /**
+   * `owner.locale` now: the language a settle message draws its receipt line in, as the owner's
+   * surfaces draw it (decision 0458).
+   */
+  readonly ownerLocale: () => Locale;
   /** The bot's photos by `tg:<file_id>`; without it, none is read. */
   readonly botImages?: OwnerImageSource;
   /**

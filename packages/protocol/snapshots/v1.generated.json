@@ -38308,6 +38308,11 @@
                           "changedAt",
                           "assets"
                         ]
+                      },
+                      "shownReceipt": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 4096
                       }
                     },
                     "required": [

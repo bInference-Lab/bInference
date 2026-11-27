@@ -15,11 +15,21 @@ import {
   stopPayloadSchema,
 } from "./inbox-payload.schema.js";
 
-/** Reads an intent's view as the engine answers `intent/get`; `undefined` for an unknown one. */
+/**
+ * A settled intent as its settle message carries it: its view as the engine answers `intent/get`,
+ * and the receipt line its closed card ends with on the owner's surfaces, drawn as they draw it
+ * (decision 0458).
+ */
+interface SettledIntentView {
+  readonly intent: IntentView;
+  readonly shownReceipt?: string;
+}
+
+/** Reads a settled intent for its settle message; `undefined` for an unknown one. */
 export type IntentViewOf = (
   intent: Id<"int">,
   signal: AbortSignal,
-) => Promise<IntentView | undefined>;
+) => Promise<SettledIntentView | undefined>;
 
 function turnOf(message: AgentInboxMessage): Id<"trn"> {
   if (message.turnId === undefined) {
@@ -34,7 +44,8 @@ function turnOf(message: AgentInboxMessage): Id<"trn"> {
 
 /**
  * A stored inbox message as `inbox/list` and the `inbox` topic carry it (runtime spec, section
- * 3.3): a settle message with its intent's view as it stands now, a schedule's wake-up with its
+ * 3.3): a settle message with its intent's view as it stands now and the receipt line the owner
+ * reads, a schedule's wake-up with its
  * prompt and mark, an alert's with the alert, what fired it and its mark, and a resume report with
  * its counts.
  */
@@ -71,15 +82,22 @@ export async function inboxViewOf(
     return { ...base, kind: message.kind, ...resumeReportPayloadSchema.parse(message.payload) };
   }
   const { intent } = settlePayloadSchema.parse(message.payload);
-  const view = await intentView(intent, signal);
-  if (view === undefined) {
+  const settled = await intentView(intent, signal);
+  if (settled === undefined) {
     throw new BinferenceError({
       code: "engine.intent_missing",
       message: `The intent of inbox message ${message.id} is not stored.`,
       details: { message: message.id, intent },
     });
   }
-  return { ...base, kind: "inbox/intentSettled", turn: turnOf(message), intent: view };
+  const { shownReceipt } = settled;
+  return {
+    ...base,
+    kind: "inbox/intentSettled",
+    turn: turnOf(message),
+    intent: settled.intent,
+    ...(shownReceipt === undefined ? {} : { shownReceipt }),
+  };
 }
 
 /** A view as JSON, for a push. */

@@ -1,6 +1,6 @@
 # 0381. The owner never reads what a tool showed twice
 
-Status: Accepted
+Status: Amended by 0458
 
 Accepted by the owner on 2026-11-07.
 

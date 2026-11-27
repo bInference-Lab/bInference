@@ -30,7 +30,7 @@ import { createUploadShelf } from "../uploads/upload-shelf.js";
 import type { EngineOptions } from "./create-engine.js";
 import { launchRoutingOf } from "./engine-intent-parts.js";
 import { installQuotasOf } from "./engine-quotas.js";
-import { intentViewOf } from "./intent-view-of.js";
+import { settledIntentViewsOf } from "./settled-intent-views.js";
 import { createTokenReadHandlers, type TokenReadHandlers } from "./token-read-handlers.js";
 
 /**
@@ -148,8 +148,8 @@ function agentSideOf(options: EngineOptions): Pick<ChatRelayOptions, AgentSide> 
   };
 }
 
-// What the chat relay reads, writes and pushes through: settle pushes read each intent's view
-// through the stored intents once they are attached.
+// What the chat relay reads, writes and pushes through: settle pushes read each intent's view and
+// the receipt line the owner reads through the stored intents once they are attached.
 function relayOptionsOf(
   options: EngineOptions,
   parts: {
@@ -158,7 +158,7 @@ function relayOptionsOf(
     readonly late: { readonly stored?: StoredIntents };
   },
 ): ChatRelayOptions {
-  const { stores, chains } = options;
+  const { stores } = options;
   const { budget, images, late } = parts;
   return {
     ...heldInboxOf(stores.agentInbox),
@@ -167,12 +167,7 @@ function relayOptionsOf(
     turns: options.turns ?? createRunningTurns({ clock: options.clock }),
     quotas: installQuotasOf(options),
     budget,
-    intentView: async (intent, signal) => {
-      const snapshot = await late.stored?.snapshot(intent, { signal });
-      // A settled bridge's reason names its destination chain, as every surface's view does.
-      const reads = { destinations: options.destinations };
-      return snapshot === undefined ? undefined : intentViewOf(snapshot, chains, reads);
-    },
+    intentView: settledIntentViewsOf({ engine: options, late }),
     ids: options.ids,
     random: options.random,
     clock: options.clock,

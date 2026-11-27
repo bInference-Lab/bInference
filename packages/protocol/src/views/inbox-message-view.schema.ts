@@ -63,6 +63,12 @@ interface InboxIntentSettled extends InboxMessageBase {
   readonly kind: "inbox/intentSettled";
   readonly turn: ProtocolId<"chatTurn">;
   readonly intent: IntentView;
+  /**
+   * The receipt line the intent's closed card ends with on the owner's surfaces, as they draw it
+   * in the owner's language (decision 0458): the owner already reads it, so the agent never says
+   * it again. Absent for an intent whose card the engine draws no receipt for.
+   */
+  readonly shownReceipt?: string;
 }
 
 /** The owner stopped the agent, or a freeze did: the running turn ends. */
@@ -184,7 +190,13 @@ export const inboxMessageViewSchema: z.ZodType<InboxMessageView> = z.discriminat
     goalTurn: z.boolean().exactOptional(),
     fromEngine: z.boolean().exactOptional(),
   }),
-  z.object({ ...base, kind: z.literal("inbox/intentSettled"), turn, intent: intentViewSchema }),
+  z.object({
+    ...base,
+    kind: z.literal("inbox/intentSettled"),
+    turn,
+    intent: intentViewSchema,
+    shownReceipt: z.string().min(1).max(4096).exactOptional(),
+  }),
   z.object({ ...base, kind: z.literal("inbox/stop"), reason: z.enum(["owner", "freeze"]) }),
   z.object({ ...base, kind: z.literal("inbox/clear"), next: protocolIdSchema("chatSession") }),
   z.object({

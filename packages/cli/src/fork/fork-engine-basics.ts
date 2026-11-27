@@ -20,7 +20,14 @@ type ForkEngineBasics = Pick<
   | "random"
   | "publish"
   | "ownerTimeZone"
+  | "ownerLocale"
 >;
+
+/** The owner of every fork rig's engine: days in UTC, words in English. */
+export const forkOwner: Pick<EngineOptions, "ownerTimeZone" | "ownerLocale"> = {
+  ownerTimeZone: () => "UTC",
+  ownerLocale: () => "en",
+};
 
 /**
  * What every fork rig gives its engine alike: the self-hosted chains on the system clock, the
@@ -40,6 +47,6 @@ export function forkEngineBasics(fork: Fork, seed: number): ForkEngineBasics {
     ids: createIdSource({ clock, random: createSeededRandom(seed) }),
     random: createSeededRandom(seed + 1),
     publish: () => undefined,
-    ownerTimeZone: () => "UTC",
+    ...forkOwner,
   };
 }

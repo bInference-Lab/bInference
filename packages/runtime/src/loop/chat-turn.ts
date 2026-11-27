@@ -170,6 +170,8 @@ export function createChatTurn(options: ChatTurnOptions): ChatTurn {
   const halt = new AbortController();
   const outside = options.outsideContent || options.taken.some((message) => message.outside);
   const tally = createTurnTally({ outside });
+  // What a surface already shows the owner of a taken message counts as shown (decision 0458).
+  tally.show(options.taken.flatMap((message) => message.shown ?? []));
   const journal = trackOpenCalls(options.parts.journal);
   const limits = options.limits ?? turnLimits;
   const run: TurnRun = {

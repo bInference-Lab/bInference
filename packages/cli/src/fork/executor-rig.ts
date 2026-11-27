@@ -60,6 +60,7 @@ import { createWalletQueue } from "@binference/engine/wallet-queue";
 import { keccak256, toHex } from "viem";
 import { selfHostedChains } from "../compose/open-engine-parts.js";
 import { createSystemClock } from "../runtime/system-clock.js";
+import { forkOwner } from "./fork-engine-basics.js";
 import { forkCustody, forkTokenFacts, forkWallet, pancakeV2Venue } from "./fork-trading.js";
 import { notingReceipts } from "./noting-receipts.js";
 
@@ -261,7 +262,7 @@ function engineOf(parts: RigParts, executor: RunningExecutor): Engine {
     paperBalances: [],
     random: createSeededRandom(44),
     publish: () => undefined,
-    ownerTimeZone: () => "UTC",
+    ...forkOwner,
   });
 }
 

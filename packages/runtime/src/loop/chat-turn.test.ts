@@ -283,6 +283,17 @@ describe("createChatTurn", () => {
     expect(recorder.steps.filter((step) => step.kind === "say")).toStrictEqual([]);
   });
 
+  it("leaves out of the final text the receipt line a settled intent's card showed", async () => {
+    const receipt = "Filled: sold 5.58201 USDT for 0.00999745 BNB";
+    const settled = { id: "msg_1", text: "settled", outside: false, shown: [receipt] };
+    const answer = `${receipt}\n\nI'll watch the price for your next buy.`;
+    const { turn, recorder } = createTestTurn({ replies: [textReply(answer)], taken: [settled] });
+    await turn.run();
+    expect(recorder.steps.filter((step) => step.kind === "say")).toStrictEqual([
+      { kind: "say", text: "I'll watch the price for your next buy." },
+    ]);
+  });
+
   it("ends failed when the model call fails, naming the failure in its status line", async () => {
     const { turn, recorder } = createTestTurn({
       replies: [[{ type: "error", failure: "auth", message: "401" }]],

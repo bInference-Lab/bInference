@@ -268,6 +268,16 @@ function switchesOf(options: ComposeEngineOptions) {
   };
 }
 
+// The owner's time zone and language as they are now, read on each use.
+function ownerReadsOf(
+  options: ComposeEngineOptions,
+): Pick<EngineOptions, "ownerTimeZone" | "ownerLocale"> {
+  return {
+    ownerTimeZone: () => options.owner().timezone,
+    ownerLocale: () => options.owner().locale,
+  };
+}
+
 // The engine on the profile parts, its venue host and risk check, publishing through `publish`.
 function engineOf(
   parts: EngineParts,
@@ -313,7 +323,7 @@ function engineOf(
     ...agentPartsOf(options),
     publish: given.publish,
     turns: given.turns,
-    ownerTimeZone: () => options.owner().timezone,
+    ...ownerReadsOf(options),
     uploads: given.uploads,
     // A launch reads its picture from the shelf the server fills (decision 0234).
     launchImages: given.uploads,

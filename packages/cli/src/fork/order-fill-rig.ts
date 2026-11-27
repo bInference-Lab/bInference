@@ -35,6 +35,7 @@ import { selfHostedChains } from "../compose/open-engine-parts.js";
 import { createSystemClock } from "../runtime/system-clock.js";
 import { forkLimits } from "./executor-rig.js";
 import { createFeeTokenVenue } from "./fee-token-venue.js";
+import { forkOwner } from "./fork-engine-basics.js";
 import { forkCustody, forkTokenFacts, forkWallet } from "./fork-trading.js";
 
 /** A key made from fixed words: the order rig's wallet, which holds nothing on BSC. */
@@ -186,7 +187,7 @@ function engineOf(
     ids: createIdSource({ clock, random: createSeededRandom(52) }),
     random: createSeededRandom(54),
     publish: (push) => pushes.push(push),
-    ownerTimeZone: () => "UTC",
+    ...forkOwner,
   });
   return { engine, stores };
 }

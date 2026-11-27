@@ -30,6 +30,11 @@ export interface OwnerMessage {
    * 0443): the model reads it as the owner's, and the chat's history as binference's.
    */
   readonly fromEngine?: true;
+  /**
+   * What the owner already reads of it on a surface, such as the receipt line of a settled intent's
+   * card (decision 0458): the turn counts each as shown, as a tool's `shown` (decision 0381).
+   */
+  readonly shown?: readonly string[];
 }
 
 /**
