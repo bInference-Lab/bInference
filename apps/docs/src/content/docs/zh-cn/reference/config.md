@@ -5,7 +5,7 @@ description: "config.json5 中的每个配置项：取值、默认值和环境�
 
 <!-- Generated from the code by pnpm docs:gen. Never edit this file: change the code, then run pnpm docs:gen. -->
 
-此版本的 binference 读取第 24 版的 `config.json5`。每个配置项可以在文件中、通过对应的变量或用 `--set <key>=<value>` 设置，后面的层优先。密钥始终写成密钥来源，从不写密钥本身。
+此版本的 binference 读取第 25 版的 `config.json5`。每个配置项可以在文件中、通过对应的变量或用 `--set <key>=<value>` 设置，后面的层优先。密钥始终写成密钥来源，从不写密钥本身。
 
 ## `version`
 
@@ -199,12 +199,6 @@ description: "config.json5 中的每个配置项：取值、默认值和环境�
 - `logging.level`: 日志级别。取值：以下之一："error", "warn", "info", "debug"。默认：`"info"`。变量：`BINFERENCE_LOGGING__LEVEL`。
 - `logging.keepDays`: 日志文件保留的天数。取值：不小于 1 的整数。默认：`14`。变量：`BINFERENCE_LOGGING__KEEP_DAYS`。
 - `logging.maxFileMb`: 日志文件达到这么多 MB 时轮换。取值：不小于 1 的整数。默认：`20`。变量：`BINFERENCE_LOGGING__MAX_FILE_MB`。
-
-## `cex`
-
-中心化交易所。
-
-- `cex.binance.enabled`: 开启 Binance Agent OS 插件。取值：true 或 false。默认：`false`。变量：`BINFERENCE_CEX__BINANCE__ENABLED`。
 
 ## `shell`
 

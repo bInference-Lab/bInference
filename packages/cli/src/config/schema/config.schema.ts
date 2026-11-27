@@ -22,8 +22,6 @@ import {
 import {
   type BackupsConfig,
   backupsSchema,
-  type CexConfig,
-  cexSchema,
   type ChatsConfig,
   chatsSchema,
   type LoggingConfig,
@@ -75,7 +73,6 @@ export interface BinferenceConfig {
   readonly network: NetworkConfig;
   readonly chats: ChatsConfig;
   readonly logging: LoggingConfig;
-  readonly cex: CexConfig;
   readonly plugins: PluginsConfig;
   readonly shell: ShellConfig;
   readonly files: FilesConfig;
@@ -127,7 +124,6 @@ export const configSchema: z.ZodType<BinferenceConfig> = z
     network: networkSchema,
     chats: chatsSchema,
     logging: loggingSchema,
-    cex: cexSchema,
     shell: shellSchema,
     files: filesSchema,
     browser: browserSchema,

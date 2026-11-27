@@ -105,7 +105,9 @@ export interface BridgeRequest extends RequestBase {
 
 /**
  * Places an order on a centralized exchange through its plugin. `size` and `price` are decimal
- * text in the market's own units, as the exchange writes them.
+ * text in the market's own units, as the exchange writes them. v1 keeps its shape, and the engine
+ * refuses every one with `intent.kind_unavailable` before it stores anything: Binance trading is
+ * not in v1 (decision 0456).
  */
 export interface CexOrderRequest extends RequestBase {
   readonly kind: "cexOrder";

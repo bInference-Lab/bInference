@@ -338,7 +338,6 @@ const restartRows: readonly (readonly [string, Patch])[] = [
     { chains: { rpc: { "eip155:56": { tracer: { fromEnv: "TEST_TRACER" } } } } },
   ],
   ["remote.publicUrl", { remote: { publicUrl: "https://box.example.ts.net" } }],
-  ["cex.binance.enabled", { cex: { binance: { enabled: true } } }],
 ];
 
 describe("live settings in a running engine", () => {

@@ -29,6 +29,9 @@ function responderText(operation: Operation, formatter: Formatter): string {
   if (reason.kind === "replaced") {
     return formatter.message("docs.operations.unserved.replaced", { operation: code(reason.by) });
   }
+  if (reason.kind === "out_of_v1") {
+    return formatter.message("docs.operations.unserved.outOfV1", { decision: reason.decision });
+  }
   const key = reason.kind === "in_cli" ? "inCli" : "notBuilt";
   return formatter.message(`docs.operations.unserved.${key}`);
 }

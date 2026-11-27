@@ -338,6 +338,33 @@ describe("migrate config", () => {
     });
   });
 
+  it("moves a version 24 file to version 25 without the Binance switch nothing reads", () => {
+    const twentyFourth: JsonObject = {
+      version: 24,
+      cex: { binance: { enabled: true } },
+      logging: { level: "debug" },
+    };
+    expect(migrateConfig(twentyFourth, configMigrations.slice(0, 24))).toStrictEqual({
+      ok: true,
+      file: { version: 25, logging: { level: "debug" } },
+      steps: [
+        {
+          from: 24,
+          to: 25,
+          summary:
+            "Removes cex, the Binance Agent OS plugin's switch: Binance trading is not in v1 " +
+            "(decision 0456), so nothing reads it.",
+          edits: [{ kind: "remove", path: ["cex"] }],
+        },
+      ],
+    });
+    const without: JsonObject = { version: 24, logging: { level: "debug" } };
+    expect(migrateConfig(without, configMigrations.slice(0, 24))).toMatchObject({
+      ok: true,
+      steps: [{ from: 24, to: 25, edits: [] }],
+    });
+  });
+
   it("keeps the shipped migrations in order, one version each", () => {
     expect(() => {
       assertMigrationOrder(configMigrations);

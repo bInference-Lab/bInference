@@ -5,7 +5,7 @@ description: "Every config key in config.json5: what it takes, its default and i
 
 <!-- Generated from the code by pnpm docs:gen. Never edit this file: change the code, then run pnpm docs:gen. -->
 
-This binference reads `config.json5` version 24. Each config key is set in the file, by its variable, or by `--set <key>=<value>`, and a later layer wins. A secret is always a secret source, never the secret itself.
+This binference reads `config.json5` version 25. Each config key is set in the file, by its variable, or by `--set <key>=<value>`, and a later layer wins. A secret is always a secret source, never the secret itself.
 
 ## `version`
 
@@ -199,12 +199,6 @@ Logs.
 - `logging.level`: The log level. Takes one of "error", "warn", "info", "debug". Default: `"info"`. Variable: `BINFERENCE_LOGGING__LEVEL`.
 - `logging.keepDays`: Days log files are kept. Takes a whole number of at least 1. Default: `14`. Variable: `BINFERENCE_LOGGING__KEEP_DAYS`.
 - `logging.maxFileMb`: A log file rotates at this many megabytes. Takes a whole number of at least 1. Default: `20`. Variable: `BINFERENCE_LOGGING__MAX_FILE_MB`.
-
-## `cex`
-
-Centralized exchanges.
-
-- `cex.binance.enabled`: Turns on the Binance Agent OS plugin. Takes true or false. Default: `false`. Variable: `BINFERENCE_CEX__BINANCE__ENABLED`.
 
 ## `shell`
 

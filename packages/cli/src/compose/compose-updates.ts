@@ -72,7 +72,6 @@ function countsLineOf(opening: Opening, opened: Opened): CountsLine {
         agents: settings.flatMap((held) =>
           held === undefined ? [] : [{ mode: held.agent.mode, venues: held.limits.venues }],
         ),
-        binanceOn: opened.settings.current().cex.binance.enabled,
         communityPluginsOn: await communityPluginsOn(platform.stateFolder.root, signal),
       });
     },

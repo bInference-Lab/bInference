@@ -139,8 +139,6 @@ const expected: Readonly<Record<string, string>> = {
   "notice.fillUnvalued": `${warning} Limit order filled on chain, but its trade cannot be valued yet. binference counted the fill on the order and keeps trying to value it.`,
   "notice.fillsFailing": `${warning} Take-profit stopped: its last 5 fills failed on chain. Check the token, and make a new order if you still want one.`,
   "notice.approvalReset": `${warning} A trade could not finish its last steps, so binference set the approval it had given for PEPE back to zero.`,
-  "notice.binanceRefused": `${warning} main tried a trade over its limit: buy $500 of CAKE. Refused.`,
-  "notice.binancePaused": "main paused from the Mini App",
   "notice.approvalMode": "main is now in auto mode, from the CLI",
   "notice.alertPrice":
     "PEPE is at or above $0.00001: now $0.000011\nmain is looking into it.\n3 more matches did not wake main: at most 10 wake-ups an hour.",

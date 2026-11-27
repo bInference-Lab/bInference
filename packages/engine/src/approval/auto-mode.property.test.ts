@@ -282,15 +282,16 @@ function callerOf(c: Case): EngineCaller {
 }
 
 // The refusal a request the money path does not route meets: a launch or an identity the agent or
-// an MCP client proposes is the owner's alone (decisions 0236 and 0335), a lend is never served
-// (decision 0296), an identity with no registry is unavailable, and every other has no route.
+// an MCP client proposes is the owner's alone (decisions 0236 and 0335), a lend and a CEX order are
+// never served (decisions 0296 and 0456), an identity with no registry is unavailable, and every
+// other has no route.
 function refusalOf(c: Case): string {
   const { kind } = requestOf(c);
   const isOwners = kind === "launchToken" || kind === "registerIdentity";
   if (isOwners && c.caller !== "cli") {
     return "intent.owner_only";
   }
-  return kind === "lend" || kind === "registerIdentity"
+  return kind === "lend" || kind === "cexOrder" || kind === "registerIdentity"
     ? "intent.kind_unavailable"
     : "quote.no_route";
 }

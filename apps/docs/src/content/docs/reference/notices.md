@@ -871,22 +871,6 @@ Level: warning. Can be muted: no.
 ⚠️ A transaction of Main is stuck, so the wallet's later trades wait behind it. binference keeps sending it until a block holds it or every relay drops it.
 ```
 
-## `binanceRefused`
-
-Level: warning. Can be muted: no.
-
-```text
-⚠️ main tried a trade over its limit: buy $500 of CAKE. Refused.
-```
-
-## `binancePaused`
-
-Level: info. Can be muted: no.
-
-```text
-main paused from the Mini App
-```
-
 ## `approvalMode`
 
 Level: info. Can be muted: no.

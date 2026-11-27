@@ -1,6 +1,6 @@
 # 0355. The update check reads npm, and opt-in counts go to binference.io
 
-Status: Accepted
+Status: Amended by 0456
 
 Accepted by the owner on 2026-11-04.
 

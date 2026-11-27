@@ -84,8 +84,6 @@
   "updated": "binference is now {version}. What changed: {summary}",
   "updatedBare": "binference is now {version}.",
   "updateRolledBack": "⚠️ binference {version} did not pass after the update, so binference went back to {previous}. Your settings and records are as they were before the update; messages and alerts that came while it was checked are not kept.",
-  "binanceRefused": "⚠️ {agent} tried a trade over its limit: {trade}. Refused.",
-  "binancePaused": "{agent} paused from {surface, select, telegram {Telegram} console {the console} mini {the Mini App} cli {the CLI} other {binference}}",
   "alertPrice": "{token} is {direction, select, above {at or above} other {at or below}} {price}: now {now}",
   "alertWallet": "{wallet} {side, select, buy {bought {amount} for {value}} other {sold {amount}, {share} of its holding, for {value}}}",
   "alertLaunch": "New launch passed your filters: {launch}",

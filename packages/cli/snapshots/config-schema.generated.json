@@ -1,5 +1,5 @@
 {
-  "version": 24,
+  "version": 25,
   "schema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object",
@@ -1070,27 +1070,6 @@
             "type": "integer",
             "exclusiveMinimum": 0,
             "maximum": 9007199254740991
-          }
-        },
-        "additionalProperties": false
-      },
-      "cex": {
-        "description": "Centralized exchanges.",
-        "default": {},
-        "type": "object",
-        "properties": {
-          "binance": {
-            "description": "Binance.",
-            "default": {},
-            "type": "object",
-            "properties": {
-              "enabled": {
-                "description": "Turns on the Binance Agent OS plugin.",
-                "default": false,
-                "type": "boolean"
-              }
-            },
-            "additionalProperties": false
           }
         },
         "additionalProperties": false

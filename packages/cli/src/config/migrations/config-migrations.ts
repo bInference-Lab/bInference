@@ -8,6 +8,7 @@ const unbuiltTelegramKeys: readonly (readonly string[])[] = [
   ["telegram", "groups"],
   ["telegram", "confirmBotToken"],
 ];
+const cex: readonly string[] = ["cex"];
 
 /**
  * Every config migration, oldest first: the one at index `n` reads version `n + 1`. A change to
@@ -172,6 +173,13 @@ export const configMigrations: readonly ConfigMigration[] = [
       "Adds models.repairToolCalls, the models whose malformed tool calls the runtime repairs, " +
       "empty: no model's calls are repaired until the owner lists it.",
     edits: () => [],
+  },
+  {
+    from: 24,
+    summary:
+      "Removes cex, the Binance Agent OS plugin's switch: Binance trading is not in v1 " +
+      "(decision 0456), so nothing reads it.",
+    edits: (file) => (valueAt(file, cex) === undefined ? [] : [{ kind: "remove", path: cex }]),
   },
 ];
 

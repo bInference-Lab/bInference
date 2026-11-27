@@ -45,6 +45,7 @@
   "operations.responder.runtime": "Agent 运行时",
   "operations.responder.selfHostedOnly": "引擎，仅限自托管安装",
   "operations.unserved.notBuilt": "暂无：尚未实现",
+  "operations.unserved.outOfV1": "无：不在 v1 中（决策 {decision}）",
   "operations.unserved.inCli": "无：由命令行在不经过引擎的情况下完成",
   "operations.unserved.replaced": "无：请改用 {operation}",
   "operations.scopeCase": "{condition}时为 {scope}",

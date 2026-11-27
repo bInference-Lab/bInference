@@ -2,9 +2,8 @@
 
 binference is an open-source AI agent for BNB Smart Chain. It runs on the owner's machine or a
 server, talks to the owner on Telegram, in a web console and in the terminal, and does on chain what
-a human trader does: swaps, launchpad trades, auto orders, staking, bridges, and trades on
-Binance through Binance Agent OS. Any MCP client, such as Claude Code or Codex, can use the same
-engine through its MCP server.
+a human trader does: swaps, launchpad trades, auto orders, staking and bridges. Any MCP client,
+such as Claude Code or Codex, can use the same engine through its MCP server.
 
 This page holds the rules every part of binference follows, then the architecture. The decisions
 behind them are in [DECISIONS.md](DECISIONS.md), the engineering rules in
@@ -188,9 +187,8 @@ binference/                         MIT, pnpm + Turborepo, Node 26.1+, TypeScrip
     i18n/         @binference/i18n       en + zh messages, glossary, formatters, checks
     cli/          binference             the `binference` command and the composition root
   plugins/        first-party venues and data: pancakeswap, kyberswap, okx, flap, fourmeme, lista,
-                  stakehub, across, relay, binance-agent-os, goplus, honeypot-is,
-                  dexscreener, geckoterminal, codex, spaceid, erc8004, geniusfun, brew,
-                  binance-agents
+                  stakehub, across, relay, goplus, honeypot-is, dexscreener,
+                  geckoterminal, codex, spaceid, erc8004, geniusfun, brew
   skills/         bundled SKILL.md playbooks (section 5)
   .agents/skills/ skills for coding agents: clean-diff, review-diff, add-chain, add-venue, ... (decision 0037)
   apps/docs/      user docs: Markdown in English and Chinese, rendered by Starlight
@@ -312,8 +310,7 @@ or waits for the turn to end (`after`). Cancelling a turn never cancels a confir
     when a task matches.
   - Skills are text: they cannot add tools or widen policy.
   - Bundled skills: `safe-swap`, `token-due-diligence`, `meme-hunting`, `dca-plan`, `copy-trading`,
-    `staking`, `bridge-checklist`, `portfolio-review`, `failed-tx-postmortem`, and
-    `binance-cex` (when the plugin is on).
+    `staking`, `bridge-checklist`, `portfolio-review` and `failed-tx-postmortem`.
   - The same skills, with a short `binference-tools` skill, teach Claude Code, Codex and other MCP
     clients how to use the engine.
 - **Third-party skills** install from git or npm with a pinned hash. Binance Skills Hub, BNB Chain,
@@ -342,7 +339,6 @@ or waits for the turn to end (`after`). Cancelling a turn never cancels a confir
 | `wallets`                             | The agent's own wallets: each one's role, chain and address, and its paper or live mode           |
 | `tx_status`, `orders`                 | A transaction's state; the agent's auto orders                                                    |
 | `intents`                             | The agent's intents changed since a time, read after a proposal whose outcome is unknown          |
-| `cex_*` (plugin)                      | Binance balances, positions, tickers and open orders through Agent OS                             |
 | `search_web`, `search_x`, `read_page` | Outside content; marks the turn                                                                   |
 | `mcp-<name>-<tool>` (Cloud)           | A listed MCP server's read ([decision 0428](DECISIONS.md#d0428)); marks every turn                |
 | `notes_search`                        | Labelled memory                                                                                   |
@@ -359,7 +355,6 @@ or waits for the turn to end (`after`). Cancelling a turn never cancels a confir
 | `order_create`              | An auto order: limit, TP/SL, trailing, DCA or a copy-trade rule ([decision 0004](DECISIONS.md#d0004))                        |
 | `stake`, `unstake`, `claim` | Native BNB staking (StakeHub), slisBNB                                                                                       |
 | `bridge`                    | Across and Relay, as a cross-chain send to an address-book entry or the rescue address ([decision 0067](DECISIONS.md#d0067)) |
-| `cex_order` (plugin)        | Binance spot and convert orders through Agent OS; futures and margin off by default                                          |
 
 **Control tools:** `order_cancel` (braking, so no confirmation), `notes_write` (labelled memory),
 `workspace_write` and `first_chat_end` (the owner's strategy and persona, and the first chat's end;
@@ -913,28 +908,8 @@ agent frameworks connect through the MCP server like any MCP client
 
 ### 15. The Binance Agent OS plugin
 
-Decided in [decision 0006](DECISIONS.md#d0006).
-
-- **What it is.** Binance's MCP server at `https://agent.binance.com/mcp/agentic`, using Streamable
-  HTTP and OAuth with PKCE (no client secret).
-  - The owner approves the agent on Binance's own consent page.
-  - The agent trades only a separate "Agentic" sub-account, which the owner funds by hand.
-  - There is no withdrawal scope.
-  - The owner can disconnect it, or press Emergency stop, on binance.com.
-- **How it connects.** An MCP client in `plugins/binance-agent-os` built on
-  `@modelcontextprotocol/sdk`.
-  - It identifies itself with a Client ID Metadata Document, hosted at a fixed HTTPS address that
-    binference.io serves. Binance's server supports these documents and has no open registration.
-  - Each install redirects to `127.0.0.1`.
-  - Tool names are mapped onto our `cex_*` tools, and their schemas are pinned and tested.
-- **Gate.** Binance documents only named clients (Claude Code, Codex, ChatGPT, VS Code, Grok), and
-  says "contact support" for others, so Binance must accept binference as a client first. The real
-  tool list is recorded with a test account. No refresh token is advertised, so a "reconnect
-  Binance" message is part of the design.
-- **If Binance says no,** the owner connects Binance's MCP in their own Claude Code and uses
-  binference's MCP server beside it. Pasted API keys are never accepted.
-- **Our own checks on top.** Every `cex_order` gets a binference card and our caps. Futures and
-  margin stay off until the owner turns them on, with a leverage cap.
+Not in v1 ([decision 0456](DECISIONS.md#d0456), amending [decision 0006](DECISIONS.md#d0006)):
+binference trades on chain only and places no order on Binance.
 
 <a id="section-16"></a>
 
@@ -1336,9 +1311,9 @@ was written:
 5. [the keys, unlocking, signing and backups](specs/keys-and-backups.md);
 6. [the intent state machine](specs/intent-states.md), with every transition and terminal state.
 
-Two more come before the code they govern: spec 7, Binance Agents ([section 29](#section-29)), and
-spec 8, [the agent runtime](specs/runtime.md): the turn, tools, the proposal rule, the chat queue,
-context, compaction, model calls, the budget and the process.
+One more comes before the code it governs: spec 8, [the agent runtime](specs/runtime.md): the
+turn, tools, the proposal rule, the chat queue, context, compaction, model calls, the budget and
+the process.
 
 **Default limits for a new agent ([decision 0064](DECISIONS.md#d0064))**, all changeable per agent;
 onboarding shows the caps for the owner to confirm:
@@ -1382,30 +1357,9 @@ registry with one tapped transaction, which only the owner starts
 
 ### 29. Binance Agents
 
-Decided in [decision 0080](DECISIONS.md#d0080).
-
-Owners already run agents on Binance Agent OS: a Claude Code or Codex session with Binance's MCP
-server and the Agentic Wallet (`baw`). bInference connects to them and manages them; it never takes
-their keys, and Binance still does their trading. The model is show, limit, stop and prove, in a
-self-hosted engine.
-
-- **Connect.** `binference agent connect binance` installs small hooks into the folder where the
-  Binance agent runs. They report each trade to the engine over the local IPC endpoint, and the
-  engine lists the agent beside its own agents.
-- **See.** A timeline per agent: what was traded, the amount, the price, the order id, the
-  transaction hash and how it ended. Actions only, never prompts or chat.
-- **Limit.** Per-agent daily spend, token allow and deny lists, and a per-trade cap, enforced by the
-  hook before each trade tool runs (it refuses an over-limit call). Binance's own wallet rules stay
-  in the Binance App and are shown read-only.
-- **Pause and stop.** Pause makes the hook refuse new trades; stop also disconnects the agent. Both
-  work from Telegram, the Mini App, the console and the CLI, at once ([rule 11](#rule-11)'s
-  braking).
-- **Prove.** A track record per agent, each trade matched to Binance's order history or the chain,
-  exportable as CSV.
-- **Alerts** go through the same notices as the engine's own fills ([section 27](#section-27)).
-
-A seventh spec, `specs/binance-agents.md`, will detail the hooks, the report format and the timeline
-before their code starts.
+Not in v1 ([decision 0456](DECISIONS.md#d0456), amending [decision 0080](DECISIONS.md#d0080)):
+binference neither connects nor manages agents that run on Binance Agent OS, and spec 7 is not
+written.
 
 <a id="section-30"></a>
 
@@ -1429,7 +1383,6 @@ the Cloud profile. A port with two adapters runs one contract test suite against
 | Process model    | Engine, runtime and signer processes on one machine                                    | Shared workers running `engine` and `runtime`; a separate signer service          |
 | Console          | The open-source console on localhost, and the Mini App over Tailscale                  | The binference.io console (closed source)                                         |
 | Remote access    | Tailscale `serve` and `funnel` ([decision 0051](DECISIONS.md#d0051))                   | Not needed: the console and webhooks live on binference.io                        |
-| Binance Agent OS | OAuth back to `127.0.0.1`                                                              | OAuth back to binference.io, one encrypted token per user                         |
 | Backups, updates | Local encrypted backups; `binference update`                                           | Managed database backups; we deploy                                               |
 | Plugins          | Any npm package the owner reviews ([decision 0348](DECISIONS.md#d0348))                | Only packages bInference listed and signed ([decision 0433](DECISIONS.md#d0433))  |
 

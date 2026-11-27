@@ -347,8 +347,9 @@ agent runtime through the engine; when the runtime is down they fail with `runti
 
 Some rows are not served, and a call of one fails with `protocol.unknown_op`. Not built yet:
 `agent/create`, `agent/rename`, `agent/archive`, `wallet/rename`, `intent/cancel`, `config/read`,
-`ledger/export`, `log/follow`, `log/unfollow`, and the `binanceAgent` and `cex`
-rows. Served by no engine: `backup/restore` and `report/create`, which the CLI runs itself
+`ledger/export`, `log/follow` and `log/unfollow`. Not in v1: the `binanceAgent` and `cex` rows,
+since Binance trading and Binance agents left v1 ([decision 0456](../DECISIONS.md#d0456)). Served
+by no engine: `backup/restore` and `report/create`, which the CLI runs itself
 ([decisions 0152](../DECISIONS.md#d0152) and [0263](../DECISIONS.md#d0263)); `token/create`, in
 whose place the CLI calls `token/register` ([decision 0154](../DECISIONS.md#d0154)); and
 `wallet/exportKey`, in whose place a key leaves only through `wallet/exportSealed`
@@ -1276,7 +1277,9 @@ tap on its card ([decision 0393](../DECISIONS.md#d0393)).
 
 ### 7.10 Binance Agents
 
-Decided in [decision 0080](../DECISIONS.md#d0080).
+Not in v1 ([decision 0456](../DECISIONS.md#d0456), amending
+[decision 0080](../DECISIONS.md#d0080)). The rows stay in the v1 table, which never drops a row,
+and no engine serves them: a call fails with `protocol.unknown_op`.
 
 | Operation                | Scope                               | Write | Local | Args → result                                                                 |
 | ------------------------ | ----------------------------------- | ----- | ----- | ----------------------------------------------------------------------------- |
@@ -1588,7 +1591,7 @@ Every request carries `agent`, an optional `wallet` (default: the agent's first 
 | `lend`             | Not served: lending left v1 ([decision 0296](../DECISIONS.md#d0296)). v1 keeps the shape, `action: supply \| withdraw \| borrow \| repay`, `venue`, `amount: Amount`, and the engine refuses it with `intent.kind_unavailable`, storing nothing                                             |
 | `stake`            | `action: stake \| unstake \| claim`, `venue: stakehub \| lista`, `validator?`, `amount?: Amount` (below)                                                                                                                                                                                    |
 | `bridge`           | `amount: Amount`, `toChain: ChainRef`, `to: { entry } \| { rescue: true }` ([decisions 0067](../DECISIONS.md#d0067) and [0297](../DECISIONS.md#d0297)); below                                                                                                                               |
-| `cexOrder`         | `market`, `side`, `type: market \| limit`, `size`, `price?` (plugin)                                                                                                                                                                                                                        |
+| `cexOrder`         | Not served: Binance trading left v1 ([decision 0456](../DECISIONS.md#d0456)). v1 keeps the shape, `market`, `side`, `type: market \| limit`, `size`, `price?`, and the engine refuses it with `intent.kind_unavailable`, storing nothing                                                    |
 | `registerIdentity` | `description?` (created by `identity/register`, section 7.9)                                                                                                                                                                                                                                |
 | `launchToken`      | `venue: flap \| fourmeme \| geniusfun \| brew`, `name`, `symbol`, `image` (an upload id), `description?`, `links?`, `pairWith: AssetRef`, `firstBuy?: Amount`, `venueOptions?` (each venue's own settings, such as a tax, validated by its plugin) ([decision 0082](../DECISIONS.md#d0082)) |
 

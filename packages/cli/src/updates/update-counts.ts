@@ -3,8 +3,8 @@ import type { AgentMode } from "@binference/protocol";
 
 /**
  * The opt-in counts of decision 0048, as decision 0355 sends them: the version, the OS, the
- * venues the agents' limits name, the bundled plugins the config turns on, how many community
- * plugins are on, paper or live, and how many agents. Never an address, a balance, an amount, a
+ * venues the agents' limits name, the bundled plugins the config turns on (none since decision
+ * 0456), how many community plugins are on, paper or live, and how many agents. Never an address, a balance, an amount, a
  * token, a chat, a key, a community plugin's name or an install id.
  */
 export interface UpdateCounts {
@@ -23,8 +23,6 @@ export interface CountFacts {
   readonly os: string;
   /** Each agent not archived: its mode and the venues its limits name. */
   readonly agents: readonly { readonly mode: AgentMode; readonly venues: readonly string[] }[];
-  /** `cex.binance.enabled`: the Binance Agent OS plugin is on. */
-  readonly binanceOn: boolean;
   /** How many community plugins the plugin lock holds on. */
   readonly communityPluginsOn: number;
 }
@@ -48,7 +46,7 @@ export function countsOf(facts: CountFacts): UpdateCounts {
     version: facts.version,
     os: facts.os,
     venues: [...venues].toSorted(),
-    plugins: facts.binanceOn ? ["binance"] : [],
+    plugins: [],
     communityPlugins: facts.communityPluginsOn,
     mode: modeOf(new Set(facts.agents.map((agent) => agent.mode))),
     agents: facts.agents.length,

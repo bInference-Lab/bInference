@@ -123,8 +123,6 @@
   "logging.level": "日志级别。",
   "logging.keepDays": "日志文件保留的天数。",
   "logging.maxFileMb": "日志文件达到这么多 MB 时轮换。",
-  "cex": "中心化交易所。",
-  "cex.binance.enabled": "开启 Binance Agent OS 插件。",
   "plugins": "每个插件的设置，按插件 ID 列出。",
   "plugins.<plugin>.<setting>": "某个插件的设置，按该插件自己的格式读取。",
   "shell": "Agent 的命令行。",

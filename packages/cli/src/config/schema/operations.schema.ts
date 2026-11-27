@@ -53,11 +53,6 @@ export interface TelemetryConfig {
   readonly enabled: boolean;
 }
 
-/** Centralized exchanges. */
-export interface CexConfig {
-  readonly binance: { readonly enabled: boolean };
-}
-
 /**
  * The agent's shell (decisions 0378 and 0409): what it runs, when a command asks the owner first,
  * what an unanswered request does, a command's time limit, and whether a quiet end wakes the agent.
@@ -187,17 +182,6 @@ export const loggingSchema: z.ZodType<LoggingConfig> = z
   })
   .prefault({})
   .describe("Logs.");
-
-/** Parses `cex`. */
-export const cexSchema: z.ZodType<CexConfig> = z
-  .strictObject({
-    binance: z
-      .strictObject({ enabled: off("Turns on the Binance Agent OS plugin.") })
-      .prefault({})
-      .describe("Binance."),
-  })
-  .prefault({})
-  .describe("Centralized exchanges.");
 
 /** Parses `shell`. */
 export const shellSchema: z.ZodType<ShellConfig> = z

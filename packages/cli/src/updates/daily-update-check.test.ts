@@ -24,7 +24,6 @@ const counts = countsOf({
     { mode: "paper", venues: ["kyberswap", "flap"] },
     { mode: "live", venues: ["kyberswap"] },
   ],
-  binanceOn: false,
   communityPluginsOn: 2,
 });
 

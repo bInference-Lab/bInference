@@ -871,22 +871,6 @@ main 的钱包不会跨链到你在 Base 上的紧急转出地址 0x9F3c…41aB�
 ⚠️ Main 的一笔链上交易卡住了，该钱包之后的交易都在其后等待。binference 会继续发送它，直到区块收录它或所有中继都丢弃它。
 ```
 
-## `binanceRefused`
-
-级别：警告。可静音：否。
-
-```text
-⚠️ main 尝试了超出限额的交易：buy $500 of CAKE。已拒绝。
-```
-
-## `binancePaused`
-
-级别：信息。可静音：否。
-
-```text
-已从 Mini App 暂停 main
-```
-
 ## `approvalMode`
 
 级别：信息。可静音：否。

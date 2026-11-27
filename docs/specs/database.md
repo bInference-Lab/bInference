@@ -12,9 +12,8 @@ retention (section 4).
 Accepted by the owner on 2026-10-30: saved addresses with their chain and recipient
 bytes, and the identity's registration file (section 2.2); staking positions, unbondings and
 bridges in transit (section 2.3); a webhook rule's last alert (section 2.4); a plugin's accepted
-permissions (section 2.8); and their retention (section 4). Binance agents and their timeline get
-their tables from spec 7, which waits on the owner's Binance account; this spec adds none for
-them until then.
+permissions (section 2.8); and their retention (section 4). Binance agents are not in v1
+([decision 0456](../DECISIONS.md#d0456)), so this spec adds no tables for them.
 
 Approved by the owner on 2026-11-05: the Postgres form of both databases, with the agent leases
 and the database roles of bInference Cloud (section 6), on decisions
@@ -374,6 +373,9 @@ restarts; a topic Telegram says is gone loses its row, and the next notice makes
 | `cex_connections`        | `provider` (`binance`), `state`, `secret_ref` (a keychain name), `scopes JSON`, `connected_at`                                                                                                                                                  | PK `provider`                   |
 
 A token without `expires_at` works until it is revoked ([decision 0159](../DECISIONS.md#d0159)).
+
+`cex_connections` stays empty: Binance trading is not in v1
+([decision 0456](../DECISIONS.md#d0456)), so nothing writes it.
 
 `plugins` stays empty: the plugin lock (`plugins/lock.json` in the state folder) is the one record
 of installed plugins, and the engine refuses to start a plugin whose files do not hash to its pin,

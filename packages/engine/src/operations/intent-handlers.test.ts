@@ -109,28 +109,35 @@ describe("the intent handlers", () => {
     expect(surfaces.map((stored) => stored?.bySurface)).toStrictEqual(["console", "mini"]);
   });
 
-  it("refuses a lend from every caller as unavailable and stores nothing", async () => {
-    const test = await startTestEngine({ agent: { approvalMode: "auto" } });
-    const lend = {
-      agent: testAgent,
-      wallet: testWallet,
-      reason: "Earn interest",
+  const unavailable = {
+    // Decision 0296: binference does not lend or borrow.
+    lend: {
       kind: "lend",
       action: "supply",
       venue: "fake-swap",
       amount: { asset: testCoin, base: 1_000_000n },
-    } as const;
+    },
+    // Decision 0456: Binance trading is not in v1.
+    cexOrder: { kind: "cexOrder", market: "BNBUSDT", side: "buy", type: "market", size: "1" },
+  } as const;
 
-    const answers = await Promise.all(
-      Object.values(testCallers).map(async (caller) =>
-        test.engine.handlers["intent/propose"](testCall(lend, caller)),
-      ),
-    );
+  it.each(Object.entries(unavailable))(
+    "refuses a %s from every caller as unavailable and stores nothing",
+    async (_kind, request) => {
+      const test = await startTestEngine({ agent: { approvalMode: "auto" } });
+      const proposal = { agent: testAgent, wallet: testWallet, reason: "Try it", ...request };
 
-    expect(answers).toStrictEqual([1, 2, 3].map(() => err("intent.kind_unavailable")));
-    const listed = await test.engine.handlers["intent/list"](testCall({ agent: testAgent }));
-    expect(expectOk(listed).items).toStrictEqual([]);
-  });
+      const answers = await Promise.all(
+        Object.values(testCallers).map(async (caller) =>
+          test.engine.handlers["intent/propose"](testCall(proposal, caller)),
+        ),
+      );
+
+      expect(answers).toStrictEqual([1, 2, 3].map(() => err("intent.kind_unavailable")));
+      const listed = await test.engine.handlers["intent/list"](testCall({ agent: testAgent }));
+      expect(expectOk(listed).items).toStrictEqual([]);
+    },
+  );
 
   it("cancels the intent on deny and closes its card", async () => {
     const intent = await proposed();

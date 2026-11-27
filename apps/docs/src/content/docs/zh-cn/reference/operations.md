@@ -506,9 +506,9 @@ description: "引擎协议的每个操作：调用所需的权限范围、操作
 
 | 操作 | 权限范围 | 类型 | 接受位置 | 回复方 |
 | --- | --- | --- | --- | --- |
-| `cex/status` | `read` | 读取 | 任何连接 | 暂无：尚未实现 |
-| `cex/connect` | `admin` | 写入 | 仅 IPC | 暂无：尚未实现 |
-| `cex/disconnect` | `confirm` | 写入 | 任何连接 | 暂无：尚未实现 |
+| `cex/status` | `read` | 读取 | 任何连接 | 无：不在 v1 中（决策 0456） |
+| `cex/connect` | `admin` | 写入 | 仅 IPC | 无：不在 v1 中（决策 0456） |
+| `cex/disconnect` | `confirm` | 写入 | 任何连接 | 无：不在 v1 中（决策 0456） |
 
 ## `webPush`
 
@@ -543,12 +543,12 @@ description: "引擎协议的每个操作：调用所需的权限范围、操作
 
 | 操作 | 权限范围 | 类型 | 接受位置 | 回复方 |
 | --- | --- | --- | --- | --- |
-| `binanceAgent/list` | `read` | 读取 | 任何连接 | 暂无：尚未实现 |
-| `binanceAgent/connect` | `admin` | 写入 | 仅 IPC | 暂无：尚未实现 |
-| `binanceAgent/timeline` | `read` | 读取 | 任何连接 | 暂无：尚未实现 |
-| `binanceAgent/setLimits` | `confirm`; 修改放宽了限额时为 `admin` | 写入 | 任何连接 | 暂无：尚未实现 |
-| `binanceAgent/pause` | `confirm` | 写入 | 任何连接 | 暂无：尚未实现 |
-| `binanceAgent/resume` | `admin` | 写入 | 任何连接 | 暂无：尚未实现 |
-| `binanceAgent/stop` | `confirm` | 写入 | 任何连接 | 暂无：尚未实现 |
-| `binanceAgent/record` | `read` | 写入 | 任何连接 | 暂无：尚未实现 |
-| `binanceAgent/report` | `agent` | 写入 | 任何连接 | 暂无：尚未实现 |
+| `binanceAgent/list` | `read` | 读取 | 任何连接 | 无：不在 v1 中（决策 0456） |
+| `binanceAgent/connect` | `admin` | 写入 | 仅 IPC | 无：不在 v1 中（决策 0456） |
+| `binanceAgent/timeline` | `read` | 读取 | 任何连接 | 无：不在 v1 中（决策 0456） |
+| `binanceAgent/setLimits` | `confirm`; 修改放宽了限额时为 `admin` | 写入 | 任何连接 | 无：不在 v1 中（决策 0456） |
+| `binanceAgent/pause` | `confirm` | 写入 | 任何连接 | 无：不在 v1 中（决策 0456） |
+| `binanceAgent/resume` | `admin` | 写入 | 任何连接 | 无：不在 v1 中（决策 0456） |
+| `binanceAgent/stop` | `confirm` | 写入 | 任何连接 | 无：不在 v1 中（决策 0456） |
+| `binanceAgent/record` | `read` | 写入 | 任何连接 | 无：不在 v1 中（决策 0456） |
+| `binanceAgent/report` | `agent` | 写入 | 任何连接 | 无：不在 v1 中（决策 0456） |

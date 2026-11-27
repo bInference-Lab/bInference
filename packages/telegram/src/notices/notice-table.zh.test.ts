@@ -137,8 +137,6 @@ const expected: Readonly<Record<string, string>> = {
   "notice.fillUnvalued": `${warning} 限价单已在链上成交，但暂时无法为这笔交易估值。binference 已在订单上计入这次成交，并会继续尝试估值。`,
   "notice.fillsFailing": `${warning} 止盈已停止：最近 5 次成交都在链上失败。请检查该代币；如仍需要，请新建订单。`,
   "notice.approvalReset": `${warning} 一笔交易未能完成后面的步骤，binference 已把为 PEPE 给出的授权额度重置为零。`,
-  "notice.binanceRefused": `${warning} main 尝试了超出限额的交易：buy $500 of CAKE。已拒绝。`,
-  "notice.binancePaused": "已从 Mini App 暂停 main",
   "notice.approvalMode": "main 已切换为自动模式，来自 命令行",
   "notice.alertPrice":
     "PEPE 价格达到或高于 $0.00001：现价 $0.000011\nmain 正在查看。\n另有 3 个匹配未唤醒 main：每小时最多唤醒 10 次。",

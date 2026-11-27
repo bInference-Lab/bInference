@@ -56,7 +56,6 @@ export type {
 } from "./config/schema/engine.schema.js";
 export type {
   BackupsConfig,
-  CexConfig,
   ChatsConfig,
   LoggingConfig,
   NetworkConfig,

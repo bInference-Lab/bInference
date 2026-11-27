@@ -277,16 +277,6 @@ export const noticeTable: Readonly<Record<string, TableNotice>> = {
   "notice.stepDroppedPartWay": { key: "notice.stepDroppedPartWay", values: {} },
   "notice.droppedLanded": { key: "notice.droppedLanded", values: {} },
   "notice.walletHeld": { key: "notice.walletHeld", values: { wallet: "Main" } },
-  "notice.binanceRefused": {
-    key: "notice.binanceRefused",
-    agent: tableAgent,
-    values: { ...agent, trade: "buy $500 of CAKE" },
-  },
-  "notice.binancePaused": {
-    key: "notice.binancePaused",
-    agent: tableAgent,
-    values: { ...agent, surface: "mini" },
-  },
   "notice.approvalMode": {
     key: "notice.approvalMode",
     agent: tableAgent,

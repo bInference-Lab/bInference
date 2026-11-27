@@ -1,15 +1,19 @@
 import type { OperationName } from "@binference/protocol";
 
 /**
- * Why the engine `binference start` runs answers no call of an operation: it is not built yet, the
- * CLI does the work itself without the engine, or another operation took its place.
+ * Why the engine `binference start` runs answers no call of an operation: it is not built yet, a
+ * decision keeps it out of v1, the CLI does the work itself without the engine, or another
+ * operation took its place.
  */
 export type UnservedReason =
   | { readonly kind: "not_built" }
+  | { readonly kind: "out_of_v1"; readonly decision: string }
   | { readonly kind: "in_cli" }
   | { readonly kind: "replaced"; readonly by: OperationName };
 
 const notBuilt: UnservedReason = { kind: "not_built" };
+// Decision 0456: Binance trading and Binance agents are not in v1.
+const binanceOutOfV1: UnservedReason = { kind: "out_of_v1", decision: "0456" };
 
 const unserved: readonly (readonly [OperationName, UnservedReason])[] = [
   ["agent/archive", notBuilt],
@@ -17,18 +21,18 @@ const unserved: readonly (readonly [OperationName, UnservedReason])[] = [
   ["agent/rename", notBuilt],
   // Decision 0152: the restore needs the owner key from start to end, so the CLI runs it.
   ["backup/restore", { kind: "in_cli" }],
-  ["binanceAgent/connect", notBuilt],
-  ["binanceAgent/list", notBuilt],
-  ["binanceAgent/pause", notBuilt],
-  ["binanceAgent/record", notBuilt],
-  ["binanceAgent/report", notBuilt],
-  ["binanceAgent/resume", notBuilt],
-  ["binanceAgent/setLimits", notBuilt],
-  ["binanceAgent/stop", notBuilt],
-  ["binanceAgent/timeline", notBuilt],
-  ["cex/connect", notBuilt],
-  ["cex/disconnect", notBuilt],
-  ["cex/status", notBuilt],
+  ["binanceAgent/connect", binanceOutOfV1],
+  ["binanceAgent/list", binanceOutOfV1],
+  ["binanceAgent/pause", binanceOutOfV1],
+  ["binanceAgent/record", binanceOutOfV1],
+  ["binanceAgent/report", binanceOutOfV1],
+  ["binanceAgent/resume", binanceOutOfV1],
+  ["binanceAgent/setLimits", binanceOutOfV1],
+  ["binanceAgent/stop", binanceOutOfV1],
+  ["binanceAgent/timeline", binanceOutOfV1],
+  ["cex/connect", binanceOutOfV1],
+  ["cex/disconnect", binanceOutOfV1],
+  ["cex/status", binanceOutOfV1],
   ["config/read", notBuilt],
   ["intent/cancel", notBuilt],
   ["ledger/export", notBuilt],

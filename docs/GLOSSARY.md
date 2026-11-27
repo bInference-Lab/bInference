@@ -641,7 +641,8 @@ check` tries it as `network.proxy`.
 - **operation handlers**: the functions, one per operation, that the engine and the agent runtime
   give the protocol server. The server checks each call's scopes, transport and idempotency key, then
   routes it to its handler.
-- **Binance Agent**: an agent the owner runs on Binance Agent OS and connects to binference.
+- **Binance Agent**: an agent the owner runs on Binance Agent OS. Connecting one to binference is
+  not in v1 ([decision 0456](DECISIONS.md#d0456)).
 - **decision record**: a file in `docs/adr/` that records one decision (ADR).
 - **fork suite**: the tests in each package's `src/fork/`, run by `pnpm test:fork` and nightly in
   CI against an anvil fork of BSC at a block pinned 20 behind the head. Its **test account** is
@@ -776,7 +777,7 @@ it. Write Chinese the way Binance's own Chinese docs do:
 | --------------------------------------- | ----------------------- | --------------------------- |
 | agent, AI agent                         | Agent, AI Agent         | "your agent" = 你的 Agent   |
 | agent key                               | Agent 密钥              |                             |
-| Binance agent (one on Binance Agent OS) | Binance Agent           |                             |
+| Binance agent (one on Binance Agent OS) | Binance Agent           | Not in v1 (decision 0456)   |
 | engine                                  | 引擎                    |                             |
 | sleep (of the machine)                  | 休眠                    |                             |
 | console                                 | 控制台                  |                             |

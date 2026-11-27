@@ -37,7 +37,6 @@ const restartOnlyKeys: readonly string[] = [
   // Relay's bridge is made with the key read at start (decision 0322).
   "venues.keys.relay",
   "remote.publicUrl",
-  "cex",
 ];
 
 // The keys whose parts read them from the config cell on each use: a change reaches the next use.

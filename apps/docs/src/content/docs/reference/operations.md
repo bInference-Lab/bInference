@@ -506,9 +506,9 @@ Every operation of the engine protocol, version 1, by domain. A client calls an 
 
 | Operation | Scope | Kind | Accepted | Answered by |
 | --- | --- | --- | --- | --- |
-| `cex/status` | `read` | read | any connection | no one yet: not built |
-| `cex/connect` | `admin` | write | IPC only | no one yet: not built |
-| `cex/disconnect` | `confirm` | write | any connection | no one yet: not built |
+| `cex/status` | `read` | read | any connection | no one: not in v1 (decision 0456) |
+| `cex/connect` | `admin` | write | IPC only | no one: not in v1 (decision 0456) |
+| `cex/disconnect` | `confirm` | write | any connection | no one: not in v1 (decision 0456) |
 
 ## `webPush`
 
@@ -543,12 +543,12 @@ Every operation of the engine protocol, version 1, by domain. A client calls an 
 
 | Operation | Scope | Kind | Accepted | Answered by |
 | --- | --- | --- | --- | --- |
-| `binanceAgent/list` | `read` | read | any connection | no one yet: not built |
-| `binanceAgent/connect` | `admin` | write | IPC only | no one yet: not built |
-| `binanceAgent/timeline` | `read` | read | any connection | no one yet: not built |
-| `binanceAgent/setLimits` | `confirm`; `admin` when a change loosens a limit | write | any connection | no one yet: not built |
-| `binanceAgent/pause` | `confirm` | write | any connection | no one yet: not built |
-| `binanceAgent/resume` | `admin` | write | any connection | no one yet: not built |
-| `binanceAgent/stop` | `confirm` | write | any connection | no one yet: not built |
-| `binanceAgent/record` | `read` | write | any connection | no one yet: not built |
-| `binanceAgent/report` | `agent` | write | any connection | no one yet: not built |
+| `binanceAgent/list` | `read` | read | any connection | no one: not in v1 (decision 0456) |
+| `binanceAgent/connect` | `admin` | write | IPC only | no one: not in v1 (decision 0456) |
+| `binanceAgent/timeline` | `read` | read | any connection | no one: not in v1 (decision 0456) |
+| `binanceAgent/setLimits` | `confirm`; `admin` when a change loosens a limit | write | any connection | no one: not in v1 (decision 0456) |
+| `binanceAgent/pause` | `confirm` | write | any connection | no one: not in v1 (decision 0456) |
+| `binanceAgent/resume` | `admin` | write | any connection | no one: not in v1 (decision 0456) |
+| `binanceAgent/stop` | `confirm` | write | any connection | no one: not in v1 (decision 0456) |
+| `binanceAgent/record` | `read` | write | any connection | no one: not in v1 (decision 0456) |
+| `binanceAgent/report` | `agent` | write | any connection | no one: not in v1 (decision 0456) |
