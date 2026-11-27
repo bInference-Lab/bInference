@@ -33,6 +33,11 @@ import {
   type ReleaseManifest,
 } from "./release/release-plan.mjs";
 import { nightlyVersionProblem, parseReleaseTag, type ReleaseTag } from "./release/release-tag.mjs";
+import {
+  checkSkillInstalls,
+  packSkillPackages,
+  skillPackageNames,
+} from "./release/skill-packages.mjs";
 import { publishProblems, type ReleaseBuild } from "./release/stage-package.mjs";
 import { readWorkspace, type Workspace } from "./release/workspace-manifests.mjs";
 import { runCommand, runCommandShown } from "./run-command.mjs";
@@ -103,16 +108,33 @@ function packEach(each: ReleaseBuild, published: readonly string[], out: string)
   }
 }
 
-/** What a dry run wrote: its folder, the packed tarballs and the install scripts beside them. */
+function packSkills(
+  root: string,
+  pack: { readonly version: string; readonly isNightly: boolean },
+  out: string,
+): readonly PackedFile[] {
+  try {
+    return packSkillPackages(root, pack, out);
+  } catch (error) {
+    return fail(error instanceof Error ? error.message : String(error));
+  }
+}
+
+/**
+ * What a dry run wrote: its folder, the packed tarballs (the skill packages among them) and the
+ * install scripts beside them.
+ */
 interface PackedOut {
   readonly out: string;
   readonly files: readonly PackedFile[];
+  /** The packages of the bundled skills (decision 0457). */
+  readonly skills: readonly PackedFile[];
   readonly scripts: readonly StagedInstallScript[];
 }
 
-// Builds and packs the published packages at the version into reports/release/<version>/, checks
-// each packed README with the style guard, stages the install scripts and writes SHA256SUMS over
-// the tarballs and the scripts.
+// Builds and packs the published packages and one package per bundled skill at the version into
+// reports/release/<version>/, checks each packed README with the style guard, stages the install
+// scripts and writes SHA256SUMS over the tarballs and the scripts.
 function packAll(
   root: string,
   pack: {
@@ -127,7 +149,8 @@ function packAll(
   const out = join(root, "reports", "release", pack.version);
   rmSync(out, { recursive: true, force: true });
   mkdirSync(out, { recursive: true });
-  const files = packEach({ workspace, ...pack }, published, out);
+  const skills = packSkills(root, pack, out);
+  const files = [...packEach({ workspace, ...pack }, published, out), ...skills];
   const readmeFindings = packedReadmeFindings(root, out, files);
   if (readmeFindings.length > 0) {
     return fail(`a packed README breaks the style guard:\n${readmeFindings.join("\n")}`);
@@ -135,7 +158,16 @@ function packAll(
   // The scripts are staged first, so SHA256SUMS, which the signed release carries, covers them.
   const scripts = stageInstallScripts(root, out);
   writeFileSync(join(out, "SHA256SUMS"), checksums([...files, ...scripts]));
-  return { out, files, scripts };
+  return { out, files, skills, scripts };
+}
+
+// Each skill package's folders install through skill/add from their tarball, pinned by its hash.
+async function checkSkills(packed: PackedOut, version: string): Promise<void> {
+  try {
+    await checkSkillInstalls(packed.out, { version, files: packed.skills });
+  } catch (error) {
+    fail(error instanceof Error ? error.message : String(error));
+  }
 }
 
 // npm's own dry run of each publish, with the dist-tag the channel publishes to.
@@ -200,7 +232,7 @@ function packedOf(files: readonly PackedFile[]): ReleaseManifest["packages"] {
 // one not newer than every version it holds, stops the dry run; a registry that does not answer
 // only warns.
 function checkRegistry(root: string, release: ReleaseTag, { tagged }: ReleasePoint): void {
-  const packages = publishedPackages(root);
+  const packages = [...publishedPackages(root), ...skillPackageNames(root)];
   const found = readRegistryPreflight(root, { version: release.version, tagged, packages });
   for (const warning of found.warnings) {
     console.warn(`release:dry: warning: ${warning}`);
@@ -214,7 +246,10 @@ function checkRegistry(root: string, release: ReleaseTag, { tagged }: ReleasePoi
   }
 }
 
-function dryRunRelease(root: string, ask: Extract<DryRunAsk, { kind: "release" }>): void {
+async function dryRunRelease(
+  root: string,
+  ask: Extract<DryRunAsk, { kind: "release" }>,
+): Promise<void> {
   const { release } = ask;
   const point = releasePoint(root, release);
   if (typeof point === "string") {
@@ -245,6 +280,7 @@ function dryRunRelease(root: string, ask: Extract<DryRunAsk, { kind: "release" }
   writeFileSync(join(out, "notes.md"), notes);
   const sbom = `binference-${release.version}.cdx.json`;
   checkInstall({ folder: out, version: release.version, packages: files, root }, sbom);
+  await checkSkills(packed, release.version);
   publishDryRun(out, release, files);
   const manifest: ReleaseManifest = {
     tag: release.tag,
@@ -262,7 +298,7 @@ function dryRunRelease(root: string, ask: Extract<DryRunAsk, { kind: "release" }
 
 // A nightly pack (decision 0354): no tag, channel or version order to check and no notes; every
 // published manifest is private and the manifest's channel is `nightly`, so nothing publishes it.
-function packNightly(root: string, version: string): void {
+async function packNightly(root: string, version: string): Promise<void> {
   const dirty = dirtyTreeProblem(root);
   if (dirty !== undefined) {
     return fail(dirty);
@@ -270,6 +306,7 @@ function packNightly(root: string, version: string): void {
   const packed = packAll(root, { version, isNightly: true });
   const { out, files } = packed;
   checkInstall({ folder: out, version, packages: files, root });
+  await checkSkills(packed, version);
   const manifest: NightlyManifest = { version, channel: "nightly", packages: packedOf(files) };
   writeFileSync(join(out, manifestFile), `${JSON.stringify(manifest, null, 2)}\n`);
   console.log(`\nrelease:dry: the nightly ${version}, packed for the smoke; nothing publishes it.`);
@@ -280,9 +317,9 @@ const root = process.cwd();
 const ask = readArguments();
 switch (ask.kind) {
   case "release":
-    dryRunRelease(root, ask);
+    await dryRunRelease(root, ask);
     break;
   case "nightly":
-    packNightly(root, ask.version);
+    await packNightly(root, ask.version);
     break;
 }

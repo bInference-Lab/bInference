@@ -28,7 +28,8 @@ const packOutputSchema = z.array(
 // outside code the licenses of that code.
 const requiredFiles = ["package.json", "LICENSE", "NOTICES.md", "README.md"];
 
-function sha256Of(file: string): string {
+/** A file's SHA-256 in hex, as `SHA256SUMS` lists it. */
+export function sha256Of(file: string): string {
   return createHash("sha256").update(readFileSync(file)).digest("hex");
 }
 

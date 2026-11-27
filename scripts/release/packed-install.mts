@@ -24,6 +24,17 @@ export interface PackedInstall {
 }
 
 const binSchema = z.looseObject({ bin: z.record(z.string(), z.string()) });
+const entrySchema = z.looseObject({
+  main: z.unknown().optional(),
+  exports: z.unknown().optional(),
+});
+
+// A package with code names a main or exports; a skill package (decision 0457) names neither.
+function holdsCode(install: PackedInstall, name: string): boolean {
+  const file = join(install.folder, "node_modules", name, "package.json");
+  const manifest = entrySchema.parse(JSON.parse(readFileSync(file, "utf8")));
+  return manifest.main !== undefined || manifest.exports !== undefined;
+}
 
 function run(command: readonly string[], cwd: string, env: Record<string, string> = {}): string {
   const result = runCommand(command, { cwd, env });
@@ -87,7 +98,7 @@ function checkVersion(release: PackedRelease, install: PackedInstall): void {
 /**
  * The quick check of an install of the packed release: every file each package's manifest names
  * is there (its exports, its command and its main), `binference --version` prints the release's
- * version, and every package loads. Throws, naming what failed.
+ * version, and every package with code loads. Throws, naming what failed.
  */
 export function checkPackedInstall(release: PackedRelease, install: PackedInstall): void {
   const missing = findMissingEntries(
@@ -98,7 +109,7 @@ export function checkPackedInstall(release: PackedRelease, install: PackedInstal
     throw new Error(`A packed package names files it lacks:\n${missing.join("\n")}`);
   }
   checkVersion(release, install);
-  for (const item of release.packages) {
+  for (const item of release.packages.filter(({ name }) => holdsCode(install, name))) {
     run(
       ["node", "--input-type=module", "--eval", `await import(${JSON.stringify(item.name)});`],
       install.folder,

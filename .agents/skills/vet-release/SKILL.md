@@ -13,7 +13,8 @@ holds for the exact version, read from the live sources, not from a local checko
 - Versions are calver `YYYY.M.PATCH`, on the `stable` or the `beta` channel. Write out the full
   version and the channel before you check anything.
 - All four public packages carry that one version: `binference`, `@binference/protocol`,
-  `@binference/client` and `@binference/plugin-sdk`. Every other package is private.
+  `@binference/client` and `@binference/plugin-sdk`, and so does each skill package,
+  `@binference/skill-<name>` (decision 0457). Every other package is private.
 - Read the tagged source in a scratch folder (`git worktree add <dir> <tag>`), never your working
   copy.
 

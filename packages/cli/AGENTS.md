@@ -104,6 +104,10 @@ Rules for this package:
   `scripts/release/bundled-licenses.mts` does the reading and writing. So does the dry run's npm
   preflight: `registry-preflight.ts` decides from npm's answers, which
   `scripts/release/registry-preflight.mts` reads with `npm view`.
+- The skill packages (decision 0457) are laid out in `src/packed/` as data: `skill-packages.ts`
+  fills each package's files, `mcp-skill-copy.ts` makes a skill's copy for MCP clients through its
+  table of every agent tool, and `install-packed-skill.ts` installs a packed folder as `skill/add`
+  does. `scripts/release/skill-packages.mts` packs them and runs that install on each tarball.
 - `composeEngine` is the one place that joins the engine to its protocol server, and to the
   owner's bot through `composeTelegram`. The server and the bot's fast commands run the same
   handlers: the engine's and the root's own, such as `engine/status`. The bot alone also gets

@@ -1250,6 +1250,12 @@ commander tree for `--json` and `--yes`, and exit code tests; an image smoke tes
   chat), `@binference/protocol`, `@binference/client` and `@binference/plugin-sdk`. Every other
   package is private. Enforcer: `check:package-graph` (`private: true` on every package but the
   four).
+- npm also gets one package per bundled skill of the agent, `@binference/skill-<folder>`, which
+  holds the skill as `agent/SKILL.md` and, when the skill can run there, a copy for MCP clients
+  made from it at pack time as `mcp/SKILL.md`; neither holds code
+  ([decision 0457](DECISIONS.md#d0457)). Enforcer: `pnpm release:dry` (a tarball holding any
+  other file, or a copy naming one of the agent's tools, stops the pack; each folder installs
+  through `skill/add` from its tarball, pinned by its hash, and passes the install lint).
 - Each published tarball carries the private workspace packages it needs, and npm fetches only
   outside packages ([decision 0352](DECISIONS.md#d0352)). Enforcer: `pnpm release:dry` (a
   published manifest without `repository`, public access with provenance, `engines` or the

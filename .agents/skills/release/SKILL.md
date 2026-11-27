@@ -50,7 +50,9 @@ version that is not newer. It reads each package on npm before it builds: it ref
 holds already (unless the tag names HEAD, as on a run that publishes again) or one not newer than
 every version npm holds, prints each package's dist-tags, and names the packages whose first
 publish needs `NPM_BOOTSTRAP_TOKEN`. When npm does not answer, it warns and goes on. It builds,
-packs the four public packages, runs the style guard over each packed README, stages the two
+packs the four public packages and one package per bundled skill of the agent (decision 0457),
+installs each skill folder through `skill/add` from its tarball, runs the style guard over each
+packed README, stages the two
 install scripts with a `.sha256` beside each, writes
 `SHA256SUMS` over the tarballs and the scripts, installs the packed files into an empty project outside
 the repository, checks that every file their manifests name is there and `binference --version`,
