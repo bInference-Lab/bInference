@@ -1,9 +1,10 @@
+import { setTimeout as wait } from "node:timers/promises";
 import { evmAccountRef, createEvmReceiptReader } from "@binference/chain-evm";
 import { bscContract, bscToken, type Fork } from "@binference/chain-evm/fork";
 import { BinferenceError, type Http, type Id } from "@binference/core";
 import { encodeFunctionData, parseAbi } from "viem";
 import { describe, expect, it } from "vitest";
-import { buyIn, onFork, type Rig, usdt, walletKey } from "./executor-rig.js";
+import { buyIn, onFork, type Rig, startMining, usdt, walletKey } from "./executor-rig.js";
 import { forkWallet } from "./fork-trading.js";
 import { balanceOf, proposeAndTap, reach } from "./rig-actions.js";
 
@@ -31,6 +32,41 @@ async function sentOnce(rig: Rig, fork: Fork, signal: AbortSignal) {
   }
   const answers = await rig.stores.transactions.sends(transaction.id, { signal });
   return { transaction, answers };
+}
+
+// Whether a relay accepted the wallet's stored transaction.
+async function isTaken(rig: Rig, fork: Fork, signal: AbortSignal): Promise<boolean> {
+  const account = evmAccountRef(fork.chain, forkWallet(walletKey).address);
+  const query = { account, fromNonce: 0, limit: 10 };
+  const [transaction] = await rig.stores.transactions.list(query, { signal });
+  if (transaction === undefined) {
+    return false;
+  }
+  const answers = await rig.stores.transactions.sends(transaction.id, { signal });
+  return answers.some(({ outcome }) => outcome === "accepted");
+}
+
+// Mines in the background only once a relay accepted the step's bytes, until the intent is
+// reconciled, and answers the state it reached. The rig mines 16 blocks a tick, so blocks mined
+// while the bytes went nowhere would pass the speed-up rule's 40 between two of the watch's looks,
+// and the executor would sign a speed-up before the accepted bytes land.
+async function mineOnceTaken(rig: Rig, fork: Fork, intent: Id<"int">): Promise<string> {
+  const signal = AbortSignal.timeout(60_000);
+  const poll = async (): Promise<void> => {
+    if (!(await isTaken(rig, fork, signal))) {
+      await wait(50, undefined, { signal });
+      return poll();
+    }
+  };
+  await poll();
+  const miner = new AbortController();
+  const mining = startMining(fork, miner.signal);
+  try {
+    return await reach(rig, intent, "reconciled");
+  } finally {
+    miner.abort();
+    await mining;
+  }
 }
 
 // The block that holds a stored transaction; one without a receipt reads as block 0.
@@ -128,9 +164,10 @@ describe("the executor on the BSC fork", () => {
   it("sends the same stored bytes again after a failed send, and never signs again", async ({
     signal,
   }) => {
-    await onFork(signal, { relayHttp: (http) => flaky(http, 2) }, async (rig, fork) => {
+    const run = { relayHttp: (http: Http) => flaky(http, 2), isMining: false };
+    await onFork(signal, run, async (rig, fork) => {
       const intent = await proposeAndTap(rig, signal);
-      await expect(reach(rig, intent, "reconciled")).resolves.toBe("reconciled");
+      await expect(mineOnceTaken(rig, fork, intent)).resolves.toBe("reconciled");
       expect(rig.custody.signatures()).toBe(1);
       const { transaction, answers } = await sentOnce(rig, fork, signal);
       expect(rig.sends.map(({ raw }) => raw).slice(0, 2)).toStrictEqual([
