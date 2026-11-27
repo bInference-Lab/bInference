@@ -22,7 +22,9 @@ jobs:
   fork:
     name: BSC fork suite
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # The fork suite takes about 11 minutes and the replay about four, longer on a night BNB
+    # Chain's public node answers this runner slowly.
+    timeout-minutes: 30
     steps:
       - name: Check out
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
