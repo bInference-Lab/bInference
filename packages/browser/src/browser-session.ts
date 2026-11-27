@@ -1,11 +1,5 @@
 import { browserLimits, type ConsoleMessageView } from "@binference/protocol";
-import {
-  type BrowserContext,
-  chromium,
-  type Page,
-  type Route,
-  type WebSocketRoute,
-} from "playwright-core";
+import type { BrowserContext, Page, Route, WebSocketRoute } from "playwright-core";
 import type { AddressGuard } from "./address-guard.js";
 import type { BrowserProxy } from "./browser-proxy.js";
 
@@ -103,6 +97,9 @@ function keep(messages: ConsoleMessageView[], message: ConsoleMessageView): void
 }
 
 async function launched(launch: SessionLaunch, guard: AddressGuard): Promise<BrowserContext> {
+  // Playwright is the largest library the engine holds, and most engines never browse: it loads
+  // at the first start, not with the engine.
+  const { chromium } = await import("playwright-core");
   const context = await chromium.launchPersistentContext(launch.userDataFolder, {
     executablePath: launch.executablePath,
     headless: launch.headless,
