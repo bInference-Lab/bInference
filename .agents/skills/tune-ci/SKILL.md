@@ -17,13 +17,13 @@ three operating systems. Count before you add.
 | `codeql.yml`   | Monday 05:37 UTC, by hand                   | CodeQL's security queries on the TypeScript and JavaScript sources, on Linux                                                                                                          |
 | `mutation.yml` | by hand                                     | Stryker on up to 12 files changed since a base, 45 minutes at most                                                                                                                    |
 | `fork.yml`     | nightly 03:41 UTC, by hand                  | the fork suite on Linux                                                                                                                                                               |
-| `crash.yml`    | nightly 04:23 UTC, by hand                  | the crash suite in 7 parts on macOS, `BINFERENCE_CRASH_RUNS` runs per kill point                                                                                                      |
+| `crash.yml`    | nightly 04:23 UTC, by hand                  | the crash suite in 17 parts on macOS, 3 at a time, `BINFERENCE_CRASH_RUNS` runs per kill point                                                                                        |
 | `packed.yml`   | nightly 00:37 UTC, by hand                  | the Node pins and both packs on Linux; the smoke, one-liner and first day on macOS                                                                                                    |
 | `image.yml`    | by hand                                     | the Docker image suite on Linux amd64                                                                                                                                                 |
 | `nightly.yml`  | nightly 02:17 UTC, a full run on Sunday     | Stryker in 20 shards with saved results                                                                                                                                               |
 | `release.yml`  | a pushed `v*` tag (dry), by hand to publish | `pnpm release:dry` and the smoke on macOS (decision 0449); npm and GitHub's release                                                                                                   |
 
-A push to `master` starts 10 jobs (decision 0454, and `check:gates` in a job of its own); a night starts 33, and Monday adds the weekly
+A push to `master` starts 10 jobs (decision 0454, and `check:gates` in a job of its own); a night starts 43, and Monday adds the weekly
 CodeQL run (decision 0453). A newer push to `master` cancels the CI run of the older one, while the nightly
 suites never cancel. The nightly workflows start at different times so their jobs do not queue
 behind each other. A release tag starts 2 jobs in `release.yml`, and a publish run 4 (decisions

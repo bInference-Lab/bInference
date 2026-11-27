@@ -723,7 +723,7 @@ Decided in [decision 0034](DECISIONS.md#d0034).
   `prepareDayReplay` in `chain-evm`.
 - **Rule:** crash tests live in a package's `src/crash/` and run in the crash suite
   (`pnpm test:crash`, nightly in CI on macOS ([decision 0453](DECISIONS.md#d0453)), 20 runs at each kill point on
-  each, in four parts per OS, [decision 0290](adr/0290-the-nightly-crash-suite-runs-in-four-parts-on-each-os.md)), never in
+  each, in 17 parts per OS, [decision 0460](adr/0460-the-nightly-crash-suite-runs-in-17-parts-sized-by-the-runner-s-measured-times.md)), never in
   `pnpm check`. Each run kills an engine process outright at a kill point (`SIGKILL`, or
   `TerminateProcess` on Windows), starts it again on the same state folder, and counts what
   reached the chain at the test's relays and in anvil, never what the engine reports. anvil runs a
@@ -732,13 +732,17 @@ Decided in [decision 0034](DECISIONS.md#d0034).
   point, and the `src/crash/` exclusion in `vitest.config.ts`.
 - **Rule:** a crash pass is sized before it starts and leaves its results as it goes. Its reporter
   prints the runs per kill point, the kill points and the estimated time, and refuses a part
-  estimated over 120 minutes with what to lower. The estimate comes from the measured times in
-  `config/vitest/crash-times.generated.json`: each kill point's mean run, each file's setup and the
-  suite's own start, measured on the maintainers' laptop. The reporter appends each test's result to
-  a JSON-lines file in `reports/crash/` as the test ends, so a pass stopped from outside keeps every
-  finished run; the nightly job uploads that folder even when it fails. After a change that makes
-  runs slower or faster, or adds a kill point, a pass at one run per kill point and
-  `pnpm crash:times reports/crash/<file>.jsonl` refresh the times in the same change. Enforcer:
+  estimated over 120 minutes with what to lower. The estimate comes from the measured times of the
+  machine `BINFERENCE_CRASH_TIMES` names: each kill point's mean run, each file's setup and the
+  suite's own start. Unset, they are the maintainers' laptop's, in
+  `config/vitest/crash-times.generated.json`; the nightly job sets `macos-runner`, whose times in
+  `config/vitest/crash-times.macos-runner.generated.json` come from the runner's own results. The
+  reporter appends each test's result to a JSON-lines file in `reports/crash/` as the test ends, so
+  a pass stopped from outside keeps every finished run; the nightly job uploads that folder even
+  when it fails. After a change that makes runs slower or faster, or adds a kill point, a pass at
+  one run per kill point and `pnpm crash:times reports/crash/<file>.jsonl` refresh the laptop's
+  times in the same change, and `BINFERENCE_CRASH_TIMES=macos-runner pnpm crash:times` on a night's
+  uploaded results the runner's. Enforcer:
   `config/vitest/crash-reporter.ts`, `scripts/crash-times.mts`, and `crash.yml`'s upload step.
 - **Rule:** a live suite against an outside service's test app keeps what its cleanup needs
   before it makes anything, so a run that dies leaves nothing it cannot remove. The Privy suite

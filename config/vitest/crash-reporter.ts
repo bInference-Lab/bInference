@@ -3,8 +3,14 @@ import { join, relative } from "node:path";
 import type { Reporter, TestCase, TestModule, TestSpecification, Vitest } from "vitest/node";
 import { estimatePart, minutesOf, partLimitMinutes, runsThatFit } from "./crash-estimate.js";
 import { type CrashRecord, crashResultsFolder } from "./crash-record.js";
-import { type CrashTimes, crashTimesFile, readCrashTimes } from "./crash-times.js";
+import { type CrashTimes, crashTimesFileOf, readCrashTimes } from "./crash-times.js";
 import { runsPerPoint } from "./runs-per-point.js";
+
+/** The measured times a pass is sized by, and the file they came from. */
+interface Measured {
+  readonly file: string;
+  readonly times: CrashTimes;
+}
 
 const runName = /^(.*), run (\d+)$/;
 
@@ -33,10 +39,10 @@ function runOf(testCase: TestCase, root: string): CrashRecord {
 }
 
 // Sizes the pass from the measured times and refuses one over the limit, before anvil starts.
-function startPass(vitest: Vitest, files: readonly string[], times: CrashTimes): CrashRecord {
+function startPass(vitest: Vitest, files: readonly string[], measured: Measured): CrashRecord {
   const runs = runsPerPoint(process.env["BINFERENCE_CRASH_RUNS"]);
   const pattern = vitest.config.testNamePattern;
-  const estimate = estimatePart(times, files, { runs, pattern });
+  const estimate = estimatePart(measured.times, files, { runs, pattern });
   const part =
     process.env["BINFERENCE_CRASH_PART"] ??
     [files.join(" "), ...(pattern === undefined ? [] : [`-t ${pattern.source}`])].join(" ");
@@ -54,13 +60,13 @@ function startPass(vitest: Vitest, files: readonly string[], times: CrashTimes):
   }
   for (const file of estimate.unknownFiles) {
     vitest.logger.log(
-      `Crash suite: ${crashTimesFile} has no times for ${file}, so the estimate leaves it out.`,
+      `Crash suite: ${measured.file} has no times for ${file}, so the estimate leaves it out.`,
     );
   }
   vitest.logger.log(
     `Crash suite: runs per kill point: ${String(runs)}, kill points: ` +
       `${String(estimate.killPoints)}, about ${String(minutesOf(estimate.seconds))} min ` +
-      `by ${crashTimesFile}.`,
+      `by ${measured.file}.`,
   );
   return {
     kind: "start",
@@ -74,9 +80,9 @@ function startPass(vitest: Vitest, files: readonly string[], times: CrashTimes):
 }
 
 // Names each kill point of a collected file that the measured times do not know yet.
-function warnUnknown(vitest: Vitest, testModule: TestModule, times: CrashTimes): void {
+function warnUnknown(vitest: Vitest, testModule: TestModule, measured: Measured): void {
   const file = pathFrom(vitest.config.root, testModule.moduleId);
-  const entry = times.files[file];
+  const entry = measured.times.files[file];
   // A file without any times was named at the start already.
   if (entry === undefined) {
     return;
@@ -89,7 +95,7 @@ function warnUnknown(vitest: Vitest, testModule: TestModule, times: CrashTimes):
   );
   for (const point of [...points].filter((name) => !known.has(name))) {
     vitest.logger.log(
-      `Crash suite: ${crashTimesFile} has no time for "${point}" in ${file}; ` +
+      `Crash suite: ${measured.file} has no time for "${point}" in ${file}; ` +
         "pnpm crash:times adds it from this pass's results.",
     );
   }
@@ -110,11 +116,11 @@ interface OpenPass {
 function openPass(
   vitest: Vitest,
   specifications: readonly TestSpecification[],
-  times: CrashTimes,
+  measured: Measured,
 ): OpenPass {
   const { root } = vitest.config;
   const files = specifications.map(({ moduleId }) => pathFrom(root, moduleId));
-  const start = startPass(vitest, files, times);
+  const start = startPass(vitest, files, measured);
   mkdirSync(join(root, crashResultsFolder), { recursive: true });
   const shown = `${crashResultsFolder}/${start.at.replaceAll(":", "-")}.jsonl`;
   const resultsFile = join(root, shown);
@@ -145,23 +151,24 @@ function fileEndOf(testModule: TestModule, root: string, startMs: number): Crash
  */
 export function createCrashReporter(): Reporter {
   let vitest: Vitest | undefined;
-  let times: CrashTimes | undefined;
+  let measured: Measured | undefined;
   let pass: OpenPass | undefined;
   const queuedMs = new Map<string, number>();
   const root = (): string => vitest?.config.root ?? "";
   return {
     onInit(context: Vitest) {
       vitest = context;
-      times = readCrashTimes(context.config.root);
+      const file = crashTimesFileOf(process.env["BINFERENCE_CRASH_TIMES"]);
+      measured = { file, times: readCrashTimes(context.config.root, file) };
     },
     onTestRunStart(specifications: readonly TestSpecification[]) {
-      if (vitest !== undefined && times !== undefined) {
-        pass = openPass(vitest, specifications, times);
+      if (vitest !== undefined && measured !== undefined) {
+        pass = openPass(vitest, specifications, measured);
       }
     },
     onTestModuleCollected(testModule: TestModule) {
-      if (vitest !== undefined && times !== undefined) {
-        warnUnknown(vitest, testModule, times);
+      if (vitest !== undefined && measured !== undefined) {
+        warnUnknown(vitest, testModule, measured);
       }
     },
     onTestModuleQueued(testModule: TestModule) {

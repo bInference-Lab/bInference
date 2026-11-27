@@ -1,6 +1,6 @@
 # 0339. The crash suite sends, stakes and bridges on stand-ins of the bare chain
 
-Status: Amended by 0453
+Status: Amended by 0460
 
 Accepted by the tech lead on 2026-11-03.
 

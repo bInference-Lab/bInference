@@ -7,14 +7,15 @@ import {
 } from "../config/vitest/crash-record.js";
 import {
   type CrashTimes,
-  crashTimesFile,
+  crashTimesFileOf,
   type FileTimes,
   type KillPointTime,
   readCrashTimes,
 } from "../config/vitest/crash-times.js";
 
 const usage =
-  "Usage: pnpm crash:times <results.jsonl>..., the files a crash pass wrote to reports/crash/.";
+  "Usage: pnpm crash:times <results.jsonl>..., the files a crash pass wrote to reports/crash/; " +
+  "BINFERENCE_CRASH_TIMES=macos-runner writes the nightly runner's times from its uploaded results.";
 
 /** What one results file measured. */
 interface Pass {
@@ -110,11 +111,12 @@ if (paths.length === 0) {
   console.error(`crash:times: ${usage}`);
   process.exit(2);
 }
+const timesFile = crashTimesFileOf(process.env["BINFERENCE_CRASH_TIMES"]);
 const passes = paths.map((path) => passOf(readRecords(path)));
-const times = timesOf(readCrashTimes(root), passes);
-writeFileSync(crashTimesFile, `${JSON.stringify(times, null, 2)}\n`);
+const times = timesOf(readCrashTimes(root, timesFile), passes);
+writeFileSync(timesFile, `${JSON.stringify(times, null, 2)}\n`);
 const points = Object.values(times.files).reduce((sum, file) => sum + file.killPoints.length, 0);
 console.log(
-  `crash:times: ${crashTimesFile} holds ${String(points)} kill points of ` +
+  `crash:times: ${timesFile} holds ${String(points)} kill points of ` +
     `${String(Object.keys(times.files).length)} files, from ${String(passes.length)} passes.`,
 );

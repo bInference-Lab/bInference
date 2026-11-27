@@ -721,7 +721,9 @@ check` tries it as `network.proxy`.
   recorded, after a block took it) and starts it again, against anvil on a chain of its own.
   A **crash pass** is one run of the suite over a **part**, a set of its files and kill points; it
   writes each run's result to a **results file** in `reports/crash/` as the run ends, and is sized
-  before it starts from the **measured times** in `config/vitest/crash-times.generated.json`.
+  before it starts from the **measured times** of the machine it runs on, which
+  `BINFERENCE_CRASH_TIMES` names: `config/vitest/crash-times.generated.json` for the maintainers'
+  laptop, `config/vitest/crash-times.macos-runner.generated.json` for the nightly runner.
 
 ### Files, commands and tools
 

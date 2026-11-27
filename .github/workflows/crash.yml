@@ -4,9 +4,9 @@ name: Crash suite
 # of a swap, a send, a stake, a bridge, a webhook rule's fill, a live order fill, a token launch or
 # a keyed write sent again after the restart, SIGKILL or TerminateProcess, starts it again and
 # counts what reached the chain. It runs against anvil on a chain of its own, so the
-# job reaches no network beyond its installs and holds no key. The kill points run in seven parts
-# on each OS (decisions 0290 and 0339), so 20 runs at each fit a job's time. Linux and Windows
-# return as rows with their OS (decision 0453).
+# job reaches no network beyond its installs and holds no key. The kill points run in 17 parts on
+# each OS, each about 80 minutes or less at 20 runs a point by the runner's measured times
+# (decision 0460). Linux and Windows return as rows with their OS (decision 0453).
 on:
   schedule:
     - cron: "23 4 * * *"
@@ -33,44 +33,94 @@ jobs:
   crash:
     name: Crash suite (${{ matrix.os }}, ${{ matrix.part.name }})
     runs-on: ${{ matrix.os }}
-    # The longest part, the Relay bridges, takes about 79 minutes at 20 runs a point on a laptop:
-    # each bridge waits for the engine's 30-second delivery read.
+    # The reporter refuses a part its measured times put over 120 minutes; the longest parts, the
+    # Relay bridges, take about 77 by the runner's times, which still count each of its kill
+    # points at the laptop's time times 2.9 until a night measures them.
     timeout-minutes: 120
     strategy:
       fail-fast: false
+      # Three parts at a time, so pushes to master still find macOS runners (decision 0460).
+      max-parallel: 3
       matrix:
         # ubuntu-latest and windows-latest return here with their OS (decision 0453).
         os: [macos-latest]
-        # Each part's files, and the kill points among them it runs.
+        # Each part's files, and the kill points among them it runs: a -t pattern. Every kill point
+        # is in one part; the minutes are the runner's estimate at 20 runs a point.
         part:
-          - name: swaps, sends, resent writes, webhook fills and chat launches
+          # 64 minutes.
+          - name: resent writes and webhook fills
+            files: >-
+              packages/cli/src/crash/crash-resend-key.test.ts
+              packages/cli/src/crash/crash-webhook-fills.test.ts
+            points: ""
+          # 59 minutes.
+          - name: sends and revokes
+            files: packages/cli/src/crash/crash-transfers.test.ts
+            points: ""
+          # 65 minutes.
+          - name: swaps and chat launches
             files: >-
               packages/cli/src/crash/crash-suite.test.ts packages/cli/src/crash/crash-http.test.ts
               packages/cli/src/crash/crash-launch-chat.test.ts
-              packages/cli/src/crash/crash-resend-key.test.ts
-              packages/cli/src/crash/crash-transfers.test.ts
-              packages/cli/src/crash/crash-webhook-fills.test.ts
             points: ""
-          - name: live fills
+          # 69 minutes.
+          - name: live buy fills
+            files: packages/cli/src/crash/crash-fills.test.ts
+            points: during a live buy order fill
+          # 59 minutes.
+          - name: live sale fills
+            files: packages/cli/src/crash/crash-fills.test.ts
+            points: during a live sale order fill
+          # 49 minutes.
+          - name: dropped and webhook live fills
             files: >-
               packages/cli/src/crash/crash-fills.test.ts
               packages/cli/src/crash/crash-live-webhook-fills.test.ts
-            points: ""
-          - name: coin launches
+            points: dropped live fill|during a live webhook rule fill
+          # 58 minutes.
+          - name: coin launches, upload to signed
             files: packages/cli/src/crash/crash-launch.test.ts
-            points: against the coin
+            points: at (upload|pin|pinned|card|asked|signed) of step 0 during a launch against the coin
+          # 47 minutes.
+          - name: coin launches, stored to receipt
+            files: packages/cli/src/crash/crash-launch.test.ts
+            points: at (stored|relayed|sent|included|receipt) of step 0 during a launch against the coin
+          # 65 minutes.
           - name: token pair launches
             files: packages/cli/src/crash/crash-launch.test.ts
             points: against the usdt
-          - name: stakes
+          # 61 minutes.
+          - name: stakes, signed and stored
             files: packages/cli/src/crash/crash-stakes.test.ts
-            points: ""
-          - name: Across bridges
+            points: killed at (signed|stored) during
+          # 61 minutes.
+          - name: stakes, sent and included
+            files: packages/cli/src/crash/crash-stakes.test.ts
+            points: killed at (sent|included) during
+          # 32 minutes.
+          - name: stakes, receipt
+            files: packages/cli/src/crash/crash-stakes.test.ts
+            points: killed at receipt during
+          # 47 minutes.
+          - name: Across bridges, signed, stored and delivery
             files: packages/cli/src/crash/crash-bridges.test.ts
-            points: ""
-          - name: Relay bridges
+            points: at (signed|stored|delivery) of its deposit
+          # 48 minutes.
+          - name: Across bridges, sent, included and receipt
+            files: packages/cli/src/crash/crash-bridges.test.ts
+            points: at (sent|included|receipt) of its deposit
+          # 76 minutes.
+          - name: Relay bridges, signed and delivery
             files: packages/cli/src/crash/crash-relay-bridges.test.ts
-            points: ""
+            points: at (signed|delivery) of its deposit
+          # 75 minutes.
+          - name: Relay bridges, stored and sent
+            files: packages/cli/src/crash/crash-relay-bridges.test.ts
+            points: at (stored|sent) of its deposit
+          # 77 minutes.
+          - name: Relay bridges, included and receipt
+            files: packages/cli/src/crash/crash-relay-bridges.test.ts
+            points: at (included|receipt) of its deposit
         # Foundry's release archive for each runner, checked against its published digest. An
         # entry for an OS the matrix lacks would add a row of its own, so the other two wait here
         # for their OS:
@@ -139,13 +189,16 @@ jobs:
           Add-Content -Path $env:GITHUB_PATH -Value $tools
 
       # 20 runs at each kill point of the part on each OS. Vitest writes the results to the job
-      # summary; the suite's reporter refuses a part its measured times put over 120 minutes and
-      # writes each run's result to reports/crash/ as it ends.
+      # summary; the suite's reporter sizes the part by the runner's measured times, refuses one
+      # they put over 120 minutes, and writes each run's result to reports/crash/ as it ends.
+      # `BINFERENCE_CRASH_TIMES=macos-runner pnpm crash:times` on the uploaded results refreshes
+      # those times.
       - name: Crash suite
         shell: bash
         env:
           BINFERENCE_CRASH_RUNS: ${{ inputs.runs || '20' }}
           BINFERENCE_CRASH_PART: ${{ matrix.part.name }}
+          BINFERENCE_CRASH_TIMES: macos-runner
           CRASH_FILES: ${{ matrix.part.files }}
           CRASH_POINTS: ${{ matrix.part.points }}
         run: |

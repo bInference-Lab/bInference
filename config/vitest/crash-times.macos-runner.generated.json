@@ -1,0 +1,524 @@
+{
+  "suiteSeconds": 16.3,
+  "files": {
+    "packages/cli/src/crash/crash-bridges.test.ts": {
+      "setupSeconds": 0,
+      "killPoints": [
+        {
+          "name": "an engine killed at delivery of its deposit during a bridge through Across",
+          "test": "sends each step once and books the bridge once",
+          "seconds": 75.3
+        },
+        {
+          "name": "an engine killed at included of its deposit during a bridge through Across",
+          "test": "sends each step once and books the bridge once",
+          "seconds": 47
+        },
+        {
+          "name": "an engine killed at receipt of its deposit during a bridge through Across",
+          "test": "sends each step once and books the bridge once",
+          "seconds": 48.2
+        },
+        {
+          "name": "an engine killed at sent of its deposit during a bridge through Across",
+          "test": "sends each step once and books the bridge once",
+          "seconds": 47.2
+        },
+        {
+          "name": "an engine killed at signed of its deposit during a bridge through Across",
+          "test": "sends each step once and books the bridge once",
+          "seconds": 18.6
+        },
+        {
+          "name": "an engine killed at stored of its deposit during a bridge through Across",
+          "test": "sends each step once and books the bridge once",
+          "seconds": 47.3
+        }
+      ]
+    },
+    "packages/cli/src/crash/crash-fills.test.ts": {
+      "setupSeconds": 2.6,
+      "killPoints": [
+        {
+          "name": "an engine killed at asked of step 0 during a live buy order fill",
+          "test": "sends each step once and records one fill",
+          "seconds": 68.4
+        },
+        {
+          "name": "an engine killed at asked of step 0 during a live sale order fill",
+          "test": "sends each step once and records one fill",
+          "seconds": 27.3
+        },
+        {
+          "name": "an engine killed at included of step 0 during a live buy order fill",
+          "test": "sends each step once and records one fill",
+          "seconds": 22.3
+        },
+        {
+          "name": "an engine killed at included of step 0 during a live sale order fill",
+          "test": "sends each step once and records one fill",
+          "seconds": 24.9
+        },
+        {
+          "name": "an engine killed at included of step 1 during a live sale order fill",
+          "test": "sends each step once and records one fill",
+          "seconds": 24.6
+        },
+        {
+          "name": "an engine killed at sent of step 0 during a live buy order fill",
+          "test": "sends each step once and records one fill",
+          "seconds": 23.2
+        },
+        {
+          "name": "an engine killed at sent of step 0 during a live sale order fill",
+          "test": "sends each step once and records one fill",
+          "seconds": 25.2
+        },
+        {
+          "name": "an engine killed at sent of step 1 during a live sale order fill",
+          "test": "sends each step once and records one fill",
+          "seconds": 26.1
+        },
+        {
+          "name": "an engine killed at signed of step 0 during a live buy order fill",
+          "test": "sends each step once and records one fill",
+          "seconds": 67.9
+        },
+        {
+          "name": "an engine killed at stored of step 0 during a live buy order fill",
+          "test": "sends each step once and records one fill",
+          "seconds": 23.2
+        },
+        {
+          "name": "an engine killed at stored of step 0 during a live sale order fill",
+          "test": "sends each step once and records one fill",
+          "seconds": 23.5
+        },
+        {
+          "name": "an engine killed at stored of step 1 during a live sale order fill",
+          "test": "sends each step once and records one fill",
+          "seconds": 25.8
+        },
+        {
+          "name": "an engine killed while it watches a dropped live fill",
+          "test": "fills nothing more meanwhile and counts the late landing once",
+          "seconds": 29
+        }
+      ]
+    },
+    "packages/cli/src/crash/crash-http.test.ts": {
+      "setupSeconds": 0,
+      "killPoints": []
+    },
+    "packages/cli/src/crash/crash-launch-chat.test.ts": {
+      "setupSeconds": 0.1,
+      "killPoints": [
+        {
+          "name": "an engine killed after the owner's Start, before the launch is stored",
+          "test": "starts nothing, and the draft says it is gone",
+          "seconds": 28.7
+        },
+        {
+          "name": "an engine killed once a launch from the chat began its upload",
+          "test": "ends it upload_lost, tells the owner once and uploads nothing more",
+          "seconds": 36.7
+        },
+        {
+          "name": "an engine killed while a launch from the chat waits for its pin",
+          "test": "shows its card once after the restart and lands it once",
+          "seconds": 32.2
+        }
+      ]
+    },
+    "packages/cli/src/crash/crash-launch.test.ts": {
+      "setupSeconds": 0.1,
+      "killPoints": [
+        {
+          "name": "an engine killed at asked of step 0 during a launch against the coin",
+          "test": "sends each step once and records the launch once",
+          "seconds": 26.7
+        },
+        {
+          "name": "an engine killed at asked of step 1 during a launch against the usdt",
+          "test": "sends each step once and records the launch once",
+          "seconds": 24.4
+        },
+        {
+          "name": "an engine killed at card of step 0 during a launch against the coin",
+          "test": "sends each step once and records the launch once",
+          "seconds": 29.5
+        },
+        {
+          "name": "an engine killed at included of step 0 during a launch against the coin",
+          "test": "sends each step once and records the launch once",
+          "seconds": 28.8
+        },
+        {
+          "name": "an engine killed at included of step 0 during a launch against the usdt",
+          "test": "sends each step once and records the launch once",
+          "seconds": 22.4
+        },
+        {
+          "name": "an engine killed at included of step 1 during a launch against the usdt",
+          "test": "sends each step once and records the launch once",
+          "seconds": 24.8
+        },
+        {
+          "name": "an engine killed at pin of step 0 during a launch against the coin",
+          "test": "sends each step once and records the launch once",
+          "seconds": 27.9
+        },
+        {
+          "name": "an engine killed at pinned of step 0 during a launch against the coin",
+          "test": "sends each step once and records the launch once",
+          "seconds": 28.9
+        },
+        {
+          "name": "an engine killed at receipt of step 0 during a launch against the coin",
+          "test": "sends each step once and records the launch once",
+          "seconds": 29.5
+        },
+        {
+          "name": "an engine killed at receipt of step 1 during a launch against the usdt",
+          "test": "sends each step once and records the launch once",
+          "seconds": 28.3
+        },
+        {
+          "name": "an engine killed at relayed of step 0 during a launch against the coin",
+          "test": "sends each step once and records the launch once",
+          "seconds": 26.8
+        },
+        {
+          "name": "an engine killed at sent of step 0 during a launch against the coin",
+          "test": "sends each step once and records the launch once",
+          "seconds": 28.9
+        },
+        {
+          "name": "an engine killed at sent of step 0 during a launch against the usdt",
+          "test": "sends each step once and records the launch once",
+          "seconds": 18.7
+        },
+        {
+          "name": "an engine killed at sent of step 1 during a launch against the usdt",
+          "test": "sends each step once and records the launch once",
+          "seconds": 23.8
+        },
+        {
+          "name": "an engine killed at signed of step 0 during a launch against the coin",
+          "test": "sends each step once and records the launch once",
+          "seconds": 26.3
+        },
+        {
+          "name": "an engine killed at stored of step 0 during a launch against the coin",
+          "test": "sends each step once and records the launch once",
+          "seconds": 26.9
+        },
+        {
+          "name": "an engine killed at stored of step 0 during a launch against the usdt",
+          "test": "sends each step once and records the launch once",
+          "seconds": 27.3
+        },
+        {
+          "name": "an engine killed at stored of step 1 during a launch against the usdt",
+          "test": "sends each step once and records the launch once",
+          "seconds": 24.1
+        },
+        {
+          "name": "an engine killed at upload of step 0 during a launch against the coin",
+          "test": "sends each step once and records the launch once",
+          "seconds": 35
+        }
+      ]
+    },
+    "packages/cli/src/crash/crash-live-webhook-fills.test.ts": {
+      "setupSeconds": 9.9,
+      "killPoints": [
+        {
+          "name": "an engine killed at asked during a live webhook rule fill",
+          "test": "sends the fill once at most and ends its alert once",
+          "seconds": 22.3
+        },
+        {
+          "name": "an engine killed at included during a live webhook rule fill",
+          "test": "sends the fill once at most and ends its alert once",
+          "seconds": 22.6
+        },
+        {
+          "name": "an engine killed at sent during a live webhook rule fill",
+          "test": "sends the fill once at most and ends its alert once",
+          "seconds": 24.1
+        },
+        {
+          "name": "an engine killed at signed during a live webhook rule fill",
+          "test": "sends the fill once at most and ends its alert once",
+          "seconds": 22.6
+        },
+        {
+          "name": "an engine killed at stored during a live webhook rule fill",
+          "test": "sends the fill once at most and ends its alert once",
+          "seconds": 24.4
+        }
+      ]
+    },
+    "packages/cli/src/crash/crash-relay-bridges.test.ts": {
+      "setupSeconds": 9.6,
+      "killPoints": [
+        {
+          "name": "an engine killed at delivery of its deposit during a bridge through Relay",
+          "test": "sends each step once and books the bridge once",
+          "seconds": 200.7
+        },
+        {
+          "name": "an engine killed at included of its deposit during a bridge through Relay",
+          "test": "sends each step once and books the bridge once",
+          "seconds": 112.5
+        },
+        {
+          "name": "an engine killed at receipt of its deposit during a bridge through Relay",
+          "test": "sends each step once and books the bridge once",
+          "seconds": 115.7
+        },
+        {
+          "name": "an engine killed at sent of its deposit during a bridge through Relay",
+          "test": "sends each step once and books the bridge once",
+          "seconds": 111.9
+        },
+        {
+          "name": "an engine killed at signed of its deposit during a bridge through Relay",
+          "test": "sends each step once and books the bridge once",
+          "seconds": 26.7
+        },
+        {
+          "name": "an engine killed at stored of its deposit during a bridge through Relay",
+          "test": "sends each step once and books the bridge once",
+          "seconds": 112.2
+        }
+      ]
+    },
+    "packages/cli/src/crash/crash-resend-key.test.ts": {
+      "setupSeconds": 0.1,
+      "killPoints": [
+        {
+          "name": "an engine killed once a confirmation's key is marked, before the write's result is stored",
+          "test": "answers the same key unknown and runs the write once",
+          "seconds": 30.6
+        },
+        {
+          "name": "an engine killed once a confirmation's swap landed, before the write's result is stored",
+          "test": "answers the same key unknown and runs the write once",
+          "seconds": 26.8
+        },
+        {
+          "name": "an engine killed once a live order opened its card, before the write's result is stored",
+          "test": "answers the same key unknown and runs the write once",
+          "seconds": 23
+        },
+        {
+          "name": "an engine killed once a proposal opened its card, before the write's result is stored",
+          "test": "answers the same key unknown and runs the write once",
+          "seconds": 26.4
+        },
+        {
+          "name": "an engine killed once a proposal's key is marked, before the write's result is stored",
+          "test": "answers the same key unknown and runs the write once",
+          "seconds": 36.6
+        },
+        {
+          "name": "an engine killed while a stored proposal simulates, before the write's result is stored",
+          "test": "answers the same key unknown and runs the write once",
+          "seconds": 25.9
+        }
+      ]
+    },
+    "packages/cli/src/crash/crash-stakes.test.ts": {
+      "setupSeconds": 9,
+      "killPoints": [
+        {
+          "name": "an engine killed at included during a claim from StakeHub",
+          "test": "sends one transaction at most and books it once",
+          "seconds": 24.4
+        },
+        {
+          "name": "an engine killed at included during a stake with Lista",
+          "test": "sends one transaction at most and books it once",
+          "seconds": 20.9
+        },
+        {
+          "name": "an engine killed at included during a stake with StakeHub",
+          "test": "sends one transaction at most and books it once",
+          "seconds": 20.9
+        },
+        {
+          "name": "an engine killed at included during an unstake from StakeHub",
+          "test": "sends one transaction at most and books it once",
+          "seconds": 22.6
+        },
+        {
+          "name": "an engine killed at receipt during a claim from StakeHub",
+          "test": "sends one transaction at most and books it once",
+          "seconds": 26.1
+        },
+        {
+          "name": "an engine killed at receipt during a stake with Lista",
+          "test": "sends one transaction at most and books it once",
+          "seconds": 22.6
+        },
+        {
+          "name": "an engine killed at receipt during a stake with StakeHub",
+          "test": "sends one transaction at most and books it once",
+          "seconds": 22.6
+        },
+        {
+          "name": "an engine killed at receipt during an unstake from StakeHub",
+          "test": "sends one transaction at most and books it once",
+          "seconds": 24.4
+        },
+        {
+          "name": "an engine killed at sent during a claim from StakeHub",
+          "test": "sends one transaction at most and books it once",
+          "seconds": 25.2
+        },
+        {
+          "name": "an engine killed at sent during a stake with Lista",
+          "test": "sends one transaction at most and books it once",
+          "seconds": 22.9
+        },
+        {
+          "name": "an engine killed at sent during a stake with StakeHub",
+          "test": "sends one transaction at most and books it once",
+          "seconds": 22
+        },
+        {
+          "name": "an engine killed at sent during an unstake from StakeHub",
+          "test": "sends one transaction at most and books it once",
+          "seconds": 23.5
+        },
+        {
+          "name": "an engine killed at signed during a claim from StakeHub",
+          "test": "sends one transaction at most and books it once",
+          "seconds": 24.1
+        },
+        {
+          "name": "an engine killed at signed during a stake with Lista",
+          "test": "sends one transaction at most and books it once",
+          "seconds": 20.9
+        },
+        {
+          "name": "an engine killed at signed during a stake with StakeHub",
+          "test": "sends one transaction at most and books it once",
+          "seconds": 20.6
+        },
+        {
+          "name": "an engine killed at signed during an unstake from StakeHub",
+          "test": "sends one transaction at most and books it once",
+          "seconds": 22.6
+        },
+        {
+          "name": "an engine killed at stored during a claim from StakeHub",
+          "test": "sends one transaction at most and books it once",
+          "seconds": 25.2
+        },
+        {
+          "name": "an engine killed at stored during a stake with Lista",
+          "test": "sends one transaction at most and books it once",
+          "seconds": 23.2
+        },
+        {
+          "name": "an engine killed at stored during a stake with StakeHub",
+          "test": "sends one transaction at most and books it once",
+          "seconds": 21.8
+        },
+        {
+          "name": "an engine killed at stored during an unstake from StakeHub",
+          "test": "sends one transaction at most and books it once",
+          "seconds": 23.5
+        }
+      ]
+    },
+    "packages/cli/src/crash/crash-suite.test.ts": {
+      "setupSeconds": 2,
+      "killPoints": [
+        {
+          "name": "an engine killed at included and started again",
+          "test": "sends one transaction at most",
+          "seconds": 20
+        },
+        {
+          "name": "an engine killed at relayed and started again",
+          "test": "sends one transaction at most",
+          "seconds": 19.7
+        },
+        {
+          "name": "an engine killed at sent and started again",
+          "test": "sends one transaction at most",
+          "seconds": 22
+        },
+        {
+          "name": "an engine killed at signed and started again",
+          "test": "sends one transaction at most",
+          "seconds": 17.1
+        },
+        {
+          "name": "an engine killed at stored and started again",
+          "test": "sends one transaction at most",
+          "seconds": 18.6
+        }
+      ]
+    },
+    "packages/cli/src/crash/crash-transfers.test.ts": {
+      "setupSeconds": 2,
+      "killPoints": [
+        {
+          "name": "an engine killed at included during a send of BNB",
+          "test": "sends one transaction at most",
+          "seconds": 21.2
+        },
+        {
+          "name": "an engine killed at included during an approval revoke",
+          "test": "sends one transaction at most",
+          "seconds": 21.2
+        },
+        {
+          "name": "an engine killed at sent during a send of BNB",
+          "test": "sends one transaction at most",
+          "seconds": 23.2
+        },
+        {
+          "name": "an engine killed at sent during an approval revoke",
+          "test": "sends one transaction at most",
+          "seconds": 23.2
+        },
+        {
+          "name": "an engine killed at signed during a send of BNB",
+          "test": "sends one transaction at most",
+          "seconds": 20.9
+        },
+        {
+          "name": "an engine killed at signed during an approval revoke",
+          "test": "sends one transaction at most",
+          "seconds": 20.9
+        },
+        {
+          "name": "an engine killed at stored during a send of BNB",
+          "test": "sends one transaction at most",
+          "seconds": 23.2
+        },
+        {
+          "name": "an engine killed at stored during an approval revoke",
+          "test": "sends one transaction at most",
+          "seconds": 23.5
+        }
+      ]
+    },
+    "packages/cli/src/crash/crash-webhook-fills.test.ts": {
+      "setupSeconds": 2,
+      "killPoints": [
+        {
+          "name": "an engine killed during a webhook rule's paper fill, before the fill's write",
+          "test": "ends the alert once and fills it never",
+          "seconds": 22.3
+        }
+      ]
+    }
+  }
+}

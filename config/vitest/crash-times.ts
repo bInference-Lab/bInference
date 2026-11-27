@@ -26,8 +26,27 @@ export interface CrashTimes {
   readonly files: Readonly<Record<string, FileTimes>>;
 }
 
-/** Where the measured times live, from the repository root; `pnpm crash:times` writes it. */
-export const crashTimesFile = "config/vitest/crash-times.generated.json";
+// Each machine the times are measured on, and its file from the repository root: the maintainers'
+// laptop, and the hosted macOS runner of the nightly job, where a run takes 1.1 to 4.8 times as
+// long as on the laptop, by kill point.
+const timesFiles: ReadonlyMap<string, string> = new Map([
+  ["laptop", "config/vitest/crash-times.generated.json"],
+  ["macos-runner", "config/vitest/crash-times.macos-runner.generated.json"],
+]);
+
+/**
+ * Where the measured times of the machine `BINFERENCE_CRASH_TIMES` names live, from the
+ * repository root: the laptop's when it is unset. `pnpm crash:times` writes the same file. Throws
+ * on a name with no times file.
+ */
+export function crashTimesFileOf(machine: string | undefined): string {
+  const file = timesFiles.get(machine ?? "laptop");
+  if (file === undefined) {
+    const names = [...timesFiles.keys()].join(", ");
+    throw new Error(`BINFERENCE_CRASH_TIMES is ${String(machine)}; it takes one of ${names}.`);
+  }
+  return file;
+}
 
 const seconds = z.number().nonnegative();
 
@@ -43,8 +62,8 @@ const crashTimesSchema: z.ZodType<CrashTimes> = z.object({
   ),
 });
 
-/** Reads the measured times from the repository at `root`. */
-export function readCrashTimes(root: string): CrashTimes {
-  const text = readFileSync(join(root, crashTimesFile), "utf8");
+/** Reads the measured times in `file`, a path from the repository at `root`. */
+export function readCrashTimes(root: string, file: string): CrashTimes {
+  const text = readFileSync(join(root, file), "utf8");
   return crashTimesSchema.parse(JSON.parse(text));
 }
