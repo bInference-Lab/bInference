@@ -55,3 +55,15 @@ const notYetMessage = /header not found|unknown block/i;
 export function isBlockUnknown(error: JsonRpcError): boolean {
   return notYetMessage.test(error.message);
 }
+
+// A node answers a log query whose last block it has not imported yet with this message under
+// -32602, as 48 Club's public BSC node does; "block range" alone reads it as a query too large.
+const pastHeadMessage = /beyond (the )?current head/i;
+
+/**
+ * Whether a JSON-RPC error says the range a call asked for ends past the node's newest block. The
+ * message names the node's own head, so it means the same at any block: the node is behind.
+ */
+export function isPastHead(error: JsonRpcError): boolean {
+  return pastHeadMessage.test(error.message);
+}

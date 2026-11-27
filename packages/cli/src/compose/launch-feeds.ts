@@ -18,6 +18,7 @@ import {
 } from "@binference/engine/market";
 import type { ChainReads } from "./chain-reads.js";
 import type { Closers } from "./closers.js";
+import { createLaunchReadLog, type LaunchReadLog } from "./launch-read-log.js";
 import { createWatcherRunner, type WatcherRunner } from "./watcher-runner.js";
 
 /** The launch feeds as the engine serves them: whether any runs, their link to the alerts, and their start. */
@@ -94,8 +95,13 @@ function recordOf(chain: ChainRef, read: LaunchRead, atMs: number): LaunchReadRe
   };
 }
 
-function bookOf(options: LaunchFeedsOptions, chain: ChainRef, links: Links): LaunchBook {
+function bookOf(
+  options: LaunchFeedsOptions,
+  chain: ChainRef,
+  wiring: { readonly links: Links; readonly readLog: LaunchReadLog },
+): LaunchBook {
   const { launches, clock } = options;
+  const { links } = wiring;
   return {
     cursor: async (signal) => {
       const cursor = await launches.cursor(chain, { signal });
@@ -106,6 +112,7 @@ function bookOf(options: LaunchFeedsOptions, chain: ChainRef, links: Links): Lau
     },
     async record(read, signal) {
       const stored = await launches.record(recordOf(chain, read, clock.now()), { signal });
+      wiring.readLog.stored();
       const { alerts = noAlerts, logger } = links;
       const parts = {
         chains: options.chains,
@@ -132,7 +139,7 @@ function runnerOf(
   const { clock } = options;
   const { blockTimeMs } = chain.definition;
   const { logger } = wiring;
-  const failures = { last: "" };
+  const readLog = createLaunchReadLog(logger, chain.ref);
   const watcher = createLaunchWatcher({
     chain: reads.evm,
     rpc,
@@ -142,15 +149,9 @@ function runnerOf(
     multicall,
     blockTimeMs,
     launchpads,
-    book: bookOf(options, chain.ref, wiring.links),
+    book: bookOf(options, chain.ref, { links: wiring.links, readLog }),
     callTimeoutMs,
-    // A read that fails again for the same reason is not logged again.
-    onReadFailed: (errorCode) => {
-      if (errorCode !== failures.last) {
-        failures.last = errorCode;
-        logger.warn("watcher.launch_read_failed", { chain: chain.ref, errorCode });
-      }
-    },
+    onReadFailed: (errorCode) => readLog.failed(errorCode),
   });
   return createWatcherRunner({ chain, watcher, clock, logger, isWanted: () => true });
 }
@@ -161,8 +162,8 @@ function runnerOf(
  * shutdown, over the chain's RPC failover and its log endpoints. Each read lands in the launch
  * store in one write; each launch stored new is pushed as `launch/new` and handed to the launch
  * alerts once the engine is attached. A read that fails is logged as
- * `watcher.launch_read_failed` once for each new reason; a launch whose alerts failed as
- * `engine.alert_launch_failed`.
+ * `watcher.launch_read_failed` once for each new reason of an outage, the first at warn
+ * (`createLaunchReadLog`); a launch whose alerts failed as `engine.alert_launch_failed`.
  */
 export function composeLaunchFeeds(options: LaunchFeedsOptions): ComposedLaunchFeeds {
   const links: Links = {};

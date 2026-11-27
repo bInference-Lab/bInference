@@ -6,7 +6,7 @@ import {
   type HttpResponse,
 } from "@binference/core";
 import { type JsonRpcError, readJsonRpcReply } from "./json-rpc-reply.schema.js";
-import { isBlockUnknown, isMissingState, isNodeFault } from "./node-fault.js";
+import { isBlockUnknown, isMissingState, isNodeFault, isPastHead } from "./node-fault.js";
 import type { RpcCall, RpcEndpoint, RpcErrorReply, RpcFault, RpcReply } from "./rpc-call.js";
 
 /** What one endpoint gave a call: a reply, or a failure that sends the call on. */
@@ -48,7 +48,7 @@ function errorOutcome<T>(
   if (isMissingState(error)) {
     return fault("missing_state");
   }
-  if (attempt.atHead && isBlockUnknown(error)) {
+  if ((attempt.atHead && isBlockUnknown(error)) || isPastHead(error)) {
     return fault("not_yet");
   }
   if (isNodeFault(error)) {

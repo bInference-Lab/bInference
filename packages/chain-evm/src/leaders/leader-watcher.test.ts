@@ -483,11 +483,7 @@ describe("leader watcher", () => {
       error: { code: -32_000, message: "execution reverted" },
     });
     await settle(subject);
-    expect(subject.failures).toStrictEqual([
-      "chain.block_ahead",
-      "chain.rpc_error",
-      "chain.rpc_error",
-    ]);
+    expect(subject.failures).toStrictEqual(["chain.rpc_error", "chain.rpc_error"]);
     expect(tradesOf(subject).map(({ block, side }) => [block, side])).toStrictEqual([
       [bought, "buy"],
       [sold, "sell"],

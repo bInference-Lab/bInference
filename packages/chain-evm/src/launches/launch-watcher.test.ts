@@ -6,7 +6,7 @@ import {
   type LaunchLogsRequest,
   type LaunchReader,
 } from "@binference/chain";
-import { bpsSchema } from "@binference/core";
+import { bpsSchema, type HttpRequest, type HttpResponse } from "@binference/core";
 import { createManualClock, type ManualClock } from "@binference/core/testing";
 import {
   type Address,
@@ -197,6 +197,8 @@ afterEach(() => {
 interface FeedExtras {
   readonly reader?: LaunchReader;
   readonly callTimeoutMs?: number;
+  /** The log endpoint, the chain's own node when absent. */
+  readonly logs?: (request: HttpRequest) => HttpResponse;
 }
 
 /** The chain, book and clock a feed runs on. */
@@ -208,7 +210,10 @@ interface FeedParts {
 
 function feedOn(parts: FeedParts, extras: FeedExtras = {}): Feed {
   const { fake, book, clock } = parts;
-  const http = createFakeRpcHttp({ [nodeUrl]: fake.endpoint, [logsUrl]: fake.endpoint });
+  const http = createFakeRpcHttp({
+    [nodeUrl]: fake.endpoint,
+    [logsUrl]: extras.logs ?? fake.endpoint,
+  });
   const endpoint = (url: string) =>
     createRpcFailover({
       endpoints: [{ name: url, url }],
@@ -296,6 +301,28 @@ function toldLaunch(feed: Feed, n: number): FeedLaunch {
     throw new Error(`The book holds no launch of token ${String(n)}.`);
   }
   return launch;
+}
+
+// A log node that, while behind, has not imported the blocks the chain's node announced: it
+// answers a query by one block's hash as an unknown block, and a range past its head as 48 Club's
+// public node does.
+function logsBehind(
+  fake: FakeLeaderChain,
+  lag: { isBehind: boolean },
+): (request: HttpRequest) => HttpResponse {
+  return (request) => {
+    const call = readFakeRpcRequest(request.body);
+    if (!lag.isBehind || call.method !== "eth_getLogs") {
+      return fake.endpoint(request);
+    }
+    const [filter] = call.params;
+    const isByHash = typeof filter === "object" && filter !== null && "blockHash" in filter;
+    const error = isByHash
+      ? { code: -32_000, message: "unknown block" }
+      : { code: -32_602, message: "block range extends beyond current head block" };
+    const body = JSON.stringify({ jsonrpc: "2.0", id: call.id, error });
+    return { status: 200, headers: {}, body };
+  };
 }
 
 // Every read starts at the block after the one before it ended.
@@ -412,6 +439,34 @@ describe("launch watcher", () => {
     await refusing.clock.advance(blockTimeMs * 3);
     expect(refusing.failures).toContain("chain.rpc_error");
     expect(refusing.book.stored?.block).toBe(refused - 1n);
+  });
+
+  it("waits for a log node behind the head with no failure, and reports one that stays behind", async () => {
+    const lag = { isBehind: false };
+    const fake = createFakeLeaderChain({ start: 4_096n, multicall, reads });
+    const parts = { fake, book: memoryBook(), clock: createManualClock(1_000_000) };
+    const feed = feedOn(parts, { logs: logsBehind(fake, lag) });
+    await caughtUp(feed);
+    lag.isBehind = true;
+    const before = feed.book.stored;
+    const launched = fake.mine([launchTx(1)]);
+    fake.mine();
+    fake.mine();
+    await feed.clock.advance(blockTimeMs * 5);
+    expect(feed.book.stored).toStrictEqual(before);
+    lag.isBehind = false;
+    await caughtUp(feed);
+    expect(toldLaunch(feed, 1).block).toBe(launched);
+    readsFollowOn(feed);
+    expect(feed.failures).toStrictEqual([]);
+    lag.isBehind = true;
+    fake.mine();
+    await feed.clock.advance(blockTimeMs * 25);
+    expect([...new Set(feed.failures)]).toStrictEqual(["chain.block_ahead"]);
+    expect(feed.watcher.state().fault).toBe("chain.block_ahead");
+    lag.isBehind = false;
+    await caughtUp(feed);
+    expect(feed.watcher.state().fault).toBeUndefined();
   });
 
   it("passes over a launch a launchpad names off its chain or at no log, and keeps a launch's words short and free of U+0000", async () => {

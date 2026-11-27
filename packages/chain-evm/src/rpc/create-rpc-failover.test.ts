@@ -325,6 +325,22 @@ describe("rpc failover", () => {
     expect(http.requests()).toHaveLength(2);
   });
 
+  it("reads a log range past a node's head as a block it has not imported, never as a query too large", async () => {
+    const behind = fakeRpcNode(() => ({
+      error: { code: -32_602, message: "block range extends beyond current head block" },
+    }));
+    const { rpc, http } = setup({ [primary]: behind, [secondary]: behind });
+    const read = rpc.request({
+      method: "eth_getLogs",
+      params: [{ fromBlock: "0x10", toBlock: "0x19", topics: [] }],
+      result: z.array(z.unknown()),
+      signal: new AbortController().signal,
+    });
+    await expect(read).rejects.toMatchObject({ code: "chain.block_ahead", retryable: true });
+    expect(rpc.health()).toStrictEqual([{ name: "primary" }, { name: "secondary" }]);
+    expect(http.requests()).toHaveLength(2);
+  });
+
   it("still rests a node that does not know a block below the head", async () => {
     const notYet = fakeRpcNode(() => ({ error: { code: -32_000, message: "header not found" } }));
     const { chainId, rpc } = setup({ [primary]: notYet, [secondary]: chainIdNode });

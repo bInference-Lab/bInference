@@ -82,12 +82,17 @@ export interface LogWatch {
 const maxSpanBlocks = 10n;
 // A node imports a new block within about a third of a block time of the one that announced it.
 const notYetRetryMs = 150;
+// A node behind the head this many block times, such as a log node lagging the node that
+// announced the block, is a failed read; until then it is waited for, as a block not yet imported.
+const behindGraceBlocks = 20;
 
 interface Progress {
   head?: bigint;
   cursor?: WatchCursor | undefined;
   isStarted: boolean;
   fault?: string | undefined;
+  /** Since when every read found its nodes behind the head, until one reads. */
+  behindSinceMs?: number | undefined;
 }
 
 interface WatchRun<P> {
@@ -177,10 +182,23 @@ async function readFromCursor<P>(run: WatchRun<P>, head: bigint): Promise<void> 
   }
   const outcome = await readNext(run, head);
   progress.fault = undefined;
+  progress.behindSinceMs = undefined;
   if (outcome !== "read") {
     const waitMs = outcome === "not_yet" ? notYetRetryMs : options.blockTimeMs;
     await options.clock.sleep(waitMs, run.signal);
   }
+}
+
+// Whether the read failed only because its nodes have not imported the block yet, for less than
+// the grace since the last read.
+function isBriefLag<P>(run: WatchRun<P>, code: string): boolean {
+  if (code !== "chain.block_ahead") {
+    return false;
+  }
+  const { progress, options } = run;
+  const nowMs = options.clock.now();
+  progress.behindSinceMs ??= nowMs;
+  return nowMs - progress.behindSinceMs < behindGraceBlocks * options.blockTimeMs;
 }
 
 async function readStep<P>(run: WatchRun<P>): Promise<undefined> {
@@ -197,10 +215,13 @@ async function readStep<P>(run: WatchRun<P>): Promise<undefined> {
     if (!(error instanceof BinferenceError)) {
       throw error;
     }
+    if (isBriefLag(run, error.code)) {
+      await options.clock.sleep(notYetRetryMs, run.signal);
+      return undefined;
+    }
     progress.fault = error.code;
     options.onReadFailed?.(error.code);
-    const isAhead = error.code === "chain.block_ahead";
-    await options.clock.sleep(isAhead ? notYetRetryMs : options.blockTimeMs, run.signal);
+    await options.clock.sleep(options.blockTimeMs, run.signal);
   }
   return undefined;
 }
@@ -212,7 +233,9 @@ async function readStep<P>(run: WatchRun<P>): Promise<undefined> {
  * with its cursor in one write before the next starts. A read whose first block does not follow
  * the cursor's hash reads again from the last final block. A read that fails with a
  * `BinferenceError` is tried again from the same block, so the watcher never stops for the chain;
- * any other fault stops it.
+ * any other fault stops it. A read whose nodes have not imported its block yet
+ * (`chain.block_ahead`) is tried again in 150 ms and counts as failed only once no read has passed
+ * for 20 block times.
  */
 export function createLogWatch<P>(options: LogWatchOptions<P>): LogWatch {
   const progress: Progress = { isStarted: false };
