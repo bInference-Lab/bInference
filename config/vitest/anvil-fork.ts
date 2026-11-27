@@ -3,11 +3,17 @@ import { once } from "node:events";
 import { createInterface } from "node:readline";
 import type { Readable } from "node:stream";
 import { text } from "node:stream/consumers";
+import { stripVTControlCharacters } from "node:util";
 
 /** Where anvil forks from: a public node and a block it still holds the state of. */
 export interface ForkSource {
   readonly upstream: string;
   readonly block: bigint;
+  /**
+   * Hears why anvil exited once it listened, such as a panic's message: every later call to the
+   * fork fails with no word of the cause.
+   */
+  readonly onExit?: (reason: string) => void;
 }
 
 /** An anvil process serving a chain on 127.0.0.1. */
@@ -33,8 +39,10 @@ const versionLine = /^anvil Version: (\S+)/m;
 const readyTimeoutMs = 60_000;
 const stopTimeoutMs = 10_000;
 const versionTimeoutMs = 10_000;
-// anvil writes errors alone to stderr; the end of it explains a failed start.
+// anvil writes errors alone to stderr: a panic's message line, else the end of it, says why it
+// stopped.
 const errorTailLength = 4_000;
+const panicMessage = /^Message:\s*(.+)$/mu;
 
 function anvilArgs(source: ForkSource): readonly string[] {
   return [
@@ -49,11 +57,16 @@ function anvilArgs(source: ForkSource): readonly string[] {
   ].flat();
 }
 
-function waitForAddress(child: AnvilProcess): Promise<string> {
+function stderrOf(child: AnvilProcess): () => string {
   let errors = "";
   child.stderr.on("data", (chunk: Buffer) => {
-    errors = `${errors}${chunk.toString("utf8")}`.slice(-errorTailLength);
+    const added = stripVTControlCharacters(chunk.toString("utf8"));
+    errors = `${errors}${added}`.slice(-errorTailLength);
   });
+  return () => (panicMessage.exec(errors)?.[1] ?? errors).trim();
+}
+
+function waitForAddress(child: AnvilProcess, errors: () => string): Promise<string> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       reject(new Error(`anvil did not listen within ${String(readyTimeoutMs)} ms.`));
@@ -71,7 +84,7 @@ function waitForAddress(child: AnvilProcess): Promise<string> {
     });
     child.once("error", fail);
     child.once("exit", (code) => {
-      fail(new Error(`anvil exited (${String(code)}) before it listened: ${errors.trim()}`));
+      fail(new Error(`anvil exited (${String(code)}) before it listened: ${errors()}`));
     });
   });
 }
@@ -108,11 +121,25 @@ export async function readAnvilVersion(): Promise<string> {
   return versionLine.exec(await output)?.[1] ?? "of an unknown version";
 }
 
-async function startAnvil(args: readonly string[]): Promise<AnvilChain> {
+async function startAnvil(
+  args: readonly string[],
+  onExit?: (reason: string) => void,
+): Promise<AnvilChain> {
   const child = spawn("anvil", args, { stdio: ["ignore", "pipe", "pipe"] });
+  const errors = stderrOf(child);
   try {
-    const address = await waitForAddress(child);
-    return { url: `http://${address}`, stop: async () => stopProcess(child) };
+    const address = await waitForAddress(child, errors);
+    let isStopping = false;
+    child.once("exit", (code, signal) => {
+      if (!isStopping) {
+        onExit?.(`anvil exited (${String(code ?? signal)}) while it served: ${errors()}`);
+      }
+    });
+    const stop = async (): Promise<void> => {
+      isStopping = true;
+      await stopProcess(child);
+    };
+    return { url: `http://${address}`, stop };
   } catch (error) {
     await stopProcess(child);
     throw error;
@@ -124,7 +151,7 @@ async function startAnvil(args: readonly string[]): Promise<AnvilChain> {
  * stops the process and rejects with anvil's own error.
  */
 export async function startAnvilFork(source: ForkSource): Promise<AnvilFork> {
-  return { ...(await startAnvil(anvilArgs(source))), block: source.block };
+  return { ...(await startAnvil(anvilArgs(source), source.onExit)), block: source.block };
 }
 
 /**

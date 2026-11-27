@@ -7,9 +7,9 @@ import { retryFlakes } from "./retry-flakes.js";
 
 const startWaitsMs = [5_000, 15_000, 30_000];
 
-async function startFork(): Promise<AnvilFork> {
+async function startFork(onExit: (reason: string) => void): Promise<AnvilFork> {
   return retryFlakes({ label: "Starting the BSC fork", waitsMs: startWaitsMs }, async () =>
-    startAnvilFork({ upstream: forkUpstream, block: await pinBlock() }),
+    startAnvilFork({ upstream: forkUpstream, block: await pinBlock(), onExit }),
   );
 }
 
@@ -25,7 +25,8 @@ export async function setup(project: TestProject): Promise<() => Promise<void>> 
   const logsNode = await serveLogsNode(logsUpstream);
   let fork: AnvilFork;
   try {
-    fork = await startFork();
+    // Every file after anvil exits fails its setup, so the reason is told once, as it happens.
+    fork = await startFork((reason) => project.vitest.logger.error(`Fork suite: ${reason}`));
   } catch (error) {
     await logsNode.close();
     throw error;
