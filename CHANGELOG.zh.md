@@ -35,7 +35,7 @@ binference 每个版本中对所有者有影响的变化，最新的在前。
 ## 2026.11.0-beta.1
 
 首个公开测试版，适用于 macOS。用以下命令安装：
-`curl -fsSL https://binference.io/install.sh | sh -s -- --beta`。
+`curl -fsSL https://agent.binference.io/install.sh | sh -s -- --beta`。
 
 它能做什么：
 

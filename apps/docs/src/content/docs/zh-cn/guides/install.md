@@ -12,7 +12,7 @@ binference 目前只支持 macOS。一行命令即可安装 binference 并开始
 binference 正处于 beta 阶段。打开“终端”并运行：
 
 ```sh
-curl -fsSL https://binference.io/install.sh | sh -s -- --beta
+curl -fsSL https://agent.binference.io/install.sh | sh -s -- --beta
 ```
 
 不加 `--beta` 时，脚本从 stable 渠道安装。然后按照[开始使用](/zh-cn/guides/getting-started/)完成设置。
@@ -22,7 +22,7 @@ curl -fsSL https://binference.io/install.sh | sh -s -- --beta
 每个发行版的 `SHA256SUMS` 随签名的 GitHub 发行版一起发布，其中列出了这个脚本。下载脚本和这个文件，核对校验和，阅读脚本，然后再运行：
 
 ```sh
-curl -fsSLO https://binference.io/install.sh
+curl -fsSLO https://agent.binference.io/install.sh
 curl -fsSLO https://github.com/bInference-Lab/bInference/releases/download/v2026.11.0-beta.2/SHA256SUMS
 shasum -a 256 -c --ignore-missing SHA256SUMS
 sh install.sh --beta
@@ -30,7 +30,7 @@ sh install.sh --beta
 
 请在第二行填入你要安装的发行版的标签。beta 版在 GitHub 上是预发行版，`releases/latest` 找不到它。
 
-binference.io 也在脚本旁提供 `install.sh.sha256`。它只说明下载完整；只有发行版中的 `SHA256SUMS` 能说明它来自这个发行版。
+agent.binference.io 也在脚本旁提供 `install.sh.sha256`。它只说明下载完整；只有发行版中的 `SHA256SUMS` 能说明它来自这个发行版。
 
 ## 脚本做了什么
 
@@ -51,7 +51,7 @@ binference 把自己的状态（配置、数据库、密钥和日志）放在 `b
 在脚本中，请加上 `--yes`。脚本随后运行 `binference init --yes`，它不提任何问题，从 `BINFERENCE_INIT_*` 变量或 `BINFERENCE_INIT_ANSWERS` 指定的应答文件读取每个答案，从不读取脚本的命令行：
 
 ```sh
-curl -fsSL https://binference.io/install.sh | \
+curl -fsSL https://agent.binference.io/install.sh | \
   BINFERENCE_INIT_ANSWERS="$HOME/answers.json5" sh -s -- --beta --yes
 ```
 
@@ -91,4 +91,4 @@ binference uninstall
 
 ## 托管脚本
 
-托管 binference.io 的人按发行版试运行暂存时的原样提供 `install.sh` 和 `install.sh.sha256`，类型为 `text/plain; charset=utf-8`。
+Agent 网站 agent.binference.io 提供 `install.sh` 和 `install.sh.sha256`，类型为 `text/plain; charset=utf-8`。网站构建时从仓库的 `install/` 文件夹复制它们，每个发行版也原样暂存这些文件（决策 0466）。

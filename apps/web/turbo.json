@@ -10,6 +10,7 @@
         "public/**",
         "next.config.ts",
         "next-run.mjs",
+        "$TURBO_ROOT$/install/install.sh",
         "package.json",
         "tsconfig.json",
         "$TURBO_ROOT$/packages/i18n/messages/*/web.json",

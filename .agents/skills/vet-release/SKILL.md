@@ -84,7 +84,7 @@ Once the version is published, and only with the owner's word, install it on the
 way owners install it, with the one-liner on the channel's flag:
 
 ```sh
-curl -fsSL https://binference.io/install.sh | sh -s -- --beta
+curl -fsSL https://agent.binference.io/install.sh | sh -s -- --beta
 binference --version
 binference check
 ```

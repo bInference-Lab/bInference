@@ -15,7 +15,7 @@ const steps: readonly Step[] = [
   {
     name: "start.install",
     line: "start.installLine",
-    command: "curl -fsSL https://binference.io/install.sh | sh -s -- --beta",
+    command: "curl -fsSL https://agent.binference.io/install.sh | sh -s -- --beta",
   },
   { name: "start.setUp", line: "start.setUpLine", command: "binference init" },
   { name: "start.pair", line: "start.pairLine" },

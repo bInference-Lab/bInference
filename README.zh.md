@@ -91,7 +91,7 @@ Hermes Agent、Meta 的 Muse 和 OpenClaw 是面向日常生活的 AI Agent。bI
 bInference 目前只支持 macOS；Linux 和 Windows 将在之后的版本中支持。在“终端”中运行：
 
 ```bash
-curl -fsSL https://binference.io/install.sh | sh -s -- --beta
+curl -fsSL https://agent.binference.io/install.sh | sh -s -- --beta
 ```
 
 脚本会在你的 Mac 需要时安装 Node 26，然后安装 bInference，再运行 `binference init` 完成设置。[开始使用](apps/docs/src/content/docs/zh-cn/guides/getting-started.md)带你从设置走到第一笔交易。

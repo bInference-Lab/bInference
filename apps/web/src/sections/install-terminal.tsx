@@ -24,7 +24,7 @@ const parts: readonly { readonly text: string; readonly kind: Kind }[] = [
   { text: " ", kind: "space" },
   { text: "-fsSL", kind: "flag" },
   { text: " ", kind: "space" },
-  { text: "https://binference.io/", kind: "url" },
+  { text: "https://agent.binference.io/", kind: "url" },
   { text: "install.sh", kind: "url" },
   { text: " ", kind: "space" },
   { text: "|", kind: "pipe" },
@@ -35,7 +35,7 @@ const parts: readonly { readonly text: string; readonly kind: Kind }[] = [
 ];
 
 const command = parts.map((part) => part.text).join("");
-const host = "curl -fsSL https://binference.io/".length;
+const host = "curl -fsSL https://agent.binference.io/".length;
 const plain = parts.flatMap((part) =>
   Array.from(part.text, (letter) => ({ letter, kind: part.kind })),
 );

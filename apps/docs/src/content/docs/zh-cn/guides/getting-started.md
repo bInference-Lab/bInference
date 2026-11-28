@@ -18,7 +18,7 @@ description: 在你的 Mac 上设置 binference，配对你的 Telegram 机器�
 打开“终端”并运行：
 
 ```sh
-curl -fsSL https://binference.io/install.sh | sh -s -- --beta
+curl -fsSL https://agent.binference.io/install.sh | sh -s -- --beta
 ```
 
 [安装指南](/zh-cn/guides/install/)说明了脚本把什么放在哪里。脚本最后会运行 `binference init`。

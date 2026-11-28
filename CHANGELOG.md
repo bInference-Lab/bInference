@@ -40,7 +40,7 @@ Known limits:
 ## 2026.11.0-beta.1
 
 The first public beta, for macOS. Install it with
-`curl -fsSL https://binference.io/install.sh | sh -s -- --beta`.
+`curl -fsSL https://agent.binference.io/install.sh | sh -s -- --beta`.
 
 What it does:
 

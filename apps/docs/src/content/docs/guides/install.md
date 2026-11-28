@@ -17,7 +17,7 @@ downloads anything.
 binference is in beta. Open Terminal and run:
 
 ```sh
-curl -fsSL https://binference.io/install.sh | sh -s -- --beta
+curl -fsSL https://agent.binference.io/install.sh | sh -s -- --beta
 ```
 
 Without `--beta`, the script installs from the stable channel. Then follow
@@ -29,7 +29,7 @@ Each release's `SHA256SUMS`, published with its signed GitHub release, lists the
 the script and that file, check the sum, read the script, then run it:
 
 ```sh
-curl -fsSLO https://binference.io/install.sh
+curl -fsSLO https://agent.binference.io/install.sh
 curl -fsSLO https://github.com/bInference-Lab/bInference/releases/download/v2026.11.0-beta.2/SHA256SUMS
 shasum -a 256 -c --ignore-missing SHA256SUMS
 sh install.sh --beta
@@ -38,7 +38,7 @@ sh install.sh --beta
 Put the tag of the release you install in the second line. A beta is a prerelease on GitHub, so
 `releases/latest` does not reach it.
 
-binference.io also serves `install.sh.sha256` beside the script. It shows the download is whole;
+agent.binference.io also serves `install.sh.sha256` beside the script. It shows the download is whole;
 only `SHA256SUMS` from the release shows that the release made it.
 
 ## What the script does
@@ -76,7 +76,7 @@ takes each answer from a `BINFERENCE_INIT_*` variable or from an answers file th
 `BINFERENCE_INIT_ANSWERS` names, never from the script's command line:
 
 ```sh
-curl -fsSL https://binference.io/install.sh | \
+curl -fsSL https://agent.binference.io/install.sh | \
   BINFERENCE_INIT_ANSWERS="$HOME/answers.json5" sh -s -- --beta --yes
 ```
 
@@ -130,5 +130,6 @@ If you added the PATH line, the command prints it; remove it from your shell's s
 
 ## Hosting the script
 
-Whoever hosts binference.io serves `install.sh` and `install.sh.sha256` exactly as a release's dry
-run staged them, as `text/plain; charset=utf-8`.
+agent.binference.io, the agent's site, serves `install.sh` and `install.sh.sha256` as
+`text/plain; charset=utf-8`. Its build copies them from the repository's `install/` folder, the
+files every release stages unchanged (decision 0466).

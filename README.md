@@ -91,7 +91,7 @@ Your agent has its own wallets and limits, and speaks English or Chinese. The bI
 bInference supports macOS for now; Linux and Windows come in later releases. In Terminal:
 
 ```bash
-curl -fsSL https://binference.io/install.sh | sh -s -- --beta
+curl -fsSL https://agent.binference.io/install.sh | sh -s -- --beta
 ```
 
 The script installs Node 26 when your Mac needs it, then bInference, then runs `binference init`, which sets it up. [Get started](apps/docs/src/content/docs/guides/getting-started.md) walks you from the setup to your first trade.

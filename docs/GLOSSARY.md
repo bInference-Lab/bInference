@@ -673,7 +673,7 @@ check` tries it as `network.proxy`.
   The release workflow publishes only a tag signed by a **release key** that
   `.github/release-signers` lists; a **scratch** run publishes to npm's `scratch` dist-tag.
 - **install script**: `install/install.sh`, for macOS and Linux, which the owner runs as a
-  **one-liner** (`curl -fsSL https://binference.io/install.sh | sh`). Everything it installs goes
+  **one-liner** (`curl -fsSL https://agent.binference.io/install.sh | sh`). Everything it installs goes
   into its **data folder**, `~/.local/share/binference`: the **pinned Node** release in `node/`
   with a `current` link, when the machine has no Node 26.1 or later and the archive's SHA-256
   matches the script's pin; `npm i -g binference` on the stable or `--beta` channel in `npm/`; and
@@ -683,7 +683,7 @@ check` tries it as `network.proxy`.
   `BINFERENCE_INSTALL_SKIP_INIT`, `BINFERENCE_NODE_MIRROR`, and `BINFERENCE_INSTALL_PACKAGE`, a
   local tarball for tests only; init's answers go in `BINFERENCE_INIT_*`, never on its command
   line. `install/install.ps1` does the same on Windows
-  (`irm https://binference.io/install.ps1 | iex`) in `%LOCALAPPDATA%\binference`, with
+  (`irm https://agent.binference.io/install.ps1 | iex`) in `%LOCALAPPDATA%\binference`, with
   `bin\binference.cmd`; it never asks for administrator rights.
   `pnpm node:pins --version <26.x.y>` writes the pins into both scripts from Node's
   `SHASUMS256.txt` once `gpgv` accepts its signature with the keyring

@@ -20,7 +20,7 @@ This page takes you from the install to your first trade. binference supports ma
 Open Terminal and run:
 
 ```sh
-curl -fsSL https://binference.io/install.sh | sh -s -- --beta
+curl -fsSL https://agent.binference.io/install.sh | sh -s -- --beta
 ```
 
 The [install guide](/guides/install/) says what the script puts where. At its end it runs

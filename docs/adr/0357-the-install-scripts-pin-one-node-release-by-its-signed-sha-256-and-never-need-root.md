@@ -1,6 +1,6 @@
 # 0357. The install scripts pin one Node release by its signed SHA-256 and never need root
 
-Status: Amended by 0453
+Status: Amended by 0466
 
 Accepted by the owner on 2026-11-04.
 

@@ -105,12 +105,11 @@ the `release` environment.
 `scratch` on is a test: npm's `scratch` dist-tag and a draft GitHub release. The version it uses is
 gone for good.
 
-Then host the install scripts (decision 0357), only with the owner's word: copy `install.sh`,
-`install.ps1` and their `.sha256` files from the dry run's folder to binference.io, unchanged.
-Serve all four as `text/plain; charset=utf-8`: Windows PowerShell reads a script with no charset
-as ISO-8859-1 and garbles its Chinese lines. `SHA256SUMS`, which the release carries, lists both
-scripts too. `install.ps1` is not hosted until the nightly one-liner job has passed once on
-Windows; until then, host `install.sh` alone.
+Then deploy the agent's site, only with the owner's word (decision 0466): its build copies
+`install/install.sh` and its sum into the site, served at agent.binference.io as
+`text/plain; charset=utf-8`, so the hosted script is the one the release staged. Check that
+`curl -fsSL https://agent.binference.io/install.sh.sha256` matches the dry run's.
+`install.ps1` is not hosted until the nightly one-liner job has passed once on Windows.
 
 ## 6. Never
 

@@ -1268,7 +1268,7 @@ Decided in decisions [0054](DECISIONS.md#d0054), [0057](DECISIONS.md#d0057),
 [0060](DECISIONS.md#d0060) and [0061](DECISIONS.md#d0061).
 
 - **Install ([decision 0054](DECISIONS.md#d0054)).**
-  `curl -fsSL https://binference.io/install.sh | sh` and a PowerShell one-liner install Node 26 when
+  `curl -fsSL https://agent.binference.io/install.sh | sh` and a PowerShell one-liner install Node 26 when
   it is missing, then the npm package, then start onboarding. The scripts are published with
   checksums. `npm i -g binference` and a Docker image are the other paths.
 - **Onboarding, in order:** language; disclaimer and privacy statement, accepted by typing "I
