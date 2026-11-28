@@ -78,9 +78,12 @@ ETH arrives in a plain wallet as ETH. BNB is not bridged.
 
 ### Turn bridges on
 
-Neither venue is on for a new agent. With your owner key, add it to the ceiling, then to the agent's
-venues. Run `binference ceiling` to see the venues the wallets keep, and name them all again with
-the new one:
+Across is on for a new agent: its first wallet's ceiling holds Across's deposits, and its venues
+name `across`. Save an address on the destination chain, and it can bridge there.
+
+For an agent made before this release, add Across with your owner key: to the ceiling, then to the
+agent's venues. Run `binference ceiling` to see the venues the wallets keep, and name them all
+again with the new one:
 
 ```sh
 binference ceiling set --venues <the venues it lists>,across

@@ -1,8 +1,19 @@
-import { bsc } from "@binference/chains";
+import { bsc, bscCeilingCaps } from "@binference/chains";
 import { createScriptedHttp } from "@binference/core/testing";
+import { buildCeiling, type CeilingChainPlan } from "@binference/custody-privy";
+import { testCaps } from "@binference/custody-privy/testing";
 import { describe, expect, it } from "vitest";
+import { selfHostedChains } from "../compose/open-engine-parts.js";
+import { currentConfigVersion } from "../config/migrations/config-migrations.js";
+import { configSchema } from "../config/schema/config.schema.js";
 import { agentDefaultsSchema } from "../config/schema/defaults.schema.js";
-import { capPlanOf, coreVenues, initialDayCapUsd } from "./ceiling-request.js";
+import {
+  capPlanOf,
+  ceilingRequestOf,
+  coreVenues,
+  enabledVenues,
+  initialDayCapUsd,
+} from "./ceiling-request.js";
 
 const http = createScriptedHttp([]);
 const okxKeys = {
@@ -21,13 +32,14 @@ function stakingCalls(id: string): readonly (readonly [unknown, bigint | undefin
 }
 
 describe("core venues", () => {
-  it("installs KyberSwap, the Flap launchpad, StakeHub and Lista while no OKX key is set, and no identity registry", () => {
+  it("installs KyberSwap, the Flap launchpad, StakeHub, Lista and Across while no OKX key is set, and no Relay or identity registry", () => {
     const venues = coreVenues(http, { keys: {}, kyberClientId: "binference" });
     expect(venues.map((venue) => venue.id)).toStrictEqual([
       "kyberswap",
       "flap",
       "stakehub",
       "lista",
+      "across",
     ]);
   });
 
@@ -76,12 +88,79 @@ describe("core venues", () => {
       [["flap", "eip155:56", ["portal"], ["portal"]]],
       [["stakehub", "eip155:56", ["stake-hub"], undefined]],
       [["lista", "eip155:56", ["stake-manager"], ["stake-manager"]]],
+      [["across", "eip155:56", ["spoke-pool"], ["spoke-pool"]]],
       [["okx", "eip155:56", ["dex-router", "token-approve"], ["token-approve"]]],
     ]);
   });
 });
 
 const bnb = 10n ** 18n;
+const rescue = "0x30435f9D276c6BC54F56161Fb3dFB7bDC2a8DBcB";
+// Across's SpokePool on BSC, as the registry lists it.
+const spokePool = "0x4e8E101924eDE233C13e2D8622DC8aED2872d505";
+
+// The venues and the first wallet's ceiling init plans for a new agent on the default config.
+function newAgent() {
+  const config = configSchema.parse({
+    version: currentConfigVersion,
+    telegram: { botToken: { fromEnv: "TEST_BOT_TOKEN" } },
+  });
+  const venues = enabledVenues(config, coreVenues(http, config.venues));
+  if (!venues.ok) {
+    throw new Error("Expected init to enable the core venues.");
+  }
+  const request = ceilingRequestOf(selfHostedChains(), config, { venues: venues.value, rescue });
+  const [chain] = request.ok ? request.value.chains : [];
+  if (chain === undefined) {
+    throw new Error("Expected init to plan the first wallet's ceiling on BSC.");
+  }
+  return { venues: venues.value.map((venue) => venue.id), chain, bridges: chain.bridges ?? [] };
+}
+
+// The install's caps with each capped token BSC's data names, as init makes them.
+const caps = {
+  ...testCaps,
+  approvals: bscCeilingCaps.tokens.map((item, index) => ({
+    aggregation: `testcaproute${String(index).padStart(13, "0")}`,
+    limitBase: 1_000n,
+    token: bsc.tokens.find((token) => token.symbol === item.symbol)?.address ?? "",
+  })),
+};
+
+// The rule names of the first wallet's ceiling, written with no address saved, as init writes it.
+function ruleNamesOf(chain: CeilingChainPlan): readonly string[] {
+  const built = buildCeiling({ chains: [{ ...chain, caps }], rescue, saved: [] });
+  return built.ok ? built.value.rules.map((rule) => rule.name) : [built.error];
+}
+
+describe("a new agent", () => {
+  it("may use Across, and not Relay before it has a bridge wallet", () => {
+    const { venues } = newAgent();
+
+    expect(venues).toContain("across");
+    expect(venues).not.toContain("relay");
+  });
+
+  it("gets Across's deposit to each EVM chain its routes reach in its main wallet's ceiling", () => {
+    const { chain, bridges } = newAgent();
+
+    const deposits = bridges.map((item) => [item.call.abi.name, item.destinationChainId]);
+    expect(deposits).toStrictEqual([
+      ["depositV3", "1"],
+      ["depositV3", "8453"],
+      ["depositV3", "42161"],
+      ["depositV3", "4663"],
+    ]);
+    expect(chain.spenders).toContain(spokePool);
+  });
+
+  it("pays no bridge until an address is saved on the destination", () => {
+    const names = ruleNamesOf(newAgent().chain);
+
+    expect(names.filter((name) => name.startsWith("Bridge"))).toStrictEqual([]);
+    expect(names).toContain("Approvals, chain 56");
+  });
+});
 
 function tokenOf(symbol: string): string | undefined {
   return bsc.tokens.find((token) => token.symbol === symbol)?.address;

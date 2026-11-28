@@ -1,3 +1,4 @@
+import { acrossDeclaration } from "@binference/across";
 import type {
   AssetRef,
   CeilingCapsDefinition,
@@ -29,10 +30,12 @@ import { type InitStep, refused } from "./init-context.js";
 /**
  * The core venues this binference installs, by what each declares: its id and its registry
  * contracts per chain. KyberSwap, the Flap launchpad, StakeHub, whose `delegate` carries up to
- * 100 BNB in a ceiling rule of its own (decision 0325), and Lista (decision 0332) need no key; OKX
- * is installed only when `venues.keys.okx` names the owner's key. The identity registry is no core
- * venue: only an agent whose owner opts in carries its call (decision 0335). Each venue is made only to read its declaration;
- * nothing is called, no chain is read and no key is read.
+ * 100 BNB in a ceiling rule of its own (decision 0325), Lista (decision 0332) and the Across
+ * bridge (decision 0461) need no key; OKX is installed only when `venues.keys.okx` names the
+ * owner's key. Relay is no core venue: only a bridge wallet bridges with it (decision 0307), and an
+ * agent that names it cannot go live without one. The identity registry is no core venue either:
+ * only an agent whose owner opts in carries its call (decision 0335). Each venue is made only to
+ * read its declaration; nothing is called, no chain is read and no key is read.
  */
 export function coreVenues(http: Http, venues: VenuesConfig): readonly VenueDeclaration[] {
   const chain = evmChainOf(bsc);
@@ -46,6 +49,7 @@ export function coreVenues(http: Http, venues: VenuesConfig): readonly VenueDecl
     flapDeclaration([chain.ref]),
     stakeHubDeclaration([chain.ref]),
     listaDeclaration([chain.ref]),
+    acrossDeclaration([chain.ref]),
   ];
   return venues.keys.okx === undefined
     ? keyless
