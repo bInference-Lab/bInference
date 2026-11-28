@@ -29,6 +29,7 @@ import type { Address } from "viem";
 import type { ChainReads } from "./chain-reads.js";
 import type { Closers } from "./closers.js";
 import { startRepeatingTimer } from "./repeating-timer.js";
+import { createWatcherReadLog, type WatcherReadLog } from "./watcher-read-log.js";
 import { createWatcherRunner, type WatcherRunner } from "./watcher-runner.js";
 
 /** The leader watchers as the engine serves them: their link to the alerts, and their start. */
@@ -64,6 +65,10 @@ const noticeEveryMs = 60_000;
 // Whether a chain has a tracked wallet is read this often, and given this long.
 const syncEveryMs = 5_000;
 const syncTimeoutMs = 10_000;
+const readEvents = {
+  failed: "watcher.leader_read_failed",
+  resumed: "watcher.leader_reads_resumed",
+};
 
 /** Where the stored trades go once the engine exists, and where the watchers log. */
 interface Links {
@@ -140,8 +145,13 @@ async function seeTrades(
   }, Promise.resolve());
 }
 
-function bookOf(options: LeaderWatchersOptions, reads: ChainReads, links: Links): LeaderBook {
+function bookOf(
+  options: LeaderWatchersOptions,
+  reads: ChainReads,
+  wiring: { readonly links: Links; readonly readLog: WatcherReadLog },
+): LeaderBook {
   const { tracked, clock } = options;
+  const { links } = wiring;
   const chain = reads.chain.ref;
   return {
     tracked: async (signal) => tracked.tracked(chain, { signal }),
@@ -154,6 +164,7 @@ function bookOf(options: LeaderWatchersOptions, reads: ChainReads, links: Links)
     },
     async record(read, signal) {
       const trades = await tracked.record(recordOf(chain, read, clock.now()), { signal });
+      wiring.readLog.stored();
       for (const { account } of read.overflows) {
         links.logger?.warn("watcher.wallet_overflow", { chain, accountId: account });
       }
@@ -179,7 +190,7 @@ function watchOf(
   const { blockTimeMs } = chain.definition;
   const { links, logger } = wiring;
   const feeds = feedAssetsOf(chain.definition, options.feeds.get(chain.ref) ?? []);
-  const failures = { last: "" };
+  const readLog = createWatcherReadLog(logger, chain.ref, readEvents);
   const watcher = createLeaderWatcher({
     rpc,
     logsRpc: reads.logsRpc,
@@ -189,15 +200,9 @@ function watchOf(
     blockTimeMs,
     context: contextOf(reads, feeds),
     feeds,
-    book: bookOf(options, reads, links),
+    book: bookOf(options, reads, { links, readLog }),
     callTimeoutMs,
-    // A read that fails again for the same reason is not logged again.
-    onReadFailed: (errorCode) => {
-      if (errorCode !== failures.last) {
-        failures.last = errorCode;
-        logger.warn("watcher.leader_read_failed", { chain: chain.ref, errorCode });
-      }
-    },
+    onReadFailed: (errorCode) => readLog.failed(errorCode),
   });
   const wanted = new Map<ChainRef, boolean>();
   const isWanted = (): boolean => wanted.get(chain.ref) === true;
@@ -233,7 +238,8 @@ async function syncWatches(
  * wallet store in one write; each trade stored new goes to the engine's wallet alerts. A cut
  * block is logged as `watcher.wallet_overflow` with the chain and the account, and told to the
  * owner in `notice.walletOverflow` at most once a day a wallet; a read that fails is logged as
- * `watcher.leader_read_failed` once for each new reason.
+ * `watcher.leader_read_failed` once for each new reason of an outage, the first at warn, and the
+ * read that ends it as `watcher.leader_reads_resumed` (`createWatcherReadLog`).
  */
 export function composeLeaderWatchers(options: LeaderWatchersOptions): ComposedLeaderWatchers {
   const links: Links = {};

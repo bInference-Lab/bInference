@@ -18,7 +18,7 @@ import {
 } from "@binference/engine/market";
 import type { ChainReads } from "./chain-reads.js";
 import type { Closers } from "./closers.js";
-import { createLaunchReadLog, type LaunchReadLog } from "./launch-read-log.js";
+import { createWatcherReadLog, type WatcherReadLog } from "./watcher-read-log.js";
 import { createWatcherRunner, type WatcherRunner } from "./watcher-runner.js";
 
 /** The launch feeds as the engine serves them: whether any runs, their link to the alerts, and their start. */
@@ -98,7 +98,7 @@ function recordOf(chain: ChainRef, read: LaunchRead, atMs: number): LaunchReadRe
 function bookOf(
   options: LaunchFeedsOptions,
   chain: ChainRef,
-  wiring: { readonly links: Links; readonly readLog: LaunchReadLog },
+  wiring: { readonly links: Links; readonly readLog: WatcherReadLog },
 ): LaunchBook {
   const { launches, clock } = options;
   const { links } = wiring;
@@ -126,6 +126,11 @@ function bookOf(
   };
 }
 
+const readEvents = {
+  failed: "watcher.launch_read_failed",
+  resumed: "watcher.launch_reads_resumed",
+};
+
 function runnerOf(
   options: LaunchFeedsOptions,
   reads: ChainReads,
@@ -139,7 +144,7 @@ function runnerOf(
   const { clock } = options;
   const { blockTimeMs } = chain.definition;
   const { logger } = wiring;
-  const readLog = createLaunchReadLog(logger, chain.ref);
+  const readLog = createWatcherReadLog(logger, chain.ref, readEvents);
   const watcher = createLaunchWatcher({
     chain: reads.evm,
     rpc,
@@ -163,7 +168,7 @@ function runnerOf(
  * store in one write; each launch stored new is pushed as `launch/new` and handed to the launch
  * alerts once the engine is attached. A read that fails is logged as
  * `watcher.launch_read_failed` once for each new reason of an outage, the first at warn
- * (`createLaunchReadLog`); a launch whose alerts failed as `engine.alert_launch_failed`.
+ * (`createWatcherReadLog`); a launch whose alerts failed as `engine.alert_launch_failed`.
  */
 export function composeLaunchFeeds(options: LaunchFeedsOptions): ComposedLaunchFeeds {
   const links: Links = {};
