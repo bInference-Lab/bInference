@@ -1,0 +1,7 @@
+[
+  "Bridges: ask your agent to move USDC, USDT or ETH from BNB Smart Chain to Ethereum, Base, Arbitrum, Solana or Robinhood Chain. It quotes Across and Relay and takes the best route.",
+  "A bridge pays only addresses you saved with your owner key, shows the least that arrives and its fees on the card, and tells you when the funds arrive.",
+  "New agents can bridge through Across at once. For an agent made before, add across to its ceiling and venues; the guide has the commands, and they apply at once.",
+  "Your agent no longer repeats a trade's receipt after it settles, and an idle engine uses less memory.",
+  "Fixed: wallet commands failed after binference init --start-over."
+]

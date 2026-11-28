@@ -1,0 +1,7 @@
+[
+  "跨链：让你的 Agent 把 USDC、USDT 或 ETH 从 BNB Smart Chain 转到 Ethereum、Base、Arbitrum、Solana 或 Robinhood Chain。它向 Across 和 Relay 询价，并选择最佳路由。",
+  "跨链只付款给你用所有者密钥保存的地址，卡片写明至少到账的数量和费用，到账后会通知你。",
+  "新建的 Agent 可以直接通过 Across 跨链。之前建的 Agent，需把 across 加入它的上限和可用平台；指南中有命令，会立即生效。",
+  "交易结算后，Agent 不再重复回执；空闲时引擎占用的内存更少。",
+  "已修复：运行 binference init --start-over 之后钱包命令失败。"
+]

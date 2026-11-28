@@ -4,6 +4,34 @@
 
 binference 每个版本中对所有者有影响的变化，最新的在前。
 
+## 2026.11.0-beta.2
+
+跨链，以及测试版第一周的修复。
+
+它能做什么：
+
+- 你的 Agent 可以把 USDC、USDT 和 ETH 从 BNB Smart Chain 跨链到 Ethereum、Base、Arbitrum、Solana 和
+  Robinhood Chain。它同时向 Across 和 Relay 询价，选择到账最多的路由。
+- 跨链只付款给你用所有者密钥保存的地址，或在可以支付时付给你的紧急转出地址。卡片写明收款地址、至少到账的数量、
+  费用和时间；费用达到 1% 时还会写明占比。binference 会读取目标链，到账后通知你。
+- 新建的 Agent 可以直接通过 Across 跨链。Relay 跨链从跨链钱包转出，用
+  `binference wallet create --bridge` 创建，并由你自己充值。
+- 把跨链平台加入 Agent 的可用平台会立即生效，保存地址后跨链也可以立即付给它。
+- 交易结算后，Agent 不再重复回执。空闲时引擎占用的内存更少。
+
+已修复：
+
+- 运行 `binference init --start-over` 之后，钱包命令失败并提示“钱包服务暂无响应”。
+- Agent 在目标链上查找跨链代币，没有提出跨链就停止了。
+
+已知限制：
+
+- 用 2026.11.0-beta.1 创建的 Agent 没有跨链平台：按跨链指南，用 `binference ceiling set --venues` 和
+  `binference limit set limits.venues=` 加入 `across`。
+- 在 Base、Ethereum 和 Arbitrum 上，binference 要等该链把区块最终确认后才记为到账，可能在钱包显示到账后
+  约一小时。
+- 仅支持 macOS。自动订单和 webhook 规则只在模拟模式下成交。
+
 ## 2026.11.0-beta.1
 
 首个公开测试版，适用于 macOS。用以下命令安装：
