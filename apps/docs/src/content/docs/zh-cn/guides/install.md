@@ -23,7 +23,7 @@ curl -fsSL https://binference.io/install.sh | sh -s -- --beta
 
 ```sh
 curl -fsSLO https://binference.io/install.sh
-curl -fsSLO https://github.com/bInference-Lab/bInference/releases/download/v2026.11.0-beta.1/SHA256SUMS
+curl -fsSLO https://github.com/bInference-Lab/bInference/releases/download/v2026.11.0-beta.2/SHA256SUMS
 shasum -a 256 -c --ignore-missing SHA256SUMS
 sh install.sh --beta
 ```
