@@ -165,11 +165,17 @@ describe("the wallet list", () => {
     );
   });
 
-  it("fails closed when custody holds a stored wallet on no chain", async () => {
-    const list = await walletList(new Map([[main.id, accounts.main]]));
+  it("fails closed when custody holds a live wallet on no chain", async () => {
+    const list = await walletList(new Map([[spare.id, accounts.spare]]));
     await expect(list(testCall({ agent: testAgent }))).resolves.toStrictEqual(
       err("wallet.custody_down"),
     );
+  });
+
+  it("leaves out an archived wallet custody no longer holds, as after a start over", async () => {
+    const list = await walletList(new Map([[main.id, accounts.main]]), [main, spare]);
+    const { items } = expectOk(await list(testCall({ agent: testAgent })));
+    expect(items.map((view) => view.wallet)).toStrictEqual([main.id]);
   });
 
   it("answers no wallet for an agent that has none", async () => {

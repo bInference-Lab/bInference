@@ -90,20 +90,26 @@ function listWalletsOf(options: WalletHandlersOptions): EngineHandler<"wallet/li
     const views = await Promise.all(
       records.map(async (wallet) => listedView(options, { wallet, wallets }, signal)),
     );
+    // Custody signs for live wallets only, so an archived wallet it does not hold, such as one a
+    // start over left with its lost owner key, is left out; a live one fails the call.
+    const isLiveMissing = records.some(
+      (wallet, index) => views[index] === undefined && wallet.archivedAtMs === undefined,
+    );
     const items = views.filter((view) => view !== undefined);
-    return items.length === records.length ? ok({ items }) : err("wallet.custody_down");
+    return isLiveMissing ? err("wallet.custody_down") : ok({ items });
   };
 }
 
 /**
  * Creates the wallet list. `wallet/list` answers the agent's wallets, or every agent's when the
  * call names none, oldest first, so an agent's default wallet comes first; archived wallets are
- * listed with the time they were archived. Each wallet's address comes from
+ * listed with the time they were archived, when custody still holds them. Each wallet's address
+ * comes from
  * {@link walletViewOf}; a live launch or bridge wallet that is not its agent's wallet of that role,
  * as a rebuild may adopt, is marked `extra` (decision 0218), and the agent's wallet of a role names
  * in `missingCalls` the functions its agent's venues mark as that role's that its ceiling does not
  * allow
- * (decision 0271). An unknown agent is `agent.not_found`; a stored
+ * (decision 0271). An unknown agent is `agent.not_found`; a live
  * wallet custody holds on no chain fails the call with `wallet.custody_down`. `wallet/create`
  * makes a wallet with the owner key (see {@link makeWallet}), one call at a time, so a second
  * launch or bridge wallet of an agent is refused before custody makes it; and `wallet/exportSealed` exports one's key sealed to the
