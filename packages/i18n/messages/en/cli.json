@@ -406,7 +406,7 @@
   "safety.pendingRescue": "It changes to {address} at {when}.",
   "address.badAddress": "{address} is no address on {chain}. Copy it again from the recipient: 0x and 40 hex digits on an EVM chain, base58 on Solana.",
   "address.added": "Saved {address} on {chain} as {label} for {agent} ({entry}). Its wallets' ceilings let a send pay it now; at send level 2 a send may pay it from {usableAt}.",
-  "address.addedElsewhere": "Saved {address} on {chain} as {label} for {agent} ({entry}). Only a bridge to {chain} may pay it, never a send on another chain; at send level 2 one may from {usableAt}.",
+  "address.addedElsewhere": "Saved {address} on {chain} as {label} for {agent} ({entry}). Only a bridge to {chain} may pay it, never a send on another chain; a bridge may pay it now, at send level 2 too.",
   "address.addedNoRoute": "Saved {address} on {chain} as {label} for {agent} ({entry}). No bridge route binference runs reaches {chain} yet, so nothing pays it until one does.",
   "address.otherChain": "{address} is an address of another kind of chain than {chain}. Name the chain it is on with --chain, such as solana for a base58 address.",
   "address.badChain": "{chain} is no chain binference saves addresses on. Name one of: {chains}.",

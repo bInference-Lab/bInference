@@ -48,8 +48,9 @@ the entry and its address. A send may pay:
 After the agent read outside content, it cannot send to an address outside the address book. A send
 counts against the per-trade cap and the 24-hour cap.
 
-The [send level](/guides/safety/#send-levels) can narrow sends further: at level 2 an entry is paid
-only 24 hours after it was saved, and level 3 allows no sends.
+The [send level](/guides/safety/#send-levels) can narrow sends further: at level 2 a send pays an
+entry only 24 hours after it was saved, while a bridge pays it at once, and level 3 allows no sends
+or bridges.
 
 ## Revoke an approval
 

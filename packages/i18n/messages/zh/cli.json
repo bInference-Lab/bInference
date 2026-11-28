@@ -406,7 +406,7 @@
   "safety.pendingRescue": "它将于 {when} 改为 {address}。",
   "address.badAddress": "{address} 不是 {chain} 上的地址。请重新从收款人处复制：EVM 链上为 0x 加 40 位十六进制，Solana 上为 base58。",
   "address.added": "已为 {agent} 保存 {chain} 上的 {address}，名称为 {label}（{entry}）。它的钱包上限现在允许向其转账；在转账级别 2 下，自 {usableAt} 起才能向其转账。",
-  "address.addedElsewhere": "已为 {agent} 保存 {chain} 上的 {address}，名称为 {label}（{entry}）。只有跨链到 {chain} 时才能向其付款，其他链上的转账永远不会付给它；在转账级别 2 下，自 {usableAt} 起才能付款。",
+  "address.addedElsewhere": "已为 {agent} 保存 {chain} 上的 {address}，名称为 {label}（{entry}）。只有跨链到 {chain} 时才能向其付款，其他链上的转账永远不会付给它；跨链现在就可以向它付款，转账级别 2 下也是如此。",
   "address.addedNoRoute": "已为 {agent} 保存 {chain} 上的 {address}，名称为 {label}（{entry}）。binference 运行的跨链路由目前都到不了 {chain}，所以在有路线之前不会向它付款。",
   "address.otherChain": "{address} 属于另一类链，不是 {chain} 上的地址。请用 --chain 指明它所在的链，例如 base58 地址用 solana。",
   "address.badChain": "{chain} 不是 binference 可保存地址的链。请填写以下之一：{chains}。",

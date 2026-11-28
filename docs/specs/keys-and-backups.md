@@ -256,7 +256,8 @@ key never enters a browser or a chat.
 
 Send levels ([ARCHITECTURE.md section 11](../ARCHITECTURE.md#section-11)) now apply within the saved
 addresses: levels 0 and 1 send to any saved address with a tap; level 2 makes a newly saved address
-usable 24 hours after saving; level 3 allows no sends.
+usable by a send 24 hours after saving, while a bridge pays it at once
+([decision 0464](../DECISIONS.md#d0464)); level 3 allows no sends.
 
 <a id="section-5"></a>
 

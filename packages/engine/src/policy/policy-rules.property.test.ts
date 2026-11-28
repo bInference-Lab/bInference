@@ -174,8 +174,7 @@ function sendPassViolations(input: PolicyInput): readonly string[] {
     return [];
   }
   const entry = savedEntry(input);
-  const isUsable =
-    entry !== undefined && (input.facts.sendLevel !== 2 || entry.usableAtMs <= nowMs);
+  const isUsable = entry !== undefined && (!isCoolingKind(input) || entry.usableAtMs <= nowMs);
   return [
     input.facts.sendLevel === 3 ? "sent at level 3" : "",
     paysRescue(input) || isUsable ? "" : "sent where the send level and the book forbid",
@@ -256,13 +255,15 @@ function tradeEarned(input: PolicyInput): Earned {
   };
 }
 
+// Level 2 cools a newly saved address for a send, never for a bridge (decision 0464).
+function isCoolingKind(input: PolicyInput): boolean {
+  return input.facts.sendLevel === 2 && input.subject.kind !== "bridge";
+}
+
 function isCooling(input: PolicyInput): boolean {
   const entry = savedEntry(input);
   return (
-    input.facts.sendLevel === 2 &&
-    !paysRescue(input) &&
-    entry !== undefined &&
-    entry.usableAtMs > nowMs
+    isCoolingKind(input) && !paysRescue(input) && entry !== undefined && entry.usableAtMs > nowMs
   );
 }
 

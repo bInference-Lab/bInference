@@ -152,7 +152,8 @@ function isSend(input: PolicyInput): boolean {
   return sendKinds.has(input.subject.kind);
 }
 
-// Level 3 allows no send. Level 2 makes a saved address usable only once its cooling ends.
+// Level 3 allows no send. Level 2 makes a saved address usable by a send only once its cooling
+// ends; a bridge pays it at once (decision 0464).
 function breaksSendLevel(input: PolicyInput): boolean {
   if (input.facts.sendLevel === 3) {
     return true;
@@ -160,6 +161,7 @@ function breaksSendLevel(input: PolicyInput): boolean {
   const entry = entryOf(input);
   return (
     input.facts.sendLevel === 2 &&
+    input.subject.kind !== "bridge" &&
     !paysRescue(input) &&
     entry?.isSaved === true &&
     entry.usableAtMs > input.nowMs

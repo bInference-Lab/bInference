@@ -433,6 +433,13 @@ describe("sends and the send level", () => {
     );
   });
 
+  it("lets a bridge pay a newly saved address at level 2 before its cooling ends", async () => {
+    const bridge = { ...send, kind: "bridge" as const };
+    expect(reasonsOf(await verdict(bridge, { sendLevel: 2, addressBook: cooling }))).toStrictEqual(
+      [],
+    );
+  });
+
   it("lets a send pay a saved address at level 2 from the moment its cooling ends", async () => {
     const ended = [{ account: saved, isSaved: true, usableAtMs: nowMs }];
     expect(reasonsOf(await verdict(send, { sendLevel: 2, addressBook: ended }))).toStrictEqual([]);
