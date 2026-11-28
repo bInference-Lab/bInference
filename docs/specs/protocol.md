@@ -823,7 +823,8 @@ decimals, is `address.not_wallet` ([decision 0318](../DECISIONS.md#d0318)). An a
 rewrites every live wallet's call rules with its venues and cap as they are, planned before any
 is written; a plan that changes no rule signs nothing, and one that moved a ceiling is read back,
 stored and announced as `ceiling/set` is ([decision 0313](../DECISIONS.md#d0313)). Its entry
-carries `noRoute` while no bridge rule of the agent's wallets reaches its chain. The entry's
+carries `noRoute` while no bridge rule of the agent's wallets reaches its chain, nor a bridge from
+the bridge wallet that the agent's venues name, such as Relay ([decision 0463](../DECISIONS.md#d0463)). The entry's
 `address` is a CAIP-10 account of its chain, and a send or a bridge pays it only on that chain: a
 send on a wallet chain pays only the addresses saved for that chain. Clients show the address
 whole, never shortened, since a Solana address carries no checksum.

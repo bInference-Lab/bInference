@@ -10,19 +10,23 @@ import {
   createFakeAccountCodeReader,
   createFakeAccountKindReader,
   createFakeAddressCodec,
+  createFakeBridge,
   createFakeVenue,
+  fakeDepositAbi,
 } from "@binference/chain/testing";
 import { err, idSchema, ok } from "@binference/core";
 import { createManualClock } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
 import type { AddressEntryRecord } from "../agents/address-entry-record.js";
+import type { HostedBridge } from "../bridges/hosted-bridge.js";
+import { testRoute } from "../bridges/test-bridges.js";
 import {
   createFakeCeilingEditor,
   type FakeCeilingEditor,
   fakeOwnerKeyCode,
 } from "../fakes/fake-ceiling-editor.js";
 import { testWalletRecord } from "../install/test-wallet-record.js";
-import { expectOk, testAgent, testNowMs } from "../intents/test-intents.js";
+import { expectOk, testAgent, testLimits, testNowMs } from "../intents/test-intents.js";
 import {
   startTestEngine,
   type TestEngine,
@@ -72,7 +76,12 @@ const codes = createFakeAccountCodeReader({
 // The test engine with the two destinations, the rescue address in effect and the agent's wallet
 // under a ceiling that reaches the fake swap; under `ceilings` when given, else the test's own.
 async function engineWithDestinations(
-  given: { readonly ceilings?: FakeCeilingEditor; readonly reader?: AccountKindReader } = {},
+  given: {
+    readonly ceilings?: FakeCeilingEditor;
+    readonly reader?: AccountKindReader;
+    readonly bridges?: readonly HostedBridge[];
+    readonly venues?: readonly string[];
+  } = {},
 ): Promise<TestEngine> {
   const destinations = [
     {
@@ -86,7 +95,14 @@ async function engineWithDestinations(
     { ref: evmLike, name: "Fake Three", assets: {}, codec: createFakeAddressCodec(), codes },
   ];
   const ceilingsAsked = given.ceilings === undefined ? {} : { ceilings: given.ceilings };
-  const test = await startTestEngine({ destinations, ...ceilingsAsked });
+  const test = await startTestEngine({
+    destinations,
+    ...ceilingsAsked,
+    ...(given.bridges === undefined ? {} : { bridging: { bridges: given.bridges } }),
+    ...(given.venues === undefined
+      ? {}
+      : { agent: { limits: { ...testLimits, venues: given.venues } } }),
+  });
   await test.stores.install.changeRescue(
     { address: owner, atMs: testNowMs - 3 * looseningWaitMs },
     live,
@@ -107,6 +123,20 @@ function editorReaching(reach: readonly ChainRef[]): FakeCeilingEditor {
     functionsOf: () => ["swap", "depositTo"],
     bridges: { reach },
   });
+}
+
+// The fake bridge to `fake:2` as Relay is: its deposit is a bridge wallet's alone, so it names no
+// recipient a ceiling could list (decision 0307).
+function bridgeWalletsBridge(): HostedBridge {
+  const fake = createFakeBridge({ routes: [testRoute] });
+  const call = {
+    contract: "spoke",
+    abi: fakeDepositAbi,
+    walletInputs: ["depositor"],
+    onlyWallet: "bridge" as const,
+  };
+  const contracts = fake.contracts.map((entry) => ({ ...entry, calls: [call] }));
+  return { bridge: { ...fake, contracts }, routes: [testRoute] };
 }
 
 function add(test: TestEngine, asked: { readonly chain: string; readonly address: string }) {
@@ -276,6 +306,29 @@ describe("saving an address on a chain a bridge delivers to", () => {
 
     expect(entry.noRoute).toBe(true);
     expect(listed.items.map((item) => item.noRoute)).toStrictEqual([true]);
+  });
+
+  it("says a route pays an address on a chain a bridge from the bridge wallet reaches", async () => {
+    const bridges = [bridgeWalletsBridge()];
+    const venues = ["fake-swap", "fake-cross"];
+    const test = await engineWithDestinations({ ceilings: editorReaching([]), bridges, venues });
+
+    const entry = expectOk(await add(test, { chain: "fake:2", address: "0x000000f3" }));
+    const listed = expectOk(
+      await test.engine.handlers["address/list"](testCall({ agent: testAgent })),
+    );
+
+    expect(entry.noRoute).toBeUndefined();
+    expect(listed.items.map((item) => item.noRoute)).toStrictEqual([undefined]);
+  });
+
+  it("says no route pays it while the agent's venues leave that bridge out", async () => {
+    const bridges = [bridgeWalletsBridge()];
+    const test = await engineWithDestinations({ ceilings: editorReaching([]), bridges });
+
+    const entry = expectOk(await add(test, { chain: "fake:2", address: "0x000000f3" }));
+
+    expect(entry.noRoute).toBe(true);
   });
 
   it("reads every wallet's ceiling back after a rewrite custody refused part way", async () => {

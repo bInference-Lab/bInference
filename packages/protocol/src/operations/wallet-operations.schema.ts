@@ -108,7 +108,8 @@ interface AddressEntryView {
   readonly createdAt: number;
   /**
    * Set for an address saved for a destination chain no bridge rule of the agent's wallets
-   * reaches yet: nothing pays it until a bridge route the install runs reaches that chain.
+   * reaches yet, nor a bridge from the bridge wallet the agent's venues name: nothing pays it
+   * until a bridge route the install runs reaches that chain.
    */
   readonly noRoute?: true;
 }

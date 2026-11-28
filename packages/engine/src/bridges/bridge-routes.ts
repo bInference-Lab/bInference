@@ -47,3 +47,21 @@ export function bridgeCandidatesOf(
     ? { allowed }
     : { allowed, offVenue: off.hosted.bridge.id };
 }
+
+/**
+ * Whether a hosted bridge whose deposit is a bridge wallet's alone, such as Relay's, and which the
+ * agent's venues name, serves a route to `chain` (decision 0463). Such a bridge pays a saved
+ * address with no ceiling rule naming it (decision 0307), so the address book marks no entry there
+ * `noRoute`.
+ */
+export function bridgeWalletsReach(
+  bridges: readonly HostedBridge[],
+  asked: { readonly chain: ChainRef; readonly venues: readonly string[] },
+): boolean {
+  return bridges.some(
+    (hosted) =>
+      isBridgeVenue(hosted.bridge) &&
+      asked.venues.includes(hosted.bridge.id) &&
+      hosted.routes.some((route) => assetRefParts(route.arrives).chain === asked.chain),
+  );
+}

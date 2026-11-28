@@ -2,6 +2,7 @@ import { type AccountRef, accountRefParts, type ChainRef } from "@binference/cha
 import { err, type Id, jsonValueSchema, ok } from "@binference/core";
 import type { AgentSettings } from "../agents/agent-record.js";
 import { authorOf, journalConfigChange } from "../audit/journal-config-change.js";
+import { bridgeWalletsReach } from "../bridges/bridge-routes.js";
 import type { InstallFacts } from "../install/install-record.js";
 import { activeAgent } from "../operations/active-agent.js";
 import type { EngineHandler } from "../operations/engine-call.js";
@@ -57,10 +58,32 @@ async function bridgedNow(
   );
 }
 
+// Whether nothing pays an entry yet: it was saved for a destination where no bridge rule of the
+// agent's wallets lists it, and no bridge from the bridge wallet the agent may use reaches
+// (decision 0463).
+function hasNoRoute(
+  options: Pick<AddAddressOptions, "bridges">,
+  paid: ReadonlySet<AccountRef>,
+  entry: {
+    readonly account: AccountRef;
+    readonly venues: readonly string[];
+    readonly isWalletChain: (chain: ChainRef) => boolean;
+  },
+): boolean {
+  const { chain } = accountRefParts(entry.account);
+  const reach = { chain, venues: entry.venues };
+  return (
+    !entry.isWalletChain(chain) &&
+    !paid.has(entry.account) &&
+    !bridgeWalletsReach(options.bridges ?? [], reach)
+  );
+}
+
 /**
  * Creates the address book handlers. `address/list` answers the agent's live entries, oldest
  * first, each with the time send level 2 lets a send pay it, marked when it was saved for a
- * destination no bridge rule of the agent's wallets reaches yet, and the room left on each other
+ * destination no bridge rule of the agent's wallets reaches yet, nor a bridge from the bridge
+ * wallet the agent may use (decision 0463), and the room left on each other
  * chain it saved an address for. `address/add` saves an entry in the
  * agent's ceilings with the owner key first (see {@link addAddress}). `address/remove` is
  * braking: the entry stops counting for sends at once, and the removal is journaled and pushed as
@@ -79,9 +102,10 @@ export function createAddressBookHandlers(options: AddAddressOptions): AddressBo
       const most = options.ceilings.mostPerChain;
       const nowMs = options.clock.now();
       const room = roomOf(found.value, { isWalletChain, most, facts, nowMs });
+      const { venues } = found.value.limits;
       const items = found.value.addressBook.map((entry) =>
         addressEntryView(entry, {
-          noRoute: !isWalletChain(accountRefParts(entry.account).chain) && !paid.has(entry.account),
+          noRoute: hasNoRoute(options, paid, { account: entry.account, venues, isWalletChain }),
         }),
       );
       return ok(room.length === 0 ? { items } : { items, room });

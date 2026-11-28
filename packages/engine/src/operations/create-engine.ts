@@ -401,6 +401,7 @@ function ownerSettingsHandlers(options: EngineOptions, paper: PaperParts) {
       ...rescueParts,
       journal,
       ids: options.ids,
+      bridges: options.bridges ?? [],
       ...(options.destinations === undefined ? {} : { destinations: options.destinations }),
     }),
     ...createRescueAddressHandlers({ ...rescueParts, journal }),

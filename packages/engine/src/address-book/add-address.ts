@@ -1,4 +1,4 @@
-import type { AccountRef } from "@binference/chain";
+import { type AccountRef, accountRefParts } from "@binference/chain";
 import {
   BinferenceError,
   createSecret,
@@ -12,6 +12,8 @@ import type { ProtocolErrorCode, ResultOf } from "@binference/protocol";
 import type { AddressEntryRecord } from "../agents/address-entry-record.js";
 import type { AgentSettings } from "../agents/agent-record.js";
 import { authorOf, journalConfigChange } from "../audit/journal-config-change.js";
+import { bridgeWalletsReach } from "../bridges/bridge-routes.js";
+import type { HostedBridge } from "../bridges/hosted-bridge.js";
 import { activeAgent } from "../operations/active-agent.js";
 import type { EngineCall } from "../operations/engine-call.js";
 import { looseningWaitMs } from "../policy/send-level-change.js";
@@ -35,13 +37,19 @@ export interface AddAddressOptions extends RescueCeilingsOptions {
    * (decision 0297); none when absent.
    */
   readonly destinations?: readonly DestinationChain[];
+  /**
+   * The bridges the engine runs: one a bridge wallet alone deposits with pays an entry no ceiling
+   * rule names (decision 0463); none when absent.
+   */
+  readonly bridges?: readonly HostedBridge[];
 }
 
 type AddressEntryView = ResultOf<"address/add">;
 
 /**
  * An address book entry as the address book operations answer it, marked `noRoute` when it was
- * saved for a destination chain no bridge rule of the agent's wallets reaches yet (decision 0313).
+ * saved for a destination chain no bridge rule of the agent's wallets reaches yet (decision 0313),
+ * nor a bridge from the bridge wallet the agent may use (decision 0463).
  */
 export function addressEntryView(
   entry: AddressEntryRecord,
@@ -194,8 +202,14 @@ export async function addAddress(
       return inCeiling;
     }
     const after = inCeiling.value ?? [];
+    const reach = {
+      chain: accountRefParts(saved.account).chain,
+      venues: found.value.limits.venues,
+    };
     const noRoute =
-      !saved.isWalletChain && !after.some(({ read }) => read.bridged.includes(saved.account));
+      !saved.isWalletChain &&
+      !after.some(({ read }) => read.bridged.includes(saved.account)) &&
+      !bridgeWalletsReach(options.bridges ?? [], reach);
     return storeEntry(options, call, { saved, name: found.value.agent.name, noRoute });
   });
 }
