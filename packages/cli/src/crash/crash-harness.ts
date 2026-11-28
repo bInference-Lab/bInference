@@ -46,6 +46,11 @@ export interface CrashHarness {
       readonly keyHold?: KeyHold;
     },
   ) => Promise<SourceProgram>;
+  /**
+   * Runs one crash run; when it fails, writes the story of the engines and folders the run made
+   * so far to standard error first (`storyOnFailure`).
+   */
+  readonly withStory: <T>(work: () => Promise<T>) => Promise<T>;
 }
 
 /**
@@ -102,6 +107,7 @@ export function useCrashHarness(
       programs.push(engine);
       return engine;
     },
+    withStory: async (work) => storyOnFailure({ folders, engines: programs }, work),
   };
 }
 
@@ -113,6 +119,28 @@ export async function storyOf(folder: string, engines: readonly SourceProgram[])
   });
   const logLines = log.ok ? log.value.lines : [];
   return [...engines.map((engine) => engine.lines().join("\n")), ...logLines].join("\n");
+}
+
+/**
+ * Runs `work`, one crash run; when it fails, writes the story of the run's engines and of each
+ * folder it made to standard error before the error goes on, so a fault inside the run, such as a
+ * read that timed out, still shows what the engine logged. A story that cannot be read leaves the
+ * run's own error to tell.
+ */
+export async function storyOnFailure<T>(
+  run: { readonly folders: readonly TempFolder[]; readonly engines: readonly SourceProgram[] },
+  work: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await work();
+  } catch (error) {
+    const stories = run.folders.map(async ({ path }, index) =>
+      storyOf(path, index === 0 ? run.engines : []),
+    );
+    const told = await Promise.all(stories).catch(() => []);
+    process.stderr.write(`${told.join("\n")}\n`);
+    throw error;
+  }
 }
 
 /** Kills the engine outright, and tells whether the test killed it. */

@@ -199,41 +199,44 @@ async function killedRun(
  * Runs one intent to a forced stop at the case's kill point and recovers it: a fresh install,
  * an engine that the owner goes live on, proposes `run`'s request to and confirms, killed at the
  * point, then a second engine on the same folder with blocks mined until the intent ends. What
- * reached the chain is read from the relays and anvil, the signatures from the test's Privy.
+ * reached the chain is read from the relays and anvil, the signatures from the test's Privy. A run
+ * that fails part way writes its engines' story to standard error before the error goes on.
  */
 export async function crashIntentOnce(
   harness: CrashHarness,
   run: IntentRun,
   killCase: IntentKillCase,
 ): Promise<IntentOutcome> {
-  const world = harness.worldOf();
-  const { chain, services } = world;
-  const killed = await killedRun(harness, run, killCase);
-  const { install, intent, from, signed } = killed;
-  const settle = async () => settleAndStop(install, intent);
-  const restart = { isMinedAfterResend: killCase.isResent, fills: false, settle, from };
-  const second = await restartWith(harness, install, restart);
-  const sends = chain.sends().filter((send) => send.from === from);
-  const effectAfter = await run.effect?.read(world, install);
-  const { folder } = install.machine;
-  return {
-    atKill: killed.atKill,
-    sends,
-    isResent: sends.length > killed.sendsAtKill,
-    mined: await minedOf(chain, from),
-    unmined: await unminedOf(chain, from),
-    landed: await landedOf(chain, sends),
-    signatures: {
-      beforeKill: signed.atKill - signed.before,
-      afterRestart: services.signatures() - signed.atKill,
-    },
-    restartExit: await second.engine.program.exited,
-    settled: { state: second.settled, hashes: await hashesOf(folder, intent) },
-    moved: (effectAfter ?? 0n) - (killed.effectBefore ?? 0n),
-    rows: (await run.rows?.read(folder, intent)) ?? 0,
-    booked: await bookedOf(folder, intent),
-    story: await storyOf(folder, [killed.first, second.engine]),
-  };
+  return harness.withStory(async () => {
+    const world = harness.worldOf();
+    const { chain, services } = world;
+    const killed = await killedRun(harness, run, killCase);
+    const { install, intent, from, signed } = killed;
+    const settle = async () => settleAndStop(install, intent);
+    const restart = { isMinedAfterResend: killCase.isResent, fills: false, settle, from };
+    const second = await restartWith(harness, install, restart);
+    const sends = chain.sends().filter((send) => send.from === from);
+    const effectAfter = await run.effect?.read(world, install);
+    const { folder } = install.machine;
+    return {
+      atKill: killed.atKill,
+      sends,
+      isResent: sends.length > killed.sendsAtKill,
+      mined: await minedOf(chain, from),
+      unmined: await unminedOf(chain, from),
+      landed: await landedOf(chain, sends),
+      signatures: {
+        beforeKill: signed.atKill - signed.before,
+        afterRestart: services.signatures() - signed.atKill,
+      },
+      restartExit: await second.engine.program.exited,
+      settled: { state: second.settled, hashes: await hashesOf(folder, intent) },
+      moved: (effectAfter ?? 0n) - (killed.effectBefore ?? 0n),
+      rows: (await run.rows?.read(folder, intent)) ?? 0,
+      booked: await bookedOf(folder, intent),
+      story: await storyOf(folder, [killed.first, second.engine]),
+    };
+  });
 }
 
 /** What a run showed of its sends, or what its case says it must show. */
