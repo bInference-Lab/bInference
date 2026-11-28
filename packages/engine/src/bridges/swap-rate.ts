@@ -43,9 +43,11 @@ export function swapRateOf(input: SwapRateInput): Bps {
   return bpsSchema.parse(ceilBps(gap, net));
 }
 
-// The least whole basis point at or above `gap` of `net`, found by halving 0 to 10,000 in bigint,
-// so no amount passes through a float.
-function ceilBps(gap: bigint, net: bigint): number {
+/**
+ * The least whole basis point at or above `gap` of `net`, found by halving 0 to 10,000 in bigint,
+ * so no amount passes through a float. `gap` must be at most `net`.
+ */
+export function ceilBps(gap: bigint, net: bigint): number {
   const asked = gap * BigInt(bpsPerWhole);
   let low = 0;
   let high = bpsPerWhole;

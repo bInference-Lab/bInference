@@ -126,6 +126,7 @@ describe("proposing a bridge", () => {
       "Bridge 100 TKN to Fake Two · to exchange (0x000000b1) · about 1 min",
       "exchange (0x000000b1) receives at least 99 TKN on Fake Two",
       "Bridge fees 1 TKN · through fake-cross",
+      "The fees are 1.00% of what you send: a bridge's fees are mostly a fixed sum, so a larger bridge pays a smaller part.",
       "binference reads Fake Two to see it arrive, and tells you if it is late",
       'Agent says  "Move to the exchange"',
       expect.stringMatching(/^Expires/u),

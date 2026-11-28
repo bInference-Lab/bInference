@@ -27,6 +27,7 @@
   "bridge.otherToken": "⚠️ {sent} arrives on {chain} as {received}, a different token",
   "bridge.fees": "Bridge fees {fees} · through {venue}",
   "bridge.swapRate": "Swap rate: {rate}",
+  "bridge.feeShare": "The fees are {percent} of what you send: a bridge's fees are mostly a fixed sum, so a larger bridge pays a smaller part.",
   "bridge.solana": "A Solana address has no checksum: check every character",
   "bridge.read": "binference reads {chain} to see it arrive, and tells you if it is late",
   "cex.action": "Binance {side, select, buy {buy} other {sell}} {size} {market} at {price}",

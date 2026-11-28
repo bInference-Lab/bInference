@@ -32,6 +32,19 @@ async function proposeWith(
 }
 
 // The fake's quote with its least output lowered to 90 of 100, past the agent's 2% slippage limit.
+// A route whose fees keep a share of the 100 sent: 3, as a relayer's fixed gas does on a small
+// bridge, or 10.
+function keeping(kept: bigint): (fake: Bridge) => Partial<Bridge> {
+  return (fake) => ({
+    quote: async (request, options) => {
+      const quoted = await fake.quote(request, options);
+      return quoted.ok
+        ? ok({ ...quoted.value, minOut: { ...quoted.value.minOut, base: 100_000_000n - kept } })
+        : quoted;
+    },
+  });
+}
+
 function keepsTen(fake: Bridge): Partial<Bridge> {
   return {
     quote: async (request, options) => {
@@ -155,7 +168,12 @@ describe("quoting and building a bridge", () => {
     expect(view.outcome?.reason).toBe("venue_down");
   });
 
-  it("takes no quote that keeps more than the agent's slippage limit", async () => {
+  it("takes a quote that keeps more than the agent's slippage limit up to 5%", async () => {
+    const view = expectOk(await proposeWith(keeping(3_000_000n)));
+    expect(view.state).toBe("awaiting_confirmation");
+  });
+
+  it("takes no quote that keeps more than 5% and more than the agent's slippage limit", async () => {
     const view = expectOk(await proposeWith(keepsTen));
     expect(view.outcome?.reason).toBe("price_impact");
   });

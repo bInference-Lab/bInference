@@ -87,15 +87,22 @@ function requestOf(
   };
 }
 
-// The least a route may pay at the input's own price, less the agent's slippage limit for registry
-// tokens, at the delivered token's decimals: a route moves a dollar to a dollar or ETH to ETH.
+// The most a route may keep of what it moves when the agent's slippage limit is lower: a relayer's
+// gas on the destination is a fixed sum, so a small bridge pays a larger share, which the card
+// shows (decision 0465).
+const bridgeFeeCapBps = 500;
+
+// The least a route may pay at the input's own price, less the larger of the agent's slippage limit
+// for registry tokens and the bridge fee cap, at the delivered token's decimals: a route moves a
+// dollar to a dollar or ETH to ETH.
 function floorOf(bridge: ResolvedBridge, candidate: BridgeCandidate): bigint {
   const { leaves, arrives } = candidate.route.decimals;
   const scaled =
     arrives >= leaves
       ? bridge.amount.base * 10n ** BigInt(arrives - leaves)
       : bridge.amount.base / 10n ** BigInt(leaves - arrives);
-  const keptBps = BigInt(bpsPerWhole - bridge.settings.limits.slippageRegistryBps);
+  const allowedBps = Math.max(bridge.settings.limits.slippageRegistryBps, bridgeFeeCapBps);
+  const keptBps = BigInt(bpsPerWhole - allowedBps);
   return (scaled * keptBps) / BigInt(bpsPerWhole);
 }
 

@@ -116,7 +116,9 @@ Save the address that should receive on the destination chain, then ask the agen
 best least output. The card names the recipient, the destination chain, the least that arrives,
 about how long it takes, the fees and the venue, and the bridge wallet when the bridge leaves from
 it. When a route delivers another token, such as USDG on Robinhood Chain, the card shows the swap
-rate; above 0.5% the route is refused.
+rate; above 0.5% the route is refused. Bridge fees are mostly a fixed sum, so a small bridge pays a
+larger share: once they take 1% of what you send, the card says the share, and a route that keeps
+more than 5%, or more than your slippage limit when it is higher, is refused.
 
 A bridge counts against the per-trade cap and the 24-hour cap. With no recipient named, binference
 quotes for your rescue address on that chain, when it may pay it there.

@@ -1,5 +1,6 @@
 import type { AccountRef, Amount, AssetRef } from "@binference/chain";
-import type { Bps } from "@binference/core";
+import { type Bps, bpsSchema } from "@binference/core";
+import { ceilBps } from "../bridges/swap-rate.js";
 import type { CardLine, CardValue } from "./card-line.js";
 import { type CardPayee, payeeValue } from "./send-card-lines.js";
 
@@ -44,6 +45,27 @@ export function bridgeActionLine(action: BridgeAction): CardLine {
   };
 }
 
+// The share of what is sent at which a bridge's fees get a line of their own (decision 0465).
+const feeShareLineBps = 100n;
+
+// A line naming the share the fees keep, once it reaches 1% of what is sent, as on a small bridge
+// whose relayer gas is a fixed sum.
+function feeShareLines(amount: Amount, fees: Amount): readonly CardLine[] {
+  if (fees.asset !== amount.asset || amount.base <= 0n) {
+    return [];
+  }
+  const shareBps = (fees.base * 10_000n) / amount.base;
+  const shown = fees.base >= amount.base ? 10_000 : ceilBps(fees.base, amount.base);
+  return shareBps < feeShareLineBps
+    ? []
+    : [
+        {
+          key: "card.bridge.feeShare",
+          values: { percent: { type: "percent", bps: bpsSchema.parse(shown) } },
+        },
+      ];
+}
+
 /**
  * The lines under a bridge's action line (spec 4, section 3.9): what the recipient receives at
  * least there, the bridge's fees and venue, on a route filled by a swap the swap's rate
@@ -79,6 +101,7 @@ export function bridgeDetailLines(action: BridgeAction): readonly CardLine[] {
       values: { fees: { type: "amount", amount: details.fees }, venue: text(details.venue) },
     },
     ...swapRate,
+    ...feeShareLines(action.amount, details.fees),
     { key: "card.bridge.read", values: { chain } },
   ];
   return details.isChecksumless ? [...lines, { key: "card.bridge.solana", values: {} }] : lines;

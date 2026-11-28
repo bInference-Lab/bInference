@@ -52,12 +52,13 @@ async function proposeSwap(gap: bigint, cap: number) {
 }
 
 // The reason a swap quote ends with: its rate past the route's cap first, then its least output
-// below the agent's 2% floor; none when its card opens.
+// below the 5% floor that holds above the agent's 2% limit (decision 0465); none when its card
+// opens.
 function reasonOf(gap: bigint, cap: number): string | undefined {
   if (gap * 10_000n > BigInt(cap) * net) {
     return "swap_rate";
   }
-  return net - gap < 98_000_000n ? "price_impact" : undefined;
+  return net - gap < 95_000_000n ? "price_impact" : undefined;
 }
 
 // Whether the stored rate is as the reason says: none for a refused quote; else the least whole

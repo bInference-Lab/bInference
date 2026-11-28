@@ -11,10 +11,11 @@ describe("a bridge's card in Chinese", () => {
       await test.engine.handlers["intent/propose"](testCall(testBridge({ rescue: true }))),
     );
 
-    expect((await testCardText(test, view, "zh")).slice(1, 5)).toStrictEqual([
+    expect((await testCardText(test, view, "zh")).slice(1, 6)).toStrictEqual([
       "跨链 100 TKN 到 Fake Two · 收款地址 你的紧急转出地址（0x000000d9） · 约 1 分钟",
       "你的紧急转出地址（0x000000d9） 在 Fake Two 至少收到 99 TKN",
       "跨链费用 1 TKN · 通过 fake-cross",
+      "费用占你发送金额的 1.00%：跨链费用大多是固定金额，所以金额越大，费用占比越小。",
       "binference 会读取 Fake Two 确认到账，延迟时会通知你",
     ]);
   });

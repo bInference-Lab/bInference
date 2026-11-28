@@ -1,6 +1,6 @@
 # 0319. A bridge takes the route with the best least output, from the wallet its venue allows
 
-Status: Accepted
+Status: Amended by 0465
 
 Accepted by the owner on 2026-11-01, with the owner's ruling of the same day: a bridge that finds no route has words of its own,
 in English and Simplified Chinese, for each reason a bridge gives, each with a next step.
