@@ -1,0 +1,14 @@
+# What a deploy of the agent's site leaves out: local folders the site's build never reads.
+.claude
+.agents
+internal
+reports
+evidence
+**/node_modules
+**/.next
+**/.turbo
+**/dist
+**/coverage
+**/.stryker-tmp
+**/*.sqlite
+**/.env*
