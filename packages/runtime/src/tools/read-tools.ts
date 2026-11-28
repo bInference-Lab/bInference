@@ -29,6 +29,13 @@ function answer(text: string): ToolOutcome {
 
 // The registry's tokens carry the registry's words; a match the registry does not vouch for is
 // outside content, as token_info of it is.
+// A search on a chain the agent does not trade on, such as a bridge's destination, is refused:
+// say where tokens are found, and that a bridge names only the token it sends.
+const searchRefusals: Readonly<Record<string, string>> = {
+  "protocol.bad_args":
+    "token_search failed with protocol.bad_args: the chain is not one this agent trades on. Search BNB Smart Chain, eip155:56. To bridge, give bridge the token it sends on BNB Smart Chain and toChain; binference picks the token it arrives as, so never look the destination's token up.",
+};
+
 function tokenSearchTool({ agent, client }: AgentToolParts): AgentTool {
   return defineTool<AssetSearchTerms>({
     name: "token_search",
@@ -38,7 +45,7 @@ function tokenSearchTool({ agent, client }: AgentToolParts): AgentTool {
     description: agentToolTexts.token_search,
     args: assetSearchTermsSchema,
     run: async (args, { signal }) =>
-      answerOrFailure("token_search", async () => {
+      answerOrRefusal({ tool: "token_search", refusals: searchRefusals }, async () => {
         const view = await client.call("asset/search", { ...args, agent }, { signal });
         const text = jsonOf(ops["asset/search"].result, view);
         const isVouched = view.items.every((item) => item.verified);

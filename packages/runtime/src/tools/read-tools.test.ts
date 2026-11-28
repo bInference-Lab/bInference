@@ -263,6 +263,14 @@ describe("the read tools", () => {
     expect(outcome.text).toContain("Ask the owner which saved address there to use");
   });
 
+  it("tell the agent where tokens are found when it searches a chain it does not trade on", async () => {
+    const refused = new BinferenceError({ code: "protocol.bad_args", message: "Bad args." });
+    const call = { name: "token_search", args: { chain: "fake:2", query: "FAKE" } };
+    const outcome = await outcomeOf(callTool({ "asset/search": refused }, call));
+    expect(outcome).toMatchObject({ isError: true });
+    expect(outcome.text).toContain("binference picks the token it arrives as");
+  });
+
   it("all run beside each other", () => {
     const box = agentToolBox({ agent, client: createFakeToolClient({}), turn: toolTurn });
     const reads = [
