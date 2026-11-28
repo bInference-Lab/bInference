@@ -7,10 +7,11 @@ import { callsOutsideCeiling } from "./limit-ceiling.js";
 
 /**
  * Why a live agent cannot use the venues among `venues` that only a bridge wallet uses, such as
- * Relay (decision 0307): it has no live bridge wallet (`limit.needs_bridge_wallet`), or that
- * wallet's ceiling, as last read back from custody, lacks one of their calls
- * (`limit.bridge_ceiling`), which only the owner key adds with `ceiling/set`. `undefined` when none of the venues is a
- * bridge wallet's alone, or the bridge wallet allows every call they mark.
+ * Relay (decision 0307): its bridge wallet's ceiling, as last read back from custody, lacks one of
+ * their calls (`limit.bridge_ceiling`), which only the owner key adds with `ceiling/set`.
+ * `undefined` when none of the venues is a bridge wallet's alone, the bridge wallet allows every
+ * call they mark, or the agent has no live bridge wallet: a bridge through them is then refused
+ * before its card with `intent.bridge_wallet_missing` (decision 0463).
  */
 export function bridgeVenueRefusal(
   host: Pick<VenueHost, "bridgesOnly" | "roleWalletCalls">,
@@ -26,7 +27,7 @@ export function bridgeVenueRefusal(
   }
   const bridgeWallet = roleWalletIn(check.wallets, check.agent, "bridge");
   if (bridgeWallet === undefined) {
-    return "limit.needs_bridge_wallet";
+    return undefined;
   }
   const calls = host.roleWalletCalls("bridge", bridged);
   return callsOutsideCeiling(bridgeWallet, calls).length > 0 ? "limit.bridge_ceiling" : undefined;

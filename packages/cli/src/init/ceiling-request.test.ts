@@ -32,7 +32,7 @@ function stakingCalls(id: string): readonly (readonly [unknown, bigint | undefin
 }
 
 describe("core venues", () => {
-  it("installs KyberSwap, the Flap launchpad, StakeHub, Lista and Across while no OKX key is set, and no Relay or identity registry", () => {
+  it("installs KyberSwap, the Flap launchpad, StakeHub, Lista, Across and Relay while no OKX key is set, and no identity registry", () => {
     const venues = coreVenues(http, { keys: {}, kyberClientId: "binference" });
     expect(venues.map((venue) => venue.id)).toStrictEqual([
       "kyberswap",
@@ -40,6 +40,7 @@ describe("core venues", () => {
       "stakehub",
       "lista",
       "across",
+      "relay",
     ]);
   });
 
@@ -89,6 +90,7 @@ describe("core venues", () => {
       [["stakehub", "eip155:56", ["stake-hub"], undefined]],
       [["lista", "eip155:56", ["stake-manager"], ["stake-manager"]]],
       [["across", "eip155:56", ["spoke-pool"], ["spoke-pool"]]],
+      [["relay", "eip155:56", ["depository"], undefined]],
       [["okx", "eip155:56", ["dex-router", "token-approve"], ["token-approve"]]],
     ]);
   });
@@ -98,6 +100,8 @@ const bnb = 10n ** 18n;
 const rescue = "0x30435f9D276c6BC54F56161Fb3dFB7bDC2a8DBcB";
 // Across's SpokePool on BSC, as the registry lists it.
 const spokePool = "0x4e8E101924eDE233C13e2D8622DC8aED2872d505";
+// Relay's depository on BSC, as the registry lists it.
+const depository = "0x4cD00E387622C35bDDB9b4c962C136462338BC31";
 
 // The venues and the first wallet's ceiling init plans for a new agent on the default config.
 function newAgent() {
@@ -133,12 +137,27 @@ function ruleNamesOf(chain: CeilingChainPlan): readonly string[] {
   return built.ok ? built.value.rules.map((rule) => rule.name) : [built.error];
 }
 
+// A JSON value with each amount written as a decimal.
+const decimal = (_key: string, value: unknown) =>
+  typeof value === "bigint" ? value.toString() : value;
+
+// A ceiling plan as lowercase text.
+function textOf(chain: CeilingChainPlan): string {
+  return JSON.stringify(chain, decimal).toLowerCase();
+}
+
 describe("a new agent", () => {
-  it("may use Across, and not Relay before it has a bridge wallet", () => {
+  it("may use Across and Relay", () => {
     const { venues } = newAgent();
 
     expect(venues).toContain("across");
-    expect(venues).not.toContain("relay");
+    expect(venues).toContain("relay");
+  });
+
+  it("gets nothing of Relay in its main wallet's ceiling, which only a bridge wallet holds", () => {
+    const { chain } = newAgent();
+
+    expect(textOf(chain)).not.toContain(depository.toLowerCase());
   });
 
   it("gets Across's deposit to each EVM chain its routes reach in its main wallet's ceiling", () => {

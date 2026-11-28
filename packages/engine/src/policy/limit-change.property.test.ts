@@ -20,6 +20,8 @@ const small = fc.bigInt({ min: 0n, max: 3n });
 const bps = fc.integer({ min: 0, max: 3 }).map((value) => value as Bps);
 const count = fc.integer({ min: 1, max: 3 });
 const tokenList: fc.Arbitrary<readonly AssetRef[]> = fc.subarray(tokens);
+// The one bridge venue, which a move adds at once (decision 0462).
+const isBridge = (venue: string) => venue === "v3";
 
 const changesArbitrary: fc.Arbitrary<LimitChanges> = fc.record(
   {
@@ -53,7 +55,7 @@ const states: fc.Arbitrary<LimitsState> = fc
   .tuple(changesArbitrary, fc.integer({ min: -looseningWaitMs, max: looseningWaitMs }))
   .map(
     ([changes, offsetMs]: readonly [LimitChanges, number]) =>
-      moveLimits({ values: base }, changes, nowMs + offsetMs).next,
+      moveLimits({ values: base }, changes, { nowMs: nowMs + offsetMs, isBridge }).next,
   );
 
 // The limits a state holds once every one that waits applies.
@@ -67,13 +69,33 @@ function waitsForAChange(state: LimitsState): boolean {
   return pending === undefined || limitsChanged(state.values, pending.values).length > 0;
 }
 
-// Short of a full wait, the limits in effect hold no change that a stricter move would not make.
+// Short of a full wait, the limits in effect hold no change that a stricter move would not make,
+// but venues that add only the bridge venue.
 function loosenedEarly(state: LimitsState, changes: LimitChanges, waitMs: number): boolean {
   const before = limitsAt(state, nowMs).values;
-  const move = moveLimits(state, changes, nowMs);
+  const move = moveLimits(state, changes, { nowMs, isBridge });
   const later = limitsAt(move.next, nowMs + waitMs).values;
   const earlier = state.pending !== undefined && state.pending.atMs <= nowMs + waitMs;
-  return !earlier && limitsChanged(before, later).some((name) => !move.stricter.includes(name));
+  const bridgesOnly = later.venues.every(
+    (venue) => before.venues.includes(venue) || isBridge(venue),
+  );
+  return (
+    !earlier &&
+    limitsChanged(before, later).some(
+      (name) => !move.stricter.includes(name) && !(name === "venues" && bridgesOnly),
+    )
+  );
+}
+
+// The looser limits that should apply at once: the venues, when they add only the bridge venue.
+function atOnceOf(
+  state: LimitsState,
+  changes: LimitChanges,
+  looser: readonly string[],
+): readonly string[] {
+  const before = limitsAt(state, nowMs).values.venues;
+  const added = (changes.venues ?? []).filter((venue) => !before.includes(venue));
+  return looser.includes("venues") && added.every(isBridge) ? ["venues"] : [];
 }
 
 describe("the limits rule", () => {
@@ -93,10 +115,12 @@ describe("the limits rule", () => {
   it("puts every stricter change in effect at once, and makes every other one wait", () => {
     fc.assert(
       fc.property(states, changesArbitrary, (state, changes) => {
-        const move = moveLimits(state, changes, nowMs);
+        const move = moveLimits(state, changes, { nowMs, isBridge });
         const asked = { ...limitsAt(state, nowMs).values, ...changes };
         const inEffect = limitsChanged(move.next.values, asked);
-        expect(move.stricter.some((name) => inEffect.includes(name))).toBe(false);
+        expect([...move.stricter, ...move.atOnce].some((name) => inEffect.includes(name))).toBe(
+          false,
+        );
         const unmet = limitsChanged(finalValues(move.next), asked);
         expect(unmet.filter((name) => name in changes)).toStrictEqual([]);
       }),
@@ -106,7 +130,17 @@ describe("the limits rule", () => {
   it("leaves no pending limits that equal the limits in effect", () => {
     fc.assert(
       fc.property(states, changesArbitrary, (state, changes) => {
-        expect(waitsForAChange(moveLimits(state, changes, nowMs).next)).toBe(true);
+        expect(waitsForAChange(moveLimits(state, changes, { nowMs, isBridge }).next)).toBe(true);
+      }),
+    );
+  });
+
+  it("adds venues at once only when every venue added is a bridge venue", () => {
+    fc.assert(
+      fc.property(states, changesArbitrary, (state, changes) => {
+        const move = moveLimits(state, changes, { nowMs, isBridge });
+        expect(move.atOnce).toStrictEqual(atOnceOf(state, changes, move.looser));
+        expect(move.atOnce.every((name) => move.looser.includes(name))).toBe(true);
       }),
     );
   });

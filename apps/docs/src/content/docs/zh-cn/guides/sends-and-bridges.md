@@ -62,7 +62,7 @@ ETH 到达普通钱包时就是 ETH。BNB 不能跨链。
 
 ### 开启跨链
 
-新的 Agent 默认开启 Across：它的第一个钱包的上限包含 Across 的存入交易，它的平台列表包含 `across`。在目标链上保存一个地址后，它就可以跨链到那里。
+新的 Agent 默认开启跨链：它的平台列表包含 `across` 和 `relay`，它的第一个钱包的上限包含 Across 的存入交易。在目标链上保存一个地址后，它就可以通过 Across 跨链到那里。通过 Relay 跨链要等你创建下面的跨链钱包之后才能开始；在此之前，Relay 跨链会在出卡片之前被拒绝，并给出创建跨链钱包的命令。
 
 对于在此版本之前创建的 Agent，请用你的所有者密钥添加 Across：先加入上限，再加入 Agent 的平台列表。运行 `binference ceiling` 查看钱包保留的平台，然后把它们连同新平台一起列出：
 
@@ -71,15 +71,15 @@ binference ceiling set --venues <它列出的平台>,across
 binference limit set limits.venues=<它列出的平台>,across
 ```
 
-添加平台会放宽限额，因此在 24 小时后生效。
+添加跨链平台会立即生效：它仍需你先用所有者密钥把它写入上限，上限限制了它能付给谁。添加其他平台会放宽限额，因此在 24 小时后生效。如果更早版本留下的平台变更只因跨链平台还在等待，再运行一次同样的 `binference limit set` 就会立即生效。
 
-使用 Relay 之前，先用你的所有者密钥创建跨链钱包，并从外部给它充值：
+使用 Relay 时，请用你的所有者密钥创建跨链钱包，并从外部给它充值：
 
 ```sh
 binference wallet create --bridge --label bridge
 ```
 
-它的上限只允许存入 Relay，以及转账到你的紧急转出地址和已保存的地址。Agent 的其他钱包都不能给它转账，所以请从你自己的钱包充值。然后用 `binference limit set` 或在控制台的「交易限额」页面把 `relay` 加入 Agent 的平台列表。
+它的上限只允许存入 Relay，以及转账到你的紧急转出地址和已保存的地址。Agent 的其他钱包都不能给它转账，所以请从你自己的钱包充值。在此版本之前创建的 Agent 可以用 `binference limit set` 或在控制台的「交易限额」页面把 `relay` 加入平台列表，并立即生效。
 
 ### 发起跨链
 

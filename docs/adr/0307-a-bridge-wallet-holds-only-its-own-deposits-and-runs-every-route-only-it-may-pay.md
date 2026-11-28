@@ -1,6 +1,6 @@
 # 0307. A bridge wallet holds only its own deposits and runs every route only it may pay
 
-Status: Accepted
+Status: Amended by 0463
 
 Proposed with the owner's ruling of 2026-10-31: Relay routes leave only from a small bridge wallet
 the owner funds from outside, made with `binference wallet create`, whose ceiling allows Relay's

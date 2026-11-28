@@ -21,6 +21,7 @@ import { baseUnitsOf } from "@binference/i18n";
 import { createKyberswapVenue } from "@binference/kyberswap";
 import { listaDeclaration } from "@binference/lista";
 import { okxDeclaration } from "@binference/okx";
+import { relayDeclaration } from "@binference/relay";
 import { stakeHubDeclaration } from "@binference/stakehub";
 import { selfHostedBridgePlan } from "../compose/self-hosted-destinations.js";
 import type { VenuesConfig } from "../config/schema/chains-venues.schema.js";
@@ -30,10 +31,11 @@ import { type InitStep, refused } from "./init-context.js";
 /**
  * The core venues this binference installs, by what each declares: its id and its registry
  * contracts per chain. KyberSwap, the Flap launchpad, StakeHub, whose `delegate` carries up to
- * 100 BNB in a ceiling rule of its own (decision 0325), Lista (decision 0332) and the Across
- * bridge (decision 0461) need no key; OKX is installed only when `venues.keys.okx` names the
- * owner's key. Relay is no core venue: only a bridge wallet bridges with it (decision 0307), and an
- * agent that names it cannot go live without one. The identity registry is no core venue either:
+ * 100 BNB in a ceiling rule of its own (decision 0325), Lista (decision 0332), and the Across and
+ * Relay bridges (decisions 0461 and 0463) need no key; OKX is installed only when
+ * `venues.keys.okx` names the owner's key. Only a bridge wallet bridges with Relay (decision
+ * 0307), so no main wallet's ceiling holds its deposits, and a Relay bridge is refused before its
+ * card until the owner makes one. The identity registry is no core venue:
  * only an agent whose owner opts in carries its call (decision 0335). Each venue is made only to
  * read its declaration; nothing is called, no chain is read and no key is read.
  */
@@ -50,6 +52,7 @@ export function coreVenues(http: Http, venues: VenuesConfig): readonly VenueDecl
     stakeHubDeclaration([chain.ref]),
     listaDeclaration([chain.ref]),
     acrossDeclaration([chain.ref]),
+    relayDeclaration([chain.ref]),
   ];
   return venues.keys.okx === undefined
     ? keyless

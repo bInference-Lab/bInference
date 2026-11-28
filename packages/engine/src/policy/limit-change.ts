@@ -19,8 +19,26 @@ export interface LimitsMove {
   readonly next: LimitsState;
   /** The limits that change at once: each new value is clearly stricter. */
   readonly stricter: readonly LimitName[];
-  /** The limits that wait 24 hours: every other change. A caller needs `loosen` for them. */
+  /**
+   * Every other change. A caller needs `loosen` for them, and each waits 24 hours but those in
+   * `atOnce`.
+   */
   readonly looser: readonly LimitName[];
+  /**
+   * The looser limits that change at once: the venues, when every venue the change adds is a
+   * bridge venue (decision 0462).
+   */
+  readonly atOnce: readonly LimitName[];
+}
+
+/** When a move of limits is judged, and which venues it may add at once. */
+export interface LimitMoveAt {
+  readonly nowMs: number;
+  /**
+   * Whether a venue's calls are bridge deposits, which a move adds to the venues at once
+   * (decision 0462); no venue is when absent.
+   */
+  readonly isBridge?: (venue: string) => boolean;
 }
 
 /** How one limit compares: whether two values are the same, and whether one is stricter. */
@@ -162,31 +180,46 @@ function pendingTime(
   return isKept ? pending.atMs : move.nowMs + looseningWaitMs;
 }
 
+// The venues change at once when every venue it adds is a bridge venue (decision 0462).
+function looserAtOnce(
+  looser: readonly LimitName[],
+  venues: { readonly before: readonly string[]; readonly after: readonly string[] },
+  isBridge: (venue: string) => boolean,
+): readonly LimitName[] {
+  const added = venues.after.filter((venue) => !venues.before.includes(venue));
+  return looser.includes("venues") && added.every(isBridge) ? ["venues"] : [];
+}
+
 /**
  * Moves an agent's limits toward the changes asked, judged against the limits in effect at
- * `nowMs` (decision 0111). A clearly stricter value, or the value in effect, applies at once and
- * drops any looser value of the same limit that waits. Every other change waits 24 hours; asking
- * again for the values that wait keeps their time, and any other looser change starts the wait
- * again for all of them.
+ * `at.nowMs` (decision 0111). A clearly stricter value, or the value in effect, applies at once and
+ * drops any looser value of the same limit that waits; so do the venues when every venue they add
+ * is a bridge venue (decision 0462). Every other change waits 24 hours; asking again for the
+ * values that wait keeps their time, and any other looser change starts the wait again for all of
+ * them.
  */
-export function moveLimits(state: LimitsState, changes: LimitChanges, nowMs: number): LimitsMove {
+export function moveLimits(state: LimitsState, changes: LimitChanges, at: LimitMoveAt): LimitsMove {
+  const { nowMs } = at;
   const settled = limitsAt(state, nowMs);
   const asked: LimitsValues = { ...settled.values, ...changes };
   const named = limitNames.filter((name) => changes[name] !== undefined);
   const changed = named.filter((name) => !comparisons[name].isSame(settled.values, asked));
   const stricter = changed.filter((name) => comparisons[name].isStricter(settled.values, asked));
   const looser = changed.filter((name) => !stricter.includes(name));
-  const values = withLimits(settled.values, asked, stricter);
+  const venues = { before: settled.values.venues, after: asked.venues };
+  const atOnce = looserAtOnce(looser, venues, at.isBridge ?? (() => false));
+  const waits = looser.filter((name) => !atOnce.includes(name));
+  const values = withLimits(settled.values, asked, [...stricter, ...atOnce]);
   // Every limit named, the ones asked at their value in effect too, drops its looser value.
   const waiting = withLimits(settled.pending?.values ?? settled.values, asked, named);
   if (isSameLimits(values, waiting)) {
-    return { next: { values }, stricter, looser };
+    return { next: { values }, stricter, looser, atOnce };
   }
   const atMs =
-    looser.length === 0 && settled.pending !== undefined
+    waits.length === 0 && settled.pending !== undefined
       ? settled.pending.atMs
-      : pendingTime(settled, { asked, looser, nowMs });
-  return { next: { values, pending: { values: waiting, atMs } }, stricter, looser };
+      : pendingTime(settled, { asked, looser: waits, nowMs });
+  return { next: { values, pending: { values: waiting, atMs } }, stricter, looser, atOnce };
 }
 
 /** Drops the looser limits that wait at `nowMs`; the limits in effect stay. */

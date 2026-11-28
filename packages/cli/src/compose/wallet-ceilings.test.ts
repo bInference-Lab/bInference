@@ -1,5 +1,4 @@
 import { createFakeBridgeVenue, createFakeVenue } from "@binference/chain/testing";
-import { bscVenueCalls } from "@binference/chains";
 import { createScriptedHttp } from "@binference/core/testing";
 import { describe, expect, it } from "vitest";
 import { currentConfigVersion } from "../config/migrations/config-migrations.js";
@@ -14,13 +13,12 @@ const ids = (role?: "launch" | "bridge", venues: readonly string[] = ["fake-swap
   return planned.ok ? planned.value.map((venue) => venue.id) : planned.error;
 };
 
-// Relay as its plugin will declare it, from the registry's calls on BNB Smart Chain.
-const relay = { id: "relay", contracts: [bscVenueCalls["relay"]].flatMap((item) => item ?? []) };
 const config = configSchema.parse({
   version: currentConfigVersion,
   telegram: { botToken: { fromEnv: "TEST_BOT_TOKEN" } },
 });
-const venues = [...coreVenues(createScriptedHttp([]), config.venues), relay];
+// The core venues, Relay among them (decision 0463).
+const venues = coreVenues(createScriptedHttp([]), config.venues);
 const plans = { chains: selfHostedChains(), config, venues };
 
 // The chains of a draft the install could plan.

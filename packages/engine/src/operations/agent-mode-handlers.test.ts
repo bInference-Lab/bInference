@@ -70,6 +70,25 @@ async function withLaunchWallet(policy: JsonValue) {
   return test;
 }
 
+// An agent whose venues name one only a bridge wallet uses, with a bridge wallet whose stored
+// ceiling holds the policy given.
+async function withBridgeWallet(policy: JsonValue): Promise<TestEngine> {
+  const test = await startTestEngine({
+    chains: testChains(["fake-bridge"]),
+    venues: [createFakeVenue(), createFakeBridgeVenue()],
+    agent: { limits: { ...testLimits, venues: ["fake-swap", "fake-bridge"] } },
+  });
+  const bridge = testWalletRecord({
+    id: fixtureId("wal", 78),
+    agentId: testAgent,
+    label: "relays",
+    createdAtMs: testNowMs,
+    role: "bridge",
+  });
+  test.stores.install.addWallet({ ...bridge, ceiling: { ...bridge.ceiling, policy } });
+  return test;
+}
+
 describe("the disclaimer before going live", () => {
   it("refuses without the owner's acceptance, stores none and stays on paper", async () => {
     const test = await startTestEngine();
@@ -168,28 +187,33 @@ describe("the live switch", () => {
     );
   });
 
-  it("refuses to go live while its venues hold one only a bridge wallet uses, until it has one", async () => {
+  it("goes live with a venue only a bridge wallet uses before it has one", async () => {
     const test = await startTestEngine({
       chains: testChains(["fake-bridge"]),
       venues: [createFakeVenue(), createFakeBridgeVenue()],
       agent: { limits: { ...testLimits, venues: ["fake-swap", "fake-bridge"] } },
     });
+
+    const view = expectOk(await test.engine.handlers["agent/goLive"](testCall(accepted)));
+
+    expect([view.mode, await modeOf(test)]).toStrictEqual(["live", "live"]);
+  });
+
+  it("refuses to go live while its bridge wallet's ceiling lacks the venue's deposit", async () => {
+    const test = await withBridgeWallet([]);
+
     await expect(test.engine.handlers["agent/goLive"](testCall(accepted))).resolves.toStrictEqual(
-      err("limit.needs_bridge_wallet"),
+      err("limit.bridge_ceiling"),
     );
     await expect(modeOf(test)).resolves.toBe("paper");
-    const bridge = testWalletRecord({
-      id: fixtureId("wal", 78),
-      agentId: testAgent,
-      label: "relays",
-      createdAtMs: testNowMs,
-      role: "bridge",
-    });
-    const policy = [{ abi: [fakeDepositAbi] }];
-    test.stores.install.addWallet({ ...bridge, ceiling: { ...bridge.ceiling, policy } });
-    expect(expectOk(await test.engine.handlers["agent/goLive"](testCall(accepted))).mode).toBe(
-      "live",
-    );
+  });
+
+  it("goes live once its bridge wallet's ceiling holds the venue's deposit", async () => {
+    const test = await withBridgeWallet([{ abi: [fakeDepositAbi] }]);
+
+    const view = expectOk(await test.engine.handlers["agent/goLive"](testCall(accepted)));
+
+    expect(view.mode).toBe("live");
   });
 
   it("goes live with a venue on a launch's own contracts once it has a launch wallet", async () => {

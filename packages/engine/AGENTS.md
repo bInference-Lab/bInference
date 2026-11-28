@@ -215,7 +215,8 @@ Rules for this package:
 - An agent's limits (`src/limits/`) change only through `limit/set` and `limit/cancelPending`,
   which decide with `moveLimits` (`src/policy/limit-change.ts`, decision 0111): a clearly stricter
   value applies at once with `confirm`, every other change needs `loosen` and waits 24 hours in
-  `pending_limits`. `createEngine` wraps the agent store in `withLimitsInEffect`, so every part
+  `pending_limits`, but a venues change that adds only bridge venues, the engine's bridges or a
+  venue only a bridge wallet uses, applies at once with `loosen` (decision 0462). `createEngine` wraps the agent store in `withLimitsInEffect`, so every part
   reads the limits in effect, waiting ones folded in at their time; a venue added while a live
   wallet's ceiling leaves its contracts out is `limit.over_ceiling`. A venue that trades on a
   launch's own contracts (`host.hasLaunchContracts`) is `limit.needs_launch_wallet` for a live

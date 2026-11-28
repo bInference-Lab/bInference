@@ -89,8 +89,8 @@ async function isFunded(
 // Why the agent cannot go live with its venues, in effect or waiting: one trades on a launch's own
 // contracts or only launches tokens (decision 0282) while the agent has no live launch wallet,
 // which alone may call them (decision 0217), or while that wallet's ceiling lacks one of its
-// launch calls (decision 0218); or one only a bridge wallet uses while the agent has no live
-// bridge wallet, or that wallet's ceiling lacks one of its calls (decision 0307).
+// launch calls (decision 0218); or one only a bridge wallet uses while the agent's bridge wallet's
+// ceiling lacks one of its calls (decisions 0307 and 0463).
 async function roleVenueRefusal(
   options: AgentModeHandlersOptions,
   found: { readonly agent: AgentRecord; readonly limits: LimitsRecord },
@@ -210,8 +210,8 @@ async function switchMode(
  * (`agent.disclaimer` before, decision 0220), the agent's default wallet holds funds
  * (`wallet.unfunded` before) and its venues, in effect or waiting, hold none that trades on a
  * launch's own contracts unless it has a live launch wallet (`limit.needs_launch_wallet`,
- * decisions 0212 and 0217), and none only a bridge wallet uses unless it has a live bridge wallet
- * (`limit.needs_bridge_wallet`, decision 0307). `agent/goPaper` brakes from any surface with `confirm`. Each switch keeps the intents already proposed as they
+ * decisions 0212 and 0217), and none only a bridge wallet uses while its bridge wallet's ceiling
+ * lacks the venue's calls (`limit.bridge_ceiling`, decisions 0307 and 0463). `agent/goPaper` brakes from any surface with `confirm`. Each switch keeps the intents already proposed as they
  * were stored, so a paper card still fills on paper; it is journaled and announced. Switching to
  * the mode an agent is in changes nothing.
  */

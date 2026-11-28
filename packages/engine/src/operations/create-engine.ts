@@ -389,7 +389,13 @@ function ownerSettingsHandlers(options: EngineOptions, paper: PaperParts) {
       communityPluginsOn: options.communityPluginsOn,
       listedMcpOn: options.listedMcpOn,
     }),
-    ...createLimitHandlers({ ...settingsParts, install: stores.install, host, chains }),
+    ...createLimitHandlers({
+      ...settingsParts,
+      install: stores.install,
+      host,
+      chains,
+      bridges: options.bridges ?? [],
+    }),
     ...createSendLevelHandlers(settingsParts),
     ...createAddressBookHandlers({
       ...rescueParts,

@@ -1,6 +1,6 @@
 # 0461. A new agent bridges with Across from its first wallet
 
-Status: Accepted
+Status: Amended by 0463
 
 Accepted by the lead on 2026-11-28, on the owner's ruling.
 

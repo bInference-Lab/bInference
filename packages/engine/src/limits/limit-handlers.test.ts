@@ -9,6 +9,7 @@ import {
 import { bpsSchema, err, idSchema, type JsonValue } from "@binference/core";
 import type { LimitChanges } from "@binference/protocol";
 import { describe, expect, it } from "vitest";
+import { bridgeEngineOptions, bridgeFakes, readyBridges } from "../bridges/test-bridges.js";
 import { fixtureId } from "../contracts/store-fixtures.js";
 import type { WalletRecord } from "../install/install-record.js";
 import { testWalletRecord } from "../install/test-wallet-record.js";
@@ -465,32 +466,37 @@ describe("a venue added to the limits", () => {
     });
   });
 
-  it("needs a bridge wallet whose ceiling holds its deposit when only a bridge wallet uses it", async () => {
+  it("needs no bridge wallet when only a bridge wallet uses it, so a bridge waits for one", async () => {
     const test = await besideBridges("live");
-    expect(await setLimits(test, { venues: ["fake-bridge"] })).toStrictEqual(
-      err("limit.needs_bridge_wallet"),
-    );
+
+    const set = expectOk(await setLimits(test, { venues: ["fake-bridge"] }));
+
+    expect([set.venues, set.pending]).toStrictEqual([["fake-bridge"], undefined]);
+  });
+
+  it("needs a bridge wallet's ceiling to hold its deposit once the agent has one", async () => {
+    const test = await besideBridges("live");
     test.stores.install.addWallet(bridgeWalletWith([]));
     expect(await setLimits(test, { venues: ["fake-bridge"] })).toStrictEqual(
       err("limit.bridge_ceiling"),
     );
   });
 
-  it("lets a live agent add it once its bridge wallet's ceiling holds the deposit", async () => {
+  it("lets a live agent add it at once once its bridge wallet's ceiling holds the deposit", async () => {
     const test = await besideBridges("live");
     test.stores.install.addWallet(bridgeWalletWith([{ abi: [fakeDepositAbi] }]));
 
     const set = expectOk(await setLimits(test, { venues: ["fake-bridge"] }));
 
-    expect(set.pending).toStrictEqual({ changes: { venues: ["fake-bridge"] }, effectiveAt });
+    expect([set.venues, set.pending]).toStrictEqual([["fake-bridge"], undefined]);
   });
 
-  it("needs no bridge wallet for a paper agent", async () => {
+  it("needs no bridge wallet for a paper agent, and applies at once", async () => {
     const test = await besideBridges("paper");
 
     const set = expectOk(await setLimits(test, { venues: ["fake-bridge"] }));
 
-    expect(set.pending).toStrictEqual({ changes: { venues: ["fake-bridge"] }, effectiveAt });
+    expect([set.venues, set.pending]).toStrictEqual([["fake-bridge"], undefined]);
   });
 
   it("never checks a bridge wallet's ceiling for a main wallet's venue", async () => {
@@ -511,5 +517,82 @@ describe("a venue added to the limits", () => {
         setLimits(test, { gasReserve: Object.fromEntries([["fake:9", 1n]]) }),
       ]),
     ).toStrictEqual([err("protocol.bad_args"), err("protocol.bad_args")]);
+  });
+});
+
+// The version of the agent's stored limits, which a write in place of `limit/set` names.
+async function limitsVersion(test: TestEngine): Promise<number> {
+  const found = await test.stores.agents.get(testAgent, live);
+  return found?.limits.version ?? 0;
+}
+
+// A live agent beside the fake bridge, whose wallet's ceiling holds the bridge's spoke.
+async function besideCross(): Promise<TestEngine> {
+  const fakes = bridgeFakes();
+  const limits = { ...testLimits, venues: ["fake-swap"] };
+  const test = await startTestEngine(
+    bridgeEngineOptions(fakes, { agent: { mode: "live", limits } }),
+  );
+  await readyBridges(test);
+  return test;
+}
+
+describe("a bridge venue added to the limits", () => {
+  it("applies at once with the loosen scope, journaled and announced", async () => {
+    const test = await besideCross();
+    const venues = ["fake-swap", "fake-cross"];
+    expect(await setLimits(test, { venues }, braking)).toStrictEqual(err("auth.scope"));
+
+    const set = expectOk(await setLimits(test, { venues }, loosening));
+
+    expect([set.venues, set.pending]).toStrictEqual([venues, undefined]);
+    expect(notices(test).at(-1)).toStrictEqual(changeNotice("venues"));
+    const entries = await test.stores.configJournal.list({ after: 0, limit: 10 }, live);
+    expect(entries.at(-1)).toMatchObject({ path: "agents.main.limits", after: { venues } });
+  });
+
+  it("still waits 24 hours beside another looser change", async () => {
+    const test = await besideCross();
+    const changes = { venues: ["fake-swap", "fake-cross"], perTradeUsdMicros: higher };
+
+    const set = expectOk(await setLimits(test, changes, loosening));
+
+    expect(set.venues).toStrictEqual(["fake-swap", "fake-cross"]);
+    expect(set.pending).toStrictEqual({ changes: { perTradeUsdMicros: higher }, effectiveAt });
+  });
+
+  it("is over the ceiling while a live wallet's ceiling leaves its spoke out", async () => {
+    const fakes = bridgeFakes();
+    const limits = { ...testLimits, venues: ["fake-swap"] };
+    const test = await startTestEngine(
+      bridgeEngineOptions(fakes, { agent: { mode: "live", limits } }),
+    );
+    test.stores.install.addWallet({ ...wallet, ceiling: { ...wallet.ceiling, policy: [] } });
+
+    expect(await setLimits(test, { venues: ["fake-swap", "fake-cross"] })).toStrictEqual(
+      err("limit.over_ceiling"),
+    );
+  });
+
+  it("applies a change that waited only for a bridge venue when it is asked again", async () => {
+    const test = await besideCross();
+    const venues = ["fake-swap", "fake-cross"];
+    // A change a release before this one left waiting for the bridge venue alone.
+    const version = await limitsVersion(test);
+    await test.stores.agents.setLimits(
+      {
+        agentId: testAgent,
+        limits: { ...testLimits, venues: ["fake-swap"] },
+        pending: { values: { ...testLimits, venues }, atMs: effectiveAt },
+        atMs: testNowMs,
+        expectedVersion: version,
+      },
+      live,
+    );
+    expect((await getLimits(test)).pending).toStrictEqual({ changes: { venues }, effectiveAt });
+
+    const set = expectOk(await setLimits(test, { venues }, loosening));
+
+    expect([set.venues, set.pending]).toStrictEqual([venues, undefined]);
   });
 });

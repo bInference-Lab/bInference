@@ -17,13 +17,14 @@ const tokenA = assetRefSchema.parse("fake:1/token:a");
 const tokenB = assetRefSchema.parse("fake:1/token:b");
 const now: LimitsState = { values: testLimits };
 const later = nowMs + looseningWaitMs;
+const isBridge = (venue: string) => venue === "bridge";
 
 describe("a move of an agent's limits", () => {
   it("applies a lower cap, a higher floor and fewer venues at once", () => {
     const move = moveLimits(
       now,
       { perTradeUsdMicros: 1n, liquidityFloorUsdMicros: 5n, venues: [] },
-      nowMs,
+      { nowMs },
     );
     expect(move.stricter).toStrictEqual(["perTradeUsdMicros", "liquidityFloorUsdMicros", "venues"]);
     expect([move.looser, move.next.pending]).toStrictEqual([[], undefined]);
@@ -33,7 +34,7 @@ describe("a move of an agent's limits", () => {
   it("makes a higher cap, a smaller gas reserve and a new venue wait 24 hours", () => {
     const gasReserve = [{ chain, reserveBase: 1n }];
     const changes = { perTradeUsdMicros: 10n ** 12n, gasReserve, venues: ["fake-swap", "other"] };
-    const move = moveLimits(now, changes, nowMs);
+    const move = moveLimits(now, changes, { nowMs });
 
     expect(move.looser).toStrictEqual(["perTradeUsdMicros", "gasReserve", "venues"]);
     expect(move.next.values).toStrictEqual(testLimits);
@@ -45,18 +46,38 @@ describe("a move of an agent's limits", () => {
     expect(limitsAt(move.next, later).values).toStrictEqual({ ...testLimits, ...changes });
   });
 
+  it("adds a bridge venue at once, and makes a change adding another venue wait", () => {
+    const bridged = moveLimits(now, { venues: ["fake-swap", "bridge"] }, { nowMs, isBridge });
+    expect([bridged.looser, bridged.atOnce]).toStrictEqual([["venues"], ["venues"]]);
+    expect(bridged.next).toStrictEqual({
+      values: { ...testLimits, venues: ["fake-swap", "bridge"] },
+    });
+
+    const both = moveLimits(now, { venues: ["bridge", "other"] }, { nowMs, isBridge });
+    expect(both.atOnce).toStrictEqual([]);
+    expect(both.next.pending?.values.venues).toStrictEqual(["bridge", "other"]);
+  });
+
   it("judges token lists by what they allow: a narrower allow list, a wider deny list", () => {
-    const narrowed = moveLimits(now, { allowTokens: [tokenA], denyTokens: [tokenB] }, nowMs);
+    const narrowed = moveLimits(now, { allowTokens: [tokenA], denyTokens: [tokenB] }, { nowMs });
     expect(narrowed.stricter).toStrictEqual(["allowTokens", "denyTokens"]);
-    const widened = moveLimits(narrowed.next, { allowTokens: [], denyTokens: [] }, nowMs);
+    const widened = moveLimits(narrowed.next, { allowTokens: [], denyTokens: [] }, { nowMs });
     expect(widened.looser).toStrictEqual(["allowTokens", "denyTokens"]);
   });
 
   it("keeps the time of looser limits asked for again, and restarts it for another", () => {
-    const first = moveLimits(now, { perTradeUsdMicros: 10n ** 12n }, nowMs);
-    const again = moveLimits(first.next, { perTradeUsdMicros: 10n ** 12n }, nowMs + 60_000);
+    const first = moveLimits(now, { perTradeUsdMicros: 10n ** 12n }, { nowMs });
+    const again = moveLimits(
+      first.next,
+      { perTradeUsdMicros: 10n ** 12n },
+      { nowMs: nowMs + 60_000 },
+    );
     expect(again.next.pending?.atMs).toBe(later);
-    const other = moveLimits(first.next, { taxBps: bpsSchema.parse(2_000) }, nowMs + 60_000);
+    const other = moveLimits(
+      first.next,
+      { taxBps: bpsSchema.parse(2_000) },
+      { nowMs: nowMs + 60_000 },
+    );
     expect(other.next.pending?.atMs).toBe(later + 60_000);
     expect(other.next.pending?.values.perTradeUsdMicros).toBe(10n ** 12n);
   });
@@ -65,19 +86,19 @@ describe("a move of an agent's limits", () => {
     const first = moveLimits(
       now,
       { perTradeUsdMicros: 10n ** 12n, taxBps: bpsSchema.parse(2_000) },
-      nowMs,
+      { nowMs },
     );
-    const braked = moveLimits(first.next, { perTradeUsdMicros: 1n }, nowMs + 1);
+    const braked = moveLimits(first.next, { perTradeUsdMicros: 1n }, { nowMs: nowMs + 1 });
 
     expect(braked.stricter).toStrictEqual(["perTradeUsdMicros"]);
     expect(braked.next.pending?.values.perTradeUsdMicros).toBe(1n);
     expect(braked.next.pending?.atMs).toBe(later);
-    const both = moveLimits(braked.next, { taxBps: testLimits.taxBps }, nowMs + 2);
+    const both = moveLimits(braked.next, { taxBps: testLimits.taxBps }, { nowMs: nowMs + 2 });
     expect(both.next).toStrictEqual({ values: { ...testLimits, perTradeUsdMicros: 1n } });
   });
 
   it("cancels the limits that wait, and names what changed between two sets", () => {
-    const first = moveLimits(now, { orderExpiryDays: 90 }, nowMs);
+    const first = moveLimits(now, { orderExpiryDays: 90 }, { nowMs });
 
     expect(cancelLimits(first.next, nowMs)).toStrictEqual(now);
     expect(cancelLimits(first.next, later)).toStrictEqual({

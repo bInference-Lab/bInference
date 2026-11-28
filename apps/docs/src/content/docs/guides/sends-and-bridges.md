@@ -78,8 +78,10 @@ ETH arrives in a plain wallet as ETH. BNB is not bridged.
 
 ### Turn bridges on
 
-Across is on for a new agent: its first wallet's ceiling holds Across's deposits, and its venues
-name `across`. Save an address on the destination chain, and it can bridge there.
+Bridges are on for a new agent: its venues name `across` and `relay`, and its first wallet's
+ceiling holds Across's deposits. Save an address on the destination chain, and it can bridge there
+with Across. Relay bridges start once you make the bridge wallet below; until then a Relay
+bridge is refused before its card, with the command that makes one.
 
 For an agent made before this release, add Across with your owner key: to the ceiling, then to the
 agent's venues. Run `binference ceiling` to see the venues the wallets keep, and name them all
@@ -90,17 +92,21 @@ binference ceiling set --venues <the venues it lists>,across
 binference limit set limits.venues=<the venues it lists>,across
 ```
 
-Adding a venue loosens the limits, so it applies after 24 hours.
+Adding a bridge venue applies at once: it still needs your owner key in the ceiling first, which
+bounds what it can pay. Adding any other venue loosens the limits, so it applies after 24 hours. A
+venues change that still waits from an earlier release only for a bridge venue applies when you run
+the same `binference limit set` again.
 
-For Relay, first make the bridge wallet with your owner key, and fund it from outside:
+For Relay, make the bridge wallet with your owner key, and fund it from outside:
 
 ```sh
 binference wallet create --bridge --label bridge
 ```
 
 Its ceiling allows only Relay deposits and sends to your rescue address and saved addresses. No
-other wallet of the agent can pay it, so fund it from a wallet of your own. Then add `relay` to the
-agent's venues with `binference limit set` or on the console's Limits screen.
+other wallet of the agent can pay it, so fund it from a wallet of your own. An agent made before
+this release adds `relay` to its venues with `binference limit set` or on the console's Limits
+screen, which applies at once.
 
 ### Bridge
 

@@ -18,6 +18,7 @@ import { z } from "zod";
 import type { AgentMode, AgentSettings } from "../agents/agent-record.js";
 import { type LimitsRecord, limitsValuesOf } from "../agents/limits-record.js";
 import { authorOf, journalConfigChange } from "../audit/journal-config-change.js";
+import type { HostedBridge } from "../bridges/hosted-bridge.js";
 import type { WalletRecord } from "../install/install-record.js";
 import { roleWalletIn } from "../install/role-wallet.js";
 import { activeAgent } from "../operations/active-agent.js";
@@ -61,6 +62,8 @@ export interface LimitHandlersOptions {
     VenueHost,
     "hasLaunchContracts" | "launchesOnly" | "launchCalls" | "bridgesOnly" | "roleWalletCalls"
   >;
+  /** The bridges the engine runs, whose venues an agent adds at once (decision 0462). */
+  readonly bridges: readonly HostedBridge[];
   readonly journal: ConfigJournal;
   readonly chains: ChainRegistry;
   readonly clock: Clock;
@@ -286,6 +289,16 @@ function canonicalChanges(
   });
 }
 
+// A bridge venue: one the engine bridges with, or one only a bridge wallet uses (decision 0307).
+function isBridgeVenueOf(
+  options: Pick<LimitHandlersOptions, "bridges" | "host">,
+  venue: string,
+): boolean {
+  return (
+    options.host.bridgesOnly(venue) || options.bridges.some(({ bridge }) => bridge.id === venue)
+  );
+}
+
 function setDecision(options: LimitHandlersOptions, call: EngineCall<"limit/set">): Decide {
   return async (state, nowMs, mode) => {
     const { values } = limitsAt(state, nowMs);
@@ -295,7 +308,8 @@ function setDecision(options: LimitHandlersOptions, call: EngineCall<"limit/set"
     if (!changes.ok || refusal !== undefined) {
       return err(refusal ?? "protocol.bad_args");
     }
-    const { next, looser } = moveLimits(state, limitChangesOf(changes.value, values), nowMs);
+    const at = { nowMs, isBridge: (venue: string) => isBridgeVenueOf(options, venue) };
+    const { next, looser } = moveLimits(state, limitChangesOf(changes.value, values), at);
     return call.caller.scopes.includes(looser.length > 0 ? "loosen" : "confirm")
       ? ok(next)
       : err("auth.scope");
@@ -307,7 +321,8 @@ function setDecision(options: LimitHandlersOptions, call: EngineCall<"limit/set"
  * intent to them, and the looser ones that wait. `limit/set` applies at once, with the `confirm`
  * scope, each change that is clearly stricter or back to the value in effect, and drops any looser
  * value of that limit that waits; every other change needs the `loosen` scope and waits 24 hours
- * (decision 0111). A venue that trades on a launch's own contracts is `limit.needs_launch_wallet`
+ * (decision 0111), but venues that add only bridge venues, which apply at once (decision 0462). A
+ * venue that trades on a launch's own contracts is `limit.needs_launch_wallet`
  * for a live agent without a launch wallet, and needs no ceiling for a paper one or one with a
  * launch wallet (decisions 0212 and 0217); any other venue a live wallet's ceiling leaves out is
  * `limit.over_ceiling`. The token
